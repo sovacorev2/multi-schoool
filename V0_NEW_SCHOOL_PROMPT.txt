@@ -1,0 +1,97 @@
+================================================================================
+SCHOOL EXAM MANAGEMENT SYSTEM - V0 DEPLOYMENT PROMPT
+================================================================================
+
+Copy and paste this entire prompt into a NEW v0 chat to deploy the exam system
+for a new school. Fill in the school details below first.
+
+================================================================================
+FILL IN SCHOOL DETAILS:
+================================================================================
+
+SCHOOL_NAME: [Enter full school name, e.g., Sunshine Academy Primary School]
+SCHOOL_SHORT_NAME: [Enter short name, e.g., SAPS]
+SCHOOL_MOTTO: [Enter motto, e.g., Excellence Through Education]
+SCHOOL_EMAIL: [Enter email, e.g., info@school.com]
+SCHOOL_PHONE: [Enter phone, e.g., +254 700 000 000]
+SCHOOL_ADDRESS: [Enter address]
+
+================================================================================
+PROMPT TO PASTE IN V0:
+================================================================================
+
+I need you to help me deploy an existing School Exam Management System for a new school. 
+
+This system is already built and working for St. James Koteko Primary School. I need the EXACT same system deployed for a different school with only the branding changed.
+
+The system includes:
+- Class-based login with passwords
+- Student (learner) management
+- Subject management per class
+- Marks entry and management
+- Professional A5 report card generation with school logo watermark
+- Marklist printing
+- Class analysis reports
+- Subject analysis reports
+- Admin dashboard with settings
+- Session/term management
+
+**New School Details:**
+- School Name: [PASTE SCHOOL_NAME HERE]
+- Short Name: [PASTE SCHOOL_SHORT_NAME HERE]
+- Motto: [PASTE SCHOOL_MOTTO HERE]
+- Email: [PASTE SCHOOL_EMAIL HERE]
+- Phone: [PASTE SCHOOL_PHONE HERE]
+- Address: [PASTE SCHOOL_ADDRESS HERE]
+
+**What I need:**
+1. Clone/replicate the exact system from this GitHub repo: [YOUR GITHUB REPO URL]
+2. Help me set up a new Supabase project with the database schema
+3. Configure the environment variables for the new school
+4. Deploy to Vercel with a custom URL like [schoolname]-exams.vercel.app
+5. Upload the new school's logo
+
+Please guide me through each step.
+
+================================================================================
+ALTERNATIVE: QUICK SETUP STEPS (Do it yourself)
+================================================================================
+
+If you prefer to set it up yourself without v0:
+
+1. CREATE SUPABASE PROJECT:
+   - Go to supabase.com
+   - Create new project named "[schoolname]-exams"
+   - Go to SQL Editor and run the database setup script (see SCHOOL_DEPLOYMENT_GUIDE.md)
+
+2. DEPLOY TO VERCEL:
+   - Go to vercel.com/new
+   - Import repository: [YOUR GITHUB REPO URL]
+   - Add environment variables:
+     * NEXT_PUBLIC_SCHOOL_NAME = Your School Name
+     * NEXT_PUBLIC_SCHOOL_SHORT_NAME = YSN
+     * NEXT_PUBLIC_SCHOOL_TAGLINE = Your Motto
+     * NEXT_PUBLIC_SUPABASE_URL = https://xxx.supabase.co
+     * NEXT_PUBLIC_SUPABASE_ANON_KEY = your-anon-key
+     * SUPABASE_SERVICE_ROLE_KEY = your-service-key
+   - Deploy!
+
+3. UPLOAD LOGO:
+   - Replace /public/logo.png with the new school's logo
+
+4. INITIAL SETUP:
+   - Login with admin password: admin123
+   - Change admin password immediately
+   - Set up class passwords
+   - Add subjects and students
+
+================================================================================
+DATABASE SETUP SCRIPT (For reference - also in SCHOOL_DEPLOYMENT_GUIDE.md)
+================================================================================
+
+Run this in Supabase SQL Editor:
+
+-- [The full SQL script is in SCHOOL_DEPLOYMENT_GUIDE.md]
+-- Copy from there to avoid formatting issues
+
+================================================================================

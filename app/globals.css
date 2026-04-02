@@ -1,0 +1,158 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: hsl(0 0% 98%);
+  --color-foreground: hsl(220 13% 20%);
+  --color-card: hsl(0 0% 100%);
+  --color-card-foreground: hsl(220 13% 20%);
+  --color-popover: hsl(0 0% 100%);
+  --color-popover-foreground: hsl(220 13% 20%);
+  --color-primary: hsl(200 100% 50%);
+  --color-primary-foreground: hsl(0 0% 100%);
+  --color-secondary: hsl(160 84% 39%);
+  --color-secondary-foreground: hsl(0 0% 100%);
+  --color-muted: hsl(220 14% 96%);
+  --color-muted-foreground: hsl(220 9% 46%);
+  --color-accent: hsl(280 85% 67%);
+  --color-accent-foreground: hsl(0 0% 100%);
+  --color-destructive: hsl(0 84% 60%);
+  --color-destructive-foreground: hsl(0 0% 100%);
+  --color-border: hsl(220 13% 91%);
+  --color-input: hsl(220 13% 91%);
+  --color-ring: hsl(200 100% 50%);
+  --color-chart-1: hsl(200 100% 50%);
+  --color-chart-2: hsl(160 84% 39%);
+  --color-chart-3: hsl(280 85% 67%);
+  --color-chart-4: hsl(40 84% 61%);
+  --color-chart-5: hsl(10 86% 61%);
+  --color-sidebar-background: hsl(220 13% 13%);
+  --color-sidebar-foreground: hsl(0 0% 98%);
+  --color-sidebar-primary: hsl(200 100% 50%);
+  --color-sidebar-primary-foreground: hsl(0 0% 100%);
+  --color-sidebar-accent: hsl(220 13% 23%);
+  --color-sidebar-accent-foreground: hsl(0 0% 98%);
+  --color-sidebar-border: hsl(220 13% 20%);
+  --color-sidebar-ring: hsl(200 100% 50%);
+  --radius: 0.75rem;
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-primary);
+  border-radius: 0.75rem;
+}
+
+.step-card {
+  background-color: var(--color-card);
+  border: 2px solid var(--color-border);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  transition: all 0.2s;
+}
+
+.step-card:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  border-color: var(--color-primary);
+}
+
+.step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9999px;
+  background-color: var(--color-primary);
+  color: var(--color-primary-foreground);
+  font-weight: bold;
+  font-size: 0.875rem;
+}
+
+.workflow-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.workflow-badge-active {
+  background-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  color: var(--color-primary);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
+.workflow-badge-inactive {
+  background-color: var(--color-muted);
+  color: var(--color-muted-foreground);
+  border: 1px solid var(--color-border);
+}
+
+.gradient-bg {
+  background: linear-gradient(to bottom right, hsl(213 97% 97%), white, hsl(166 76% 97%));
+}
+
+.glass-effect {
+  background-color: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(40px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+@media print {
+  body {
+    background: white !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-content {
+    display: block !important;
+    visibility: visible !important;
+    position: relative !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    background: white !important;
+  }
+  
+  .print-page-break {
+    page-break-after: always;
+    break-after: page;
+  }
+  
+  table {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  th, td {
+    border: 1px solid #333 !important;
+    padding: 4px 8px !important;
+  }
+  
+  th {
+    background-color: #e5e7eb !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
