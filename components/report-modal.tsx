@@ -66,10 +66,10 @@ export function ReportModal({
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { font-family: Arial, sans-serif; background: #fff; }
           .report-card {
-            width: 148mm;
-            min-height: 210mm;
+            width: 210mm;
+            min-height: 297mm;
             margin: 0 auto;
-            padding: 10mm;
+            padding: 15mm;
             page-break-after: always;
             position: relative;
             overflow: hidden;
@@ -81,8 +81,8 @@ export function ReportModal({
             left: 50%;
             transform: translate(-50%, -50%);
             opacity: 0.08;
-            width: 200px;
-            height: 200px;
+            width: 280px;
+            height: 280px;
             z-index: 0;
           }
           .watermark img { width: 100%; height: 100%; object-fit: contain; }
@@ -94,13 +94,13 @@ export function ReportModal({
             margin-bottom: 10px;
             text-align: center;
           }
-          .header h1 { font-size: 16px; font-weight: bold; margin-bottom: 5px; }
-          .header .info { font-size: 10px; font-weight: 600; }
-          .student-info { margin-bottom: 10px; font-size: 11px; }
+          .header h1 { font-size: 20px; font-weight: bold; margin-bottom: 5px; }
+          .header .info { font-size: 12px; font-weight: 600; }
+          .student-info { margin-bottom: 15px; font-size: 13px; }
           .student-info .label { font-weight: bold; color: #1e40af; }
           .student-info .name { font-weight: 600; text-transform: uppercase; text-decoration: underline; margin-left: 10px; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 10px; }
-          th, td { border: 1px solid #000; padding: 6px; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 12px; }
+          th, td { border: 1px solid #000; padding: 8px; }
           th { background: #d4d4d4; font-weight: bold; }
           .subject-col { color: #1e40af; text-align: left; }
           .marks-col { color: #9400d3; text-align: center; width: 50px; }
@@ -120,6 +120,7 @@ export function ReportModal({
           .signature { display: flex; justify-content: space-between; border-top: 1px solid #000; padding-top: 10px; font-size: 9px; }
           .signature p { margin-bottom: 10px; font-weight: bold; }
           .stamp { width: 60px; height: 40px; border: 1px solid #999; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #999; }
+          @page { size: A4; margin: 10mm; }
           @media print {
             body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .report-card { page-break-after: always; }
@@ -182,8 +183,8 @@ export function ReportModal({
                 key={report.learner.id}
                 className="report-card bg-white shadow-lg mb-6 mx-auto"
                 style={{
-                  width: '148mm',
-                  minHeight: '210mm',
+                  width: '210mm',
+                  minHeight: '297mm',
                   padding: '10mm',
                   position: 'relative',
                   overflow: 'hidden'
