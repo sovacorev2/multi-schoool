@@ -1,6 +1,7 @@
 'use client'
 
 import React from "react"
+import { formatGradeWithPoints } from '@/lib/grading-utils'
 
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
