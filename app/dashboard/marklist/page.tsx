@@ -1,3 +1,4 @@
+import { formatGradeWithPoints } from '@/lib/grading-utils'
 'use client'
 
 import React from "react"
