@@ -1,10 +1,40 @@
 import { createClient } from '@supabase/supabase-js'
+import fs from 'fs'
+import path from 'path'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+// Read env file manually
+const envPath = process.env.ENV_FILE || '/vercel/share/.env.project'
+let supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+let supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  try {
+    const envContent = fs.readFileSync(envPath, 'utf-8')
+    const envLines = envContent.split('\n')
+    console.log(`[DEBUG] Read env file from: ${envPath}`)
+    for (const line of envLines) {
+      if (line.startsWith('NEXT_PUBLIC_SUPABASE_URL=')) {
+        let val = line.replace('NEXT_PUBLIC_SUPABASE_URL=', '').trim()
+        val = val.replace(/^'|'$/g, '').replace(/^"|"$/g, '')
+        supabaseUrl = val
+        console.log(`[DEBUG] Found URL: ${supabaseUrl.substring(0, 30)}...`)
+      }
+      if (line.startsWith('SUPABASE_SERVICE_ROLE_KEY=')) {
+        let val = line.replace('SUPABASE_SERVICE_ROLE_KEY=', '').trim()
+        val = val.replace(/^'|'$/g, '').replace(/^"|"$/g, '')
+        supabaseServiceKey = val
+        console.log(`[DEBUG] Found KEY: ${supabaseServiceKey.substring(0, 20)}...`)
+      }
+    }
+  } catch (err) {
+    console.error('❌ Could not read env file:', err.message)
+  }
+}
 
 if (!supabaseUrl || !supabaseServiceKey) {
   console.error('❌ Missing Supabase credentials')
+  console.error('   URL:', supabaseUrl ? `✓ (${supabaseUrl.substring(0, 30)}...)` : '✗')
+  console.error('   KEY:', supabaseServiceKey ? `✓` : '✗')
   process.exit(1)
 }
 
@@ -53,6 +83,7 @@ async function setup() {
     console.log('✅ Admin password: admin123')
   } catch (err) {
     console.error('❌ Error:', err.message)
+    console.error('Details:', err)
     process.exit(1)
   }
 }
