@@ -589,16 +589,16 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
     // Build subject headers
     const subjectHeaders = subjects.map(s => 
       `<th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9px; background: #e5e7eb;">${s.name.substring(0, 3).toUpperCase()}</th>
-       <th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 8px; background: #e5e7eb; color: red;">RUB</th>`
+       <th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 8px; background: #e5e7eb; color: #d97706;">PTS</th>`
     ).join('')
     
     // Build student rows
     const studentRows = results.map((result, idx) => {
       const subjectCells = subjects.map(subject => {
         const score = result.marks[subject.id]
-        const rubric = getRubric(score)
-        return `<td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 9px;">${score ?? '-'}</td>
-                <td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; color: red; font-weight: bold;">${rubric ?? '-'}</td>`
+        const performanceLevel = getPerformanceLevelWithPoints(score)
+        return `<td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 9px; font-weight: bold; color: #1a3a52;">${performanceLevel ? performanceLevel.level : '-'}</td>
+                <td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; color: #d97706; font-weight: bold;">${performanceLevel ? performanceLevel.points : '-'}</td>`
       }).join('')
       
       return `<tr style="background: ${idx % 2 === 0 ? '#fff' : '#f3f4f6'};">
@@ -613,9 +613,10 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
     // Build mean row
     const meanCells = subjects.map(subject => {
       const subjectScores = results.map(r => r.marks[subject.id]).filter((s): s is number => s !== null && s !== undefined)
-      const mean = subjectScores.length > 0 ? (subjectScores.reduce((a, b) => a + b, 0) / subjectScores.length).toFixed(1) : '-'
-      return `<td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; font-weight: bold; background: #e5e7eb;">${mean}</td>
-              <td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; background: #e5e7eb;"></td>`
+      const mean = subjectScores.length > 0 ? Math.round(subjectScores.reduce((a, b) => a + b, 0) / subjectScores.length) : null
+      const meanPerformance = getPerformanceLevelWithPoints(mean)
+      return `<td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; font-weight: bold; background: #e5e7eb; color: #1a3a52;">${meanPerformance ? meanPerformance.level : '-'}</td>
+              <td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; background: #e5e7eb; color: #d97706; font-weight: bold;">${meanPerformance ? meanPerformance.points : '-'}</td>`
     }).join('')
     
     const marklistContent = `
