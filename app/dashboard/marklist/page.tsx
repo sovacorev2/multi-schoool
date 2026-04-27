@@ -1,11 +1,12 @@
 'use client'
 
 import React from "react"
-import { formatGradeWithPoints } from '@/lib/grading-utils'
+import { formatGradeWithPoints, getPerformanceLevelWithPoints } from '@/lib/grading-utils'
 
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useClass } from '@/lib/class-context'
+import { isNetworkError, getFallbackData, cacheFallbackData } from '@/lib/fallback-data'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -108,15 +109,24 @@ export default function MarklistPage() {
 
     const supabase = createClient()
 
-    const [sessionsRes, subjectsRes, learnersRes] = await Promise.all([
-      supabase.from('sessions').select('*, exam_types(*)').eq('class_id', currentClass.id),
-      supabase.from('subjects').select('*').eq('class_id', currentClass.id).order('name'),
-      supabase.from('learners').select('*').eq('class_id', currentClass.id).order('name'),
-    ])
+    try {
+      const [sessionsRes, subjectsRes, learnersRes] = await Promise.all([
+        supabase.from('sessions').select('*, exam_types(*)').eq('class_id', currentClass.id),
+        supabase.from('subjects').select('*').eq('class_id', currentClass.id).order('name'),
+        supabase.from('learners').select('*').eq('class_id', currentClass.id).order('name'),
+      ])
 
-    setSessions(sessionsRes.data || [])
-    setSubjects(subjectsRes.data || [])
-    setLearners(learnersRes.data || [])
+      setSessions(sessionsRes.data || [])
+      setSubjects(subjectsRes.data || [])
+      setLearners(learnersRes.data || [])
+    } catch (err) {
+      // Network error - use empty data for now
+      console.log('[v0] Network error fetching data, using empty sets:', err)
+      setSessions([])
+      setSubjects([])
+      setLearners([])
+    }
+    
     setIsLoading(false)
   }, [currentClass])
 
@@ -579,16 +589,16 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
     // Build subject headers
     const subjectHeaders = subjects.map(s => 
       `<th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9px; background: #e5e7eb;">${s.name.substring(0, 3).toUpperCase()}</th>
-       <th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 8px; background: #e5e7eb; color: red;">RUB</th>`
+       <th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 8px; background: #e5e7eb; color: #d97706;">PTS</th>`
     ).join('')
     
     // Build student rows
     const studentRows = results.map((result, idx) => {
       const subjectCells = subjects.map(subject => {
         const score = result.marks[subject.id]
-        const rubric = getRubric(score)
-        return `<td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 9px;">${score ?? '-'}</td>
-                <td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; color: red; font-weight: bold;">${rubric ?? '-'}</td>`
+        const performanceLevel = getPerformanceLevelWithPoints(score)
+        return `<td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 9px; font-weight: bold; color: #1a3a52;">${performanceLevel ? performanceLevel.level : '-'}</td>
+                <td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; color: #d97706; font-weight: bold;">${performanceLevel ? performanceLevel.points : '-'}</td>`
       }).join('')
       
       return `<tr style="background: ${idx % 2 === 0 ? '#fff' : '#f3f4f6'};">
@@ -603,9 +613,10 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
     // Build mean row
     const meanCells = subjects.map(subject => {
       const subjectScores = results.map(r => r.marks[subject.id]).filter((s): s is number => s !== null && s !== undefined)
-      const mean = subjectScores.length > 0 ? (subjectScores.reduce((a, b) => a + b, 0) / subjectScores.length).toFixed(1) : '-'
-      return `<td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; font-weight: bold; background: #e5e7eb;">${mean}</td>
-              <td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; background: #e5e7eb;"></td>`
+      const mean = subjectScores.length > 0 ? Math.round(subjectScores.reduce((a, b) => a + b, 0) / subjectScores.length) : null
+      const meanPerformance = getPerformanceLevelWithPoints(mean)
+      return `<td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; font-weight: bold; background: #e5e7eb; color: #1a3a52;">${meanPerformance ? meanPerformance.level : '-'}</td>
+              <td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; background: #e5e7eb; color: #d97706; font-weight: bold;">${meanPerformance ? meanPerformance.points : '-'}</td>`
     }).join('')
     
     const marklistContent = `
@@ -1047,8 +1058,8 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                       <th className="border border-gray-600 p-1 text-center font-bold" style={{ width: '10mm' }}>
                         {subject.name.substring(0, 3).toUpperCase()}
                       </th>
-                      <th className="border border-gray-600 p-1 text-center font-bold" style={{ width: '6mm', color: 'red' }}>
-                        RUB
+                      <th className="border border-gray-600 p-1 text-center font-bold" style={{ width: '8mm', color: '#d97706' }}>
+                        PTS
                       </th>
                     </React.Fragment>
                   ))}
@@ -1063,14 +1074,14 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                     <td className="border border-gray-500 p-2 text-left font-medium" style={{ fontSize: '9pt' }}>{result.learner.name}</td>
                     {subjects.map((subject) => {
                       const score = result.marks[subject.id]
-                      const rubric = getRubric(score)
+                      const performanceLevel = getPerformanceLevelWithPoints(score)
                       return (
                         <React.Fragment key={subject.id}>
-                          <td className="border border-gray-500 p-1 text-center" style={{ fontSize: '9pt' }}>
-                            {score ?? '-'}
+                          <td className="border border-gray-500 p-1 text-center" style={{ fontSize: '9pt', fontWeight: 'bold', color: '#1a3a52' }}>
+                            {performanceLevel ? performanceLevel.level : '-'}
                           </td>
-                          <td className="border border-gray-500 p-1 text-center" style={{ fontSize: '9pt', color: 'red', fontWeight: 'bold' }}>
-                            {rubric ?? '-'}
+                          <td className="border border-gray-500 p-1 text-center" style={{ fontSize: '9pt', color: '#d97706', fontWeight: 'bold' }}>
+                            {performanceLevel ? performanceLevel.points : '-'}
                           </td>
                         </React.Fragment>
                       )
@@ -1085,14 +1096,14 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                   {subjects.map((subject) => {
                     const scores = results.map(r => r.marks[subject.id]).filter((m): m is number => m !== null && m !== undefined)
                     const mean = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length) : 0
-                    const meanRubric = getRubric(Math.round(mean))
+                    const meanPerformance = getPerformanceLevelWithPoints(Math.round(mean))
                     return (
                       <React.Fragment key={`mean-${subject.id}`}>
-                        <td className="border border-gray-600 p-1 text-center" style={{ fontSize: '8pt' }}>
-                          {scores.length > 0 ? mean.toFixed(1) : '-'}
+                        <td className="border border-gray-600 p-1 text-center" style={{ fontSize: '8pt', fontWeight: 'bold', color: '#1a3a52' }}>
+                          {meanPerformance ? meanPerformance.level : '-'}
                         </td>
-                        <td className="border border-gray-600 p-1 text-center" style={{ fontSize: '8pt', color: 'red', fontWeight: 'bold' }}>
-                          {meanRubric ?? '-'}
+                        <td className="border border-gray-600 p-1 text-center" style={{ fontSize: '8pt', color: '#d97706', fontWeight: 'bold' }}>
+                          {meanPerformance ? meanPerformance.points : '-'}
                         </td>
                       </React.Fragment>
                     )
@@ -1144,8 +1155,8 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                               <th className="border border-gray-600 p-2 font-bold">
                                 {subject.name}
                               </th>
-                              <th className="border border-gray-600 p-2 font-bold" style={{ color: 'red' }}>
-                                RUB
+                              <th className="border border-gray-600 p-2 font-bold" style={{ color: '#d97706' }}>
+                                Points
                               </th>
                             </React.Fragment>
                           ))}
@@ -1161,14 +1172,14 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                             <td className="border border-gray-500 p-2 text-left font-medium">{result.learner.name}</td>
                             {subjects.map((subject) => {
                               const score = result.marks[subject.id]
-                              const rubric = getRubric(score)
+                              const performanceLevel = getPerformanceLevelWithPoints(score)
                               return (
                                 <React.Fragment key={subject.id}>
-                                  <td className="border border-gray-500 p-2 text-center">
-                                    {score ?? '-'}
+                                  <td className="border border-gray-500 p-2 text-center font-bold" style={{ color: '#1a3a52' }}>
+                                    {performanceLevel ? performanceLevel.level : '-'}
                                   </td>
-                                  <td className="border border-gray-500 p-2 text-center font-bold" style={{ color: 'red' }}>
-                                    {rubric ?? '-'}
+                                  <td className="border border-gray-500 p-2 text-center font-bold" style={{ color: '#d97706' }}>
+                                    {performanceLevel ? performanceLevel.points : '-'}
                                   </td>
                                 </React.Fragment>
                               )
@@ -1197,14 +1208,14 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                           {subjects.map((subject) => {
                             const scores = results.map(r => r.marks[subject.id]).filter((m): m is number => m !== null && m !== undefined)
                             const mean = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length) : 0
-                            const meanRubric = getRubric(Math.round(mean))
+                            const meanPerformance = getPerformanceLevelWithPoints(Math.round(mean))
                             return (
                               <React.Fragment key={`mean-${subject.id}`}>
-                                <td className="border border-gray-600 p-2 text-center text-sm">
-                                  {scores.length > 0 ? mean.toFixed(1) : '-'}
+                                <td className="border border-gray-600 p-2 text-center text-sm font-bold" style={{ color: '#1a3a52' }}>
+                                  {meanPerformance ? meanPerformance.level : '-'}
                                 </td>
-                                <td className="border border-gray-600 p-2 text-center text-sm" style={{ color: 'red' }}>
-                                  {meanRubric ?? '-'}
+                                <td className="border border-gray-600 p-2 text-center text-sm font-bold" style={{ color: '#d97706' }}>
+                                  {meanPerformance ? meanPerformance.points : '-'}
                                 </td>
                               </React.Fragment>
                             )

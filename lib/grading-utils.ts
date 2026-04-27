@@ -28,3 +28,10 @@ export function formatGradeWithPoints(marks: number | null | undefined): string 
   const grade = getGradeLevel(marks)
   return grade ? `${grade.level} (${grade.points})` : '-'
 }
+
+export function getPerformanceLevelWithPoints(marks: number | null | undefined): { level: string; points: number } | null {
+  if (marks === null || marks === undefined) return null
+  
+  const grade = GRADING_SCALE.find(g => marks >= g.minMark && marks <= g.maxMark)
+  return grade ? { level: grade.level, points: grade.points } : null
+}

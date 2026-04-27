@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useClass } from '@/lib/class-context'
 import { checkTeacherAuth } from '@/app/actions/auth'
+import { isNetworkError, getFallbackData, cacheFallbackData } from '@/lib/fallback-data'
 import {
   Select,
   SelectContent,
@@ -15,7 +16,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { LogIn } from 'lucide-react'
+import { LogIn, AlertCircle } from 'lucide-react'
 import type { Class, ExamType, Session } from '@/lib/types'
 import { schoolConfig } from '@/lib/school-config'
 
@@ -35,6 +36,7 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(false)
   const [isFetchingData, setIsFetchingData] = useState(true)
   const [error, setError] = useState('')
+  const [isUsingFallback, setIsUsingFallback] = useState(false)
   
   const router = useRouter()
   const { setCurrentClass, setCurrentSession, currentClass, currentSession } = useClass()
@@ -56,14 +58,38 @@ export default function HomePage() {
           console.error('[v0] Exam types fetch error:', examTypesRes.error)
         }
 
-        if (classesRes.data) setClasses(classesRes.data)
-        if (examTypesRes.data) setExamTypes(examTypesRes.data)
+        if (classesRes.data) {
+          setClasses(classesRes.data)
+          cacheFallbackData('classes', classesRes.data)
+        }
+        if (examTypesRes.data) {
+          setExamTypes(examTypesRes.data)
+          cacheFallbackData('exam_types', examTypesRes.data)
+        }
+
+        // If both are empty, try fallback
+        if (!classesRes.data || classesRes.data.length === 0) {
+          console.log('[v0] No data from database, using fallback')
+          setClasses(getFallbackData<Class>('classes'))
+          setExamTypes(getFallbackData<ExamType>('exam_types'))
+          setIsUsingFallback(true)
+        }
       } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error'
-        if (errorMessage.includes('environment variables')) {
+        
+        if (isNetworkError(err)) {
+          // Network error - use fallback data
+          console.log('[v0] Network error, using fallback data:', errorMessage)
+          setClasses(getFallbackData<Class>('classes'))
+          setExamTypes(getFallbackData<ExamType>('exam_types'))
+          setIsUsingFallback(true)
+        } else if (errorMessage.includes('environment variables')) {
           setError('Database connection not configured. Please contact the administrator.')
         } else {
-          setError('Failed to load data. Please try again.')
+          setError('Failed to load data. Using offline data.')
+          setClasses(getFallbackData<Class>('classes'))
+          setExamTypes(getFallbackData<ExamType>('exam_types'))
+          setIsUsingFallback(true)
         }
         console.error('[v0] Fetch error:', err)
       } finally {
@@ -128,6 +154,13 @@ export default function HomePage() {
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
               {error}
+            </div>
+          )}
+
+          {isUsingFallback && !error && (
+            <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg text-sm flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <span>Using offline data - Database connection temporarily unavailable</span>
             </div>
           )}
 
