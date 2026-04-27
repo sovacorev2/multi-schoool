@@ -6,6 +6,7 @@ import { formatGradeWithPoints } from '@/lib/grading-utils'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useClass } from '@/lib/class-context'
+import { isNetworkError, getFallbackData, cacheFallbackData } from '@/lib/fallback-data'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -108,15 +109,24 @@ export default function MarklistPage() {
 
     const supabase = createClient()
 
-    const [sessionsRes, subjectsRes, learnersRes] = await Promise.all([
-      supabase.from('sessions').select('*, exam_types(*)').eq('class_id', currentClass.id),
-      supabase.from('subjects').select('*').eq('class_id', currentClass.id).order('name'),
-      supabase.from('learners').select('*').eq('class_id', currentClass.id).order('name'),
-    ])
+    try {
+      const [sessionsRes, subjectsRes, learnersRes] = await Promise.all([
+        supabase.from('sessions').select('*, exam_types(*)').eq('class_id', currentClass.id),
+        supabase.from('subjects').select('*').eq('class_id', currentClass.id).order('name'),
+        supabase.from('learners').select('*').eq('class_id', currentClass.id).order('name'),
+      ])
 
-    setSessions(sessionsRes.data || [])
-    setSubjects(subjectsRes.data || [])
-    setLearners(learnersRes.data || [])
+      setSessions(sessionsRes.data || [])
+      setSubjects(subjectsRes.data || [])
+      setLearners(learnersRes.data || [])
+    } catch (err) {
+      // Network error - use empty data for now
+      console.log('[v0] Network error fetching data, using empty sets:', err)
+      setSessions([])
+      setSubjects([])
+      setLearners([])
+    }
+    
     setIsLoading(false)
   }, [currentClass])
 
