@@ -589,6 +589,8 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
     // Build subject headers
     const subjectHeaders = subjects.map(s => 
       `<th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9px; background: #e5e7eb;">${s.name.substring(0, 3).toUpperCase()}</th>
+       <th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 8px; background: #e5e7eb;">MKS</th>
+       <th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 8px; background: #e5e7eb; color: #1a3a52;">LVL</th>
        <th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 8px; background: #e5e7eb; color: #d97706;">PTS</th>`
     ).join('')
     
@@ -597,7 +599,8 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
       const subjectCells = subjects.map(subject => {
         const score = result.marks[subject.id]
         const performanceLevel = getPerformanceLevelWithPoints(score)
-        return `<td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 9px; font-weight: bold; color: #1a3a52;">${performanceLevel ? performanceLevel.level : '-'}</td>
+        return `<td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 9px;">${score ?? '-'}</td>
+                <td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 9px; font-weight: bold; color: #1a3a52;">${performanceLevel ? performanceLevel.level : '-'}</td>
                 <td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; color: #d97706; font-weight: bold;">${performanceLevel ? performanceLevel.points : '-'}</td>`
       }).join('')
       
@@ -613,9 +616,11 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
     // Build mean row
     const meanCells = subjects.map(subject => {
       const subjectScores = results.map(r => r.marks[subject.id]).filter((s): s is number => s !== null && s !== undefined)
+      const meanScore = subjectScores.length > 0 ? (subjectScores.reduce((a, b) => a + b, 0) / subjectScores.length).toFixed(1) : '-'
       const mean = subjectScores.length > 0 ? Math.round(subjectScores.reduce((a, b) => a + b, 0) / subjectScores.length) : null
       const meanPerformance = getPerformanceLevelWithPoints(mean)
-      return `<td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; font-weight: bold; background: #e5e7eb; color: #1a3a52;">${meanPerformance ? meanPerformance.level : '-'}</td>
+      return `<td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; font-weight: bold; background: #e5e7eb;">${meanScore}</td>
+              <td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; font-weight: bold; background: #e5e7eb; color: #1a3a52;">${meanPerformance ? meanPerformance.level : '-'}</td>
               <td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; background: #e5e7eb; color: #d97706; font-weight: bold;">${meanPerformance ? meanPerformance.points : '-'}</td>`
     }).join('')
     
@@ -1058,6 +1063,12 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                       <th className="border border-gray-600 p-1 text-center font-bold" style={{ width: '10mm' }}>
                         {subject.name.substring(0, 3).toUpperCase()}
                       </th>
+                      <th className="border border-gray-600 p-1 text-center font-bold" style={{ width: '6mm' }}>
+                        MKS
+                      </th>
+                      <th className="border border-gray-600 p-1 text-center font-bold" style={{ width: '8mm', color: '#1a3a52' }}>
+                        LVL
+                      </th>
                       <th className="border border-gray-600 p-1 text-center font-bold" style={{ width: '8mm', color: '#d97706' }}>
                         PTS
                       </th>
@@ -1077,6 +1088,9 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                       const performanceLevel = getPerformanceLevelWithPoints(score)
                       return (
                         <React.Fragment key={subject.id}>
+                          <td className="border border-gray-500 p-1 text-center" style={{ fontSize: '9pt' }}>
+                            {score ?? '-'}
+                          </td>
                           <td className="border border-gray-500 p-1 text-center" style={{ fontSize: '9pt', fontWeight: 'bold', color: '#1a3a52' }}>
                             {performanceLevel ? performanceLevel.level : '-'}
                           </td>
@@ -1099,6 +1113,9 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                     const meanPerformance = getPerformanceLevelWithPoints(Math.round(mean))
                     return (
                       <React.Fragment key={`mean-${subject.id}`}>
+                        <td className="border border-gray-600 p-1 text-center" style={{ fontSize: '8pt' }}>
+                          {scores.length > 0 ? mean.toFixed(1) : '-'}
+                        </td>
                         <td className="border border-gray-600 p-1 text-center" style={{ fontSize: '8pt', fontWeight: 'bold', color: '#1a3a52' }}>
                           {meanPerformance ? meanPerformance.level : '-'}
                         </td>
@@ -1155,6 +1172,12 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                               <th className="border border-gray-600 p-2 font-bold">
                                 {subject.name}
                               </th>
+                              <th className="border border-gray-600 p-2 font-bold">
+                                Marks
+                              </th>
+                              <th className="border border-gray-600 p-2 font-bold" style={{ color: '#1a3a52' }}>
+                                Level
+                              </th>
                               <th className="border border-gray-600 p-2 font-bold" style={{ color: '#d97706' }}>
                                 Points
                               </th>
@@ -1175,6 +1198,9 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                               const performanceLevel = getPerformanceLevelWithPoints(score)
                               return (
                                 <React.Fragment key={subject.id}>
+                                  <td className="border border-gray-500 p-2 text-center">
+                                    {score ?? '-'}
+                                  </td>
                                   <td className="border border-gray-500 p-2 text-center font-bold" style={{ color: '#1a3a52' }}>
                                     {performanceLevel ? performanceLevel.level : '-'}
                                   </td>
@@ -1211,6 +1237,9 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                             const meanPerformance = getPerformanceLevelWithPoints(Math.round(mean))
                             return (
                               <React.Fragment key={`mean-${subject.id}`}>
+                                <td className="border border-gray-600 p-2 text-center text-sm">
+                                  {scores.length > 0 ? mean.toFixed(1) : '-'}
+                                </td>
                                 <td className="border border-gray-600 p-2 text-center text-sm font-bold" style={{ color: '#1a3a52' }}>
                                   {meanPerformance ? meanPerformance.level : '-'}
                                 </td>
