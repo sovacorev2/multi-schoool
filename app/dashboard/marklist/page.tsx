@@ -1060,9 +1060,17 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                   <th className="border border-gray-600 p-2 text-left font-bold" style={{ width: '40mm' }}>Name</th>
                   {subjects.map((subject) => (
                     <React.Fragment key={subject.id}>
-                      <th className="border border-gray-600 p-1 text-center font-bold" style={{ width: '10mm' }}>
+                      <th colSpan={3} className="border border-gray-600 p-1 text-center font-bold" style={{ width: '22mm' }}>
                         {subject.name.substring(0, 3).toUpperCase()}
                       </th>
+                    </React.Fragment>
+                  ))}
+                </tr>
+                <tr className="bg-gray-200">
+                  <th className="border border-gray-600 p-2 text-center font-bold" style={{ width: '25mm' }}></th>
+                  <th className="border border-gray-600 p-2 text-left font-bold" style={{ width: '40mm' }}></th>
+                  {subjects.map((subject) => (
+                    <React.Fragment key={subject.id}>
                       <th className="border border-gray-600 p-1 text-center font-bold" style={{ width: '6mm' }}>
                         MKS
                       </th>
@@ -1074,6 +1082,10 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                       </th>
                     </React.Fragment>
                   ))}
+                </tr>
+                <tr className="bg-gray-200">
+                  <th className="border border-gray-600 p-2 text-center font-bold" style={{ width: '25mm' }}>No.</th>
+                  <th className="border border-gray-600 p-2 text-left font-bold" style={{ width: '40mm' }}>Name</th>
                   <th className="border border-gray-600 p-1 text-center font-bold" style={{ width: '10mm' }}>Total</th>
                   <th className="border border-gray-600 p-1 text-center font-bold" style={{ width: '10mm' }}>Avg</th>
                 </tr>
@@ -1169,23 +1181,34 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                           <th className="border border-gray-600 p-2 text-left font-bold">Name</th>
                           {subjects.map((subject) => (
                             <React.Fragment key={subject.id}>
-                              <th className="border border-gray-600 p-2 font-bold">
+                              <th colSpan={3} className="border border-gray-600 p-2 font-bold text-center">
                                 {subject.name}
-                              </th>
-                              <th className="border border-gray-600 p-2 font-bold">
-                                Marks
-                              </th>
-                              <th className="border border-gray-600 p-2 font-bold" style={{ color: '#1a3a52' }}>
-                                Level
-                              </th>
-                              <th className="border border-gray-600 p-2 font-bold" style={{ color: '#d97706' }}>
-                                Points
                               </th>
                             </React.Fragment>
                           ))}
                           <th className="border border-gray-600 p-2 font-bold">Total</th>
                           <th className="border border-gray-600 p-2 font-bold">Average</th>
                           <th className="border border-gray-600 p-2 font-bold no-print">Report</th>
+                        </tr>
+                        <tr className="bg-gray-200">
+                          <th className="border border-gray-600 p-2 text-left font-bold"></th>
+                          <th className="border border-gray-600 p-2 text-left font-bold"></th>
+                          {subjects.map((subject) => (
+                            <React.Fragment key={subject.id}>
+                              <th className="border border-gray-600 p-2 font-bold text-xs">
+                                Marks
+                              </th>
+                              <th className="border border-gray-600 p-2 font-bold text-xs" style={{ color: '#1a3a52' }}>
+                                Level
+                              </th>
+                              <th className="border border-gray-600 p-2 font-bold text-xs" style={{ color: '#d97706' }}>
+                                Points
+                              </th>
+                            </React.Fragment>
+                          ))}
+                          <th className="border border-gray-600 p-2 font-bold"></th>
+                          <th className="border border-gray-600 p-2 font-bold"></th>
+                          <th className="border border-gray-600 p-2 font-bold no-print"></th>
                         </tr>
                       </thead>
                       <tbody>
