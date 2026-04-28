@@ -1198,6 +1198,9 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                               const performanceLevel = getPerformanceLevelWithPoints(score)
                               return (
                                 <React.Fragment key={subject.id}>
+                                  <td className="border border-gray-500 p-2 text-center">
+                                    {score ?? '-'}
+                                  </td>
                                   <td className="border border-gray-500 p-2 text-center font-bold" style={{ color: '#1a3a52' }}>
                                     {performanceLevel ? performanceLevel.level : '-'}
                                   </td>
@@ -1234,6 +1237,9 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                             const meanPerformance = getPerformanceLevelWithPoints(Math.round(mean))
                             return (
                               <React.Fragment key={`mean-${subject.id}`}>
+                                <td className="border border-gray-600 p-2 text-center text-sm">
+                                  {scores.length > 0 ? mean.toFixed(1) : '-'}
+                                </td>
                                 <td className="border border-gray-600 p-2 text-center text-sm font-bold" style={{ color: '#1a3a52' }}>
                                   {meanPerformance ? meanPerformance.level : '-'}
                                 </td>
