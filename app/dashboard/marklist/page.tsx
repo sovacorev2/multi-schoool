@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Download, Printer, AlertCircle, BarChart3, TrendingUp, School, GitCompareArrows, ArrowUpRight, ArrowDownRight, Minus, FileText } from 'lucide-react'
+import { Download, Printer, AlertCircle, BarChart3, TrendingUp, School, GitCompareArrows, ArrowUpRight, ArrowDownRight, Minus, FileText, Users } from 'lucide-react'
 import type { ExamType, Session, Subject, Learner, Mark } from '@/lib/types'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
