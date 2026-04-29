@@ -2179,13 +2179,13 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                     <GitCompareArrows className="w-5 h-5" />
                     Stream Comparison Analysis
                   </CardTitle>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Select value={selectedBaseClass} onValueChange={(val) => {
                       setSelectedBaseClass(val)
                       fetchStreamComparison(val)
                     }}>
-                      <SelectTrigger className="w-48">
-                        <SelectValue placeholder="Select a grade level" />
+                      <SelectTrigger className="w-40 sm:w-48">
+                        <SelectValue placeholder="Select grade" />
                       </SelectTrigger>
                       <SelectContent>
                         {getBaseClassNames().map(name => (
@@ -2194,8 +2194,26 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                       </SelectContent>
                     </Select>
                     <Button size="sm" onClick={() => selectedBaseClass && fetchStreamComparison(selectedBaseClass)} disabled={isLoadingStreams || !selectedBaseClass}>
-                      {isLoadingStreams ? 'Loading...' : 'Compare Streams'}
+                      {isLoadingStreams ? 'Loading...' : 'Compare'}
                     </Button>
+                    {streamComparisonData && (
+                      <>
+                        <Button size="sm" variant="outline" onClick={() => {
+                          setSelectedCombinedClass(selectedBaseClass)
+                          fetchCombinedMarklist(selectedBaseClass)
+                          const tabsElement = document.querySelector('[data-state="active"][value="stream-comparison"]')?.closest('[role="tablist"]')?.parentElement
+                          const combinedTab = tabsElement?.querySelector('[value="combined-marklist"]') as HTMLButtonElement
+                          if (combinedTab) combinedTab.click()
+                        }}>
+                          <Users className="w-4 h-4 mr-1" />
+                          <span className="hidden sm:inline">Combined List</span>
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => window.print()} className="print:hidden">
+                          <Printer className="w-4 h-4 mr-1" />
+                          <span className="hidden sm:inline">Print</span>
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -2425,6 +2443,12 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                     <Button size="sm" onClick={() => selectedCombinedClass && fetchCombinedMarklist(selectedCombinedClass)} disabled={isLoadingCombined || !selectedCombinedClass}>
                       {isLoadingCombined ? 'Loading...' : 'Load'}
                     </Button>
+                    {combinedMarklistData && (
+                      <Button size="sm" variant="outline" onClick={() => window.print()} className="print:hidden">
+                        <Printer className="w-4 h-4 mr-1" />
+                        <span className="hidden sm:inline">Print</span>
+                      </Button>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
