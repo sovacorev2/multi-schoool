@@ -54,6 +54,10 @@ function HomePageContent() {
       
       // Load school from URL parameter (different school or no school set)
       async function loadSchoolFromCode() {
+        // Clear existing data first
+        setClasses([])
+        setExamTypes([])
+        
         const supabase = createClient()
         const { data: school } = await supabase
           .from('schools')
@@ -79,6 +83,14 @@ function HomePageContent() {
   useEffect(() => {
     async function fetchData() {
       if (!currentSchool) return
+      
+      // IMPORTANT: Check if the URL school code matches current school
+      // This prevents fetching wrong school data during switching
+      const schoolCode = searchParams.get('school')
+      if (schoolCode && currentSchool.code !== schoolCode) {
+        // School is being switched, don't fetch yet
+        return
+      }
 
       try {
         const supabase = createClient()
@@ -136,7 +148,7 @@ function HomePageContent() {
     }
 
     fetchData()
-  }, [currentSchool])
+  }, [currentSchool, searchParams])
 
   const handleLogin = async () => {
     setError('')
