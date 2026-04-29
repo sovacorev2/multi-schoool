@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { useSchool, School } from '@/lib/school-context'
+import { useSchool, type School } from '@/lib/school-context'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { School as SchoolIcon, ChevronRight, Plus } from 'lucide-react'
@@ -14,12 +14,12 @@ export default function SchoolSelectionPage() {
   const [error, setError] = useState('')
   
   const router = useRouter()
-  const { currentSchool, setCurrentSchool } = useSchool()
+  const { currentSchool } = useSchool()
 
-  // If school already selected, redirect to login
+  // If school already selected, redirect to their system with proper URL
   useEffect(() => {
     if (currentSchool) {
-      router.push('/')
+      router.push(`/?school=${currentSchool.code}`)
     }
   }, [currentSchool, router])
 
@@ -47,8 +47,8 @@ export default function SchoolSelectionPage() {
   }, [])
 
   const handleSelectSchool = (school: School) => {
-    setCurrentSchool(school)
-    router.push('/')
+    // Redirect to school's system using proper URL format with school code
+    router.push(`/?school=${school.code}`)
   }
 
   if (currentSchool) {
