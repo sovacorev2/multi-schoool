@@ -1067,7 +1067,6 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                   ))}
                   <th className="border border-gray-600 p-2 font-bold">Total</th>
                   <th className="border border-gray-600 p-2 font-bold">Average</th>
-                  <th className="border border-gray-600 p-2 font-bold no-print">Report</th>
                 </tr>
                 <tr className="bg-gray-200">
                   <th className="border border-gray-600 p-2 text-left font-bold"></th>
@@ -1087,7 +1086,6 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                   ))}
                   <th className="border border-gray-600 p-2 font-bold"></th>
                   <th className="border border-gray-600 p-2 font-bold"></th>
-                  <th className="border border-gray-600 p-2 font-bold no-print"></th>
                 </tr>
               </thead>
               <tbody>
@@ -1114,20 +1112,6 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                     })}
                     <td className="border border-gray-500 p-2 text-center font-bold">{result.total}</td>
                     <td className="border border-gray-500 p-2 text-center">{result.average.toFixed(1)}</td>
-                    <td className="border border-gray-500 p-2 text-center no-print">
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => {
-                          setReportModalData([result])
-                          setReportModalOpen(true)
-                        }}
-                        className="h-7 px-2 text-xs"
-                      >
-                        <FileText className="w-3 h-3 mr-1" />
-                        Print
-                      </Button>
-                    </td>
                   </tr>
                 ))}
                 {/* Subject Means Row */}
@@ -1151,9 +1135,12 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                       </React.Fragment>
                     )
                   })}
-                  <td className="border border-gray-600 p-2 text-center"></td>
-                  <td className="border border-gray-600 p-2 text-center"></td>
-                  <td className="border border-gray-600 p-2 text-center no-print"></td>
+                  <td className="border border-gray-600 p-2 text-center font-bold">
+                    {results.length > 0 ? results.reduce((a, b) => a + b.total, 0) : '-'}
+                  </td>
+                  <td className="border border-gray-600 p-2 text-center font-bold">
+                    {classAverage}
+                  </td>
                 </tr>
               </tbody>
             </table>
