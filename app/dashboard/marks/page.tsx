@@ -169,13 +169,11 @@ export default function MarksPage() {
 
     const supabase = createClient();
 
-    // Build session query - show all exam sessions for this class
-    // Only show sessions that have an exam_type_id (actual exam sessions, not base sessions)
+    // Build session query - show all sessions for this class (like marklist does)
     let sessionsQuery = supabase
       .from("sessions")
       .select("*, exam_types(*)")
       .eq("class_id", currentClass.id)
-      .not("exam_type_id", "is", null)
       .order("year", { ascending: false })
       .order("term");
 
@@ -194,7 +192,8 @@ export default function MarksPage() {
         .order("name")
     ]);
 
-    let fetchedSessions = sessionsRes.data || [];
+    // Filter to only show sessions with exam_type_id (actual exam sessions)
+    let fetchedSessions = (sessionsRes.data || []).filter(s => s.exam_type_id !== null);
     
     // Auto-lock expired sessions on initial load
     if (fetchedSessions.length > 0) {
