@@ -112,6 +112,14 @@ export default function AdminPortalPage() {
   }, [searchParams, currentSchool, router])
 
   const loadSchoolFromCode = async (code: string) => {
+    // Clear all data when switching schools
+    setClasses([])
+    setExamTypes([])
+    setSubjects([])
+    setSchool(null)
+    setIsAuthenticated(false)
+    setPassword('')
+    
     const supabase = createClient()
     const { data } = await supabase
       .from('schools')
@@ -122,9 +130,6 @@ export default function AdminPortalPage() {
     
     if (data) {
       setCurrentSchool(data)
-      // Reset authentication when switching schools
-      setIsAuthenticated(false)
-      setPassword('')
     } else {
       router.push('/select-school')
     }
