@@ -162,7 +162,7 @@
   /* Hide navigation and non-essential UI when printing */
   header, nav, aside, footer, 
   [role="tablist"],
-  .print\\:hidden {
+  [class*="print:hidden"] {
     display: none !important;
   }
 
