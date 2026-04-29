@@ -1278,31 +1278,23 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
       </html>
     `
 
-    // Use hidden iframe for printing (no new tab)
-    const iframe = document.createElement('iframe')
-    iframe.style.position = 'absolute'
-    iframe.style.width = '0'
-    iframe.style.height = '0'
-    iframe.style.border = 'none'
-    iframe.style.left = '-9999px'
-    document.body.appendChild(iframe)
-    
-    const iframeDoc = iframe.contentWindow?.document
-    if (iframeDoc) {
-      iframeDoc.open()
-      iframeDoc.write(reportContent)
-      iframeDoc.close()
-      
-      iframe.onload = () => {
-        setTimeout(() => {
-          iframe.contentWindow?.print()
-          setTimeout(() => document.body.removeChild(iframe), 1000)
-        }, 250)
-      }
+    // Open print window and trigger print dialog
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) {
+      alert('Please allow popups to print the report')
+      return
     }
+    
+    printWindow.document.write(reportContent)
+    printWindow.document.close()
+    
+    // Trigger print dialog after content loads
+    setTimeout(() => {
+      printWindow.print()
+    }, 250)
   }
 
-  // Print Combined Marklist using hidden iframe
+  // Print Combined Marklist
   const handlePrintCombinedMarklist = () => {
     if (!combinedMarklistData || !selectedCombinedClass) return
 
@@ -1388,28 +1380,20 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
       </html>
     `
 
-    // Use hidden iframe for printing (no new tab)
-    const iframe = document.createElement('iframe')
-    iframe.style.position = 'absolute'
-    iframe.style.width = '0'
-    iframe.style.height = '0'
-    iframe.style.border = 'none'
-    iframe.style.left = '-9999px'
-    document.body.appendChild(iframe)
-    
-    const iframeDoc = iframe.contentWindow?.document
-    if (iframeDoc) {
-      iframeDoc.open()
-      iframeDoc.write(marklistContent)
-      iframeDoc.close()
-      
-      iframe.onload = () => {
-        setTimeout(() => {
-          iframe.contentWindow?.print()
-          setTimeout(() => document.body.removeChild(iframe), 1000)
-        }, 250)
-      }
+    // Open print window and trigger print dialog
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) {
+      alert('Please allow popups to print the marklist')
+      return
     }
+    
+    printWindow.document.write(marklistContent)
+    printWindow.document.close()
+    
+    // Trigger print dialog after content loads
+    setTimeout(() => {
+      printWindow.print()
+    }, 250)
   }
 
   // Determine page orientation based on number of subjects
@@ -2791,8 +2775,8 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                       </div>
 
                       <div className="mt-4">
-                        <h4 className="font-semibold text-lg mb-3">Stream Breakdown</h4>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <h4 className="font-semibold text-base sm:text-lg mb-2 sm:mb-3">Stream Breakdown</h4>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
                           {(() => {
                             const streamStats = new Map<string, { count: number; avgTotal: number }>()
                             combinedMarklistData.learners.forEach(l => {
@@ -2804,10 +2788,10 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                             return Array.from(streamStats.entries())
                               .sort((a, b) => (b[1].avgTotal / b[1].count) - (a[1].avgTotal / a[1].count))
                               .map(([stream, stats], idx) => (
-                                <div key={stream} className={`p-3 rounded-lg border ${idx === 0 ? 'bg-green-50 border-green-300' : 'bg-gray-50 border-gray-200'}`}>
-                                  <div className="font-semibold text-lg">{stream}</div>
-                                  <div className="text-sm text-gray-600">{stats.count} learners</div>
-                                  <div className={`text-lg font-bold ${idx === 0 ? 'text-green-700' : 'text-gray-700'}`}>
+                                <div key={stream} className={`p-2 sm:p-3 rounded-lg border ${idx === 0 ? 'bg-green-50 border-green-300' : 'bg-gray-50 border-gray-200'}`}>
+                                  <div className="font-semibold text-sm sm:text-lg">{stream}</div>
+                                  <div className="text-xs sm:text-sm text-gray-600">{stats.count} learners</div>
+                                  <div className={`text-sm sm:text-lg font-bold ${idx === 0 ? 'text-green-700' : 'text-gray-700'}`}>
                                     {(stats.avgTotal / stats.count).toFixed(1)} avg
                                   </div>
                                 </div>
