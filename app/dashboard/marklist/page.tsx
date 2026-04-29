@@ -1177,6 +1177,226 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
     }, 250)
   }
 
+  // Print Stream Comparison Report
+  const handlePrintStreamComparison = () => {
+    if (!streamComparisonData || !selectedBaseClass) return
+    
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) {
+      alert('Please allow popups to print the report')
+      return
+    }
+
+    // Get all unique subjects
+    const allSubjects = new Set<string>()
+    streamComparisonData.streams.forEach(s => s.subjects.forEach(subj => allSubjects.add(subj.name)))
+    const subjectsList = Array.from(allSubjects).sort()
+
+    // Build stream overview rows
+    const streamOverviewRows = streamComparisonData.streams
+      .sort((a, b) => b.classAvg - a.classAvg)
+      .map((stream, idx) => `
+        <tr style="background: ${idx === 0 ? '#dcfce7' : idx % 2 === 0 ? '#fff' : '#f9fafb'};">
+          <td style="border: 1px solid #333; padding: 6px; text-align: center; font-weight: bold;">${idx + 1}</td>
+          <td style="border: 1px solid #333; padding: 6px; font-weight: ${idx === 0 ? 'bold' : 'normal'};">${stream.className}</td>
+          <td style="border: 1px solid #333; padding: 6px; text-align: center;">${stream.learnerCount}</td>
+          <td style="border: 1px solid #333; padding: 6px; text-align: center; font-weight: bold;">${stream.classAvg.toFixed(1)}</td>
+          <td style="border: 1px solid #333; padding: 6px; text-align: center;">${stream.passRate.toFixed(0)}%</td>
+          <td style="border: 1px solid #333; padding: 6px;">${stream.topPerformer || '-'}</td>
+        </tr>
+      `).join('')
+
+    // Build subject comparison table
+    const subjectComparisonRows = subjectsList.map(subjName => {
+      const streamCells = streamComparisonData.streams.map(stream => {
+        const subj = stream.subjects.find(s => s.name === subjName)
+        if (!subj) return `<td style="border: 1px solid #333; padding: 4px; text-align: center;">-</td>`
+        
+        // Check if this stream has highest mean for this subject
+        const allMeans = streamComparisonData.streams
+          .map(s => s.subjects.find(ss => ss.name === subjName)?.mean || 0)
+        const maxMean = Math.max(...allMeans)
+        const isHighest = subj.mean === maxMean && subj.mean > 0
+        
+        return `<td style="border: 1px solid #333; padding: 4px; text-align: center; ${isHighest ? 'background: #dcfce7; font-weight: bold;' : ''}">${subj.mean.toFixed(1)}</td>`
+      }).join('')
+      
+      return `<tr>
+        <td style="border: 1px solid #333; padding: 6px; font-weight: 500;">${subjName}</td>
+        ${streamCells}
+      </tr>`
+    }).join('')
+
+    const reportContent = `
+      <html>
+      <head>
+        <title>${selectedBaseClass} Stream Comparison Report</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+          body { padding: 15px; background: white; }
+          table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+          @media print { 
+            body { padding: 10px; }
+            @page { size: A4 landscape; margin: 10mm; }
+          }
+        </style>
+      </head>
+      <body>
+        <div style="text-align: center; margin-bottom: 15px; border-bottom: 2px solid #333; padding-bottom: 10px;">
+          <h1 style="font-size: 16px; font-weight: bold; margin-bottom: 5px;">${currentSchool?.name || 'School'}</h1>
+          <h2 style="font-size: 14px; font-weight: 600;">${selectedBaseClass} STREAM COMPARISON REPORT</h2>
+          <p style="font-size: 11px; color: #666;">${selectedSession?.exam_types?.name} - Term ${selectedSession?.term}, ${selectedSession?.year}</p>
+        </div>
+
+        <h3 style="font-size: 12px; font-weight: bold; margin-bottom: 8px; background: #f3f4f6; padding: 6px;">STREAM PERFORMANCE OVERVIEW</h3>
+        <table style="font-size: 11px;">
+          <thead>
+            <tr style="background: #e5e7eb;">
+              <th style="border: 1px solid #333; padding: 6px; text-align: center; width: 50px;">Rank</th>
+              <th style="border: 1px solid #333; padding: 6px; text-align: left;">Stream</th>
+              <th style="border: 1px solid #333; padding: 6px; text-align: center;">Learners</th>
+              <th style="border: 1px solid #333; padding: 6px; text-align: center;">Mean Score</th>
+              <th style="border: 1px solid #333; padding: 6px; text-align: center;">Pass Rate</th>
+              <th style="border: 1px solid #333; padding: 6px; text-align: left;">Top Performer</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${streamOverviewRows}
+          </tbody>
+        </table>
+
+        <h3 style="font-size: 12px; font-weight: bold; margin-bottom: 8px; background: #f3f4f6; padding: 6px;">SUBJECT-WISE COMPARISON (Mean Scores)</h3>
+        <table style="font-size: 10px;">
+          <thead>
+            <tr style="background: #e5e7eb;">
+              <th style="border: 1px solid #333; padding: 6px; text-align: left;">Subject</th>
+              ${streamComparisonData.streams.map(s => `<th style="border: 1px solid #333; padding: 6px; text-align: center;">${s.className.replace(selectedBaseClass, '').trim() || 'Main'}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${subjectComparisonRows}
+          </tbody>
+        </table>
+
+        <div style="margin-top: 10px; font-size: 9px; color: #666; border-top: 1px solid #ccc; padding-top: 8px;">
+          <p>Generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()} | ${currentSchool?.name}</p>
+        </div>
+      </body>
+      </html>
+    `
+
+    printWindow.document.write(reportContent)
+    printWindow.document.close()
+    
+    printWindow.onload = () => {
+      setTimeout(() => {
+        printWindow.print()
+      }, 250)
+    }
+  }
+
+  // Print Combined Marklist
+  const handlePrintCombinedMarklist = () => {
+    if (!combinedMarklistData || !selectedCombinedClass) return
+    
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) {
+      alert('Please allow popups to print the marklist')
+      return
+    }
+
+    // Build subject headers
+    const subjectHeaders = combinedMarklistData.subjects.map(s => 
+      `<th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9px; background: #e5e7eb;">${s.name.length > 6 ? s.name.substring(0, 6) : s.name}</th>`
+    ).join('')
+
+    // Build student rows
+    const studentRows = combinedMarklistData.learners.map((learner, idx) => {
+      const isTop3 = learner.rank <= 3
+      const rowBg = learner.rank === 1 ? '#fef9c3' : learner.rank === 2 ? '#f3f4f6' : learner.rank === 3 ? '#fef3c7' : idx % 2 === 0 ? '#fff' : '#f9fafb'
+      
+      const subjectCells = combinedMarklistData.subjects.map(subj => {
+        const score = learner.marks[subj.name]
+        let color = '#000'
+        if (score !== null) {
+          if (score >= 80) color = '#059669'
+          else if (score >= 50) color = '#2563eb'
+          else if (score >= 30) color = '#d97706'
+          else color = '#dc2626'
+        }
+        return `<td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 9px; color: ${color};">${score !== null ? score : '-'}</td>`
+      }).join('')
+      
+      return `<tr style="background: ${rowBg};">
+        <td style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9px; font-weight: ${isTop3 ? 'bold' : 'normal'};">${learner.rank}</td>
+        <td style="border: 1px solid #333; padding: 4px; text-align: left; font-size: 9px; font-weight: ${isTop3 ? 'bold' : 'normal'};">${learner.name}</td>
+        <td style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 8px; background: #dbeafe; color: #1d4ed8;">${learner.stream}</td>
+        ${subjectCells}
+        <td style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9px; font-weight: bold;">${learner.total}</td>
+        <td style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9px;">${learner.average}</td>
+      </tr>`
+    }).join('')
+
+    // Calculate overall mean
+    const overallAvg = combinedMarklistData.learners.length > 0 
+      ? (combinedMarklistData.learners.reduce((a, l) => a + l.average, 0) / combinedMarklistData.learners.length).toFixed(1)
+      : '0'
+
+    const marklistContent = `
+      <html>
+      <head>
+        <title>${selectedCombinedClass} Combined Marklist</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+          body { padding: 8px; background: white; }
+          table { border-collapse: collapse; width: 100%; }
+          @media print { 
+            body { padding: 5px; }
+            @page { size: A4 landscape; margin: 5mm; }
+          }
+        </style>
+      </head>
+      <body>
+        <div style="text-align: center; margin-bottom: 8px; border-bottom: 2px solid #333; padding-bottom: 5px;">
+          <h1 style="font-size: 14px; font-weight: bold; margin-bottom: 3px;">${currentSchool?.name || 'School'}</h1>
+          <h2 style="font-size: 12px; font-weight: 600;">${selectedCombinedClass} COMBINED MARKLIST (ALL STREAMS)</h2>
+          <p style="font-size: 10px; color: #666;">${selectedSession?.exam_types?.name} - Term ${selectedSession?.term}, ${selectedSession?.year} | Total: ${combinedMarklistData.learners.length} learners | Streams: ${new Set(combinedMarklistData.learners.map(l => l.stream)).size}</p>
+        </div>
+
+        <table style="font-size: 9px;">
+          <thead>
+            <tr style="background: #e5e7eb;">
+              <th style="border: 1px solid #333; padding: 4px; text-align: center; width: 35px;">Rank</th>
+              <th style="border: 1px solid #333; padding: 4px; text-align: left; min-width: 100px;">Name</th>
+              <th style="border: 1px solid #333; padding: 4px; text-align: center; width: 50px;">Stream</th>
+              ${subjectHeaders}
+              <th style="border: 1px solid #333; padding: 4px; text-align: center; background: #e5e7eb;">Total</th>
+              <th style="border: 1px solid #333; padding: 4px; text-align: center; background: #e5e7eb;">Avg</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${studentRows}
+          </tbody>
+        </table>
+
+        <div style="margin-top: 5px; font-size: 9px; color: #666; display: flex; justify-content: space-between;">
+          <span>Overall Average: <strong>${overallAvg}</strong></span>
+          <span>Generated: ${new Date().toLocaleDateString()} | ${currentSchool?.name}</span>
+        </div>
+      </body>
+      </html>
+    `
+
+    printWindow.document.write(marklistContent)
+    printWindow.document.close()
+    
+    printWindow.onload = () => {
+      setTimeout(() => {
+        printWindow.print()
+      }, 250)
+    }
+  }
+
   // Determine page orientation based on number of subjects
   const pageOrientation = subjects.length > 8 ? 'landscape' : 'portrait'
 
@@ -2208,11 +2428,7 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                           <Users className="w-4 h-4 mr-1" />
                           <span className="hidden sm:inline">Combined List</span>
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => {
-                          if (selectedSession && selectedBaseClass) {
-                            window.open(`/dashboard/marklist/print-stream-comparison?sessionId=${selectedSession.id}&baseClass=${encodeURIComponent(selectedBaseClass)}`, '_blank')
-                          }
-                        }} className="print:hidden">
+                        <Button size="sm" variant="outline" onClick={handlePrintStreamComparison} className="print:hidden">
                           <Printer className="w-4 h-4 mr-1" />
                           <span className="hidden sm:inline">Print</span>
                         </Button>
@@ -2448,11 +2664,7 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                       {isLoadingCombined ? 'Loading...' : 'Load'}
                     </Button>
                     {combinedMarklistData && (
-                      <Button size="sm" variant="outline" onClick={() => {
-                        if (selectedSession && selectedCombinedClass) {
-                          window.open(`/dashboard/marklist/print-combined-marklist?sessionId=${selectedSession.id}&baseClass=${encodeURIComponent(selectedCombinedClass)}`, '_blank')
-                        }
-                      }} className="print:hidden">
+                      <Button size="sm" variant="outline" onClick={handlePrintCombinedMarklist} className="print:hidden">
                         <Printer className="w-4 h-4 mr-1" />
                         <span className="hidden sm:inline">Print</span>
                       </Button>
