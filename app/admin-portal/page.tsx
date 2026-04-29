@@ -747,85 +747,96 @@ export default function AdminPortalPage() {
 
                   {/* Exam sessions list */}
                   <div className="space-y-2">
-                    <h3 className="font-medium text-gray-700">Active Sessions</h3>
+                    <h3 className="font-medium text-gray-700">All Exam Sessions</h3>
+                    <p className="text-sm text-gray-500">Lock/unlock exams and set deadlines across all classes</p>
                     <div className="border rounded-lg overflow-hidden">
                       <table className="w-full text-sm">
                         <thead className="bg-gray-100">
                           <tr>
-                            <th className="p-3 text-left">Class</th>
-                            <th className="p-3 text-left">Exam Type</th>
-                            <th className="p-3 text-left">Term/Year</th>
-                            <th className="p-3 text-left">Deadline</th>
-                            <th className="p-3 text-left">Status</th>
-                            <th className="p-3 text-left">Actions</th>
+                            <th className="p-3 text-left font-medium text-gray-600">Class</th>
+                            <th className="p-3 text-left font-medium text-gray-600">Exam</th>
+                            <th className="p-3 text-left font-medium text-gray-600">Term/Year</th>
+                            <th className="p-3 text-left font-medium text-gray-600">Status</th>
+                            <th className="p-3 text-left font-medium text-gray-600">Deadline</th>
+                            <th className="p-3 text-right font-medium text-gray-600">Actions</th>
                           </tr>
                         </thead>
                         <tbody>
                           {deadlines.map((d: any) => (
-                            <tr key={d.id} className="border-t">
-                              <td className="p-3">{d.class_name || 'Unknown'}</td>
+                            <tr key={d.id} className="border-t hover:bg-gray-50">
+                              <td className="p-3 font-medium">{d.class_name || 'Unknown'}</td>
                               <td className="p-3">{d.exam_type || '-'}</td>
                               <td className="p-3">{d.term} {d.year}</td>
                               <td className="p-3">
-                                {editingDeadlineId === d.id ? (
-                                  <Input
-                                    type="datetime-local"
-                                    value={editingDeadlineValue}
-                                    onChange={(e) => setEditingDeadlineValue(e.target.value)}
-                                    className="w-48"
-                                  />
+                                {d.is_locked ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-red-100 text-red-700">
+                                    <Lock className="w-3 h-3" /> Locked
+                                  </span>
+                                ) : d.deadline_date ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-amber-100 text-amber-700">
+                                    <Clock className="w-3 h-3" /> Deadline Set
+                                  </span>
                                 ) : (
-                                  d.deadline_date ? new Date(d.deadline_date).toLocaleString() : 
-                                  <span className="text-gray-400">Not set</span>
+                                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-green-100 text-green-700">
+                                    <Unlock className="w-3 h-3" /> Open
+                                  </span>
                                 )}
                               </td>
                               <td className="p-3">
-                                <span className={`px-2 py-1 rounded-full text-xs ${
-                                  d.is_locked 
-                                    ? 'bg-red-100 text-red-700' 
-                                    : 'bg-green-100 text-green-700'
-                                }`}>
-                                  {d.is_locked ? 'Locked' : 'Open'}
-                                </span>
+                                {editingDeadlineId === d.id ? (
+                                  <div className="flex items-center gap-2">
+                                    <Input
+                                      type="datetime-local"
+                                      value={editingDeadlineValue}
+                                      onChange={(e) => setEditingDeadlineValue(e.target.value)}
+                                      className="w-48 h-8 text-xs"
+                                    />
+                                    <Button
+                                      size="sm"
+                                      onClick={() => saveSessionDeadline(d.id)}
+                                      className="h-8 bg-green-600 hover:bg-green-700"
+                                    >
+                                      Save
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => { setEditingDeadlineId(null); setEditingDeadlineValue(''); }}
+                                      className="h-8"
+                                    >
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  d.deadline_date ? (
+                                    <span className="text-sm">{new Date(d.deadline_date).toLocaleString()}</span>
+                                  ) : (
+                                    <span className="text-gray-400 text-sm">Not set</span>
+                                  )
+                                )}
                               </td>
                               <td className="p-3">
-                                <div className="flex gap-1">
-                                  {editingDeadlineId === d.id ? (
+                                <div className="flex gap-2 justify-end">
+                                  {editingDeadlineId !== d.id && (
                                     <>
                                       <Button
                                         size="sm"
-                                        onClick={() => saveSessionDeadline(d.id)}
-                                        className="bg-green-600 hover:bg-green-700"
+                                        variant={d.is_locked ? 'outline' : 'default'}
+                                        onClick={() => toggleSessionLock(d.id, d.is_locked)}
+                                        className={d.is_locked ? '' : 'bg-red-500 hover:bg-red-600'}
                                       >
-                                        <Save className="w-4 h-4" />
+                                        {d.is_locked ? (
+                                          <><Unlock className="w-4 h-4 mr-1" /> Unlock</>
+                                        ) : (
+                                          <><Lock className="w-4 h-4 mr-1" /> Lock</>
+                                        )}
                                       </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => { setEditingDeadlineId(null); setEditingDeadlineValue(''); }}
-                                      >
-                                        Cancel
-                                      </Button>
-                                    </>
-                                  ) : (
-                                    <>
                                       <Button
                                         size="sm"
                                         variant="outline"
                                         onClick={() => { setEditingDeadlineId(d.id); setEditingDeadlineValue(d.deadline_date || ''); }}
                                       >
-                                        <Clock className="w-4 h-4 mr-1" /> Set Deadline
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        variant={d.is_locked ? 'default' : 'outline'}
-                                        onClick={() => toggleSessionLock(d.id, d.is_locked)}
-                                      >
-                                        {d.is_locked ? (
-                                          <Unlock className="w-4 h-4" />
-                                        ) : (
-                                          <Lock className="w-4 h-4" />
-                                        )}
+                                        <Calendar className="w-4 h-4 mr-1" /> Deadline
                                       </Button>
                                     </>
                                   )}
@@ -836,7 +847,7 @@ export default function AdminPortalPage() {
                           {deadlines.length === 0 && (
                             <tr>
                               <td colSpan={6} className="p-8 text-center text-gray-500">
-                                No exam sessions created yet. Create sessions using the form above.
+                                No exam sessions created yet. Teachers create sessions when entering marks, or use the form above to create them.
                               </td>
                             </tr>
                           )}
