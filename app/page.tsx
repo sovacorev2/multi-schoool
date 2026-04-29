@@ -246,25 +246,11 @@ function HomePageContent() {
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center space-y-4 pb-6">
           <div className="flex justify-center mb-4">
-            {currentSchool.logo_url || `/logos/${currentSchool.code}.jpeg` ? (
-              <img 
-                src={currentSchool.logo_url || `/logos/${currentSchool.code}.jpeg`}
-                alt={`${currentSchool.name} logo`}
-                className="w-20 h-20 object-contain"
-                onError={(e) => {
-                  // Fallback to initials if logo fails to load
-                  const target = e.currentTarget as HTMLImageElement
-                  target.style.display = 'none'
-                  target.nextElementSibling?.classList.remove('hidden')
-                }}
-              />
-            ) : null}
-            <div 
-              className={`w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-xl ${currentSchool.logo_url ? 'hidden' : ''}`}
-              style={{ backgroundColor: currentSchool.primary_color || '#2563eb' }}
-            >
-              {currentSchool.short_name?.substring(0, 2) || currentSchool.name.substring(0, 2).toUpperCase()}
-            </div>
+            <img 
+              src={currentSchool.logo_url || `/logos/${currentSchool.code}.jpeg`}
+              alt={`${currentSchool.name} logo`}
+              className="w-20 h-20 object-contain"
+            />
           </div>
           <div>
             <CardTitle className="text-2xl font-bold mb-2">{currentSchool.name}</CardTitle>
