@@ -66,6 +66,28 @@ export default function SetupSchoolPage() {
     ALL_CLASSES.map(c => c.name) // All selected by default
   )
   const [customClassName, setCustomClassName] = useState('')
+  
+  // Streams for classes (e.g., "Grade 5" -> ["East", "West"])
+  const [classStreams, setClassStreams] = useState<Record<string, string[]>>({})
+  const [newStreamInput, setNewStreamInput] = useState<Record<string, string>>({})
+  
+  const addStreamToClass = (className: string) => {
+    const streamName = newStreamInput[className]?.trim()
+    if (streamName && !classStreams[className]?.includes(streamName)) {
+      setClassStreams(prev => ({
+        ...prev,
+        [className]: [...(prev[className] || []), streamName]
+      }))
+      setNewStreamInput(prev => ({ ...prev, [className]: '' }))
+    }
+  }
+  
+  const removeStreamFromClass = (className: string, streamName: string) => {
+    setClassStreams(prev => ({
+      ...prev,
+      [className]: (prev[className] || []).filter(s => s !== streamName)
+    }))
+  }
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => {
@@ -194,22 +216,58 @@ export default function SetupSchoolPage() {
 
       console.log('[v0] School created successfully:', school.id)
 
-      // Create selected classes (including custom ones)
+      // Create selected classes (including custom ones and streams)
       const standardClasses = ALL_CLASSES.filter(c => selectedClasses.includes(c.name))
       const customClasses = selectedClasses.filter(c => !ALL_CLASSES.find(ac => ac.name === c))
       
-      const classesToInsert = [
-        ...standardClasses.map(c => ({
-          name: c.name,
-          display_order: c.display_order,
-          school_id: school.id,
-        })),
-        ...customClasses.map((name, idx) => ({
-          name,
-          display_order: ALL_CLASSES.length + idx + 1,
-          school_id: school.id,
-        }))
-      ]
+      const classesToInsert: { name: string; display_order: number; school_id: string; password: string }[] = []
+      let orderIndex = 0
+      
+      // Process standard classes
+      for (const c of standardClasses) {
+        const streams = classStreams[c.name] || []
+        if (streams.length > 0) {
+          // Create a class for each stream (e.g., "Grade 5 East", "Grade 5 West")
+          streams.forEach((stream, streamIdx) => {
+            classesToInsert.push({
+              name: `${c.name} ${stream}`,
+              display_order: c.display_order * 100 + streamIdx,
+              school_id: school.id,
+              password: 'welcome',
+            })
+          })
+        } else {
+          // No streams, create single class
+          classesToInsert.push({
+            name: c.name,
+            display_order: c.display_order,
+            school_id: school.id,
+            password: 'welcome',
+          })
+        }
+      }
+      
+      // Process custom classes
+      for (const name of customClasses) {
+        const streams = classStreams[name] || []
+        if (streams.length > 0) {
+          streams.forEach((stream, streamIdx) => {
+            classesToInsert.push({
+              name: `${name} ${stream}`,
+              display_order: ALL_CLASSES.length * 100 + orderIndex++,
+              school_id: school.id,
+              password: 'welcome',
+            })
+          })
+        } else {
+          classesToInsert.push({
+            name,
+            display_order: ALL_CLASSES.length + orderIndex++,
+            school_id: school.id,
+            password: 'welcome',
+          })
+        }
+      }
       
       if (classesToInsert.length > 0) {
         console.log('[v0] Creating classes:', classesToInsert.length)
@@ -643,23 +701,79 @@ export default function SetupSchoolPage() {
                 </div>
               </div>
               
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 {ALL_CLASSES.map(c => (
-                  <button
-                    key={c.name}
-                    type="button"
-                    onClick={() => toggleClass(c.name)}
-                    className={`p-3 rounded-lg border-2 text-sm font-medium transition-all ${
-                      selectedClasses.includes(c.name)
-                        ? 'border-blue-600 bg-blue-50 text-blue-700'
-                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                    }`}
-                  >
+                  <div key={c.name} className={`rounded-lg border-2 transition-all ${
+                    selectedClasses.includes(c.name)
+                      ? 'border-blue-600 bg-blue-50'
+                      : 'border-gray-200 bg-white'
+                  }`}>
+                    <button
+                      type="button"
+                      onClick={() => toggleClass(c.name)}
+                      className={`w-full p-3 text-sm font-medium text-left flex items-center justify-between ${
+                        selectedClasses.includes(c.name)
+                          ? 'text-blue-700'
+                          : 'text-gray-600 hover:text-gray-800'
+                      }`}
+                    >
+                      <span>
+                        {selectedClasses.includes(c.name) && (
+                          <Check className="w-4 h-4 inline mr-1" />
+                        )}
+                        {c.name}
+                      </span>
+                      {classStreams[c.name]?.length > 0 && (
+                        <span className="text-xs bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full">
+                          {classStreams[c.name].length} streams
+                        </span>
+                      )}
+                    </button>
+                    
+                    {/* Stream input - only show when class is selected */}
                     {selectedClasses.includes(c.name) && (
-                      <Check className="w-4 h-4 inline mr-1" />
+                      <div className="px-3 pb-3 space-y-2">
+                        <div className="flex gap-1">
+                          <Input
+                            placeholder="Add stream (e.g., East, A)"
+                            value={newStreamInput[c.name] || ''}
+                            onChange={(e) => setNewStreamInput(prev => ({ ...prev, [c.name]: e.target.value }))}
+                            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addStreamToClass(c.name))}
+                            className="h-8 text-xs"
+                          />
+                          <Button 
+                            type="button"
+                            onClick={() => addStreamToClass(c.name)} 
+                            variant="outline" 
+                            size="sm"
+                            className="h-8 px-2"
+                            disabled={!newStreamInput[c.name]?.trim()}
+                          >
+                            <Plus className="w-3 h-3" />
+                          </Button>
+                        </div>
+                        {classStreams[c.name]?.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {classStreams[c.name].map(stream => (
+                              <span
+                                key={stream}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-200 text-blue-800 rounded text-xs"
+                              >
+                                {stream}
+                                <button
+                                  type="button"
+                                  onClick={() => removeStreamFromClass(c.name, stream)}
+                                  className="hover:text-blue-900"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     )}
-                    {c.name}
-                  </button>
+                  </div>
                 ))}
               </div>
               
@@ -681,33 +795,79 @@ export default function SetupSchoolPage() {
                 </div>
               </div>
 
-              {/* Show custom classes */}
+              {/* Show custom classes with stream support */}
               {selectedClasses.filter(c => !ALL_CLASSES.find(ac => ac.name === c)).length > 0 && (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label className="text-sm text-gray-600">Custom Classes:</Label>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid grid-cols-2 gap-3">
                     {selectedClasses.filter(c => !ALL_CLASSES.find(ac => ac.name === c)).map(cls => (
-                      <span
+                      <div
                         key={cls}
-                        className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm"
+                        className="rounded-lg border-2 border-green-500 bg-green-50 p-3"
                       >
-                        {cls}
-                        <button
-                          type="button"
-                          onClick={() => removeCustomClass(cls)}
-                          className="hover:text-green-900"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </span>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-medium text-green-700">{cls}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeCustomClass(cls)}
+                            className="text-green-600 hover:text-green-900"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <div className="flex gap-1">
+                          <Input
+                            placeholder="Add stream"
+                            value={newStreamInput[cls] || ''}
+                            onChange={(e) => setNewStreamInput(prev => ({ ...prev, [cls]: e.target.value }))}
+                            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addStreamToClass(cls))}
+                            className="h-8 text-xs"
+                          />
+                          <Button 
+                            type="button"
+                            onClick={() => addStreamToClass(cls)} 
+                            variant="outline" 
+                            size="sm"
+                            className="h-8 px-2"
+                            disabled={!newStreamInput[cls]?.trim()}
+                          >
+                            <Plus className="w-3 h-3" />
+                          </Button>
+                        </div>
+                        {classStreams[cls]?.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {classStreams[cls].map(stream => (
+                              <span
+                                key={stream}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-200 text-green-800 rounded text-xs"
+                              >
+                                {stream}
+                                <button
+                                  type="button"
+                                  onClick={() => removeStreamFromClass(cls, stream)}
+                                  className="hover:text-green-900"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              <p className="text-sm text-gray-500">
-                {selectedClasses.length} classes selected
-              </p>
+              <div className="text-sm text-gray-500 space-y-1">
+                <p>{selectedClasses.length} classes selected</p>
+                {Object.values(classStreams).some(s => s.length > 0) && (
+                  <p className="text-blue-600">
+                    + {Object.values(classStreams).reduce((total, streams) => total + Math.max(0, streams.length - 1), 0)} additional stream classes
+                  </p>
+                )}
+                <p className="text-xs text-gray-400">Default class password: welcome</p>
+              </div>
             </div>
           )}
 
