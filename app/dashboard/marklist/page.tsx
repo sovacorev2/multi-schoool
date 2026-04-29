@@ -96,6 +96,22 @@ export default function MarklistPage() {
   } | null>(null)
   const [isLoadingStreams, setIsLoadingStreams] = useState(false)
   const [selectedBaseClass, setSelectedBaseClass] = useState<string>('')
+  const [combinedMarklistData, setCombinedMarklistData] = useState<{
+    baseClassName: string
+    subjects: { id: string; name: string }[]
+    learners: {
+      id: string
+      name: string
+      stream: string
+      className: string
+      marks: { [subjectId: string]: number | null }
+      total: number
+      average: number
+      rank: number
+    }[]
+  } | null>(null)
+  const [isLoadingCombined, setIsLoadingCombined] = useState(false)
+  const [selectedCombinedClass, setSelectedCombinedClass] = useState<string>('')
   const [certificateData, setCertificateData] = useState<{ studentName: string; subjectName: string; score: number; className: string; examName: string; term: string; year: number } | null>(null)
   const [studentReportData, setStudentReportData] = useState<LearnerResult | null>(null)
   const [reportModalOpen, setReportModalOpen] = useState(false)
@@ -452,6 +468,126 @@ export default function MarklistPage() {
       return getOrder(a) - getOrder(b)
     })
   }, [allClasses])
+
+  // Combined Marklist: Fetch all streams for a grade and create a single unified marklist
+  const fetchCombinedMarklist = useCallback(async (baseClassName: string) => {
+    if (!selectedSession || !baseClassName) return
+    setIsLoadingCombined(true)
+    setCombinedMarklistData(null)
+
+    const supabase = createClient()
+
+    try {
+      const { data: allClassesData } = await supabase
+        .from('classes')
+        .select('*')
+        .eq('school_id', currentSchool?.id)
+        .order('name')
+
+      if (!allClassesData) return
+
+      const streamClasses = allClassesData.filter(c => {
+        const pattern = new RegExp(`^${baseClassName}(\\s+.+)?$`, 'i')
+        return pattern.test(c.name)
+      })
+
+      if (streamClasses.length === 0) {
+        setCombinedMarklistData(null)
+        return
+      }
+
+      const allSubjectsMap = new Map<string, { id: string; name: string }>()
+      const allLearners: {
+        id: string
+        name: string
+        stream: string
+        className: string
+        classId: string
+        marks: { [subjectId: string]: number | null }
+        total: number
+        average: number
+      }[] = []
+
+      for (const cls of streamClasses) {
+        const { data: classSessions } = await supabase
+          .from('sessions')
+          .select('*, exam_types(*)')
+          .eq('class_id', cls.id)
+          .eq('term', selectedSession.term)
+          .eq('year', selectedSession.year)
+          .eq('exam_type_id', selectedSession.exam_type_id)
+
+        const sessionId = classSessions?.[0]?.id
+
+        const [subjectsRes, learnersRes, marksRes] = await Promise.all([
+          supabase.from('subjects').select('*').eq('class_id', cls.id).order('name'),
+          supabase.from('learners').select('*').eq('class_id', cls.id).order('name'),
+          sessionId ? supabase.from('marks').select('*').eq('session_id', sessionId) : Promise.resolve({ data: [] }),
+        ])
+
+        const clsSubjects = subjectsRes.data || []
+        const clsLearners = learnersRes.data || []
+        const clsMarks = marksRes.data || []
+
+        clsSubjects.forEach(subj => {
+          if (!allSubjectsMap.has(subj.name)) {
+            allSubjectsMap.set(subj.name, { id: subj.id, name: subj.name })
+          }
+        })
+
+        const streamName = cls.name.replace(new RegExp(`^${baseClassName}\\s*`, 'i'), '').trim() || 'Main'
+
+        clsLearners.forEach(learner => {
+          const learnerMarks: { [subjectId: string]: number | null } = {}
+          let total = 0
+          let count = 0
+
+          clsSubjects.forEach(subj => {
+            const mark = clsMarks.find(m => m.learner_id === learner.id && m.subject_id === subj.id)
+            learnerMarks[subj.name] = mark?.score ?? null
+            if (mark?.score !== null && mark?.score !== undefined) {
+              total += mark.score
+              count++
+            }
+          })
+
+          allLearners.push({
+            id: learner.id,
+            name: learner.name,
+            stream: streamName,
+            className: cls.name,
+            classId: cls.id,
+            marks: learnerMarks,
+            total,
+            average: count > 0 ? Math.round((total / count) * 10) / 10 : 0,
+          })
+        })
+      }
+
+      allLearners.sort((a, b) => b.total - a.total)
+      let rank = 1
+      let prevTotal = -1
+      allLearners.forEach((learner, idx) => {
+        if (learner.total !== prevTotal) {
+          rank = idx + 1
+        }
+        (learner as any).rank = rank
+        prevTotal = learner.total
+      })
+
+      const subjectsArray = Array.from(allSubjectsMap.values()).sort((a, b) => a.name.localeCompare(b.name))
+
+      setCombinedMarklistData({
+        baseClassName,
+        subjects: subjectsArray,
+        learners: allLearners.map(l => ({ ...l, rank: (l as any).rank })),
+      })
+    } catch (err) {
+      console.error('Combined marklist error:', err)
+    } finally {
+      setIsLoadingCombined(false)
+    }
+  }, [selectedSession, currentSchool])
 
   // Exam comparison: find the previous session and compare
   const fetchExamComparison = useCallback(async (overrideClassId?: string) => {
