@@ -178,27 +178,66 @@ export default function PrintCombinedMarklistPage() {
     : '0'
 
   return (
-    <div className="p-4 max-w-[1400px] mx-auto bg-white text-xs">
-      {/* Header */}
-      <div className="text-center mb-4 border-b pb-3">
-        <div className="flex items-center justify-center gap-4 mb-2">
-          {currentSchool?.logo_url && (
-            <img
-              src={currentSchool.logo_url || `/logos/${currentSchool.code}.jpeg`}
-              alt="School Logo"
-              className="w-12 h-12 object-contain"
-            />
-          )}
-          <div>
-            <h1 className="text-xl font-bold">{currentSchool?.name}</h1>
-            <p className="text-xs text-gray-600">{currentSchool?.address}</p>
-          </div>
+    <div className="bg-white" style={{ margin: 0, padding: 0 }}>
+      <div
+        style={{
+          width: '297mm',
+          minHeight: '210mm',
+          margin: '0 auto',
+          padding: '8mm',
+          fontFamily: 'Arial, sans-serif',
+          backgroundColor: '#fff',
+          position: 'relative',
+          overflow: 'hidden'
+        }}
+      >
+        {/* Watermark Logo */}
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            opacity: 0.08,
+            zIndex: 0,
+            pointerEvents: 'none',
+            width: '300px',
+            height: '300px'
+          }}
+        >
+          <img 
+            src={currentSchool?.logo_url || `/logos/${currentSchool?.code}.jpeg`} 
+            alt={`${currentSchool?.name || 'School'} Logo`} 
+            style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
+            onError={(e) => {
+              const target = e.currentTarget as HTMLImageElement
+              target.style.display = 'none'
+            }}
+          />
         </div>
-        <h2 className="text-lg font-semibold mt-2">{baseClassName} Combined Marklist (All Streams)</h2>
-        <p className="text-xs text-gray-600">
-          {sessionInfo?.exam_types?.name} - Term {sessionInfo?.term}, {sessionInfo?.year}
-        </p>
-      </div>
+
+        {/* Main Content */}
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          {/* Header */}
+          <div
+            style={{
+              border: '2px solid #000',
+              backgroundColor: '#fffacd',
+              padding: '8px',
+              marginBottom: '10px',
+              textAlign: 'center'
+            }}
+          >
+            <h1 style={{ margin: '0 0 5px 0', fontSize: '16px', fontWeight: 'bold', color: '#000' }}>
+              {currentSchool?.name || 'School'}
+            </h1>
+            <div style={{ fontSize: '11px', fontWeight: '600', color: '#000' }}>
+              COMBINED MARKLIST - {baseClassName.toUpperCase()} (ALL STREAMS)
+            </div>
+            <div style={{ fontSize: '10px', color: '#333', marginTop: '3px' }}>
+              {sessionInfo?.exam_types?.name?.toUpperCase()} | TERM {sessionInfo?.term} | {sessionInfo?.year}
+            </div>
+          </div>
 
       {/* Summary Stats */}
       <div className="grid grid-cols-5 gap-2 mb-4 text-center">
@@ -285,10 +324,12 @@ export default function PrintCombinedMarklistPage() {
         </tbody>
       </table>
 
-      {/* Footer */}
-      <div className="text-center text-xs text-gray-500 mt-4 pt-2 border-t">
-        <p>Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}</p>
-        <p>{currentSchool?.name} - Examination Management System</p>
+          {/* Footer */}
+          <div style={{ textAlign: 'center', fontSize: '9px', color: '#666', marginTop: '10px', paddingTop: '8px', borderTop: '1px solid #ccc' }}>
+            <p>Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}</p>
+            <p>{currentSchool?.name} - Examination Management System</p>
+          </div>
+        </div>
       </div>
     </div>
   )

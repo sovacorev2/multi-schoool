@@ -1,5 +1,6 @@
 'use client'
 
+import React from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -169,27 +170,66 @@ export default function PrintStreamComparisonPage() {
   const subjectsList = Array.from(allSubjects).sort()
 
   return (
-    <div className="p-8 max-w-[1200px] mx-auto bg-white print:p-4">
-      {/* Header */}
-      <div className="text-center mb-6 border-b pb-4">
-        <div className="flex items-center justify-center gap-4 mb-2">
-          {currentSchool?.logo_url && (
-            <img
-              src={currentSchool.logo_url || `/logos/${currentSchool.code}.jpeg`}
-              alt="School Logo"
-              className="w-16 h-16 object-contain"
-            />
-          )}
-          <div>
-            <h1 className="text-2xl font-bold">{currentSchool?.name}</h1>
-            <p className="text-sm text-gray-600">{currentSchool?.address}</p>
-          </div>
+    <div className="bg-white" style={{ margin: 0, padding: 0 }}>
+      <div
+        style={{
+          width: '297mm',
+          minHeight: '210mm',
+          margin: '0 auto',
+          padding: '10mm',
+          fontFamily: 'Arial, sans-serif',
+          backgroundColor: '#fff',
+          position: 'relative',
+          overflow: 'hidden'
+        }}
+      >
+        {/* Watermark Logo */}
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            opacity: 0.08,
+            zIndex: 0,
+            pointerEvents: 'none',
+            width: '300px',
+            height: '300px'
+          }}
+        >
+          <img 
+            src={currentSchool?.logo_url || `/logos/${currentSchool?.code}.jpeg`} 
+            alt={`${currentSchool?.name || 'School'} Logo`} 
+            style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
+            onError={(e) => {
+              const target = e.currentTarget as HTMLImageElement
+              target.style.display = 'none'
+            }}
+          />
         </div>
-        <h2 className="text-xl font-semibold mt-4">{baseClassName} Stream Comparison Report</h2>
-        <p className="text-sm text-gray-600">
-          {sessionInfo?.exam_types?.name} - Term {sessionInfo?.term}, {sessionInfo?.year}
-        </p>
-      </div>
+
+        {/* Main Content */}
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          {/* Header */}
+          <div
+            style={{
+              border: '2px solid #000',
+              backgroundColor: '#fffacd',
+              padding: '10px',
+              marginBottom: '15px',
+              textAlign: 'center'
+            }}
+          >
+            <h1 style={{ margin: '0 0 5px 0', fontSize: '18px', fontWeight: 'bold', color: '#000' }}>
+              {currentSchool?.name || 'School'}
+            </h1>
+            <div style={{ fontSize: '11px', fontWeight: '600', color: '#000' }}>
+              STREAM COMPARISON REPORT - {baseClassName.toUpperCase()}
+            </div>
+            <div style={{ fontSize: '10px', color: '#333', marginTop: '5px' }}>
+              {sessionInfo?.exam_types?.name?.toUpperCase()} | TERM {sessionInfo?.term} | {sessionInfo?.year}
+            </div>
+          </div>
 
       {/* Summary Stats */}
       <div className="grid grid-cols-4 gap-4 mb-6 text-center">
@@ -314,13 +354,13 @@ export default function PrintStreamComparisonPage() {
         </table>
       </div>
 
-      {/* Footer */}
-      <div className="text-center text-xs text-gray-500 mt-8 pt-4 border-t">
-        <p>Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}</p>
-        <p>{currentSchool?.name} - Examination Management System</p>
+          {/* Footer */}
+          <div style={{ textAlign: 'center', fontSize: '9px', color: '#666', marginTop: '15px', paddingTop: '10px', borderTop: '1px solid #ccc' }}>
+            <p>Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}</p>
+            <p>{currentSchool?.name} - Examination Management System</p>
+          </div>
+        </div>
       </div>
     </div>
   )
 }
-
-import React from 'react'

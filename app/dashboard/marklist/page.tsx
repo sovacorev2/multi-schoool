@@ -2504,20 +2504,21 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                         </div>
                       </div>
 
-                      <div className="overflow-x-auto border rounded-lg">
-                        <table className="w-full text-sm min-w-[800px]">
+                      <div className="overflow-x-auto border rounded-lg -mx-2 sm:mx-0">
+                        <table className="w-full text-xs sm:text-sm min-w-[600px]">
                           <thead className="bg-gray-100 sticky top-0">
                             <tr>
-                              <th className="p-2 text-center font-semibold border-r w-12">Rank</th>
-                              <th className="p-2 text-left font-semibold border-r">Name</th>
-                              <th className="p-2 text-center font-semibold border-r w-24">Stream</th>
+                              <th className="p-1 sm:p-2 text-center font-semibold border-r w-8 sm:w-12">#</th>
+                              <th className="p-1 sm:p-2 text-left font-semibold border-r min-w-[100px]">Name</th>
+                              <th className="p-1 sm:p-2 text-center font-semibold border-r w-16 sm:w-24">Stream</th>
                               {combinedMarklistData.subjects.map(subj => (
-                                <th key={subj.id} className="p-2 text-center font-semibold border-r min-w-[60px]" title={subj.name}>
-                                  {subj.name.length > 8 ? subj.name.substring(0, 8) + '..' : subj.name}
+                                <th key={subj.id} className="p-1 sm:p-2 text-center font-semibold border-r min-w-[40px] sm:min-w-[60px]" title={subj.name}>
+                                  <span className="hidden sm:inline">{subj.name.length > 8 ? subj.name.substring(0, 8) + '..' : subj.name}</span>
+                                  <span className="sm:hidden">{subj.name.length > 3 ? subj.name.substring(0, 3) : subj.name}</span>
                                 </th>
                               ))}
-                              <th className="p-2 text-center font-semibold border-r w-16">Total</th>
-                              <th className="p-2 text-center font-semibold w-16">Avg</th>
+                              <th className="p-1 sm:p-2 text-center font-semibold border-r w-12 sm:w-16">Tot</th>
+                              <th className="p-1 sm:p-2 text-center font-semibold w-12 sm:w-16">Avg</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -2526,15 +2527,15 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                               const rowBg = learner.rank === 1 ? 'bg-yellow-50' : learner.rank === 2 ? 'bg-gray-100' : learner.rank === 3 ? 'bg-amber-50' : idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
                               return (
                                 <tr key={learner.id} className={`${rowBg} hover:bg-blue-50/50`}>
-                                  <td className={`p-2 text-center font-bold border-r ${isTop3 ? 'text-lg' : ''}`}>
+                                  <td className={`p-1 sm:p-2 text-center font-bold border-r ${isTop3 ? 'text-base sm:text-lg' : ''}`}>
                                     {learner.rank === 1 && <span className="text-yellow-600">1</span>}
                                     {learner.rank === 2 && <span className="text-gray-500">2</span>}
                                     {learner.rank === 3 && <span className="text-amber-700">3</span>}
                                     {learner.rank > 3 && learner.rank}
                                   </td>
-                                  <td className={`p-2 border-r ${isTop3 ? 'font-semibold' : ''}`}>{learner.name}</td>
-                                  <td className="p-2 text-center border-r">
-                                    <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium">
+                                  <td className={`p-1 sm:p-2 border-r ${isTop3 ? 'font-semibold' : ''} truncate max-w-[120px] sm:max-w-none`}>{learner.name}</td>
+                                  <td className="p-1 sm:p-2 text-center border-r">
+                                    <span className="px-1 sm:px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] sm:text-xs font-medium">
                                       {learner.stream}
                                     </span>
                                   </td>
@@ -2548,13 +2549,13 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                                       else scoreClass = 'text-red-600'
                                     }
                                     return (
-                                      <td key={subj.id} className={`p-2 text-center border-r ${scoreClass}`}>
+                                      <td key={subj.id} className={`p-1 sm:p-2 text-center border-r ${scoreClass}`}>
                                         {score !== null ? score : '-'}
                                       </td>
                                     )
                                   })}
-                                  <td className="p-2 text-center font-bold border-r">{learner.total}</td>
-                                  <td className="p-2 text-center font-semibold">{learner.average}</td>
+                                  <td className="p-1 sm:p-2 text-center font-bold border-r">{learner.total}</td>
+                                  <td className="p-1 sm:p-2 text-center font-semibold">{learner.average}</td>
                                 </tr>
                               )
                             })}
