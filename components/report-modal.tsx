@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { schoolConfig } from '@/lib/school-config'
+import { useSchool } from '@/lib/school-context'
 import { X, Printer, Download } from 'lucide-react'
 import { useRef } from 'react'
 
@@ -44,6 +44,7 @@ export function ReportModal({
   totalStudents
 }: ReportModalProps) {
   const printRef = useRef<HTMLDivElement>(null)
+  const { currentSchool } = useSchool()
 
   if (!isOpen) return null
 
@@ -61,7 +62,7 @@ export function ReportModal({
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Student Report Cards - ${schoolConfig.name}</title>
+        <title>Student Report Cards - ${currentSchool?.name || 'School'}</title>
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { font-family: Arial, sans-serif; background: #fff; }
@@ -221,7 +222,7 @@ export function ReportModal({
                     }}
                   >
                     <h1 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '5px' }}>
-                      {schoolConfig.name}
+                      {currentSchool?.name || 'School'}
                     </h1>
                     <div className="info" style={{ fontSize: '10px', fontWeight: 600 }}>
                       SCHOOL REPORT FORM {sessionInfo?.year} | {sessionInfo?.exam_types?.name?.toUpperCase()} | TERM {sessionInfo?.term} | {className}

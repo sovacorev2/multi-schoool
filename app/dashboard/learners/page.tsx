@@ -4,6 +4,7 @@ import React from "react"
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useClass } from '@/lib/class-context'
+import { useSchool } from '@/lib/school-context'
 import { Plus, Trash2 } from 'lucide-react'
 
 interface Learner {
@@ -17,6 +18,7 @@ interface Learner {
 
 export default function LearnersPage() {
   const { currentClass } = useClass()
+  const { currentSchool } = useSchool()
   const [learners, setLearners] = useState<Learner[]>([])
   const [name, setName] = useState('')
   const [admissionNumber, setAdmissionNumber] = useState('')
@@ -66,6 +68,7 @@ export default function LearnersPage() {
           admission_number: admissionNumber.trim() || null,
           gender: selectedGender || null,
           class_id: currentClass.id,
+          school_id: currentSchool?.id,
         },
       ]).select()
 

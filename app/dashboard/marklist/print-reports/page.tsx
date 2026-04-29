@@ -3,7 +3,7 @@
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { schoolConfig } from '@/lib/school-config'
+import { useSchool } from '@/lib/school-context'
 
 interface StudentReport {
   learner: { id: string; name: string; admission_number: string }
@@ -20,6 +20,7 @@ interface Subject {
 
 export default function PrintReportsPage() {
   const searchParams = useSearchParams()
+  const { currentSchool } = useSchool()
   const [reports, setReports] = useState<StudentReport[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [sessionInfo, setSessionInfo] = useState<any>(null)
@@ -168,7 +169,7 @@ export default function PrintReportsPage() {
               }}
             >
               <h1 style={{ margin: '0 0 5px 0', fontSize: '16px', fontWeight: 'bold', color: '#000' }}>
-                {schoolConfig.name}
+                {currentSchool?.name || 'School'}
               </h1>
               <div style={{ fontSize: '10px', fontWeight: '600', color: '#000' }}>
                 SCHOOL REPORT FORM {sessionInfo?.year} | {sessionInfo?.exam_types?.name?.toUpperCase()} | TERM {sessionInfo?.term} | {className}

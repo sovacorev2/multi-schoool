@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useClass } from "@/lib/class-context";
+import { useSchool } from "@/lib/school-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -141,6 +142,7 @@ async function autoLockExpiredSessions(
 
 export default function MarksPage() {
   const { currentClass } = useClass();
+  const { currentSchool } = useSchool();
   const [examTypes, setExamTypes] = useState<ExamType[]>([]);
   const [sessions, setSessions] = useState<SessionWithExamType[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -163,12 +165,12 @@ export default function MarksPage() {
   });
 
   const fetchInitialData = useCallback(async () => {
-    if (!currentClass) return;
+    if (!currentClass || !currentSchool) return;
 
     const supabase = createClient();
 
     const [examTypesRes, sessionsRes, subjectsRes, learnersRes] = await Promise.all([
-      supabase.from("exam_types").select("*").order("display_order", { ascending: true }),
+      supabase.from("exam_types").select("*").eq("school_id", currentSchool.id).order("display_order", { ascending: true }),
       supabase
         .from("sessions")
         .select("*, exam_types(*)")
@@ -178,7 +180,7 @@ export default function MarksPage() {
       supabase
         .from("subjects")
         .select("*")
-        .eq("class_id", currentClass.id)
+        .eq("school_id", currentSchool.id)
         .order("name"),
       supabase
         .from("learners")
