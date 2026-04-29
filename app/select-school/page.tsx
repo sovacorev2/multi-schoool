@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useSchool, School } from '@/lib/school-context'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { School as SchoolIcon, ChevronRight } from 'lucide-react'
+import { School as SchoolIcon, ChevronRight, Plus } from 'lucide-react'
 
 export default function SchoolSelectionPage() {
   const [schools, setSchools] = useState<School[]>([])
@@ -117,7 +117,20 @@ export default function SchoolSelectionPage() {
           </div>
         )}
 
-        <p className="text-center text-sm text-gray-500 mt-8">
+        {/* Add New School Button */}
+        <div className="mt-8 text-center">
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={() => router.push('/setup-school')}
+            className="border-dashed border-2 hover:border-blue-400 hover:bg-blue-50"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Add New School
+          </Button>
+        </div>
+
+        <p className="text-center text-sm text-gray-500 mt-6">
           Multi-School Exam Management System
         </p>
       </div>
