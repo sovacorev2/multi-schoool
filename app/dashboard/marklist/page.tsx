@@ -2208,7 +2208,11 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                           <Users className="w-4 h-4 mr-1" />
                           <span className="hidden sm:inline">Combined List</span>
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => window.print()} className="print:hidden">
+                        <Button size="sm" variant="outline" onClick={() => {
+                          if (selectedSession && selectedBaseClass) {
+                            window.open(`/dashboard/marklist/print-stream-comparison?sessionId=${selectedSession.id}&baseClass=${encodeURIComponent(selectedBaseClass)}`, '_blank')
+                          }
+                        }} className="print:hidden">
                           <Printer className="w-4 h-4 mr-1" />
                           <span className="hidden sm:inline">Print</span>
                         </Button>
@@ -2218,7 +2222,7 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {/* Info */}
-                  <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-4 rounded-lg border border-indigo-200">
+                  <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-4 rounded-lg border border-indigo-200 print:hidden">
                     <h3 className="font-bold text-lg text-indigo-900">Cross-Stream Analysis</h3>
                     <p className="text-sm text-indigo-700">
                       Compare performance across different streams within the same grade level. Select a grade to see how each stream is performing.
@@ -2444,7 +2448,11 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                       {isLoadingCombined ? 'Loading...' : 'Load'}
                     </Button>
                     {combinedMarklistData && (
-                      <Button size="sm" variant="outline" onClick={() => window.print()} className="print:hidden">
+                      <Button size="sm" variant="outline" onClick={() => {
+                        if (selectedSession && selectedCombinedClass) {
+                          window.open(`/dashboard/marklist/print-combined-marklist?sessionId=${selectedSession.id}&baseClass=${encodeURIComponent(selectedCombinedClass)}`, '_blank')
+                        }
+                      }} className="print:hidden">
                         <Printer className="w-4 h-4 mr-1" />
                         <span className="hidden sm:inline">Print</span>
                       </Button>
@@ -2452,7 +2460,7 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className="bg-gradient-to-r from-emerald-50 to-teal-50 p-4 rounded-lg border border-emerald-200">
+                  <div className="bg-gradient-to-r from-emerald-50 to-teal-50 p-4 rounded-lg border border-emerald-200 print:hidden">
                     <h3 className="font-bold text-lg text-emerald-900">Unified Grade Marklist</h3>
                     <p className="text-sm text-emerald-700">
                       View all learners from all streams in one combined marklist, ranked together across the entire grade level.
