@@ -38,7 +38,7 @@ function HomePageContent() {
   
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { setCurrentClass } = useClass()
+  const { setCurrentClass, logout: logoutClass } = useClass()
   const { currentSchool, setCurrentSchool, clearSchool } = useSchool()
 
   // Check for school code in URL and load that school
@@ -67,8 +67,8 @@ function HomePageContent() {
           .single()
         
         if (school) {
-          // Clear class context when switching schools
-          setCurrentClass(null)
+          // Clear class context completely when switching schools
+          logoutClass()
           setCurrentSchool(school)
         } else {
           router.push('/select-school')
