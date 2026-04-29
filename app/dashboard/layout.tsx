@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useClass } from '@/lib/class-context'
+import { useSchool } from '@/lib/school-context'
 import { checkTeacherAuth, checkAdminAuth, logoutTeacher, logoutAdmin } from '@/app/actions/auth'
 import { LogOut, Users, BookOpen, ClipboardList, FileText, ChevronDown, Shield } from 'lucide-react'
-import { schoolConfig } from '@/lib/school-config'
 
 export default function DashboardLayout({
   children,
@@ -20,6 +20,7 @@ export default function DashboardLayout({
   const router = useRouter()
   const pathname = usePathname()
   const { currentClass, currentSession, setCurrentClass, setCurrentSession } = useClass()
+  const { currentSchool, clearSchool } = useSchool()
 
   const handleLogout = async () => {
     try {
@@ -33,7 +34,8 @@ export default function DashboardLayout({
     } finally {
       setCurrentClass(null)
       setCurrentSession(null)
-      router.push('/')
+      clearSchool()
+      router.push('/select-school')
     }
   }
 
@@ -116,7 +118,7 @@ export default function DashboardLayout({
           {/* Title Row */}
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">{schoolConfig.name}</h1>
+              <h1 className="text-2xl font-bold text-gray-900">{currentSchool?.name || 'School'}</h1>
               <p className="text-sm text-gray-600">{currentClass.name}</p>
             </div>
 

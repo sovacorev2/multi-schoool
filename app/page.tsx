@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useClass } from '@/lib/class-context'
-import { checkTeacherAuth } from '@/app/actions/auth'
+import { useSchool } from '@/lib/school-context'
 import { isNetworkError, getFallbackData, cacheFallbackData } from '@/lib/fallback-data'
 import {
   Select,
@@ -16,15 +16,13 @@ import {
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { LogIn, AlertCircle } from 'lucide-react'
-import type { Class, ExamType, Session } from '@/lib/types'
-import { schoolConfig } from '@/lib/school-config'
+import { LogIn, AlertCircle, ArrowLeft } from 'lucide-react'
+import type { Class, ExamType } from '@/lib/types'
 
 const CURRENT_YEAR = new Date().getFullYear()
-const YEARS = [CURRENT_YEAR, CURRENT_YEAR + 1]
 const TERMS = ['Term 1', 'Term 2', 'Term 3']
 
-export default function HomePage() {
+function HomePageContent() {
   const [classes, setClasses] = useState<Class[]>([])
   const [examTypes, setExamTypes] = useState<ExamType[]>([])
   
@@ -39,16 +37,47 @@ export default function HomePage() {
   const [isUsingFallback, setIsUsingFallback] = useState(false)
   
   const router = useRouter()
-  const { setCurrentClass, setCurrentSession, currentClass, currentSession } = useClass()
+  const searchParams = useSearchParams()
+  const { setCurrentClass } = useClass()
+  const { currentSchool, setCurrentSchool, clearSchool } = useSchool()
+
+  // Check for school code in URL and load that school
+  useEffect(() => {
+    const schoolCode = searchParams.get('school')
+    if (schoolCode && !currentSchool) {
+      // Load school from URL parameter
+      async function loadSchoolFromCode() {
+        const supabase = createClient()
+        const { data: school } = await supabase
+          .from('schools')
+          .select('*')
+          .eq('code', schoolCode)
+          .eq('is_active', true)
+          .single()
+        
+        if (school) {
+          setCurrentSchool(school)
+        } else {
+          router.push('/select-school')
+        }
+      }
+      loadSchoolFromCode()
+    } else if (!currentSchool) {
+      router.push('/select-school')
+    }
+  }, [searchParams, currentSchool, setCurrentSchool, router])
 
   useEffect(() => {
     async function fetchData() {
+      if (!currentSchool) return
+
       try {
         const supabase = createClient()
         
+        // Filter data by school_id
         const [classesRes, examTypesRes] = await Promise.all([
-          supabase.from('classes').select('*').order('display_order'),
-          supabase.from('exam_types').select('*').order('name'),
+          supabase.from('classes').select('*').eq('school_id', currentSchool.id).order('display_order'),
+          supabase.from('exam_types').select('*').eq('school_id', currentSchool.id).order('name'),
         ])
 
         if (classesRes.error) {
@@ -98,7 +127,7 @@ export default function HomePage() {
     }
 
     fetchData()
-  }, [])
+  }, [currentSchool])
 
   const handleLogin = async () => {
     setError('')
@@ -135,17 +164,39 @@ export default function HomePage() {
     }
   }
 
+  // Don't render if no school selected
+  if (!currentSchool) {
+    return null
+  }
+
+  const handleChangeSchool = () => {
+    clearSchool()
+    router.push('/select-school')
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center space-y-4 pb-6">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleChangeSchool}
+            className="absolute top-4 left-4 text-gray-500 hover:text-gray-700"
+          >
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            Change School
+          </Button>
           <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center">
-              <LogIn className="w-8 h-8 text-white" />
+            <div 
+              className="w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-xl"
+              style={{ backgroundColor: currentSchool.primary_color || '#2563eb' }}
+            >
+              {currentSchool.short_name?.substring(0, 2) || currentSchool.name.substring(0, 2).toUpperCase()}
             </div>
           </div>
           <div>
-            <CardTitle className="text-3xl font-bold mb-2">{schoolConfig.name}</CardTitle>
+            <CardTitle className="text-2xl font-bold mb-2">{currentSchool.name}</CardTitle>
             <CardDescription className="text-base text-gray-600">Exam Marks Entry System</CardDescription>
           </div>
         </CardHeader>
@@ -239,5 +290,20 @@ export default function HomePage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <HomePageContent />
+    </Suspense>
   )
 }

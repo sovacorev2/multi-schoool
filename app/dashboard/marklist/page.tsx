@@ -6,6 +6,7 @@ import { formatGradeWithPoints, getPerformanceLevelWithPoints, getGradeLevelByCl
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useClass } from '@/lib/class-context'
+import { useSchool } from '@/lib/school-context'
 import { isNetworkError, getFallbackData, cacheFallbackData } from '@/lib/fallback-data'
 import { Button } from '@/components/ui/button'
 import {
@@ -21,7 +22,7 @@ import { Download, Printer, AlertCircle, BarChart3, TrendingUp, School, GitCompa
 import type { ExamType, Session, Subject, Learner, Mark } from '@/lib/types'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { schoolConfig } from '@/lib/school-config'
+
 import { ReportModal } from '@/components/report-modal'
 
 
@@ -41,6 +42,7 @@ interface LearnerResult {
 
 export default function MarklistPage() {
   const { currentClass, currentSession: contextSession } = useClass()
+  const { currentSchool } = useSchool()
   const [sessions, setSessions] = useState<SessionWithExamType[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [learners, setLearners] = useState<Learner[]>([])
@@ -112,7 +114,7 @@ export default function MarklistPage() {
     try {
       const [sessionsRes, subjectsRes, learnersRes] = await Promise.all([
         supabase.from('sessions').select('*, exam_types(*)').eq('class_id', currentClass.id),
-        supabase.from('subjects').select('*').eq('class_id', currentClass.id).order('name'),
+        supabase.from('subjects').select('*').eq('school_id', currentSchool?.id).order('name'),
         supabase.from('learners').select('*').eq('class_id', currentClass.id).order('name'),
       ])
 
@@ -169,7 +171,7 @@ export default function MarklistPage() {
 
     try {
       // Fetch all classes
-      const { data: allClasses } = await supabase.from('classes').select('*').order('display_order')
+      const { data: allClasses } = await supabase.from('classes').select('*').eq('school_id', currentSchool?.id).order('display_order')
       if (!allClasses) return
 
       const categoryResults = []
@@ -206,7 +208,7 @@ export default function MarklistPage() {
 
           // Fetch subjects, learners, marks for this class
           const [subjectsRes, learnersRes, marksRes] = await Promise.all([
-            supabase.from('subjects').select('*').eq('class_id', cls.id),
+            supabase.from('subjects').select('*').eq('school_id', currentSchool?.id),
             supabase.from('learners').select('*').eq('class_id', cls.id),
             supabase.from('marks').select('*').eq('session_id', sessionId),
           ])
@@ -358,7 +360,7 @@ export default function MarklistPage() {
 
       // Fetch subjects, learners, and marks for both sessions (for the target class)
       const [targetSubjectsRes, targetLearnersRes, currentMarksRes, previousMarksRes] = await Promise.all([
-        supabase.from('subjects').select('*').eq('class_id', targetClassId).order('name'),
+        supabase.from('subjects').select('*').eq('school_id', currentSchool?.id).order('name'),
         supabase.from('learners').select('*').eq('class_id', targetClassId).order('name'),
         supabase.from('marks').select('*').eq('session_id', currentSessionForComparison.id),
         supabase.from('marks').select('*').eq('session_id', previousSession.id),
@@ -437,7 +439,7 @@ export default function MarklistPage() {
   useEffect(() => {
     if (!isAdminUser) return
     const supabase = createClient()
-    supabase.from('classes').select('id, name').order('display_order').then(({ data }) => {
+    supabase.from('classes').select('id, name').eq('school_id', currentSchool?.id).order('display_order').then(({ data }) => {
       setAllClasses(data || [])
     })
   }, [isAdminUser])
@@ -647,7 +649,7 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
       </head>
       <body>
         <div style="text-align: center; margin-bottom: 3px;">
-          <h1 style="font-size: 13px; font-weight: bold; margin: 0 0 2px 0; padding: 0;">${schoolConfig.name.toUpperCase()}</h1>
+          <h1 style="font-size: 13px; font-weight: bold; margin: 0 0 2px 0; padding: 0;">${currentSchool?.name || 'School'.toUpperCase()}</h1>
           <p style="font-size: 10px; font-weight: bold; margin: 0 0 1px 0; padding: 0;">${gradeName} - ${examType} - ${term} ${year}</p>
           <p style="font-size: 8px; color: #666; margin: 0; padding: 0;">Teacher: ${teacherName || 'N/A'} | Date: ${new Date().toLocaleDateString()}</p>
         </div>
@@ -738,7 +740,7 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
           </style>
         </head>
         <body>
-          <h1>${schoolConfig.name.toUpperCase()}</h1>
+          <h1>${currentSchool?.name || 'School'.toUpperCase()}</h1>
           <h2>CLASS PERFORMANCE ANALYSIS</h2>
           <div class="info">
             ${currentClass?.name} | ${examType} - ${term} ${year}<br/>
@@ -813,7 +815,7 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
           </style>
         </head>
         <body>
-          <h1>${schoolConfig.name.toUpperCase()}</h1>
+          <h1>${currentSchool?.name || 'School'.toUpperCase()}</h1>
           <h2>SUBJECT PERFORMANCE ANALYSIS</h2>
           <div class="info">
             ${currentClass?.name} | ${examType} - ${term} ${year}<br/>
@@ -1057,7 +1059,7 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
           <div className="print-header" style={{ display: 'none' }}></div>
           
           {/* Marklist Title */}
-          <div className="marklist-title">{schoolConfig.name.toUpperCase()}</div>
+          <div className="marklist-title">{currentSchool?.name || 'School'.toUpperCase()}</div>
           
           {/* Marklist Subtitle */}
           <div className="marklist-subtitle">
@@ -1876,7 +1878,7 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                 <CardContent className="space-y-6">
                   {/* Header */}
                   <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
-                    <h3 className="font-bold text-lg text-blue-900">{schoolConfig.name} - Whole School Analysis</h3>
+                    <h3 className="font-bold text-lg text-blue-900">{currentSchool?.name || 'School'} - Whole School Analysis</h3>
                     <p className="text-sm text-blue-700">
                       {selectedSession?.exam_types?.name} - {selectedSession?.term} {selectedSession?.year} | CBC Competency-Based Assessment
                     </p>
@@ -2197,7 +2199,7 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                 <div style={{ position: 'relative', zIndex: 1, padding: '50px 60px', textAlign: 'center' }}>
                   {/* School name */}
                   <div style={{ fontSize: '14px', letterSpacing: '4px', color: '#6b7280', textTransform: 'uppercase', marginBottom: '4px' }}>
-                    {schoolConfig.name}
+                    {currentSchool?.name || 'School'}
                   </div>
 
                   {/* Title */}
