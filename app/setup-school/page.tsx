@@ -259,6 +259,19 @@ export default function SetupSchoolPage() {
           if (examTypesError) console.error('[v0] Exam types error:', examTypesError)
           console.log('[v0] Copied exam types:', newExamTypes.length)
         }
+
+        // Copy sessions (terms) - create for current year
+        const currentYear = new Date().getFullYear()
+        const terms = ['Term 1', 'Term 2', 'Term 3']
+        const sessionsToInsert = terms.map(term => ({
+          year: currentYear,
+          term: term,
+          is_current: term === 'Term 1',
+          school_id: school.id,
+        }))
+        const { error: sessionsError } = await supabase.from('sessions').insert(sessionsToInsert)
+        if (sessionsError) console.error('[v0] Sessions error:', sessionsError)
+        console.log('[v0] Created sessions for year:', currentYear)
       } else {
         console.log('[v0] St James not found, using defaults...')
         // Use default subjects
@@ -275,6 +288,17 @@ export default function SetupSchoolPage() {
           school_id: school.id,
         }))
         await supabase.from('exam_types').insert(examTypesToInsert)
+
+        // Create default sessions
+        const currentYear = new Date().getFullYear()
+        const terms = ['Term 1', 'Term 2', 'Term 3']
+        const sessionsToInsert = terms.map(term => ({
+          year: currentYear,
+          term: term,
+          is_current: term === 'Term 1',
+          school_id: school.id,
+        }))
+        await supabase.from('sessions').insert(sessionsToInsert)
       }
 
       console.log('[v0] School setup complete!')
