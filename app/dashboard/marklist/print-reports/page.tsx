@@ -153,7 +153,15 @@ export default function PrintReportsPage() {
               height: '200px'
             }}
           >
-            <img src="/logo.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            <img 
+              src={currentSchool?.logo_url || `/logos/${currentSchool?.code}.jpeg`} 
+              alt={`${currentSchool?.name || 'School'} Logo`} 
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
+              onError={(e) => {
+                const target = e.currentTarget as HTMLImageElement
+                target.style.display = 'none'
+              }}
+            />
           </div>
 
           {/* Main Content */}

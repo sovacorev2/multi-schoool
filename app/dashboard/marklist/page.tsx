@@ -742,14 +742,14 @@ export default function MarklistPage() {
     }
   }, [selectedSession, fetchExamComparison, comparisonClassId])
 
-  // Fetch all classes for admin dropdown
+  // Fetch all classes for stream comparison and admin dropdown
   useEffect(() => {
-    if (!isAdminUser) return
+    if (!currentSchool?.id) return
     const supabase = createClient()
     supabase.from('classes').select('id, name').eq('school_id', currentSchool?.id).order('display_order').then(({ data }) => {
       setAllClasses(data || [])
     })
-  }, [isAdminUser])
+  }, [currentSchool?.id])
 
   const results: LearnerResult[] = learners
     .map((learner) => {
