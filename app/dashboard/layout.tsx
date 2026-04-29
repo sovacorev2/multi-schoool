@@ -158,7 +158,8 @@ export default function DashboardLayout({
                           onClick={() => {
                             setCurrentSession(null)
                             setCurrentClass(null)
-                            router.push('/')
+                            // Redirect to school's landing page with school code
+                            router.push(`/?school=${currentSchool?.code}`)
                           }}
                           className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-all"
                         >

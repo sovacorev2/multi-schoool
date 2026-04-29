@@ -324,7 +324,31 @@ export default function SetupSchoolPage() {
         )
         const { error: sessionsError } = await supabase.from('sessions').insert(sessionsToInsert)
         if (sessionsError) console.error('[v0] Sessions error:', sessionsError)
-        console.log('[v0] Created sessions:', sessionsToInsert.length)
+        console.log('[v0] Created base sessions:', sessionsToInsert.length)
+
+        // Also create exam sessions (with exam_type_id) so dropdowns work immediately
+        const { data: newExamTypes } = await supabase
+          .from('exam_types')
+          .select('id, name')
+          .eq('school_id', school.id)
+
+        if (newExamTypes && newExamTypes.length > 0) {
+          // Create an "Opener" exam session for Term 1 for all classes
+          const openerType = newExamTypes.find(et => et.name === 'Opener')
+          if (openerType) {
+            const examSessionsToInsert = newClasses.map(cls => ({
+              class_id: cls.id,
+              school_id: school.id,
+              exam_type_id: openerType.id,
+              term: 'Term 1',
+              year: currentYear,
+              is_locked: false,
+            }))
+            const { error: examSessionsError } = await supabase.from('sessions').insert(examSessionsToInsert)
+            if (examSessionsError) console.error('[v0] Exam sessions error:', examSessionsError)
+            console.log('[v0] Created exam sessions:', examSessionsToInsert.length)
+          }
+        }
       }
 
       console.log('[v0] School setup complete!')
