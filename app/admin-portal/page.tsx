@@ -152,8 +152,7 @@ export default function AdminPortalPage() {
       // Load school from URL (different school or no school set)
       loadSchoolFromCode(schoolCode)
     } else if (!currentSchool) {
-      // No school selected and no school code in URL - redirect to school selection
-      router.push('/select-school')
+      // No school selected - stay on page (will prompt for school)
     }
   }, [searchParams, currentSchool, router])
 
@@ -176,9 +175,8 @@ export default function AdminPortalPage() {
     
     if (data) {
       setCurrentSchool(data)
-    } else {
-      router.push('/select-school')
     }
+    // If school not found, stay on page
   }
 
   // Handle password authentication

@@ -72,9 +72,58 @@ function HomePageContent() {
   const [examTypes, setExamTypes] = useState<ExamType[]>([])
   
   const [selectedClass, setSelectedClass] = useState('')
+  const [selectedBaseClass, setSelectedBaseClass] = useState('')
+  const [selectedStream, setSelectedStream] = useState('')
   const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR.toString())
   const [selectedTerm, setSelectedTerm] = useState('Term 1')
   const [selectedExamType, setSelectedExamType] = useState('')
+  
+  // Group classes by base class (e.g., "Grade 5" groups "Grade 5 A", "Grade 5 B")
+  const getClassGroups = () => {
+    const groups: { [key: string]: Class[] } = {}
+    const standalone: Class[] = []
+    
+    sortClasses(classes).forEach(cls => {
+      // Check if this class has a stream suffix (e.g., "Grade 5 A", "PP1 East")
+      const match = cls.name.match(/^(PP\d+|Grade\s*\d+|Form\s*\d+)\s+(.+)$/i)
+      if (match) {
+        const baseClass = match[1]
+        if (!groups[baseClass]) groups[baseClass] = []
+        groups[baseClass].push(cls)
+      } else {
+        standalone.push(cls)
+      }
+    })
+    
+    return { groups, standalone }
+  }
+  
+  const { groups: classGroups, standalone: standaloneClasses } = getClassGroups()
+  const hasStreams = Object.keys(classGroups).length > 0
+  
+  // Get streams for selected base class
+  const availableStreams = selectedBaseClass ? (classGroups[selectedBaseClass] || []) : []
+  
+  // Update selectedClass when base class or stream changes
+  useEffect(() => {
+    if (hasStreams && selectedBaseClass) {
+      // Handle standalone classes (prefixed with standalone_)
+      if (selectedBaseClass.startsWith('standalone_')) {
+        const classId = selectedBaseClass.replace('standalone_', '')
+        setSelectedClass(classId)
+        setSelectedStream('')
+      } else if (availableStreams.length > 0) {
+        if (selectedStream) {
+          const found = availableStreams.find(c => c.id === selectedStream)
+          if (found) setSelectedClass(found.id)
+        } else if (availableStreams.length === 1) {
+          // Auto-select if only one stream
+          setSelectedClass(availableStreams[0].id)
+          setSelectedStream(availableStreams[0].id)
+        }
+      }
+    }
+  }, [selectedBaseClass, selectedStream, availableStreams, hasStreams])
   
   const [isLoading, setIsLoading] = useState(false)
   const [isFetchingData, setIsFetchingData] = useState(true)
@@ -90,13 +139,13 @@ function HomePageContent() {
   useEffect(() => {
     const schoolCode = searchParams.get('school')
     
-    // No school code in URL = redirect to school selection
-    // School code is ALWAYS required, even if there's a school in localStorage
+    // No school code in URL - check if we have a stored school
     if (!schoolCode) {
-      // Clear any stored school data and redirect
-      clearSchool()
-      logoutClass()
-      router.push('/select-school')
+      if (currentSchool?.code) {
+        // Redirect to current school's page
+        router.push(`/?school=${currentSchool.code}`)
+      }
+      // If no school at all, stay on page (will show error or prompt)
       return
     }
     
@@ -124,9 +173,8 @@ function HomePageContent() {
         // Clear class context completely when switching schools
         logoutClass()
         setCurrentSchool(school)
-      } else {
-        router.push('/select-school')
       }
+      // If school not found, stay on page and show error
     }
     loadSchoolFromCode()
   }, [searchParams, currentSchool, setCurrentSchool, clearSchool, logoutClass, router])
@@ -289,21 +337,77 @@ function HomePageContent() {
             <div className="text-center py-8 text-gray-500">Loading...</div>
           ) : !error ? (
             <>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Select Class *</label>
-                <Select value={selectedClass} onValueChange={setSelectedClass}>
-                  <SelectTrigger className="bg-white text-gray-900">
-                    <SelectValue placeholder="-- Choose a class --" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white">
-                    {sortClasses(classes).map((cls) => (
-                      <SelectItem key={cls.id} value={cls.id}>
-                        {cls.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* Class Selection - with stream grouping if applicable */}
+              {hasStreams ? (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Select Class *</label>
+                    <Select value={selectedBaseClass} onValueChange={(val) => {
+                      setSelectedBaseClass(val)
+                      setSelectedStream('')
+                      setSelectedClass('')
+                    }}>
+                      <SelectTrigger className="bg-white text-gray-900">
+                        <SelectValue placeholder="-- Choose a class --" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white">
+                        {/* Standalone classes first */}
+                        {standaloneClasses.map((cls) => (
+                          <SelectItem key={cls.id} value={`standalone_${cls.id}`}>
+                            {cls.name}
+                          </SelectItem>
+                        ))}
+                        {/* Then grouped base classes */}
+                        {Object.keys(classGroups).map((baseClass) => (
+                          <SelectItem key={baseClass} value={baseClass}>
+                            {baseClass} ({classGroups[baseClass].length} streams)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {selectedBaseClass && !selectedBaseClass.startsWith('standalone_') && availableStreams.length > 0 && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Select Stream *</label>
+                      <Select value={selectedStream} onValueChange={(val) => {
+                        setSelectedStream(val)
+                        setSelectedClass(val)
+                      }}>
+                        <SelectTrigger className="bg-white text-gray-900">
+                          <SelectValue placeholder="-- Choose stream --" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white">
+                          {availableStreams.map((cls) => {
+                            const streamName = cls.name.replace(/^(PP\d+|Grade\s*\d+|Form\s*\d+)\s+/i, '')
+                            return (
+                              <SelectItem key={cls.id} value={cls.id}>
+                                {streamName}
+                              </SelectItem>
+                            )
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Select Class *</label>
+                  <Select value={selectedClass} onValueChange={setSelectedClass}>
+                    <SelectTrigger className="bg-white text-gray-900">
+                      <SelectValue placeholder="-- Choose a class --" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white">
+                      {sortClasses(classes).map((cls) => (
+                        <SelectItem key={cls.id} value={cls.id}>
+                          {cls.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
