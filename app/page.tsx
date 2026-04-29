@@ -250,7 +250,20 @@ function HomePageContent() {
               src={currentSchool.logo_url || `/logos/${currentSchool.code}.jpeg`}
               alt={`${currentSchool.name} logo`}
               className="w-20 h-20 object-contain"
+              onError={(e) => {
+                // Hide image and show initials fallback
+                const target = e.currentTarget as HTMLImageElement
+                target.style.display = 'none'
+                const fallback = target.nextElementSibling as HTMLElement
+                if (fallback) fallback.style.display = 'flex'
+              }}
             />
+            <div 
+              className="w-16 h-16 rounded-full items-center justify-center text-white font-bold text-xl hidden"
+              style={{ backgroundColor: currentSchool.primary_color || '#2563eb', display: 'none' }}
+            >
+              {currentSchool.short_name?.substring(0, 2) || currentSchool.name.substring(0, 2).toUpperCase()}
+            </div>
           </div>
           <div>
             <CardTitle className="text-2xl font-bold mb-2">{currentSchool.name}</CardTitle>
