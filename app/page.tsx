@@ -41,53 +41,59 @@ function HomePageContent() {
   const { setCurrentClass, logout: logoutClass } = useClass()
   const { currentSchool, setCurrentSchool, clearSchool } = useSchool()
 
-  // Check for school code in URL and load that school
+  // Check for school code in URL - REQUIRED to access any school
   useEffect(() => {
     const schoolCode = searchParams.get('school')
     
-    if (schoolCode) {
-      // If URL has school code, check if it matches current school
-      if (currentSchool && currentSchool.code === schoolCode) {
-        // Already on correct school
-        return
-      }
-      
-      // Load school from URL parameter (different school or no school set)
-      async function loadSchoolFromCode() {
-        // Clear existing data first
-        setClasses([])
-        setExamTypes([])
-        
-        const supabase = createClient()
-        const { data: school } = await supabase
-          .from('schools')
-          .select('*')
-          .eq('code', schoolCode)
-          .eq('is_active', true)
-          .single()
-        
-        if (school) {
-          // Clear class context completely when switching schools
-          logoutClass()
-          setCurrentSchool(school)
-        } else {
-          router.push('/select-school')
-        }
-      }
-      loadSchoolFromCode()
-    } else if (!currentSchool) {
+    // No school code in URL = redirect to school selection
+    // School code is ALWAYS required, even if there's a school in localStorage
+    if (!schoolCode) {
+      // Clear any stored school data and redirect
+      clearSchool()
+      logoutClass()
       router.push('/select-school')
+      return
     }
-  }, [searchParams, currentSchool, setCurrentSchool, setCurrentClass, router])
+    
+    // If URL has school code, check if it matches current school
+    if (currentSchool && currentSchool.code === schoolCode) {
+      // Already on correct school
+      return
+    }
+    
+    // Load school from URL parameter (different school or no school set)
+    async function loadSchoolFromCode() {
+      // Clear existing data first
+      setClasses([])
+      setExamTypes([])
+      
+      const supabase = createClient()
+      const { data: school } = await supabase
+        .from('schools')
+        .select('*')
+        .eq('code', schoolCode)
+        .eq('is_active', true)
+        .single()
+      
+      if (school) {
+        // Clear class context completely when switching schools
+        logoutClass()
+        setCurrentSchool(school)
+      } else {
+        router.push('/select-school')
+      }
+    }
+    loadSchoolFromCode()
+  }, [searchParams, currentSchool, setCurrentSchool, clearSchool, logoutClass, router])
 
   useEffect(() => {
     async function fetchData() {
-      if (!currentSchool) return
-      
-      // IMPORTANT: Check if the URL school code matches current school
-      // This prevents fetching wrong school data during switching
+      // School code in URL is REQUIRED
       const schoolCode = searchParams.get('school')
-      if (schoolCode && currentSchool.code !== schoolCode) {
+      if (!schoolCode || !currentSchool) return
+      
+      // Ensure URL school code matches current school
+      if (currentSchool.code !== schoolCode) {
         // School is being switched, don't fetch yet
         return
       }
