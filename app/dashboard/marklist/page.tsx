@@ -2245,7 +2245,9 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                         </div>
                         <div className="bg-amber-50 p-4 rounded-lg border border-amber-200 text-center">
                           <div className="text-3xl font-bold text-amber-700">
-                            {(streamComparisonData.streams.reduce((a, s) => a + s.classAvg, 0) / streamComparisonData.streams.length).toFixed(1)}
+                            {streamComparisonData.streams.length > 0 
+                              ? (streamComparisonData.streams.reduce((a, s) => a + s.classAvg, 0) / streamComparisonData.streams.length).toFixed(1)
+                              : '0'}
                           </div>
                           <div className="text-sm text-amber-600">Grade Average</div>
                         </div>
@@ -2326,7 +2328,9 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                         </div>
                         <div className="bg-amber-50 p-4 rounded-lg border border-amber-200 text-center">
                           <div className="text-3xl font-bold text-amber-700">
-                            {(combinedMarklistData.learners.reduce((a, l) => a + l.average, 0) / combinedMarklistData.learners.length).toFixed(1)}
+                            {combinedMarklistData.learners.length > 0 
+                              ? (combinedMarklistData.learners.reduce((a, l) => a + l.average, 0) / combinedMarklistData.learners.length).toFixed(1)
+                              : '0'}
                           </div>
                           <div className="text-sm text-amber-600">Grade Average</div>
                         </div>
