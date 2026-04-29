@@ -735,11 +735,9 @@ export default function AdminPortalPage() {
                         type="number"
                         value={deadlineYear}
                         onChange={(e) => setDeadlineYear(parseInt(e.target.value))}
-                      placeholder="Year"
-                    />
+                        placeholder="Year"
+                      />
 
-                    <Input
-                      type="datetime-local"
                       <Button onClick={createExamSession} disabled={!deadlineClass || !deadlineExamType}>
                         <Plus className="w-4 h-4 mr-2" />
                         Create Session
