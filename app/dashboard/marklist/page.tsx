@@ -2262,6 +2262,171 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
               </Card>
             </TabsContent>
 
+            {/* Combined Marklist Tab */}
+            <TabsContent value="combined-marklist">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="w-5 h-5" />
+                    Combined Marklist (All Streams)
+                  </CardTitle>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Select value={selectedCombinedClass} onValueChange={(val) => {
+                      setSelectedCombinedClass(val)
+                      fetchCombinedMarklist(val)
+                    }}>
+                      <SelectTrigger className="w-40 sm:w-48">
+                        <SelectValue placeholder="Select grade" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getBaseClassNames().map(name => (
+                          <SelectItem key={name} value={name}>{name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button size="sm" onClick={() => selectedCombinedClass && fetchCombinedMarklist(selectedCombinedClass)} disabled={isLoadingCombined || !selectedCombinedClass}>
+                      {isLoadingCombined ? 'Loading...' : 'Load'}
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="bg-gradient-to-r from-emerald-50 to-teal-50 p-4 rounded-lg border border-emerald-200">
+                    <h3 className="font-bold text-lg text-emerald-900">Unified Grade Marklist</h3>
+                    <p className="text-sm text-emerald-700">
+                      View all learners from all streams in one combined marklist, ranked together across the entire grade level.
+                    </p>
+                  </div>
+
+                  {!combinedMarklistData && !isLoadingCombined && (
+                    <div className="text-center py-8 text-gray-500">
+                      Select a grade level above to view the combined marklist
+                    </div>
+                  )}
+
+                  {isLoadingCombined && (
+                    <div className="text-center py-8 text-gray-500">Loading combined marklist...</div>
+                  )}
+
+                  {combinedMarklistData && combinedMarklistData.learners.length > 0 && (
+                    <>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 text-center">
+                          <div className="text-3xl font-bold text-blue-700">{combinedMarklistData.learners.length}</div>
+                          <div className="text-sm text-blue-600">Total Learners</div>
+                        </div>
+                        <div className="bg-green-50 p-4 rounded-lg border border-green-200 text-center">
+                          <div className="text-3xl font-bold text-green-700">{combinedMarklistData.subjects.length}</div>
+                          <div className="text-sm text-green-600">Subjects</div>
+                        </div>
+                        <div className="bg-purple-50 p-4 rounded-lg border border-purple-200 text-center">
+                          <div className="text-3xl font-bold text-purple-700">
+                            {new Set(combinedMarklistData.learners.map(l => l.stream)).size}
+                          </div>
+                          <div className="text-sm text-purple-600">Streams</div>
+                        </div>
+                        <div className="bg-amber-50 p-4 rounded-lg border border-amber-200 text-center">
+                          <div className="text-3xl font-bold text-amber-700">
+                            {(combinedMarklistData.learners.reduce((a, l) => a + l.average, 0) / combinedMarklistData.learners.length).toFixed(1)}
+                          </div>
+                          <div className="text-sm text-amber-600">Grade Average</div>
+                        </div>
+                      </div>
+
+                      <div className="overflow-x-auto border rounded-lg">
+                        <table className="w-full text-sm min-w-[800px]">
+                          <thead className="bg-gray-100 sticky top-0">
+                            <tr>
+                              <th className="p-2 text-center font-semibold border-r w-12">Rank</th>
+                              <th className="p-2 text-left font-semibold border-r">Name</th>
+                              <th className="p-2 text-center font-semibold border-r w-24">Stream</th>
+                              {combinedMarklistData.subjects.map(subj => (
+                                <th key={subj.id} className="p-2 text-center font-semibold border-r min-w-[60px]" title={subj.name}>
+                                  {subj.name.length > 8 ? subj.name.substring(0, 8) + '..' : subj.name}
+                                </th>
+                              ))}
+                              <th className="p-2 text-center font-semibold border-r w-16">Total</th>
+                              <th className="p-2 text-center font-semibold w-16">Avg</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {combinedMarklistData.learners.map((learner, idx) => {
+                              const isTop3 = learner.rank <= 3
+                              const rowBg = learner.rank === 1 ? 'bg-yellow-50' : learner.rank === 2 ? 'bg-gray-100' : learner.rank === 3 ? 'bg-amber-50' : idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
+                              return (
+                                <tr key={learner.id} className={`${rowBg} hover:bg-blue-50/50`}>
+                                  <td className={`p-2 text-center font-bold border-r ${isTop3 ? 'text-lg' : ''}`}>
+                                    {learner.rank === 1 && <span className="text-yellow-600">1</span>}
+                                    {learner.rank === 2 && <span className="text-gray-500">2</span>}
+                                    {learner.rank === 3 && <span className="text-amber-700">3</span>}
+                                    {learner.rank > 3 && learner.rank}
+                                  </td>
+                                  <td className={`p-2 border-r ${isTop3 ? 'font-semibold' : ''}`}>{learner.name}</td>
+                                  <td className="p-2 text-center border-r">
+                                    <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium">
+                                      {learner.stream}
+                                    </span>
+                                  </td>
+                                  {combinedMarklistData.subjects.map(subj => {
+                                    const score = learner.marks[subj.name]
+                                    let scoreClass = ''
+                                    if (score !== null) {
+                                      if (score >= 80) scoreClass = 'text-emerald-600 font-semibold'
+                                      else if (score >= 50) scoreClass = 'text-blue-600'
+                                      else if (score >= 30) scoreClass = 'text-amber-600'
+                                      else scoreClass = 'text-red-600'
+                                    }
+                                    return (
+                                      <td key={subj.id} className={`p-2 text-center border-r ${scoreClass}`}>
+                                        {score !== null ? score : '-'}
+                                      </td>
+                                    )
+                                  })}
+                                  <td className="p-2 text-center font-bold border-r">{learner.total}</td>
+                                  <td className="p-2 text-center font-semibold">{learner.average}</td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div className="mt-4">
+                        <h4 className="font-semibold text-lg mb-3">Stream Breakdown</h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          {(() => {
+                            const streamStats = new Map<string, { count: number; avgTotal: number }>()
+                            combinedMarklistData.learners.forEach(l => {
+                              const existing = streamStats.get(l.stream) || { count: 0, avgTotal: 0 }
+                              existing.count++
+                              existing.avgTotal += l.average
+                              streamStats.set(l.stream, existing)
+                            })
+                            return Array.from(streamStats.entries())
+                              .sort((a, b) => (b[1].avgTotal / b[1].count) - (a[1].avgTotal / a[1].count))
+                              .map(([stream, stats], idx) => (
+                                <div key={stream} className={`p-3 rounded-lg border ${idx === 0 ? 'bg-green-50 border-green-300' : 'bg-gray-50 border-gray-200'}`}>
+                                  <div className="font-semibold text-lg">{stream}</div>
+                                  <div className="text-sm text-gray-600">{stats.count} learners</div>
+                                  <div className={`text-lg font-bold ${idx === 0 ? 'text-green-700' : 'text-gray-700'}`}>
+                                    {(stats.avgTotal / stats.count).toFixed(1)} avg
+                                  </div>
+                                </div>
+                              ))
+                          })()}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {combinedMarklistData && combinedMarklistData.learners.length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      No marks data found for {combinedMarklistData.baseClassName} in this exam session.
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
             {/* School Performance Tab */}
             <TabsContent value="school-performance">
               <Card>
