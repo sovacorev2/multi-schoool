@@ -44,8 +44,15 @@ function HomePageContent() {
   // Check for school code in URL and load that school
   useEffect(() => {
     const schoolCode = searchParams.get('school')
-    if (schoolCode && !currentSchool) {
-      // Load school from URL parameter
+    
+    if (schoolCode) {
+      // If URL has school code, check if it matches current school
+      if (currentSchool && currentSchool.code === schoolCode) {
+        // Already on correct school
+        return
+      }
+      
+      // Load school from URL parameter (different school or no school set)
       async function loadSchoolFromCode() {
         const supabase = createClient()
         const { data: school } = await supabase
@@ -56,6 +63,8 @@ function HomePageContent() {
           .single()
         
         if (school) {
+          // Clear class context when switching schools
+          setCurrentClass(null)
           setCurrentSchool(school)
         } else {
           router.push('/select-school')
@@ -65,7 +74,7 @@ function HomePageContent() {
     } else if (!currentSchool) {
       router.push('/select-school')
     }
-  }, [searchParams, currentSchool, setCurrentSchool, router])
+  }, [searchParams, currentSchool, setCurrentSchool, setCurrentClass, router])
 
   useEffect(() => {
     async function fetchData() {

@@ -97,9 +97,15 @@ export default function AdminPortalPage() {
   // Load school from URL or context - redirect if no school
   useEffect(() => {
     const schoolCode = searchParams.get('school')
-    if (schoolCode && !currentSchool) {
+    
+    if (schoolCode) {
+      // If URL has school code, check if it matches current school
+      if (currentSchool && currentSchool.code === schoolCode) {
+        return
+      }
+      // Load school from URL (different school or no school set)
       loadSchoolFromCode(schoolCode)
-    } else if (!currentSchool && !schoolCode) {
+    } else if (!currentSchool) {
       // No school selected and no school code in URL - redirect to school selection
       router.push('/select-school')
     }
@@ -116,6 +122,9 @@ export default function AdminPortalPage() {
     
     if (data) {
       setCurrentSchool(data)
+      // Reset authentication when switching schools
+      setIsAuthenticated(false)
+      setPassword('')
     } else {
       router.push('/select-school')
     }
