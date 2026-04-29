@@ -114,7 +114,7 @@ export default function MarklistPage() {
     try {
       const [sessionsRes, subjectsRes, learnersRes] = await Promise.all([
         supabase.from('sessions').select('*, exam_types(*)').eq('class_id', currentClass.id),
-        supabase.from('subjects').select('*').eq('school_id', currentSchool?.id).order('name'),
+        supabase.from('subjects').select('*').eq('class_id', currentClass.id).order('name'),
         supabase.from('learners').select('*').eq('class_id', currentClass.id).order('name'),
       ])
 
@@ -206,9 +206,9 @@ export default function MarklistPage() {
 
           const sessionId = classSessions[0].id
 
-          // Fetch subjects, learners, marks for this class
-          const [subjectsRes, learnersRes, marksRes] = await Promise.all([
-            supabase.from('subjects').select('*').eq('school_id', currentSchool?.id),
+  // Fetch subjects, learners, marks for this class
+  const [subjectsRes, learnersRes, marksRes] = await Promise.all([
+    supabase.from('subjects').select('*').eq('class_id', cls.id),
             supabase.from('learners').select('*').eq('class_id', cls.id),
             supabase.from('marks').select('*').eq('session_id', sessionId),
           ])
@@ -358,9 +358,9 @@ export default function MarklistPage() {
 
       const previousSession = ordered[currentIdxFinal - 1]
 
-      // Fetch subjects, learners, and marks for both sessions (for the target class)
-      const [targetSubjectsRes, targetLearnersRes, currentMarksRes, previousMarksRes] = await Promise.all([
-        supabase.from('subjects').select('*').eq('school_id', currentSchool?.id).order('name'),
+  // Fetch subjects, learners, and marks for both sessions (for the target class)
+  const [targetSubjectsRes, targetLearnersRes, currentMarksRes, previousMarksRes] = await Promise.all([
+    supabase.from('subjects').select('*').eq('class_id', targetClassId).order('name'),
         supabase.from('learners').select('*').eq('class_id', targetClassId).order('name'),
         supabase.from('marks').select('*').eq('session_id', currentSessionForComparison.id),
         supabase.from('marks').select('*').eq('session_id', previousSession.id),

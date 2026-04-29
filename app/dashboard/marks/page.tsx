@@ -187,7 +187,7 @@ export default function MarksPage() {
       supabase
         .from("subjects")
         .select("*")
-        .eq("school_id", currentSchool.id)
+        .eq("class_id", currentClass.id)
         .order("name"),
       supabase
         .from("learners")
