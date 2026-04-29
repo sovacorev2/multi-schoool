@@ -1177,15 +1177,9 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
     }, 250)
   }
 
-  // Print Stream Comparison Report
+  // Print Stream Comparison Report using hidden iframe
   const handlePrintStreamComparison = () => {
     if (!streamComparisonData || !selectedBaseClass) return
-    
-    const printWindow = window.open('', '_blank')
-    if (!printWindow) {
-      alert('Please allow popups to print the report')
-      return
-    }
 
     // Get all unique subjects
     const allSubjects = new Set<string>()
@@ -1212,7 +1206,6 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
         const subj = stream.subjects.find(s => s.name === subjName)
         if (!subj) return `<td style="border: 1px solid #333; padding: 4px; text-align: center;">-</td>`
         
-        // Check if this stream has highest mean for this subject
         const allMeans = streamComparisonData.streams
           .map(s => s.subjects.find(ss => ss.name === subjName)?.mean || 0)
         const maxMean = Math.max(...allMeans)
@@ -1285,25 +1278,33 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
       </html>
     `
 
-    printWindow.document.write(reportContent)
-    printWindow.document.close()
+    // Use hidden iframe for printing (no new tab)
+    const iframe = document.createElement('iframe')
+    iframe.style.position = 'absolute'
+    iframe.style.width = '0'
+    iframe.style.height = '0'
+    iframe.style.border = 'none'
+    iframe.style.left = '-9999px'
+    document.body.appendChild(iframe)
     
-    printWindow.onload = () => {
-      setTimeout(() => {
-        printWindow.print()
-      }, 250)
+    const iframeDoc = iframe.contentWindow?.document
+    if (iframeDoc) {
+      iframeDoc.open()
+      iframeDoc.write(reportContent)
+      iframeDoc.close()
+      
+      iframe.onload = () => {
+        setTimeout(() => {
+          iframe.contentWindow?.print()
+          setTimeout(() => document.body.removeChild(iframe), 1000)
+        }, 250)
+      }
     }
   }
 
-  // Print Combined Marklist
+  // Print Combined Marklist using hidden iframe
   const handlePrintCombinedMarklist = () => {
     if (!combinedMarklistData || !selectedCombinedClass) return
-    
-    const printWindow = window.open('', '_blank')
-    if (!printWindow) {
-      alert('Please allow popups to print the marklist')
-      return
-    }
 
     // Build subject headers
     const subjectHeaders = combinedMarklistData.subjects.map(s => 
@@ -1387,13 +1388,27 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
       </html>
     `
 
-    printWindow.document.write(marklistContent)
-    printWindow.document.close()
+    // Use hidden iframe for printing (no new tab)
+    const iframe = document.createElement('iframe')
+    iframe.style.position = 'absolute'
+    iframe.style.width = '0'
+    iframe.style.height = '0'
+    iframe.style.border = 'none'
+    iframe.style.left = '-9999px'
+    document.body.appendChild(iframe)
     
-    printWindow.onload = () => {
-      setTimeout(() => {
-        printWindow.print()
-      }, 250)
+    const iframeDoc = iframe.contentWindow?.document
+    if (iframeDoc) {
+      iframeDoc.open()
+      iframeDoc.write(marklistContent)
+      iframeDoc.close()
+      
+      iframe.onload = () => {
+        setTimeout(() => {
+          iframe.contentWindow?.print()
+          setTimeout(() => document.body.removeChild(iframe), 1000)
+        }, 250)
+      }
     }
   }
 
@@ -2691,28 +2706,28 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
 
                   {combinedMarklistData && combinedMarklistData.learners.length > 0 && (
                     <>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 text-center">
-                          <div className="text-3xl font-bold text-blue-700">{combinedMarklistData.learners.length}</div>
-                          <div className="text-sm text-blue-600">Total Learners</div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
+                        <div className="bg-blue-50 p-2 sm:p-4 rounded-lg border border-blue-200 text-center">
+                          <div className="text-xl sm:text-3xl font-bold text-blue-700">{combinedMarklistData.learners.length}</div>
+                          <div className="text-xs sm:text-sm text-blue-600">Learners</div>
                         </div>
-                        <div className="bg-green-50 p-4 rounded-lg border border-green-200 text-center">
-                          <div className="text-3xl font-bold text-green-700">{combinedMarklistData.subjects.length}</div>
-                          <div className="text-sm text-green-600">Subjects</div>
+                        <div className="bg-green-50 p-2 sm:p-4 rounded-lg border border-green-200 text-center">
+                          <div className="text-xl sm:text-3xl font-bold text-green-700">{combinedMarklistData.subjects.length}</div>
+                          <div className="text-xs sm:text-sm text-green-600">Subjects</div>
                         </div>
-                        <div className="bg-purple-50 p-4 rounded-lg border border-purple-200 text-center">
-                          <div className="text-3xl font-bold text-purple-700">
+                        <div className="bg-purple-50 p-2 sm:p-4 rounded-lg border border-purple-200 text-center">
+                          <div className="text-xl sm:text-3xl font-bold text-purple-700">
                             {new Set(combinedMarklistData.learners.map(l => l.stream)).size}
                           </div>
-                          <div className="text-sm text-purple-600">Streams</div>
+                          <div className="text-xs sm:text-sm text-purple-600">Streams</div>
                         </div>
-                        <div className="bg-amber-50 p-4 rounded-lg border border-amber-200 text-center">
-                          <div className="text-3xl font-bold text-amber-700">
+                        <div className="bg-amber-50 p-2 sm:p-4 rounded-lg border border-amber-200 text-center">
+                          <div className="text-xl sm:text-3xl font-bold text-amber-700">
                             {combinedMarklistData.learners.length > 0 
                               ? (combinedMarklistData.learners.reduce((a, l) => a + l.average, 0) / combinedMarklistData.learners.length).toFixed(1)
                               : '0'}
                           </div>
-                          <div className="text-sm text-amber-600">Grade Average</div>
+                          <div className="text-xs sm:text-sm text-amber-600">Average</div>
                         </div>
                       </div>
 
