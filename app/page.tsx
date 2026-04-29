@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useClass } from '@/lib/class-context'
 import { useSchool } from '@/lib/school-context'
@@ -22,7 +22,7 @@ import type { Class, ExamType } from '@/lib/types'
 const CURRENT_YEAR = new Date().getFullYear()
 const TERMS = ['Term 1', 'Term 2', 'Term 3']
 
-export default function HomePage() {
+function HomePageContent() {
   const [classes, setClasses] = useState<Class[]>([])
   const [examTypes, setExamTypes] = useState<ExamType[]>([])
   
@@ -37,15 +37,35 @@ export default function HomePage() {
   const [isUsingFallback, setIsUsingFallback] = useState(false)
   
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { setCurrentClass } = useClass()
-  const { currentSchool, clearSchool } = useSchool()
+  const { currentSchool, setCurrentSchool, clearSchool } = useSchool()
 
-  // Redirect to school selection if no school selected
+  // Check for school code in URL and load that school
   useEffect(() => {
-    if (!currentSchool) {
+    const schoolCode = searchParams.get('school')
+    if (schoolCode && !currentSchool) {
+      // Load school from URL parameter
+      async function loadSchoolFromCode() {
+        const supabase = createClient()
+        const { data: school } = await supabase
+          .from('schools')
+          .select('*')
+          .eq('code', schoolCode)
+          .eq('is_active', true)
+          .single()
+        
+        if (school) {
+          setCurrentSchool(school)
+        } else {
+          router.push('/select-school')
+        }
+      }
+      loadSchoolFromCode()
+    } else if (!currentSchool) {
       router.push('/select-school')
     }
-  }, [currentSchool, router])
+  }, [searchParams, currentSchool, setCurrentSchool, router])
 
   useEffect(() => {
     async function fetchData() {
@@ -270,5 +290,20 @@ export default function HomePage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <HomePageContent />
+    </Suspense>
   )
 }
