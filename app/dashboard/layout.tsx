@@ -40,10 +40,16 @@ export default function DashboardLayout({
     } catch (err) {
       console.error('[v0] Logout error:', err)
     } finally {
+      // Redirect to school's home page (not select-school)
+      const schoolCode = currentSchool?.code
       setCurrentClass(null)
       setCurrentSession(null)
-      clearSchool()
-      router.push('/select-school')
+      // Don't clear school - redirect to same school's home
+      if (schoolCode) {
+        router.push(`/?school=${schoolCode}`)
+      } else {
+        router.push('/select-school')
+      }
     }
   }
 
@@ -197,9 +203,23 @@ export default function DashboardLayout({
         <div className="px-6 py-4">
           {/* Title Row */}
           <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">{currentSchool?.name || 'School'}</h1>
-              <p className="text-sm text-gray-600">{currentClass.name}</p>
+            <div className="flex items-center gap-4">
+              {/* School Logo */}
+              {currentSchool && (
+                <img 
+                  src={currentSchool.logo_url || `/logos/${currentSchool.code}.jpeg`}
+                  alt={`${currentSchool.name} logo`}
+                  className="w-12 h-12 object-contain"
+                  onError={(e) => {
+                    const target = e.currentTarget as HTMLImageElement
+                    target.style.display = 'none'
+                  }}
+                />
+              )}
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">{currentSchool?.name || 'School'}</h1>
+                <p className="text-sm text-gray-600">{currentClass.name}</p>
+              </div>
             </div>
 
             <div className="flex items-center gap-4">
