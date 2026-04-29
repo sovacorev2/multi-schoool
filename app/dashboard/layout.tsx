@@ -123,14 +123,14 @@ export default function DashboardLayout({
             </div>
 
             <div className="flex items-center gap-4">
-              {/* For Admins ONLY: Change Class Button - Strict condition */}
-              {isAdmin === true && isAuthenticated === true && (
+              {/* For Admins ONLY: Admin Portal Button - Strict condition */}
+              {isAdmin === true && isAuthenticated === true && currentSchool && (
                 <button
-                  onClick={() => window.location.href = '/admin-portal'}
+                  onClick={() => window.location.href = `/admin-portal?school=${currentSchool.code}`}
                   className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
                 >
-                  <ChevronDown className="w-4 h-4" />
-                  Change Class
+                  <Shield className="w-4 h-4" />
+                  Admin Portal
                 </button>
               )}
 

@@ -88,15 +88,16 @@ export default function AdminPortalPage() {
   const [deadlineYear, setDeadlineYear] = useState(new Date().getFullYear())
   const [deadlineDate, setDeadlineDate] = useState('')
 
-  // Load school from URL or context
+  // Load school from URL or context - redirect if no school
   useEffect(() => {
     const schoolCode = searchParams.get('school')
     if (schoolCode && !currentSchool) {
       loadSchoolFromCode(schoolCode)
-    } else if (!currentSchool) {
+    } else if (!currentSchool && !schoolCode) {
+      // No school selected and no school code in URL - redirect to school selection
       router.push('/select-school')
     }
-  }, [searchParams, currentSchool])
+  }, [searchParams, currentSchool, router])
 
   const loadSchoolFromCode = async (code: string) => {
     const supabase = createClient()
