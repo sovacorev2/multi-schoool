@@ -18,12 +18,12 @@ export const GRADING_SCALE_EXTENDED: GradeLevel[] = [
   { level: 'BE2', minMark: 1, maxMark: 10, points: 0.5 },
 ]
 
-// Simple grading scale for lower classes (PP1, PP2, Grade 1-6) - 4 levels
+// Simple grading scale for lower classes (PP1, PP2, Grade 1-6) - 4 levels with 8-point scale
 export const GRADING_SCALE_SIMPLE: GradeLevel[] = [
-  { level: 'EE', minMark: 75, maxMark: 100, points: 4.0 },
-  { level: 'ME', minMark: 50, maxMark: 74, points: 2.5 },
-  { level: 'AE', minMark: 25, maxMark: 49, points: 2.0 },
-  { level: 'BE', minMark: 0, maxMark: 24, points: 1.0 },
+  { level: 'EE', minMark: 75, maxMark: 100, points: 8 },
+  { level: 'ME', minMark: 50, maxMark: 74, points: 6 },
+  { level: 'AE', minMark: 25, maxMark: 49, points: 4 },
+  { level: 'BE', minMark: 0, maxMark: 24, points: 2 },
 ]
 
 // Default grading scale (extended for compatibility)
