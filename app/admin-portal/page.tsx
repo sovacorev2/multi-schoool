@@ -24,6 +24,41 @@ import type { Class, ExamType } from '@/lib/types'
 
 const TERMS = ['Term 1', 'Term 2', 'Term 3']
 
+// Helper to sort classes: PP1, PP2, then Grade 1, 2, 3... with streams alphabetically
+function sortClasses(classes: Class[]): Class[] {
+  const getClassOrder = (name: string) => {
+    const match = name.match(/^(PP\d+|Grade\s*\d+|Form\s*\d+)(?:\s+(.+))?$/i)
+    if (!match) return { order: 999, streamOrder: name }
+    
+    const baseName = match[1].toUpperCase()
+    const stream = match[2] || ''
+    
+    if (baseName.startsWith('PP')) {
+      const num = parseInt(baseName.replace('PP', '')) || 0
+      return { order: num, streamOrder: stream }
+    }
+    
+    if (baseName.includes('GRADE')) {
+      const num = parseInt(baseName.replace(/GRADE\s*/i, '')) || 0
+      return { order: 10 + num, streamOrder: stream }
+    }
+    
+    if (baseName.includes('FORM')) {
+      const num = parseInt(baseName.replace(/FORM\s*/i, '')) || 0
+      return { order: 100 + num, streamOrder: stream }
+    }
+    
+    return { order: 999, streamOrder: name }
+  }
+  
+  return [...classes].sort((a, b) => {
+    const orderA = getClassOrder(a.name)
+    const orderB = getClassOrder(b.name)
+    if (orderA.order !== orderB.order) return orderA.order - orderB.order
+    return orderA.streamOrder.localeCompare(orderB.streamOrder)
+  })
+}
+
 interface School {
   id: string
   name: string
@@ -612,7 +647,18 @@ export default function AdminPortalPage() {
       >
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Shield className="w-8 h-8" />
+            {/* School Logo */}
+            <img 
+              src={currentSchool.logo_url || `/logos/${currentSchool.code}.jpeg`}
+              alt={`${currentSchool.name} logo`}
+              className="w-12 h-12 object-contain bg-white rounded-lg p-1"
+              onError={(e) => {
+                const target = e.currentTarget as HTMLImageElement
+                target.style.display = 'none'
+                target.nextElementSibling?.classList.remove('hidden')
+              }}
+            />
+            <Shield className="w-8 h-8 hidden" />
             <div>
               <h1 className="text-xl font-bold">{currentSchool.name}</h1>
               <p className="text-sm opacity-90">Admin Portal</p>
@@ -633,6 +679,10 @@ export default function AdminPortalPage() {
               onClick={() => {
                 setIsAuthenticated(false)
                 setPassword('')
+                // Redirect to school's home page
+                if (currentSchool) {
+                  window.location.href = `/?school=${currentSchool.code}`
+                }
               }}
               className="bg-white/10 border-white/20 text-white hover:bg-white/20"
             >
@@ -842,7 +892,7 @@ export default function AdminPortalPage() {
                           <SelectValue placeholder="Select base class" />
                         </SelectTrigger>
                         <SelectContent>
-                          {classes.map(c => (
+                          {sortClasses(classes).map(c => (
                             <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
                           ))}
                         </SelectContent>
@@ -866,7 +916,7 @@ export default function AdminPortalPage() {
 
                   {/* Class list */}
                   <div className="grid grid-cols-3 gap-3">
-                    {classes.map(c => (
+                    {sortClasses(classes).map(c => (
                       <div key={c.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
                         <span className="font-medium text-sm">{c.name}</span>
                         <Button
@@ -918,7 +968,7 @@ export default function AdminPortalPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {classes.map(c => (
+                          {sortClasses(classes).map(c => (
                             <tr key={c.id} className="border-t">
                               <td className="p-3 font-medium">{c.name}</td>
                               <td className="p-3">

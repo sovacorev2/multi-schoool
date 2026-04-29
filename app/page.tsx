@@ -22,6 +22,51 @@ import type { Class, ExamType } from '@/lib/types'
 const CURRENT_YEAR = new Date().getFullYear()
 const TERMS = ['Term 1', 'Term 2', 'Term 3']
 
+// Helper to sort classes: PP1, PP2, then Grade 1, 2, 3... with streams alphabetically
+function sortClasses(classes: Class[]): Class[] {
+  const getClassOrder = (name: string) => {
+    // Extract base class and stream (e.g., "Grade 5 East" -> "Grade 5", "East")
+    const match = name.match(/^(PP\d+|Grade\s*\d+|Form\s*\d+)(?:\s+(.+))?$/i)
+    if (!match) return { order: 999, streamOrder: name }
+    
+    const baseName = match[1].toUpperCase()
+    const stream = match[2] || ''
+    
+    // PP classes come first (PP1=1, PP2=2)
+    if (baseName.startsWith('PP')) {
+      const num = parseInt(baseName.replace('PP', '')) || 0
+      return { order: num, streamOrder: stream }
+    }
+    
+    // Grade classes (Grade 1=11, Grade 2=12, etc.)
+    if (baseName.includes('GRADE')) {
+      const num = parseInt(baseName.replace(/GRADE\s*/i, '')) || 0
+      return { order: 10 + num, streamOrder: stream }
+    }
+    
+    // Form classes (Form 1=101, Form 2=102, etc.)
+    if (baseName.includes('FORM')) {
+      const num = parseInt(baseName.replace(/FORM\s*/i, '')) || 0
+      return { order: 100 + num, streamOrder: stream }
+    }
+    
+    return { order: 999, streamOrder: name }
+  }
+  
+  return [...classes].sort((a, b) => {
+    const orderA = getClassOrder(a.name)
+    const orderB = getClassOrder(b.name)
+    
+    // First sort by class order (PP1, PP2, Grade 1, etc.)
+    if (orderA.order !== orderB.order) {
+      return orderA.order - orderB.order
+    }
+    
+    // Then sort streams alphabetically (A, B, East, West)
+    return orderA.streamOrder.localeCompare(orderB.streamOrder)
+  })
+}
+
 function HomePageContent() {
   const [classes, setClasses] = useState<Class[]>([])
   const [examTypes, setExamTypes] = useState<ExamType[]>([])
@@ -201,8 +246,21 @@ function HomePageContent() {
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center space-y-4 pb-6">
           <div className="flex justify-center mb-4">
+            {currentSchool.logo_url || `/logos/${currentSchool.code}.jpeg` ? (
+              <img 
+                src={currentSchool.logo_url || `/logos/${currentSchool.code}.jpeg`}
+                alt={`${currentSchool.name} logo`}
+                className="w-20 h-20 object-contain"
+                onError={(e) => {
+                  // Fallback to initials if logo fails to load
+                  const target = e.currentTarget as HTMLImageElement
+                  target.style.display = 'none'
+                  target.nextElementSibling?.classList.remove('hidden')
+                }}
+              />
+            ) : null}
             <div 
-              className="w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-xl"
+              className={`w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-xl ${currentSchool.logo_url ? 'hidden' : ''}`}
               style={{ backgroundColor: currentSchool.primary_color || '#2563eb' }}
             >
               {currentSchool.short_name?.substring(0, 2) || currentSchool.name.substring(0, 2).toUpperCase()}
@@ -239,7 +297,7 @@ function HomePageContent() {
                     <SelectValue placeholder="-- Choose a class --" />
                   </SelectTrigger>
                   <SelectContent className="bg-white">
-                    {classes.map((cls) => (
+                    {sortClasses(classes).map((cls) => (
                       <SelectItem key={cls.id} value={cls.id}>
                         {cls.name}
                       </SelectItem>
