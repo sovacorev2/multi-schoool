@@ -181,11 +181,12 @@ export default function AdminPortalPage() {
       if (examTypesRes.data) setExamTypes(examTypesRes.data)
       if (subjectsRes.data) setSubjects(subjectsRes.data)
 
-      // Load deadlines from sessions
+      // Load deadlines from sessions - only show sessions with exam_type_id (actual exam sessions)
       const { data: sessionsData } = await supabase
         .from('sessions')
-        .select('*, classes(name)')
+        .select('*, classes(name), exam_types(name)')
         .eq('school_id', currentSchool.id)
+        .not('exam_type_id', 'is', null)
         .order('created_at', { ascending: false })
 
       if (sessionsData) {
@@ -196,7 +197,8 @@ export default function AdminPortalPage() {
           year: s.year,
           deadline_date: s.deadline_date || '',
           is_locked: s.is_locked,
-          class_name: s.classes?.name
+          class_name: s.classes?.name,
+          exam_type: s.exam_types?.name
         })))
       }
 

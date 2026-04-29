@@ -111,7 +111,9 @@ export default function AdminPage() {
     ]);
 
     setAllClasses(classesRes.data || []);
-    setSessions(sessionsRes.data || []);
+    // Only show sessions that have exam_type_id (actual exam sessions, not base term sessions)
+    const examSessions = (sessionsRes.data || []).filter(s => s.exam_type_id !== null);
+    setSessions(examSessions);
     setAuditLogs(logsRes.data || []);
     
     // Fetch password status for classes
