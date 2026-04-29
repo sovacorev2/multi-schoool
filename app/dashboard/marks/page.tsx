@@ -170,12 +170,14 @@ export default function MarksPage() {
     const supabase = createClient();
 
     // Build session query - filter by the logged-in session's term and year
+    // Only show sessions that have an exam_type_id (actual exam sessions, not base sessions)
     let sessionsQuery = supabase
       .from("sessions")
       .select("*, exam_types(*)")
       .eq("class_id", currentClass.id)
       .eq("term", loggedInSession.term)
       .eq("year", loggedInSession.year)
+      .not("exam_type_id", "is", null)
       .order("year", { ascending: false })
       .order("term");
 
