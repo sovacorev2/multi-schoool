@@ -94,6 +94,10 @@ export default function AdminPortalPage() {
   const [deadlineTerm, setDeadlineTerm] = useState('Term 1')
   const [deadlineYear, setDeadlineYear] = useState(new Date().getFullYear())
   const [deadlineDate, setDeadlineDate] = useState('')
+  
+  // Inline deadline editing
+  const [editingDeadlineId, setEditingDeadlineId] = useState<string | null>(null)
+  const [editingDeadlineValue, setEditingDeadlineValue] = useState('')
 
   // Password management
   const [classPasswords, setClassPasswords] = useState<{[key: string]: string}>({})
@@ -379,13 +383,13 @@ export default function AdminPortalPage() {
     }
   }
 
-  // Set deadline for a class/term
-  const setDeadline = async () => {
-    if (!deadlineClass || !deadlineExamType || !deadlineDate || !currentSchool) return
+  // Create exam session (deadline is set separately via inline edit)
+  const createExamSession = async () => {
+    if (!deadlineClass || !deadlineExamType || !currentSchool) return
 
     const supabase = createClient()
     
-    // Check if session exists with this class, exam type, term, and year
+    // Check if session already exists
     const { data: existingSession } = await supabase
       .from('sessions')
       .select('id')
@@ -396,30 +400,25 @@ export default function AdminPortalPage() {
       .single()
 
     if (existingSession) {
-      // Update existing session with deadline datetime
-      await supabase
-        .from('sessions')
-        .update({ deadline_datetime: deadlineDate })
-        .eq('id', existingSession.id)
-    } else {
-      // Create new session with exam type and deadline
-      await supabase
-        .from('sessions')
-        .insert({
-          class_id: deadlineClass,
-          exam_type_id: deadlineExamType,
-          term: deadlineTerm,
-          year: deadlineYear,
-          deadline_datetime: deadlineDate,
-          is_locked: false,
-          school_id: currentSchool.id
-        })
+      alert('This exam session already exists!')
+      return
     }
+    
+    // Create new exam session (no deadline yet - set via inline edit)
+    await supabase
+      .from('sessions')
+      .insert({
+        class_id: deadlineClass,
+        exam_type_id: deadlineExamType,
+        term: deadlineTerm,
+        year: deadlineYear,
+        is_locked: false,
+        school_id: currentSchool.id
+      })
 
     loadAdminData()
     setDeadlineClass('')
     setDeadlineExamType('')
-    setDeadlineDate('')
   }
 
   // Toggle session lock
@@ -430,6 +429,24 @@ export default function AdminPortalPage() {
       .update({ is_locked: !currentLocked })
       .eq('id', sessionId)
     
+    loadAdminData()
+  }
+
+  // Save deadline for a specific session
+  const saveSessionDeadline = async (sessionId: string) => {
+    if (!editingDeadlineValue) {
+      setEditingDeadlineId(null)
+      return
+    }
+    
+    const supabase = createClient()
+    await supabase
+      .from('sessions')
+      .update({ deadline_datetime: editingDeadlineValue })
+      .eq('id', sessionId)
+    
+    setEditingDeadlineId(null)
+    setEditingDeadlineValue('')
     loadAdminData()
   }
 
@@ -669,68 +686,68 @@ export default function AdminPortalPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Clock className="w-5 h-5" />
-                    Set Deadlines & Lock Sessions
+                    Exam Sessions & Deadlines
                   </CardTitle>
                   <CardDescription>
-                    Set submission deadlines and lock/unlock marking sessions
+                    Create exam sessions and set submission deadlines for each
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {/* Add deadline form */}
-                  <div className="grid grid-cols-6 gap-4 p-4 bg-gray-50 rounded-lg">
-                    <Select value={deadlineClass} onValueChange={setDeadlineClass}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select class" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {classes.map(c => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  {/* Create new exam session form */}
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-3">
+                    <h3 className="font-medium text-blue-800">Create New Exam Session</h3>
+                    <p className="text-xs text-blue-600">Add an exam session, then set its deadline using the button in the table below</p>
+                    <div className="grid grid-cols-5 gap-3">
+                      <Select value={deadlineClass} onValueChange={setDeadlineClass}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select class" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {classes.map(c => (
+                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
 
-                    <Select value={deadlineExamType} onValueChange={setDeadlineExamType}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Exam type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {examTypes.map(et => (
-                          <SelectItem key={et.id} value={et.id}>{et.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      <Select value={deadlineExamType} onValueChange={setDeadlineExamType}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Exam type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {examTypes.map(et => (
+                            <SelectItem key={et.id} value={et.id}>{et.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
 
-                    <Select value={deadlineTerm} onValueChange={setDeadlineTerm}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Term" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {TERMS.map(t => (
-                          <SelectItem key={t} value={t}>{t}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      <Select value={deadlineTerm} onValueChange={setDeadlineTerm}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Term" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TERMS.map(t => (
+                            <SelectItem key={t} value={t}>{t}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
 
-                    <Input
-                      type="number"
-                      value={deadlineYear}
-                      onChange={(e) => setDeadlineYear(parseInt(e.target.value))}
+                      <Input
+                        type="number"
+                        value={deadlineYear}
+                        onChange={(e) => setDeadlineYear(parseInt(e.target.value))}
                       placeholder="Year"
                     />
 
                     <Input
                       type="datetime-local"
-                      value={deadlineDate}
-                      onChange={(e) => setDeadlineDate(e.target.value)}
-                    />
-
-                    <Button onClick={setDeadline} disabled={!deadlineClass || !deadlineExamType || !deadlineDate}>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Set Deadline
-                    </Button>
+                      <Button onClick={createExamSession} disabled={!deadlineClass || !deadlineExamType}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Create Session
+                      </Button>
+                    </div>
                   </div>
 
-                  {/* Active sessions */}
+                  {/* Exam sessions list */}
                   <div className="space-y-2">
                     <h3 className="font-medium text-gray-700">Active Sessions</h3>
                     <div className="border rounded-lg overflow-hidden">
@@ -742,7 +759,7 @@ export default function AdminPortalPage() {
                             <th className="p-3 text-left">Term/Year</th>
                             <th className="p-3 text-left">Deadline</th>
                             <th className="p-3 text-left">Status</th>
-                            <th className="p-3 text-left">Action</th>
+                            <th className="p-3 text-left">Actions</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -752,7 +769,17 @@ export default function AdminPortalPage() {
                               <td className="p-3">{d.exam_type || '-'}</td>
                               <td className="p-3">{d.term} {d.year}</td>
                               <td className="p-3">
-                                {d.deadline_date ? new Date(d.deadline_date).toLocaleString() : '-'}
+                                {editingDeadlineId === d.id ? (
+                                  <Input
+                                    type="datetime-local"
+                                    value={editingDeadlineValue}
+                                    onChange={(e) => setEditingDeadlineValue(e.target.value)}
+                                    className="w-48"
+                                  />
+                                ) : (
+                                  d.deadline_date ? new Date(d.deadline_date).toLocaleString() : 
+                                  <span className="text-gray-400">Not set</span>
+                                )}
                               </td>
                               <td className="p-3">
                                 <span className={`px-2 py-1 rounded-full text-xs ${
@@ -764,24 +791,54 @@ export default function AdminPortalPage() {
                                 </span>
                               </td>
                               <td className="p-3">
-                                <Button
-                                  size="sm"
-                                  variant={d.is_locked ? 'default' : 'outline'}
-                                  onClick={() => toggleSessionLock(d.id, d.is_locked)}
-                                >
-                                  {d.is_locked ? (
-                                    <><Unlock className="w-4 h-4 mr-1" /> Unlock</>
+                                <div className="flex gap-1">
+                                  {editingDeadlineId === d.id ? (
+                                    <>
+                                      <Button
+                                        size="sm"
+                                        onClick={() => saveSessionDeadline(d.id)}
+                                        className="bg-green-600 hover:bg-green-700"
+                                      >
+                                        <Save className="w-4 h-4" />
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => { setEditingDeadlineId(null); setEditingDeadlineValue(''); }}
+                                      >
+                                        Cancel
+                                      </Button>
+                                    </>
                                   ) : (
-                                    <><Lock className="w-4 h-4 mr-1" /> Lock</>
+                                    <>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => { setEditingDeadlineId(d.id); setEditingDeadlineValue(d.deadline_date || ''); }}
+                                      >
+                                        <Clock className="w-4 h-4 mr-1" /> Set Deadline
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant={d.is_locked ? 'default' : 'outline'}
+                                        onClick={() => toggleSessionLock(d.id, d.is_locked)}
+                                      >
+                                        {d.is_locked ? (
+                                          <Unlock className="w-4 h-4" />
+                                        ) : (
+                                          <Lock className="w-4 h-4" />
+                                        )}
+                                      </Button>
+                                    </>
                                   )}
-                                </Button>
+                                </div>
                               </td>
                             </tr>
                           ))}
                           {deadlines.length === 0 && (
                             <tr>
                               <td colSpan={6} className="p-8 text-center text-gray-500">
-                                No active sessions yet
+                                No exam sessions created yet. Create sessions using the form above.
                               </td>
                             </tr>
                           )}
