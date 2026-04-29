@@ -40,16 +40,12 @@ export default function DashboardLayout({
     } catch (err) {
       console.error('[v0] Logout error:', err)
     } finally {
-      // Redirect to school's home page (not select-school)
+      // Redirect to school's home page (never to select-school)
       const schoolCode = currentSchool?.code
       setCurrentClass(null)
       setCurrentSession(null)
-      // Don't clear school - redirect to same school's home
-      if (schoolCode) {
-        router.push(`/?school=${schoolCode}`)
-      } else {
-        router.push('/select-school')
-      }
+      // Always redirect to school's home page
+      router.push(`/?school=${schoolCode || 'st-james'}`)
     }
   }
 
@@ -282,26 +278,29 @@ export default function DashboardLayout({
             </div>
           </div>
 
-          {/* Horizontal Navigation */}
-          <nav className="flex items-center gap-1 border-t border-gray-200 pt-4 -mx-6 px-6 overflow-x-auto">
-            {navItems.map((item) => {
-              const Icon = item.icon
-              const isActive = pathname === item.href
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all text-sm font-medium whitespace-nowrap ${
-                    isActive
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  {item.label}
-                </Link>
-              )
-            })}
+          {/* Horizontal Navigation - Mobile Responsive */}
+          <nav className="flex items-center gap-1 border-t border-gray-200 pt-4 -mx-6 px-6 overflow-x-auto scrollbar-hide">
+            <div className="flex items-center gap-1 min-w-max pb-1">
+              {navItems.map((item) => {
+                const Icon = item.icon
+                const isActive = pathname === item.href
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all text-xs sm:text-sm font-medium whitespace-nowrap shrink-0 ${
+                      isActive
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span className="hidden sm:inline">{item.label}</span>
+                    <span className="sm:hidden">{item.label.split(' ')[0]}</span>
+                  </Link>
+                )
+              })}
+            </div>
           </nav>
         </div>
       </header>
