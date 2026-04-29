@@ -7,7 +7,8 @@ import { usePathname } from 'next/navigation'
 import { useClass } from '@/lib/class-context'
 import { useSchool } from '@/lib/school-context'
 import { checkTeacherAuth, checkAdminAuth, logoutTeacher, logoutAdmin } from '@/app/actions/auth'
-import { LogOut, Users, BookOpen, ClipboardList, FileText, ChevronDown, Shield } from 'lucide-react'
+import { LogOut, Users, BookOpen, ClipboardList, FileText, ChevronDown, Shield, Clock, AlertTriangle } from 'lucide-react'
+import { createClient } from '@/utils/supabase/client'
 
 export default function DashboardLayout({
   children,
@@ -17,6 +18,13 @@ export default function DashboardLayout({
   const [sessionDropdown, setSessionDropdown] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [upcomingDeadline, setUpcomingDeadline] = useState<{
+    exam_type: string;
+    term: string;
+    year: number;
+    deadline: Date;
+    timeRemaining: string;
+  } | null>(null)
   const router = useRouter()
   const pathname = usePathname()
   const { currentClass, currentSession, setCurrentClass, setCurrentSession } = useClass()
@@ -83,6 +91,59 @@ export default function DashboardLayout({
     checkAuth()
   }, [currentClass, currentSession, router])
 
+  // Fetch upcoming deadlines for teachers
+  useEffect(() => {
+    if (!currentClass || isAdmin) return
+
+    const fetchDeadlines = async () => {
+      const supabase = createClient()
+      const { data: sessions } = await supabase
+        .from('sessions')
+        .select('*, exam_types(name)')
+        .eq('class_id', currentClass.id)
+        .not('deadline_datetime', 'is', null)
+        .not('exam_type_id', 'is', null)
+        .eq('is_locked', false)
+        .order('deadline_datetime', { ascending: true })
+        .limit(1)
+
+      if (sessions && sessions.length > 0) {
+        const session = sessions[0]
+        const deadline = new Date(session.deadline_datetime)
+        const now = new Date()
+        
+        if (deadline > now) {
+          const diffMs = deadline.getTime() - now.getTime()
+          const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+          const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+          const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
+          
+          let timeRemaining = ''
+          if (diffDays > 0) {
+            timeRemaining = `${diffDays}d ${diffHours}h`
+          } else if (diffHours > 0) {
+            timeRemaining = `${diffHours}h ${diffMins}m`
+          } else {
+            timeRemaining = `${diffMins}m`
+          }
+
+          setUpcomingDeadline({
+            exam_type: session.exam_types?.name || 'Exam',
+            term: session.term,
+            year: session.year,
+            deadline,
+            timeRemaining
+          })
+        }
+      }
+    }
+
+    fetchDeadlines()
+    // Update countdown every minute
+    const interval = setInterval(fetchDeadlines, 60000)
+    return () => clearInterval(interval)
+  }, [currentClass, isAdmin])
+
   if (isAuthenticated === null) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -112,6 +173,25 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Deadline Notice Banner for Teachers */}
+      {upcomingDeadline && !isAdmin && (
+        <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-2 sticky top-0 z-50">
+          <div className="flex items-center justify-center gap-3 text-sm">
+            <AlertTriangle className="w-4 h-4" />
+            <span className="font-medium">
+              Marks Entry Deadline: {upcomingDeadline.exam_type} ({upcomingDeadline.term} {upcomingDeadline.year})
+            </span>
+            <span className="bg-white/20 px-2 py-0.5 rounded-full flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              {upcomingDeadline.timeRemaining} remaining
+            </span>
+            <span className="text-xs opacity-80">
+              Due: {upcomingDeadline.deadline.toLocaleDateString()} {upcomingDeadline.deadline.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </div>
+        </div>
+      )}
+      
       {/* Horizontal Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="px-6 py-4">

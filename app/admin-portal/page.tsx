@@ -18,7 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
   Shield, Eye, EyeOff, Settings, Users, BookOpen, Calendar, 
   Clock, FileText, Plus, Trash2, Save, ArrowLeft, Lock, Unlock,
-  GraduationCap, ClipboardList
+  GraduationCap, ClipboardList, History
 } from 'lucide-react'
 import type { Class, ExamType } from '@/lib/types'
 
@@ -53,6 +53,8 @@ interface Deadline {
   year: number
   deadline_date: string
   is_locked: boolean
+  class_name?: string
+  exam_type?: string
 }
 
 export default function AdminPortalPage() {
@@ -84,6 +86,7 @@ export default function AdminPortalPage() {
 
   // Deadline form
   const [deadlineClass, setDeadlineClass] = useState('')
+  const [deadlineExamType, setDeadlineExamType] = useState('')
   const [deadlineTerm, setDeadlineTerm] = useState('Term 1')
   const [deadlineYear, setDeadlineYear] = useState(new Date().getFullYear())
   const [deadlineDate, setDeadlineDate] = useState('')
@@ -181,11 +184,12 @@ export default function AdminPortalPage() {
       if (examTypesRes.data) setExamTypes(examTypesRes.data)
       if (subjectsRes.data) setSubjects(subjectsRes.data)
 
-      // Load deadlines from sessions
+      // Load deadlines from sessions - only show sessions with exam_type_id (actual exam sessions)
       const { data: sessionsData } = await supabase
         .from('sessions')
-        .select('*, classes(name)')
+        .select('*, classes(name), exam_types(name)')
         .eq('school_id', currentSchool.id)
+        .not('exam_type_id', 'is', null)
         .order('created_at', { ascending: false })
 
       if (sessionsData) {
@@ -194,9 +198,30 @@ export default function AdminPortalPage() {
           class_id: s.class_id,
           term: s.term,
           year: s.year,
-          deadline_date: s.deadline_date || '',
+          deadline_date: s.deadline_datetime || '',
           is_locked: s.is_locked,
-          class_name: s.classes?.name
+          class_name: s.classes?.name,
+          exam_type: s.exam_types?.name
+        })))
+      }
+
+      // Load audit logs
+      const { data: logsData } = await supabase
+        .from('audit_logs')
+        .select('*, classes(name), sessions(term, year, exam_types(name))')
+        .eq('school_id', currentSchool.id)
+        .order('created_at', { ascending: false })
+        .limit(100)
+
+      if (logsData) {
+        setAuditLogs(logsData.map((log: any) => ({
+          id: log.id,
+          action: log.action,
+          details: log.details,
+          performed_by: log.performed_by,
+          class_name: log.classes?.name,
+          session_info: log.sessions ? `${log.sessions.exam_types?.name || ''} - ${log.sessions.term} ${log.sessions.year}` : '',
+          created_at: log.created_at
         })))
       }
 
@@ -296,34 +321,36 @@ export default function AdminPortalPage() {
 
   // Set deadline for a class/term
   const setDeadline = async () => {
-    if (!deadlineClass || !deadlineDate || !currentSchool) return
+    if (!deadlineClass || !deadlineExamType || !deadlineDate || !currentSchool) return
 
     const supabase = createClient()
     
-    // Check if session exists
+    // Check if session exists with this class, exam type, term, and year
     const { data: existingSession } = await supabase
       .from('sessions')
       .select('id')
       .eq('class_id', deadlineClass)
+      .eq('exam_type_id', deadlineExamType)
       .eq('term', deadlineTerm)
       .eq('year', deadlineYear)
       .single()
 
     if (existingSession) {
-      // Update existing
+      // Update existing session with deadline datetime
       await supabase
         .from('sessions')
-        .update({ deadline_date: deadlineDate })
+        .update({ deadline_datetime: deadlineDate })
         .eq('id', existingSession.id)
     } else {
-      // Create new session with deadline
+      // Create new session with exam type and deadline
       await supabase
         .from('sessions')
         .insert({
           class_id: deadlineClass,
+          exam_type_id: deadlineExamType,
           term: deadlineTerm,
           year: deadlineYear,
-          deadline_date: deadlineDate,
+          deadline_datetime: deadlineDate,
           is_locked: false,
           school_id: currentSchool.id
         })
@@ -331,6 +358,7 @@ export default function AdminPortalPage() {
 
     loadAdminData()
     setDeadlineClass('')
+    setDeadlineExamType('')
     setDeadlineDate('')
   }
 
@@ -544,7 +572,7 @@ export default function AdminPortalPage() {
           </div>
         ) : (
           <Tabs defaultValue="deadlines" className="space-y-6">
-            <TabsList className="grid grid-cols-6 w-full max-w-3xl">
+            <TabsList className="grid grid-cols-7 w-full max-w-4xl">
               <TabsTrigger value="deadlines" className="flex items-center gap-2">
                 <Clock className="w-4 h-4" />
                 Deadlines
@@ -565,11 +593,15 @@ export default function AdminPortalPage() {
                 <ClipboardList className="w-4 h-4" />
                 Exam Types
               </TabsTrigger>
-              <TabsTrigger value="settings" className="flex items-center gap-2">
-                <Settings className="w-4 h-4" />
-                Settings
-              </TabsTrigger>
-            </TabsList>
+<TabsTrigger value="settings" className="flex items-center gap-2">
+  <Settings className="w-4 h-4" />
+  Settings
+</TabsTrigger>
+<TabsTrigger value="audit" className="flex items-center gap-2">
+  <History className="w-4 h-4" />
+  Audit Logs
+</TabsTrigger>
+</TabsList>
 
             {/* Deadlines Tab */}
             <TabsContent value="deadlines">
@@ -585,7 +617,7 @@ export default function AdminPortalPage() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {/* Add deadline form */}
-                  <div className="grid grid-cols-5 gap-4 p-4 bg-gray-50 rounded-lg">
+                  <div className="grid grid-cols-6 gap-4 p-4 bg-gray-50 rounded-lg">
                     <Select value={deadlineClass} onValueChange={setDeadlineClass}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select class" />
@@ -593,6 +625,17 @@ export default function AdminPortalPage() {
                       <SelectContent>
                         {classes.map(c => (
                           <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Select value={deadlineExamType} onValueChange={setDeadlineExamType}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Exam type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {examTypes.map(et => (
+                          <SelectItem key={et.id} value={et.id}>{et.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -616,12 +659,12 @@ export default function AdminPortalPage() {
                     />
 
                     <Input
-                      type="date"
+                      type="datetime-local"
                       value={deadlineDate}
                       onChange={(e) => setDeadlineDate(e.target.value)}
                     />
 
-                    <Button onClick={setDeadline} disabled={!deadlineClass || !deadlineDate}>
+                    <Button onClick={setDeadline} disabled={!deadlineClass || !deadlineExamType || !deadlineDate}>
                       <Plus className="w-4 h-4 mr-2" />
                       Set Deadline
                     </Button>
@@ -635,8 +678,8 @@ export default function AdminPortalPage() {
                         <thead className="bg-gray-100">
                           <tr>
                             <th className="p-3 text-left">Class</th>
-                            <th className="p-3 text-left">Term</th>
-                            <th className="p-3 text-left">Year</th>
+                            <th className="p-3 text-left">Exam Type</th>
+                            <th className="p-3 text-left">Term/Year</th>
                             <th className="p-3 text-left">Deadline</th>
                             <th className="p-3 text-left">Status</th>
                             <th className="p-3 text-left">Action</th>
@@ -646,10 +689,10 @@ export default function AdminPortalPage() {
                           {deadlines.map((d: any) => (
                             <tr key={d.id} className="border-t">
                               <td className="p-3">{d.class_name || 'Unknown'}</td>
-                              <td className="p-3">{d.term}</td>
-                              <td className="p-3">{d.year}</td>
+                              <td className="p-3">{d.exam_type || '-'}</td>
+                              <td className="p-3">{d.term} {d.year}</td>
                               <td className="p-3">
-                                {d.deadline_date ? new Date(d.deadline_date).toLocaleDateString() : '-'}
+                                {d.deadline_date ? new Date(d.deadline_date).toLocaleString() : '-'}
                               </td>
                               <td className="p-3">
                                 <span className={`px-2 py-1 rounded-full text-xs ${
@@ -1029,6 +1072,63 @@ export default function AdminPortalPage() {
                         Save Settings
                       </Button>
                     </>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Audit Logs Tab */}
+            <TabsContent value="audit">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <History className="w-5 h-5" />
+                    Audit Logs
+                  </CardTitle>
+                  <CardDescription>View all actions performed in the system</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {auditLogs.length === 0 ? (
+                    <p className="text-sm text-gray-500 text-center py-8">No audit logs yet</p>
+                  ) : (
+                    <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                      {auditLogs.map((log: any) => (
+                        <div key={log.id} className="border rounded-lg p-4 bg-gray-50">
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-sm capitalize">
+                                  {log.action?.replace(/_/g, ' ')}
+                                </span>
+                                {log.class_name && (
+                                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
+                                    {log.class_name}
+                                  </span>
+                                )}
+                                {log.session_info && (
+                                  <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">
+                                    {log.session_info}
+                                  </span>
+                                )}
+                              </div>
+                              {log.details && (
+                                <p className="text-xs text-gray-600">
+                                  {typeof log.details === 'object' 
+                                    ? JSON.stringify(log.details) 
+                                    : log.details}
+                                </p>
+                              )}
+                              <p className="text-xs text-gray-400">
+                                By: {log.performed_by || 'Unknown'}
+                              </p>
+                            </div>
+                            <span className="text-xs text-gray-400">
+                              {new Date(log.created_at).toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </CardContent>
               </Card>
