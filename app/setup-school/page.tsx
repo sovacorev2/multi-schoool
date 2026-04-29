@@ -227,21 +227,35 @@ export default function SetupSchoolPage() {
       if (stjamesSchool) {
         console.log('[v0] Found St James, copying data...')
 
-        // Copy subjects
+        // Get unique subject names from St James
         const { data: stjamesSubjects } = await supabase
           .from('subjects')
-          .select('name, code')
+          .select('name')
           .eq('school_id', stjamesSchool.id)
 
         if (stjamesSubjects && stjamesSubjects.length > 0) {
-          const newSubjects = stjamesSubjects.map(s => ({
-            name: s.name,
-            code: s.code,
-            school_id: school.id,
-          }))
-          const { error: subjectsError } = await supabase.from('subjects').insert(newSubjects)
-          if (subjectsError) console.error('[v0] Subjects error:', subjectsError)
-          console.log('[v0] Copied subjects:', newSubjects.length)
+          // Get unique subject names
+          const uniqueSubjectNames = [...new Set(stjamesSubjects.map(s => s.name))]
+          
+          // Get the newly created classes for this school
+          const { data: newSchoolClasses } = await supabase
+            .from('classes')
+            .select('id')
+            .eq('school_id', school.id)
+          
+          if (newSchoolClasses && newSchoolClasses.length > 0) {
+            // Create subjects for each class
+            const newSubjects = newSchoolClasses.flatMap(cls =>
+              uniqueSubjectNames.map(name => ({
+                name,
+                class_id: cls.id,
+                school_id: school.id,
+              }))
+            )
+            const { error: subjectsError } = await supabase.from('subjects').insert(newSubjects)
+            if (subjectsError) console.error('[v0] Subjects error:', subjectsError)
+            console.log('[v0] Created subjects:', newSubjects.length)
+          }
         }
 
         // Copy exam types
@@ -262,12 +276,24 @@ export default function SetupSchoolPage() {
 
       } else {
         console.log('[v0] St James not found, using defaults...')
-        // Use default subjects
-        const subjectsToInsert = DEFAULT_SUBJECTS.map(s => ({
-          ...s,
-          school_id: school.id,
-        }))
-        await supabase.from('subjects').insert(subjectsToInsert)
+        
+        // Get the newly created classes for this school
+        const { data: newSchoolClasses } = await supabase
+          .from('classes')
+          .select('id')
+          .eq('school_id', school.id)
+        
+        // Use default subjects - create for each class
+        if (newSchoolClasses && newSchoolClasses.length > 0) {
+          const subjectsToInsert = newSchoolClasses.flatMap(cls =>
+            DEFAULT_SUBJECTS.map(s => ({
+              name: s.name,
+              class_id: cls.id,
+              school_id: school.id,
+            }))
+          )
+          await supabase.from('subjects').insert(subjectsToInsert)
+        }
 
         // Use default exam types
         const defaultExamTypes = ['Opener', 'Mid-Term', 'End-Term']
