@@ -24,9 +24,6 @@ const ALL_CLASSES = [
   { name: 'Grade 9', display_order: 11 },
 ]
 
-// Default exam types
-const DEFAULT_EXAM_TYPES = ['Opener', 'Mid-Term', 'End-Term']
-
 // Default subjects (will be copied from St James or use these)
 const DEFAULT_SUBJECTS = [
   { name: 'Mathematics', code: 'MAT' },
@@ -68,10 +65,7 @@ export default function SetupSchoolPage() {
   const [selectedClasses, setSelectedClasses] = useState<string[]>(
     ALL_CLASSES.map(c => c.name) // All selected by default
   )
-
-  // Exam types selection
-  const [selectedExamTypes, setSelectedExamTypes] = useState<string[]>([...DEFAULT_EXAM_TYPES])
-  const [customExamType, setCustomExamType] = useState('')
+  const [customClassName, setCustomClassName] = useState('')
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => {
@@ -104,24 +98,16 @@ export default function SetupSchoolPage() {
     )
   }
 
-  const toggleExamType = (examType: string) => {
-    setSelectedExamTypes(prev => 
-      prev.includes(examType)
-        ? prev.filter(e => e !== examType)
-        : [...prev, examType]
-    )
-  }
-
-  const addCustomExamType = () => {
-    const trimmed = customExamType.trim()
-    if (trimmed && !selectedExamTypes.includes(trimmed)) {
-      setSelectedExamTypes(prev => [...prev, trimmed])
-      setCustomExamType('')
+  const addCustomClass = () => {
+    const trimmed = customClassName.trim()
+    if (trimmed && !selectedClasses.includes(trimmed)) {
+      setSelectedClasses(prev => [...prev, trimmed])
+      setCustomClassName('')
     }
   }
 
-  const removeExamType = (examType: string) => {
-    setSelectedExamTypes(prev => prev.filter(e => e !== examType))
+  const removeCustomClass = (className: string) => {
+    setSelectedClasses(prev => prev.filter(c => c !== className))
   }
 
   const validateStep1 = () => {
@@ -139,11 +125,6 @@ export default function SetupSchoolPage() {
     return null
   }
 
-  const validateStep3 = () => {
-    if (selectedExamTypes.length === 0) return 'Select at least one exam type'
-    return null
-  }
-
   const handleNext = () => {
     setError('')
     if (step === 1) {
@@ -151,9 +132,6 @@ export default function SetupSchoolPage() {
       if (err) { setError(err); return }
     } else if (step === 2) {
       const err = validateStep2()
-      if (err) { setError(err); return }
-    } else if (step === 3) {
-      const err = validateStep3()
       if (err) { setError(err); return }
     }
     setStep(prev => prev + 1)
@@ -170,6 +148,7 @@ export default function SetupSchoolPage() {
 
     try {
       const supabase = createClient()
+      console.log('[v0] Starting school creation...')
 
       // Check if school code already exists
       const { data: existingSchool } = await supabase
@@ -185,16 +164,22 @@ export default function SetupSchoolPage() {
       }
 
       // Create the school
+      console.log('[v0] Creating school with data:', {
+        name: formData.name,
+        code: formData.code,
+        admin_password: formData.admin_password ? '***' : 'MISSING'
+      })
+
       const { data: school, error: schoolError } = await supabase
         .from('schools')
         .insert({
           name: formData.name,
-          short_name: formData.short_name,
+          short_name: formData.short_name || null,
           code: formData.code,
-          tagline: formData.tagline,
-          email: formData.email,
-          phone: formData.phone,
-          address: formData.address,
+          tagline: formData.tagline || null,
+          email: formData.email || null,
+          phone: formData.phone || null,
+          address: formData.address || null,
           primary_color: formData.primary_color,
           admin_password: formData.admin_password,
           is_active: true,
@@ -202,32 +187,37 @@ export default function SetupSchoolPage() {
         .select()
         .single()
 
-      if (schoolError) throw schoolError
+      if (schoolError) {
+        console.error('[v0] School creation error:', schoolError)
+        throw new Error(schoolError.message)
+      }
 
-      // Create selected classes
-      const classesToInsert = ALL_CLASSES
-        .filter(c => selectedClasses.includes(c.name))
-        .map(c => ({
+      console.log('[v0] School created successfully:', school.id)
+
+      // Create selected classes (including custom ones)
+      const standardClasses = ALL_CLASSES.filter(c => selectedClasses.includes(c.name))
+      const customClasses = selectedClasses.filter(c => !ALL_CLASSES.find(ac => ac.name === c))
+      
+      const classesToInsert = [
+        ...standardClasses.map(c => ({
           name: c.name,
           display_order: c.display_order,
           school_id: school.id,
+        })),
+        ...customClasses.map((name, idx) => ({
+          name,
+          display_order: ALL_CLASSES.length + idx + 1,
+          school_id: school.id,
         }))
+      ]
       
       if (classesToInsert.length > 0) {
-        await supabase.from('classes').insert(classesToInsert)
+        console.log('[v0] Creating classes:', classesToInsert.length)
+        const { error: classesError } = await supabase.from('classes').insert(classesToInsert)
+        if (classesError) console.error('[v0] Classes error:', classesError)
       }
 
-      // Create selected exam types
-      const examTypesToInsert = selectedExamTypes.map(name => ({
-        name,
-        school_id: school.id,
-      }))
-      
-      if (examTypesToInsert.length > 0) {
-        await supabase.from('exam_types').insert(examTypesToInsert)
-      }
-
-      // Copy subjects from St James or use defaults
+      // Copy subjects and exam types from St James
       const { data: stjamesSchool } = await supabase
         .from('schools')
         .select('id')
@@ -235,6 +225,9 @@ export default function SetupSchoolPage() {
         .single()
 
       if (stjamesSchool) {
+        console.log('[v0] Found St James, copying data...')
+
+        // Copy subjects
         const { data: stjamesSubjects } = await supabase
           .from('subjects')
           .select('name, code')
@@ -246,23 +239,45 @@ export default function SetupSchoolPage() {
             code: s.code,
             school_id: school.id,
           }))
-          await supabase.from('subjects').insert(newSubjects)
-        } else {
-          // Use defaults
-          const subjectsToInsert = DEFAULT_SUBJECTS.map(s => ({
-            ...s,
+          const { error: subjectsError } = await supabase.from('subjects').insert(newSubjects)
+          if (subjectsError) console.error('[v0] Subjects error:', subjectsError)
+          console.log('[v0] Copied subjects:', newSubjects.length)
+        }
+
+        // Copy exam types
+        const { data: stjamesExamTypes } = await supabase
+          .from('exam_types')
+          .select('name')
+          .eq('school_id', stjamesSchool.id)
+
+        if (stjamesExamTypes && stjamesExamTypes.length > 0) {
+          const newExamTypes = stjamesExamTypes.map(e => ({
+            name: e.name,
             school_id: school.id,
           }))
-          await supabase.from('subjects').insert(subjectsToInsert)
+          const { error: examTypesError } = await supabase.from('exam_types').insert(newExamTypes)
+          if (examTypesError) console.error('[v0] Exam types error:', examTypesError)
+          console.log('[v0] Copied exam types:', newExamTypes.length)
         }
       } else {
-        // Use defaults
+        console.log('[v0] St James not found, using defaults...')
+        // Use default subjects
         const subjectsToInsert = DEFAULT_SUBJECTS.map(s => ({
           ...s,
           school_id: school.id,
         }))
         await supabase.from('subjects').insert(subjectsToInsert)
+
+        // Use default exam types
+        const defaultExamTypes = ['Opener', 'Mid-Term', 'End-Term']
+        const examTypesToInsert = defaultExamTypes.map(name => ({
+          name,
+          school_id: school.id,
+        }))
+        await supabase.from('exam_types').insert(examTypesToInsert)
       }
+
+      console.log('[v0] School setup complete!')
 
       // Generate the school link
       const baseUrl = window.location.origin
@@ -270,9 +285,9 @@ export default function SetupSchoolPage() {
       setGeneratedLink(schoolLink)
       setSuccess(true)
 
-    } catch (err) {
+    } catch (err: any) {
       console.error('[v0] Error creating school:', err)
-      setError('Failed to create school. Please try again.')
+      setError(err.message || 'Failed to create school. Please try again.')
     } finally {
       setIsLoading(false)
     }
@@ -335,9 +350,9 @@ export default function SetupSchoolPage() {
             <div className="bg-gray-50 rounded-lg p-4 space-y-2">
               <p className="text-sm font-medium text-gray-700">What was configured:</p>
               <ul className="text-sm text-gray-600 list-disc list-inside space-y-1">
-                <li>{selectedClasses.length} classes ({selectedClasses.join(', ')})</li>
-                <li>{selectedExamTypes.length} exam types ({selectedExamTypes.join(', ')})</li>
-                <li>All subjects (same as St James Koteko)</li>
+                <li>{selectedClasses.length} classes ({selectedClasses.slice(0, 5).join(', ')}{selectedClasses.length > 5 ? '...' : ''})</li>
+                <li>All subjects (copied from St James Koteko)</li>
+                <li>All exam types (copied from St James Koteko)</li>
               </ul>
             </div>
 
@@ -384,14 +399,14 @@ export default function SetupSchoolPage() {
             <div>
               <CardTitle className="text-xl">Add New School</CardTitle>
               <CardDescription>
-                Step {step} of 3: {step === 1 ? 'School Details' : step === 2 ? 'Select Classes' : 'Exam Types'}
+                Step {step} of 2: {step === 1 ? 'School Details' : 'Select Classes'}
               </CardDescription>
             </div>
           </div>
           
           {/* Progress bar */}
           <div className="flex gap-2 mt-4">
-            {[1, 2, 3].map(s => (
+            {[1, 2].map(s => (
               <div 
                 key={s} 
                 className={`h-2 flex-1 rounded-full transition-colors ${
@@ -574,90 +589,66 @@ export default function SetupSchoolPage() {
                 ))}
               </div>
               
+              <hr className="my-4" />
+
+              {/* Custom Class Input */}
+              <div className="space-y-2">
+                <Label>Add Custom Class</Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="e.g., Nursery, Pre-School, Grade 10..."
+                    value={customClassName}
+                    onChange={(e) => setCustomClassName(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && addCustomClass()}
+                  />
+                  <Button onClick={addCustomClass} variant="outline" disabled={!customClassName.trim()}>
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Show custom classes */}
+              {selectedClasses.filter(c => !ALL_CLASSES.find(ac => ac.name === c)).length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-sm text-gray-600">Custom Classes:</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedClasses.filter(c => !ALL_CLASSES.find(ac => ac.name === c)).map(cls => (
+                      <span
+                        key={cls}
+                        className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm"
+                      >
+                        {cls}
+                        <button
+                          type="button"
+                          onClick={() => removeCustomClass(cls)}
+                          className="hover:text-green-900"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <p className="text-sm text-gray-500">
                 {selectedClasses.length} classes selected
               </p>
             </div>
           )}
 
-          {/* Step 3: Exam Types */}
-          {step === 3 && (
-            <div className="space-y-4">
-              <p className="text-sm text-gray-600">Select exam types for this school:</p>
-              
-              <div className="flex flex-wrap gap-2">
-                {DEFAULT_EXAM_TYPES.map(et => (
-                  <button
-                    key={et}
-                    type="button"
-                    onClick={() => toggleExamType(et)}
-                    className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
-                      selectedExamTypes.includes(et)
-                        ? 'border-blue-600 bg-blue-50 text-blue-700'
-                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                    }`}
-                  >
-                    {selectedExamTypes.includes(et) && (
-                      <Check className="w-4 h-4 inline mr-1" />
-                    )}
-                    {et}
-                  </button>
-                ))}
-              </div>
-
-              <hr className="my-4" />
-              
-              <div className="space-y-2">
-                <Label>Add Custom Exam Type</Label>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="e.g., CAT 1, Weekly Test..."
-                    value={customExamType}
-                    onChange={(e) => setCustomExamType(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && addCustomExamType()}
-                  />
-                  <Button onClick={addCustomExamType} variant="outline">
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-
-              {/* Show all selected exam types */}
-              <div className="space-y-2">
-                <Label className="text-sm text-gray-600">Selected Exam Types:</Label>
-                <div className="flex flex-wrap gap-2">
-                  {selectedExamTypes.map(et => (
-                    <span
-                      key={et}
-                      className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm"
-                    >
-                      {et}
-                      <button
-                        type="button"
-                        onClick={() => removeExamType(et)}
-                        className="hover:text-blue-900"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Navigation buttons */}
           <div className="flex gap-3 pt-4">
-            {step < 3 ? (
+            {step === 1 ? (
               <Button onClick={handleNext} className="flex-1" size="lg">
-                Next
+                Next: Select Classes
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             ) : (
               <Button 
                 onClick={handleCreateSchool} 
                 className="flex-1"
-                disabled={isLoading}
+                disabled={isLoading || selectedClasses.length === 0}
                 size="lg"
               >
                 {isLoading ? (
