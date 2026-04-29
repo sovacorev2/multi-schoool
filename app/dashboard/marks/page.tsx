@@ -141,7 +141,7 @@ async function autoLockExpiredSessions(
 }
 
 export default function MarksPage() {
-  const { currentClass } = useClass();
+  const { currentClass, currentSession: loggedInSession } = useClass();
   const { currentSchool } = useSchool();
   const [examTypes, setExamTypes] = useState<ExamType[]>([]);
   const [sessions, setSessions] = useState<SessionWithExamType[]>([]);
@@ -165,18 +165,23 @@ export default function MarksPage() {
   });
 
   const fetchInitialData = useCallback(async () => {
-    if (!currentClass || !currentSchool) return;
+    if (!currentClass || !currentSchool || !loggedInSession) return;
 
     const supabase = createClient();
 
+    // Build session query - filter by the logged-in session's term and year
+    let sessionsQuery = supabase
+      .from("sessions")
+      .select("*, exam_types(*)")
+      .eq("class_id", currentClass.id)
+      .eq("term", loggedInSession.term)
+      .eq("year", loggedInSession.year)
+      .order("year", { ascending: false })
+      .order("term");
+
     const [examTypesRes, sessionsRes, subjectsRes, learnersRes] = await Promise.all([
       supabase.from("exam_types").select("*").eq("school_id", currentSchool.id).order("display_order", { ascending: true }),
-      supabase
-        .from("sessions")
-        .select("*, exam_types(*)")
-        .eq("class_id", currentClass.id)
-        .order("year", { ascending: false })
-        .order("term"),
+      sessionsQuery,
       supabase
         .from("subjects")
         .select("*")
@@ -203,7 +208,7 @@ export default function MarksPage() {
     setSubjects(subjectsRes.data || []);
     setLearners(learnersRes.data || []);
     setIsLoading(false);
-  }, [currentClass]);
+  }, [currentClass, currentSchool, loggedInSession]);
 
   useEffect(() => {
     fetchInitialData();
@@ -249,16 +254,17 @@ export default function MarksPage() {
   }, [selectedSessionId, currentClass]);
 
   const handleCreateSession = async () => {
-    if (!currentClass || !newSession.exam_type_id || !newSession.term) return;
+    if (!currentClass || !currentSchool || !loggedInSession || !newSession.exam_type_id) return;
 
     const supabase = createClient();
     const { data, error } = await supabase
       .from("sessions")
       .insert({
         class_id: currentClass.id,
+        school_id: currentSchool.id,
         exam_type_id: newSession.exam_type_id,
-        term: newSession.term,
-        year: parseInt(newSession.year),
+        term: loggedInSession.term,
+        year: loggedInSession.year,
         is_locked: false,
       })
       .select("*, exam_types(*)")
@@ -274,7 +280,7 @@ export default function MarksPage() {
       class_id: currentClass.id,
       session_id: data.id,
       action: "session_created",
-      details: { term: newSession.term, year: newSession.year, exam_type: examTypes.find(e => e.id === newSession.exam_type_id)?.name },
+      details: { term: loggedInSession.term, year: loggedInSession.year, exam_type: examTypes.find(e => e.id === newSession.exam_type_id)?.name },
       performed_by: currentClass.name,
     });
 
@@ -628,43 +634,10 @@ export default function MarksPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Term *</Label>
-                <Select
-                  value={newSession.term}
-                  onValueChange={(v) => setNewSession({ ...newSession, term: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select term" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TERMS.map((term) => (
-                      <SelectItem key={term} value={term}>
-                        {term}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Year *</Label>
-                <Select
-                  value={newSession.year}
-                  onValueChange={(v) => setNewSession({ ...newSession, year: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select year" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {YEARS.map((year) => (
-                      <SelectItem key={year} value={year.toString()}>
-                        {year}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-sm text-blue-700">
+                Creating session for: <strong>{loggedInSession?.term} {loggedInSession?.year}</strong>
+              </p>
             </div>
           </div>
           <DialogFooter>
@@ -673,7 +646,7 @@ export default function MarksPage() {
             </Button>
             <Button
               onClick={handleCreateSession}
-              disabled={!newSession.exam_type_id || !newSession.term}
+              disabled={!newSession.exam_type_id}
             >
               Create Session
             </Button>
