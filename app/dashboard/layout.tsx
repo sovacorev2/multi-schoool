@@ -8,7 +8,7 @@ import { useClass } from '@/lib/class-context'
 import { useSchool } from '@/lib/school-context'
 import { checkTeacherAuth, checkAdminAuth, logoutTeacher, logoutAdmin } from '@/app/actions/auth'
 import { LogOut, Users, BookOpen, ClipboardList, FileText, ChevronDown, Shield, Clock, AlertTriangle } from 'lucide-react'
-import { createClient } from '@/utils/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 
 export default function DashboardLayout({
   children,
