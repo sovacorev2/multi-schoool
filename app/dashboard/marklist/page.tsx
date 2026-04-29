@@ -1056,47 +1056,36 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
             <table className="w-full text-sm border-collapse border-2 border-gray-800">
               <thead>
                 <tr className="bg-gray-200">
-                  <th className="border border-gray-600 p-2 text-center font-bold" style={{ width: '25mm' }}>No.</th>
-                  <th className="border border-gray-600 p-2 text-left font-bold" style={{ width: '40mm' }}>Name</th>
+                  <th className="border border-gray-600 p-2 text-center font-bold" style={{ width: '6mm' }}>No.</th>
+                  <th className="border border-gray-600 p-2 text-left font-bold" style={{ width: '20mm' }}>Name</th>
                   {subjects.map((subject) => (
                     <React.Fragment key={subject.id}>
-                      <th colSpan={3} className="border border-gray-600 p-1 text-center font-bold" style={{ width: '22mm' }}>
+                      <th colSpan={3} className="border border-gray-600 p-1 text-center font-bold">
                         {subject.name.substring(0, 3).toUpperCase()}
-                      </th>
-                    </React.Fragment>
-                  ))}
-                </tr>
-                <tr className="bg-gray-200">
-                  <th className="border border-gray-600 p-2 text-center font-bold" style={{ width: '25mm' }}></th>
-                  <th className="border border-gray-600 p-2 text-left font-bold" style={{ width: '40mm' }}></th>
-                  {subjects.map((subject) => (
-                    <React.Fragment key={subject.id}>
-                      <th className="border border-gray-600 p-1 text-center font-bold" style={{ width: '6mm' }}>
-                        MKS
-                      </th>
-                      <th className="border border-gray-600 p-1 text-center font-bold" style={{ width: '8mm', color: '#1a3a52' }}>
-                        LVL
-                      </th>
-                      <th className="border border-gray-600 p-1 text-center font-bold" style={{ width: '8mm', color: '#d97706' }}>
-                        PTS
-                      </th>
-                    </React.Fragment>
-                  ))}
-                </tr>
-                <tr className="bg-gray-200">
-                  <th className="border border-gray-600 p-1 text-center font-bold" style={{ width: '6mm' }}>
-                        MKS
-                      </th>
-                      <th className="border border-gray-600 p-1 text-center font-bold" style={{ width: '8mm', color: '#1a3a52' }}>
-                        LVL
-                      </th>
-                      <th className="border border-gray-600 p-1 text-center font-bold" style={{ width: '8mm', color: '#d97706' }}>
-                        PTS
                       </th>
                     </React.Fragment>
                   ))}
                   <th className="border border-gray-600 p-1 text-center font-bold" style={{ width: '6mm' }}>TOT</th>
                   <th className="border border-gray-600 p-1 text-center font-bold" style={{ width: '6mm' }}>AVG</th>
+                </tr>
+                <tr className="bg-gray-200">
+                  <th className="border border-gray-600 p-1 text-center font-bold" style={{ width: '6mm' }}></th>
+                  <th className="border border-gray-600 p-1 text-left font-bold" style={{ width: '20mm' }}></th>
+                  {subjects.map((subject) => (
+                    <React.Fragment key={`header-${subject.id}`}>
+                      <th className="border border-gray-600 p-1 text-center font-bold" style={{ width: '5mm' }}>
+                        MKS
+                      </th>
+                      <th className="border border-gray-600 p-1 text-center font-bold" style={{ width: '6mm', color: '#1a3a52' }}>
+                        LVL
+                      </th>
+                      <th className="border border-gray-600 p-1 text-center font-bold" style={{ width: '6mm', color: '#d97706' }}>
+                        PTS
+                      </th>
+                    </React.Fragment>
+                  ))}
+                  <th className="border border-gray-600 p-1 text-center font-bold" style={{ width: '6mm' }}></th>
+                  <th className="border border-gray-600 p-1 text-center font-bold" style={{ width: '6mm' }}></th>
                 </tr>
               </thead>
               <tbody>
@@ -1146,6 +1135,8 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                       </React.Fragment>
                     )
                   })}
+                  <td className="border border-gray-600 p-1 text-center" style={{ fontSize: '8pt' }}>-</td>
+                  <td className="border border-gray-600 p-1 text-center" style={{ fontSize: '8pt' }}>-</td>
                   <td className="border border-gray-600 p-1 text-center" style={{ fontSize: '8pt' }}>
                     {results.length > 0 ? results.reduce((a, b) => a + b.total, 0) : '-'}
                   </td>
