@@ -1,7 +1,7 @@
 'use client'
 
 import React from "react"
-import { formatGradeWithPoints, getPerformanceLevelWithPoints } from '@/lib/grading-utils'
+import { formatGradeWithPoints, getPerformanceLevelWithPoints, getGradeLevelByClass } from '@/lib/grading-utils'
 
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -598,7 +598,7 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
     const studentRows = results.map((result, idx) => {
       const subjectCells = subjects.map(subject => {
         const score = result.marks[subject.id]
-        const performanceLevel = getPerformanceLevelWithPoints(score)
+        const performanceLevel = getGradeLevelByClass(score, currentClass?.name)
         return `<td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 9px;">${score ?? '-'}</td>
                 <td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 9px; font-weight: bold; color: #1a3a52;">${performanceLevel ? performanceLevel.level : '-'}</td>
                 <td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; color: #d97706; font-weight: bold;">${performanceLevel ? performanceLevel.points : '-'}</td>`
@@ -618,7 +618,7 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
       const subjectScores = results.map(r => r.marks[subject.id]).filter((s): s is number => s !== null && s !== undefined)
       const meanScore = subjectScores.length > 0 ? (subjectScores.reduce((a, b) => a + b, 0) / subjectScores.length).toFixed(1) : '-'
       const mean = subjectScores.length > 0 ? Math.round(subjectScores.reduce((a, b) => a + b, 0) / subjectScores.length) : null
-      const meanPerformance = getPerformanceLevelWithPoints(mean)
+      const meanPerformance = getGradeLevelByClass(mean, currentClass?.name)
       return `<td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; font-weight: bold; background: #e5e7eb;">${meanScore}</td>
               <td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; font-weight: bold; background: #e5e7eb; color: #1a3a52;">${meanPerformance ? meanPerformance.level : '-'}</td>
               <td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; background: #e5e7eb; color: #d97706; font-weight: bold;">${meanPerformance ? meanPerformance.points : '-'}</td>`
@@ -1106,7 +1106,7 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                     <td className="border border-gray-500 p-2 text-left font-medium" style={{ fontSize: '9pt' }}>{result.learner.name}</td>
                     {subjects.map((subject) => {
                       const score = result.marks[subject.id]
-                      const performanceLevel = getPerformanceLevelWithPoints(score)
+                      const performanceLevel = getGradeLevelByClass(score, currentClass?.name)
                       return (
                         <React.Fragment key={subject.id}>
                           <td className="border border-gray-500 p-1 text-center" style={{ fontSize: '9pt' }}>
@@ -1131,7 +1131,7 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                   {subjects.map((subject) => {
                     const scores = results.map(r => r.marks[subject.id]).filter((m): m is number => m !== null && m !== undefined)
                     const mean = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length) : 0
-                    const meanPerformance = getPerformanceLevelWithPoints(Math.round(mean))
+                    const meanPerformance = getGradeLevelByClass(Math.round(mean), currentClass?.name)
                     return (
                       <React.Fragment key={`mean-${subject.id}`}>
                         <td className="border border-gray-600 p-1 text-center" style={{ fontSize: '8pt' }}>
@@ -1227,7 +1227,7 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                             <td className="border border-gray-500 p-2 text-left font-medium">{result.learner.name}</td>
                             {subjects.map((subject) => {
                               const score = result.marks[subject.id]
-                              const performanceLevel = getPerformanceLevelWithPoints(score)
+                              const performanceLevel = getGradeLevelByClass(score, currentClass?.name)
                               return (
                                 <React.Fragment key={subject.id}>
                                   <td className="border border-gray-500 p-2 text-center">
@@ -1266,7 +1266,7 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                           {subjects.map((subject) => {
                             const scores = results.map(r => r.marks[subject.id]).filter((m): m is number => m !== null && m !== undefined)
                             const mean = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length) : 0
-                            const meanPerformance = getPerformanceLevelWithPoints(Math.round(mean))
+                            const meanPerformance = getGradeLevelByClass(Math.round(mean), currentClass?.name)
                             return (
                               <React.Fragment key={`mean-${subject.id}`}>
                                 <td className="border border-gray-600 p-2 text-center text-sm">
