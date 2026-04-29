@@ -282,85 +282,19 @@ export default function SetupSchoolPage() {
         .eq('code', 'stjames')
         .single()
 
-      if (stjamesSchool) {
-        console.log('[v0] Found St James, copying data...')
-
-        // Get unique subject names from St James
-        const { data: stjamesSubjects } = await supabase
-          .from('subjects')
-          .select('name')
-          .eq('school_id', stjamesSchool.id)
-
-        if (stjamesSubjects && stjamesSubjects.length > 0) {
-          // Get unique subject names
-          const uniqueSubjectNames = [...new Set(stjamesSubjects.map(s => s.name))]
-          
-          // Get the newly created classes for this school
-          const { data: newSchoolClasses } = await supabase
-            .from('classes')
-            .select('id')
-            .eq('school_id', school.id)
-          
-          if (newSchoolClasses && newSchoolClasses.length > 0) {
-            // Create subjects for each class
-            const newSubjects = newSchoolClasses.flatMap(cls =>
-              uniqueSubjectNames.map(name => ({
-                name,
-                class_id: cls.id,
-                school_id: school.id,
-              }))
-            )
-            const { error: subjectsError } = await supabase.from('subjects').insert(newSubjects)
-            if (subjectsError) console.error('[v0] Subjects error:', subjectsError)
-            console.log('[v0] Created subjects:', newSubjects.length)
-          }
-        }
-
-        // Copy exam types
-        const { data: stjamesExamTypes } = await supabase
-          .from('exam_types')
-          .select('name')
-          .eq('school_id', stjamesSchool.id)
-
-        if (stjamesExamTypes && stjamesExamTypes.length > 0) {
-          const newExamTypes = stjamesExamTypes.map(e => ({
-            name: e.name,
-            school_id: school.id,
-          }))
-          const { error: examTypesError } = await supabase.from('exam_types').insert(newExamTypes)
-          if (examTypesError) console.error('[v0] Exam types error:', examTypesError)
-          console.log('[v0] Copied exam types:', newExamTypes.length)
-        }
-
-      } else {
-        console.log('[v0] St James not found, using defaults...')
-        
-        // Get the newly created classes for this school
-        const { data: newSchoolClasses } = await supabase
-          .from('classes')
-          .select('id')
-          .eq('school_id', school.id)
-        
-        // Use default subjects - create for each class
-        if (newSchoolClasses && newSchoolClasses.length > 0) {
-          const subjectsToInsert = newSchoolClasses.flatMap(cls =>
-            DEFAULT_SUBJECTS.map(s => ({
-              name: s.name,
-              class_id: cls.id,
-              school_id: school.id,
-            }))
-          )
-          await supabase.from('subjects').insert(subjectsToInsert)
-        }
-
-        // Use default exam types
-        const defaultExamTypes = ['Opener', 'Mid-Term', 'End-Term']
-        const examTypesToInsert = defaultExamTypes.map(name => ({
-          name,
-          school_id: school.id,
-        }))
-        await supabase.from('exam_types').insert(examTypesToInsert)
-      }
+      // Create default exam types for the new school (no subjects - those are added by teachers per class)
+      const defaultExamTypes = ['Opener', 'Mid-Term', 'End-Term']
+      const examTypesToInsert = defaultExamTypes.map((name, idx) => ({
+        name,
+        school_id: school.id,
+        display_order: idx + 1,
+      }))
+      const { error: examTypesError } = await supabase.from('exam_types').insert(examTypesToInsert)
+      if (examTypesError) console.error('[v0] Exam types error:', examTypesError)
+      console.log('[v0] Created exam types:', examTypesToInsert.length)
+      
+      // NOTE: Subjects are NOT auto-created - teachers add subjects per class
+      // NOTE: Exam sessions are NOT auto-created - created when teachers/admin set up exams
 
       // Create sessions for each class (sessions require class_id)
       const { data: newClasses } = await supabase
@@ -371,6 +305,7 @@ export default function SetupSchoolPage() {
       if (newClasses && newClasses.length > 0) {
         const currentYear = new Date().getFullYear()
         const terms = ['Term 1', 'Term 2', 'Term 3']
+        // Create base sessions for login (no exam_type_id - those are created by admin/teachers)
         const sessionsToInsert = newClasses.flatMap(cls => 
           terms.map(term => ({
             class_id: cls.id,
@@ -383,30 +318,7 @@ export default function SetupSchoolPage() {
         const { error: sessionsError } = await supabase.from('sessions').insert(sessionsToInsert)
         if (sessionsError) console.error('[v0] Sessions error:', sessionsError)
         console.log('[v0] Created base sessions:', sessionsToInsert.length)
-
-        // Also create exam sessions (with exam_type_id) so dropdowns work immediately
-        const { data: newExamTypes } = await supabase
-          .from('exam_types')
-          .select('id, name')
-          .eq('school_id', school.id)
-
-        if (newExamTypes && newExamTypes.length > 0) {
-          // Create an "Opener" exam session for Term 1 for all classes
-          const openerType = newExamTypes.find(et => et.name === 'Opener')
-          if (openerType) {
-            const examSessionsToInsert = newClasses.map(cls => ({
-              class_id: cls.id,
-              school_id: school.id,
-              exam_type_id: openerType.id,
-              term: 'Term 1',
-              year: currentYear,
-              is_locked: false,
-            }))
-            const { error: examSessionsError } = await supabase.from('sessions').insert(examSessionsToInsert)
-            if (examSessionsError) console.error('[v0] Exam sessions error:', examSessionsError)
-            console.log('[v0] Created exam sessions:', examSessionsToInsert.length)
-          }
-        }
+        // NOTE: Exam sessions (with exam_type_id) are created by admin when setting up exams
       }
 
       console.log('[v0] School setup complete!')

@@ -83,6 +83,10 @@ export default function AdminPortalPage() {
   const [newClassName, setNewClassName] = useState('')
   const [newSubjectName, setNewSubjectName] = useState('')
   const [newSubjectCode, setNewSubjectCode] = useState('')
+  
+  // Stream management
+  const [streamBaseClass, setStreamBaseClass] = useState('')
+  const [newStreamName, setNewStreamName] = useState('')
 
   // Deadline form
   const [deadlineClass, setDeadlineClass] = useState('')
@@ -268,12 +272,25 @@ export default function AdminPortalPage() {
       .insert({ 
         name: newClassName.trim(), 
         school_id: currentSchool.id,
+        password: 'welcome',
         display_order: classes.length + 1
       })
       .select()
       .single()
 
     if (!error && data) {
+      // Also create base sessions for the new class
+      const currentYear = new Date().getFullYear()
+      const terms = ['Term 1', 'Term 2', 'Term 3']
+      const sessionsToInsert = terms.map(term => ({
+        class_id: data.id,
+        year: currentYear,
+        term: term,
+        is_active: true,
+        school_id: currentSchool.id,
+      }))
+      await supabase.from('sessions').insert(sessionsToInsert)
+      
       setClasses([...classes, data])
       setNewClassName('')
     }
@@ -285,6 +302,49 @@ export default function AdminPortalPage() {
     const { error } = await supabase.from('classes').delete().eq('id', id)
     if (!error) {
       setClasses(classes.filter(c => c.id !== id))
+    }
+  }
+
+  // Add stream class (e.g., "Grade 5 East" from base class "Grade 5")
+  const addStreamClass = async () => {
+    if (!streamBaseClass || !newStreamName.trim() || !currentSchool) return
+    
+    const streamClassName = `${streamBaseClass} ${newStreamName.trim()}`
+    
+    // Check if class already exists
+    if (classes.some(c => c.name === streamClassName)) {
+      alert('This stream class already exists!')
+      return
+    }
+    
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('classes')
+      .insert({ 
+        name: streamClassName, 
+        school_id: currentSchool.id,
+        password: 'welcome',
+        display_order: classes.length + 1
+      })
+      .select()
+      .single()
+
+    if (!error && data) {
+      // Also create base sessions for the new stream class
+      const currentYear = new Date().getFullYear()
+      const terms = ['Term 1', 'Term 2', 'Term 3']
+      const sessionsToInsert = terms.map(term => ({
+        class_id: data.id,
+        year: currentYear,
+        term: term,
+        is_active: true,
+        school_id: currentSchool.id,
+      }))
+      await supabase.from('sessions').insert(sessionsToInsert)
+      
+      setClasses([...classes, data])
+      setStreamBaseClass('')
+      setNewStreamName('')
     }
   }
 
@@ -741,9 +801,10 @@ export default function AdminPortalPage() {
                     <GraduationCap className="w-5 h-5" />
                     Manage Classes
                   </CardTitle>
-                  <CardDescription>Add or remove classes for this school</CardDescription>
+                  <CardDescription>Add, remove, or create stream variants for classes</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-6">
+                  {/* Add new class */}
                   <div className="flex gap-2">
                     <Input
                       placeholder="Enter class name (e.g., Grade 10, Form 1)"
@@ -757,10 +818,43 @@ export default function AdminPortalPage() {
                     </Button>
                   </div>
 
-                  <div className="grid grid-cols-4 gap-3">
+                  {/* Add stream to existing class */}
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-3">
+                    <h3 className="font-medium text-blue-800 text-sm">Add Stream to Class</h3>
+                    <p className="text-xs text-blue-600">Create stream variants like "Grade 5 East", "Grade 5 West"</p>
+                    <div className="flex gap-2">
+                      <Select value={streamBaseClass} onValueChange={setStreamBaseClass}>
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Select base class" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {classes.map(c => (
+                            <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        placeholder="Stream name (e.g., East, A)"
+                        value={newStreamName}
+                        onChange={(e) => setNewStreamName(e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button 
+                        onClick={addStreamClass} 
+                        disabled={!streamBaseClass || !newStreamName.trim()}
+                        variant="secondary"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Stream
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Class list */}
+                  <div className="grid grid-cols-3 gap-3">
                     {classes.map(c => (
-                      <div key={c.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <span className="font-medium">{c.name}</span>
+                      <div key={c.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                        <span className="font-medium text-sm">{c.name}</span>
                         <Button
                           size="sm"
                           variant="ghost"
