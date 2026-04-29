@@ -25,11 +25,11 @@ const TERMS = ['Term 1', 'Term 2', 'Term 3']
 // Helper to sort classes: PP1, PP2, then Grade 1, 2, 3... with streams alphabetically
 function sortClasses(classes: Class[]): Class[] {
   const getClassOrder = (name: string) => {
-    // Extract base class and stream (e.g., "Grade 5 East" -> "Grade 5", "East")
-    const match = name.match(/^(PP\d+|Grade\s*\d+|Form\s*\d+)(?:\s+(.+))?$/i)
+    // Extract base class and stream (e.g., "Grade 5 RED" -> "Grade 5", "RED")
+    const match = name.match(/^(PP\s*\d+|Grade\s+\d+|Form\s+\d+)(?:\s+(.+))?$/i)
     if (!match) return { order: 999, streamOrder: name }
     
-    const baseName = match[1].toUpperCase()
+    const baseName = match[1].toUpperCase().replace(/\s+/g, '')
     const stream = match[2] || ''
     
     // PP classes come first (PP1=1, PP2=2)
@@ -40,13 +40,13 @@ function sortClasses(classes: Class[]): Class[] {
     
     // Grade classes (Grade 1=11, Grade 2=12, etc.)
     if (baseName.includes('GRADE')) {
-      const num = parseInt(baseName.replace(/GRADE\s*/i, '')) || 0
+      const num = parseInt(baseName.replace(/GRADE/i, '')) || 0
       return { order: 10 + num, streamOrder: stream }
     }
     
     // Form classes (Form 1=101, Form 2=102, etc.)
     if (baseName.includes('FORM')) {
-      const num = parseInt(baseName.replace(/FORM\s*/i, '')) || 0
+      const num = parseInt(baseName.replace(/FORM/i, '')) || 0
       return { order: 100 + num, streamOrder: stream }
     }
     
@@ -84,10 +84,10 @@ function HomePageContent() {
     const standalone: Class[] = []
     
     sortClasses(classes).forEach(cls => {
-      // Check if this class has a stream suffix (e.g., "Grade 5 A", "PP1 East")
-      const match = cls.name.match(/^(PP\d+|Grade\s*\d+|Form\s*\d+)\s+(.+)$/i)
+      // Check if this class has a stream suffix (e.g., "Grade 5 RED", "PP1 East")
+      const match = cls.name.match(/^(PP\s*\d+|Grade\s+\d+|Form\s+\d+)\s+(.+)$/i)
       if (match) {
-        const baseClass = match[1]
+        const baseClass = match[1].replace(/\s+/g, ' ').trim() // Normalize spacing
         if (!groups[baseClass]) groups[baseClass] = []
         groups[baseClass].push(cls)
       } else {
@@ -379,7 +379,7 @@ function HomePageContent() {
                         </SelectTrigger>
                         <SelectContent className="bg-white">
                           {availableStreams.map((cls) => {
-                            const streamName = cls.name.replace(/^(PP\d+|Grade\s*\d+|Form\s*\d+)\s+/i, '')
+                            const streamName = cls.name.replace(/^(PP\s*\d+|Grade\s+\d+|Form\s+\d+)\s+/i, '')
                             return (
                               <SelectItem key={cls.id} value={cls.id}>
                                 {streamName}
