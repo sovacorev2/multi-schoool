@@ -46,44 +46,34 @@ export async function verifyTeacherPassword(classId: string, password: string): 
     return { success: false, error: "Class not found" }
   }
   
-  // Check if this is a lower grade class (PP1-Grade 3) that sets their own password
-  const isLowerGrade = LOWER_GRADE_CLASSES.some(grade => classData.name?.includes(grade))
-  
-  if (isLowerGrade) {
-    // For lower grades, check if password is set
-    const storedPassword = classData.password
-    
-    if (!storedPassword) {
-      // Password not set yet, needs setup
-      return { success: false, needsSetup: true }
-    }
-    
-    // Verify hashed password
-    if (verifyHash(password, storedPassword)) {
-      const cookieStore = await cookies()
-      cookieStore.set("teacher_auth", JSON.stringify({ classId, authenticated: true }), {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 60 * 60 * 8,
-      })
-      return { success: true }
-    }
-    
-    return { success: false, error: "Incorrect password" }
-  }
-  
-  // For Grade 4-9, use the password stored in the database (plain text)
+  // Get the stored password
   const storedPassword = classData.password
   
+  if (!storedPassword) {
+    // Password not set yet, needs setup
+    return { success: false, needsSetup: true }
+  }
+  
+  // Try plain text comparison first (for passwords set via admin portal like "welcome")
   if (password === storedPassword) {
-    // Set auth cookie
     const cookieStore = await cookies()
     cookieStore.set("teacher_auth", JSON.stringify({ classId, authenticated: true }), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 60 * 60 * 8, // 8 hours
+    })
+    return { success: true }
+  }
+  
+  // Also try hashed password (for backwards compatibility with passwords set by teachers)
+  if (verifyHash(password, storedPassword)) {
+    const cookieStore = await cookies()
+    cookieStore.set("teacher_auth", JSON.stringify({ classId, authenticated: true }), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 8,
     })
     return { success: true }
   }
