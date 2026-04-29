@@ -630,18 +630,23 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
         <title>${filename}</title>
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
-          body { padding: 10px; background: white; }
+          body { padding: 5px; background: white; line-height: 1; }
+          table { border-collapse: collapse; width: 100%; }
+          tbody tr { page-break-inside: avoid; orphans: 1; widows: 1; }
           @media print { 
-            body { padding: 5px; } 
-            @page { size: landscape; margin: 5mm; }
+            body { padding: 3px; margin: 0; }
+            @page { size: landscape; margin: 2mm; padding: 0; }
+            html, body { height: auto; margin: 0; padding: 0; }
+            table { page-break-inside: auto; }
+            tbody tr { page-break-inside: avoid; }
           }
         </style>
       </head>
       <body>
-        <div style="text-align: center; margin-bottom: 10px;">
-          <h1 style="font-size: 16px; font-weight: bold; margin-bottom: 5px;">${schoolConfig.name.toUpperCase()}</h1>
-          <p style="font-size: 12px; font-weight: bold;">${gradeName} - ${examType} - ${term} ${year}</p>
-          <p style="font-size: 10px; color: #666;">Teacher: ${teacherName || 'N/A'} | Date: ${new Date().toLocaleDateString()}</p>
+        <div style="text-align: center; margin-bottom: 3px;">
+          <h1 style="font-size: 13px; font-weight: bold; margin: 0 0 2px 0; padding: 0;">${schoolConfig.name.toUpperCase()}</h1>
+          <p style="font-size: 10px; font-weight: bold; margin: 0 0 1px 0; padding: 0;">${gradeName} - ${examType} - ${term} ${year}</p>
+          <p style="font-size: 8px; color: #666; margin: 0; padding: 0;">Teacher: ${teacherName || 'N/A'} | Date: ${new Date().toLocaleDateString()}</p>
         </div>
         
         <table style="width: 100%; border-collapse: collapse; border: 2px solid #333;">
@@ -665,8 +670,8 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
           </tbody>
         </table>
         
-        <div style="margin-top: 10px; font-size: 9px; color: #666;">
-          <p><strong>Rubric Key:</strong> EE = Exceeds Expectations (80-100) | ME = Meets Expectations (60-79) | AE = Approaching Expectations (40-59) | BE = Below Expectations (0-39)</p>
+        <div style="margin-top: 2px; font-size: 7px; color: #666;">
+          <p style="margin: 0; padding: 0;"><strong>Rubric Key:</strong> EE = Exceeds Expectations (80-100) | ME = Meets Expectations (60-79) | AE = Approaching Expectations (40-59) | BE = Below Expectations (0-39)</p>
         </div>
       </body>
       </html>
