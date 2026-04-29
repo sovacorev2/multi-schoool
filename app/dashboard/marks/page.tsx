@@ -169,14 +169,12 @@ export default function MarksPage() {
 
     const supabase = createClient();
 
-    // Build session query - filter by the logged-in session's term and year
+    // Build session query - show all exam sessions for this class
     // Only show sessions that have an exam_type_id (actual exam sessions, not base sessions)
     let sessionsQuery = supabase
       .from("sessions")
       .select("*, exam_types(*)")
       .eq("class_id", currentClass.id)
-      .eq("term", loggedInSession.term)
-      .eq("year", loggedInSession.year)
       .not("exam_type_id", "is", null)
       .order("year", { ascending: false })
       .order("term");
@@ -256,7 +254,7 @@ export default function MarksPage() {
   }, [selectedSessionId, currentClass]);
 
   const handleCreateSession = async () => {
-    if (!currentClass || !currentSchool || !loggedInSession || !newSession.exam_type_id) return;
+    if (!currentClass || !currentSchool || !newSession.exam_type_id || !newSession.term || !newSession.year) return;
 
     const supabase = createClient();
     const { data, error } = await supabase
@@ -265,8 +263,8 @@ export default function MarksPage() {
         class_id: currentClass.id,
         school_id: currentSchool.id,
         exam_type_id: newSession.exam_type_id,
-        term: loggedInSession.term,
-        year: loggedInSession.year,
+        term: newSession.term,
+        year: parseInt(newSession.year),
         is_locked: false,
       })
       .select("*, exam_types(*)")
@@ -282,7 +280,7 @@ export default function MarksPage() {
       class_id: currentClass.id,
       session_id: data.id,
       action: "session_created",
-      details: { term: loggedInSession.term, year: loggedInSession.year, exam_type: examTypes.find(e => e.id === newSession.exam_type_id)?.name },
+      details: { term: newSession.term, year: newSession.year, exam_type: examTypes.find(e => e.id === newSession.exam_type_id)?.name },
       performed_by: currentClass.name,
     });
 
@@ -636,10 +634,43 @@ export default function MarksPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <p className="text-sm text-blue-700">
-                Creating session for: <strong>{loggedInSession?.term} {loggedInSession?.year}</strong>
-              </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Term *</Label>
+                <Select
+                  value={newSession.term}
+                  onValueChange={(v) => setNewSession({ ...newSession, term: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select term" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TERMS.map((term) => (
+                      <SelectItem key={term} value={term}>
+                        {term}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Year *</Label>
+                <Select
+                  value={newSession.year}
+                  onValueChange={(v) => setNewSession({ ...newSession, year: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {YEARS.map((year) => (
+                      <SelectItem key={year} value={year.toString()}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -648,7 +679,7 @@ export default function MarksPage() {
             </Button>
             <Button
               onClick={handleCreateSession}
-              disabled={!newSession.exam_type_id}
+              disabled={!newSession.exam_type_id || !newSession.term || !newSession.year}
             >
               Create Session
             </Button>
