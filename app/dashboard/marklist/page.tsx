@@ -1084,10 +1084,19 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                   ))}
                 </tr>
                 <tr className="bg-gray-200">
-                  <th className="border border-gray-600 p-2 text-center font-bold" style={{ width: '25mm' }}>No.</th>
-                  <th className="border border-gray-600 p-2 text-left font-bold" style={{ width: '40mm' }}>Name</th>
-                  <th className="border border-gray-600 p-1 text-center font-bold" style={{ width: '10mm' }}>Total</th>
-                  <th className="border border-gray-600 p-1 text-center font-bold" style={{ width: '10mm' }}>Avg</th>
+                  <th className="border border-gray-600 p-1 text-center font-bold" style={{ width: '6mm' }}>
+                        MKS
+                      </th>
+                      <th className="border border-gray-600 p-1 text-center font-bold" style={{ width: '8mm', color: '#1a3a52' }}>
+                        LVL
+                      </th>
+                      <th className="border border-gray-600 p-1 text-center font-bold" style={{ width: '8mm', color: '#d97706' }}>
+                        PTS
+                      </th>
+                    </React.Fragment>
+                  ))}
+                  <th className="border border-gray-600 p-1 text-center font-bold" style={{ width: '6mm' }}>TOT</th>
+                  <th className="border border-gray-600 p-1 text-center font-bold" style={{ width: '6mm' }}>AVG</th>
                 </tr>
               </thead>
               <tbody>
