@@ -270,16 +270,17 @@ export default function MarksPage() {
       .single();
 
     if (error) {
-      alert("This session already exists!");
+      alert("Error creating session: " + (error.message || "This session already exists!"));
       return;
     }
 
     // Log the action
     await supabase.from("audit_logs").insert({
+      school_id: currentSchool.id,
       class_id: currentClass.id,
       session_id: data.id,
       action: "session_created",
-      details: { term: newSession.term, year: newSession.year, exam_type: examTypes.find(e => e.id === newSession.exam_type_id)?.name },
+      details: { term: newSession.term, year: parseInt(newSession.year), exam_type: examTypes.find(e => e.id === newSession.exam_type_id)?.name },
       performed_by: currentClass.name,
     });
 
