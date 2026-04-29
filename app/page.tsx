@@ -16,7 +16,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { LogIn, AlertCircle, ArrowLeft } from 'lucide-react'
+import { LogIn, AlertCircle } from 'lucide-react'
 import type { Class, ExamType } from '@/lib/types'
 
 const CURRENT_YEAR = new Date().getFullYear()
@@ -196,24 +196,10 @@ function HomePageContent() {
     return null
   }
 
-  const handleChangeSchool = () => {
-    clearSchool()
-    router.push('/select-school')
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center space-y-4 pb-6">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={handleChangeSchool}
-            className="absolute top-4 left-4 text-gray-500 hover:text-gray-700"
-          >
-            <ArrowLeft className="w-4 h-4 mr-1" />
-            Change School
-          </Button>
           <div className="flex justify-center mb-4">
             <div 
               className="w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-xl"
