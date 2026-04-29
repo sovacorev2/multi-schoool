@@ -689,66 +689,14 @@ export default function AdminPortalPage() {
                     Exam Sessions & Deadlines
                   </CardTitle>
                   <CardDescription>
-                    Create exam sessions and set submission deadlines for each
+                    Set deadlines and lock/unlock exam sessions created by teachers
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {/* Create new exam session form */}
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-3">
-                    <h3 className="font-medium text-blue-800">Create New Exam Session</h3>
-                    <p className="text-xs text-blue-600">Add an exam session, then set its deadline using the button in the table below</p>
-                    <div className="grid grid-cols-5 gap-3">
-                      <Select value={deadlineClass} onValueChange={setDeadlineClass}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select class" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {classes.map(c => (
-                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-
-                      <Select value={deadlineExamType} onValueChange={setDeadlineExamType}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Exam type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {examTypes.map(et => (
-                            <SelectItem key={et.id} value={et.id}>{et.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-
-                      <Select value={deadlineTerm} onValueChange={setDeadlineTerm}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Term" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {TERMS.map(t => (
-                            <SelectItem key={t} value={t}>{t}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-
-                      <Input
-                        type="number"
-                        value={deadlineYear}
-                        onChange={(e) => setDeadlineYear(parseInt(e.target.value))}
-                        placeholder="Year"
-                      />
-
-                      <Button onClick={createExamSession} disabled={!deadlineClass || !deadlineExamType}>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Create Session
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Exam sessions list */}
+                  {/* Exam sessions list - shows sessions created by teachers */}
                   <div className="space-y-2">
                     <h3 className="font-medium text-gray-700">All Exam Sessions</h3>
-                    <p className="text-sm text-gray-500">Lock/unlock exams and set deadlines across all classes</p>
+                    <p className="text-sm text-gray-500">These are exam sessions created by teachers. Set deadlines and lock/unlock as needed.</p>
                     <div className="border rounded-lg overflow-hidden">
                       <table className="w-full text-sm">
                         <thead className="bg-gray-100">
