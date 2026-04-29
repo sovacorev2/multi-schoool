@@ -158,4 +158,37 @@
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+
+  /* Hide navigation and non-essential UI when printing */
+  header, nav, aside, footer, 
+  [role="tablist"],
+  .print\\:hidden {
+    display: none !important;
+  }
+
+  /* Ensure stream comparison cards print nicely */
+  .grid {
+    display: block !important;
+  }
+  
+  .grid > div {
+    page-break-inside: avoid;
+    margin-bottom: 10px !important;
+  }
+
+  /* Ensure tables are readable */
+  .overflow-x-auto {
+    overflow: visible !important;
+  }
+
+  table {
+    width: 100% !important;
+    font-size: 10px !important;
+  }
+
+  /* Page settings */
+  @page {
+    margin: 0.5in;
+    size: A4 landscape;
+  }
 }
