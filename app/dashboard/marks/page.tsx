@@ -413,29 +413,43 @@ export default function MarksPage() {
           <CardTitle className="text-base font-medium">Select Exam Session</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <Select value={selectedSessionId} onValueChange={setSelectedSessionId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose an exam session" />
-                </SelectTrigger>
-                <SelectContent>
-                  {sessions.map((session) => (
-                    <SelectItem key={session.id} value={session.id}>
-                      <span className="flex items-center">
-                        {session.exam_types?.name} - {session.term} {session.year}
-                        {session.is_locked && <Lock className="w-3 h-3 ml-2 text-destructive" />}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {sessions.length === 0 ? (
+            <div className="text-center py-6 space-y-4">
+              <div className="text-muted-foreground">
+                <ClipboardList className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p className="font-medium">No exam sessions yet</p>
+                <p className="text-sm">Create a new exam session to start entering marks</p>
+              </div>
+              <Button onClick={() => setIsCreateSessionOpen(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Create Exam Session
+              </Button>
             </div>
-            <Button variant="outline" onClick={() => setIsCreateSessionOpen(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              New Session
-            </Button>
-          </div>
+          ) : (
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <Select value={selectedSessionId} onValueChange={setSelectedSessionId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose an exam session" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sessions.map((session) => (
+                      <SelectItem key={session.id} value={session.id}>
+                        <span className="flex items-center">
+                          {session.exam_types?.name} - {session.term} {session.year}
+                          {session.is_locked && <Lock className="w-3 h-3 ml-2 text-destructive" />}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button variant="outline" onClick={() => setIsCreateSessionOpen(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                New Session
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 

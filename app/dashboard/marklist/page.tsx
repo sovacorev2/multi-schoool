@@ -118,7 +118,8 @@ export default function MarklistPage() {
         supabase.from('learners').select('*').eq('class_id', currentClass.id).order('name'),
       ])
 
-      setSessions(sessionsRes.data || [])
+      // Only show exam sessions (those with exam_type_id) - these are created by teachers
+      setSessions((sessionsRes.data || []).filter(s => s.exam_type_id !== null))
       setSubjects(subjectsRes.data || [])
       setLearners(learnersRes.data || [])
     } catch (err) {
