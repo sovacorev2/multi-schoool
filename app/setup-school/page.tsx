@@ -1,16 +1,49 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Check, School, Loader2, Copy, ExternalLink } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, School, Loader2, Copy, ExternalLink, Plus, X } from 'lucide-react'
+
+// Default classes
+const ALL_CLASSES = [
+  { name: 'PP1', display_order: 1 },
+  { name: 'PP2', display_order: 2 },
+  { name: 'Grade 1', display_order: 3 },
+  { name: 'Grade 2', display_order: 4 },
+  { name: 'Grade 3', display_order: 5 },
+  { name: 'Grade 4', display_order: 6 },
+  { name: 'Grade 5', display_order: 7 },
+  { name: 'Grade 6', display_order: 8 },
+  { name: 'Grade 7', display_order: 9 },
+  { name: 'Grade 8', display_order: 10 },
+  { name: 'Grade 9', display_order: 11 },
+]
+
+// Default exam types
+const DEFAULT_EXAM_TYPES = ['Opener', 'Mid-Term', 'End-Term']
+
+// Default subjects (will be copied from St James or use these)
+const DEFAULT_SUBJECTS = [
+  { name: 'Mathematics', code: 'MAT' },
+  { name: 'English', code: 'ENG' },
+  { name: 'Kiswahili', code: 'KIS' },
+  { name: 'Science', code: 'SCI' },
+  { name: 'Social Studies', code: 'SST' },
+  { name: 'CRE', code: 'CRE' },
+  { name: 'Creative Arts', code: 'CRA' },
+  { name: 'Agriculture', code: 'AGR' },
+  { name: 'Pre-Technical Studies', code: 'PTS' },
+  { name: 'Integrated Science', code: 'INT' },
+]
 
 export default function SetupSchoolPage() {
   const router = useRouter()
+  const [step, setStep] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
@@ -30,6 +63,15 @@ export default function SetupSchoolPage() {
     admin_password: '',
     confirm_password: '',
   })
+
+  // Classes selection (toggle on/off)
+  const [selectedClasses, setSelectedClasses] = useState<string[]>(
+    ALL_CLASSES.map(c => c.name) // All selected by default
+  )
+
+  // Exam types selection
+  const [selectedExamTypes, setSelectedExamTypes] = useState<string[]>([...DEFAULT_EXAM_TYPES])
+  const [customExamType, setCustomExamType] = useState('')
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => {
@@ -54,7 +96,35 @@ export default function SetupSchoolPage() {
     })
   }
 
-  const validateForm = () => {
+  const toggleClass = (className: string) => {
+    setSelectedClasses(prev => 
+      prev.includes(className)
+        ? prev.filter(c => c !== className)
+        : [...prev, className]
+    )
+  }
+
+  const toggleExamType = (examType: string) => {
+    setSelectedExamTypes(prev => 
+      prev.includes(examType)
+        ? prev.filter(e => e !== examType)
+        : [...prev, examType]
+    )
+  }
+
+  const addCustomExamType = () => {
+    const trimmed = customExamType.trim()
+    if (trimmed && !selectedExamTypes.includes(trimmed)) {
+      setSelectedExamTypes(prev => [...prev, trimmed])
+      setCustomExamType('')
+    }
+  }
+
+  const removeExamType = (examType: string) => {
+    setSelectedExamTypes(prev => prev.filter(e => e !== examType))
+  }
+
+  const validateStep1 = () => {
     if (!formData.name.trim()) return 'School name is required'
     if (!formData.code.trim()) return 'School code is required'
     if (formData.code.includes(' ')) return 'School code cannot contain spaces'
@@ -64,13 +134,37 @@ export default function SetupSchoolPage() {
     return null
   }
 
-  const handleCreateSchool = async () => {
-    const validationError = validateForm()
-    if (validationError) {
-      setError(validationError)
-      return
-    }
+  const validateStep2 = () => {
+    if (selectedClasses.length === 0) return 'Select at least one class'
+    return null
+  }
 
+  const validateStep3 = () => {
+    if (selectedExamTypes.length === 0) return 'Select at least one exam type'
+    return null
+  }
+
+  const handleNext = () => {
+    setError('')
+    if (step === 1) {
+      const err = validateStep1()
+      if (err) { setError(err); return }
+    } else if (step === 2) {
+      const err = validateStep2()
+      if (err) { setError(err); return }
+    } else if (step === 3) {
+      const err = validateStep3()
+      if (err) { setError(err); return }
+    }
+    setStep(prev => prev + 1)
+  }
+
+  const handleBack = () => {
+    setError('')
+    setStep(prev => prev - 1)
+  }
+
+  const handleCreateSchool = async () => {
     setIsLoading(true)
     setError('')
 
@@ -110,7 +204,30 @@ export default function SetupSchoolPage() {
 
       if (schoolError) throw schoolError
 
-      // Copy St James' configuration - get all classes, subjects, exam_types
+      // Create selected classes
+      const classesToInsert = ALL_CLASSES
+        .filter(c => selectedClasses.includes(c.name))
+        .map(c => ({
+          name: c.name,
+          display_order: c.display_order,
+          school_id: school.id,
+        }))
+      
+      if (classesToInsert.length > 0) {
+        await supabase.from('classes').insert(classesToInsert)
+      }
+
+      // Create selected exam types
+      const examTypesToInsert = selectedExamTypes.map(name => ({
+        name,
+        school_id: school.id,
+      }))
+      
+      if (examTypesToInsert.length > 0) {
+        await supabase.from('exam_types').insert(examTypesToInsert)
+      }
+
+      // Copy subjects from St James or use defaults
       const { data: stjamesSchool } = await supabase
         .from('schools')
         .select('id')
@@ -118,23 +235,6 @@ export default function SetupSchoolPage() {
         .single()
 
       if (stjamesSchool) {
-        // Copy classes from St James
-        const { data: stjamesClasses } = await supabase
-          .from('classes')
-          .select('name, display_order')
-          .eq('school_id', stjamesSchool.id)
-          .order('display_order')
-
-        if (stjamesClasses && stjamesClasses.length > 0) {
-          const newClasses = stjamesClasses.map(c => ({
-            name: c.name,
-            display_order: c.display_order,
-            school_id: school.id,
-          }))
-          await supabase.from('classes').insert(newClasses)
-        }
-
-        // Copy subjects from St James
         const { data: stjamesSubjects } = await supabase
           .from('subjects')
           .select('name, code')
@@ -147,72 +247,21 @@ export default function SetupSchoolPage() {
             school_id: school.id,
           }))
           await supabase.from('subjects').insert(newSubjects)
-        }
-
-        // Copy exam types from St James
-        const { data: stjamesExamTypes } = await supabase
-          .from('exam_types')
-          .select('name')
-          .eq('school_id', stjamesSchool.id)
-
-        if (stjamesExamTypes && stjamesExamTypes.length > 0) {
-          const newExamTypes = stjamesExamTypes.map(e => ({
-            name: e.name,
+        } else {
+          // Use defaults
+          const subjectsToInsert = DEFAULT_SUBJECTS.map(s => ({
+            ...s,
             school_id: school.id,
           }))
-          await supabase.from('exam_types').insert(newExamTypes)
-        }
-
-        // Copy streams from St James (if any)
-        const { data: stjamesStreams } = await supabase
-          .from('streams')
-          .select('name')
-          .eq('school_id', stjamesSchool.id)
-
-        if (stjamesStreams && stjamesStreams.length > 0) {
-          const newStreams = stjamesStreams.map(s => ({
-            name: s.name,
-            school_id: school.id,
-          }))
-          await supabase.from('streams').insert(newStreams)
+          await supabase.from('subjects').insert(subjectsToInsert)
         }
       } else {
-        // If St James doesn't exist, create default configuration
-        const defaultClasses = [
-          { name: 'PP1', display_order: 1, school_id: school.id },
-          { name: 'PP2', display_order: 2, school_id: school.id },
-          { name: 'Grade 1', display_order: 3, school_id: school.id },
-          { name: 'Grade 2', display_order: 4, school_id: school.id },
-          { name: 'Grade 3', display_order: 5, school_id: school.id },
-          { name: 'Grade 4', display_order: 6, school_id: school.id },
-          { name: 'Grade 5', display_order: 7, school_id: school.id },
-          { name: 'Grade 6', display_order: 8, school_id: school.id },
-          { name: 'Grade 7', display_order: 9, school_id: school.id },
-          { name: 'Grade 8', display_order: 10, school_id: school.id },
-          { name: 'Grade 9', display_order: 11, school_id: school.id },
-        ]
-        await supabase.from('classes').insert(defaultClasses)
-
-        const defaultSubjects = [
-          { name: 'Mathematics', code: 'MAT', school_id: school.id },
-          { name: 'English', code: 'ENG', school_id: school.id },
-          { name: 'Kiswahili', code: 'KIS', school_id: school.id },
-          { name: 'Science', code: 'SCI', school_id: school.id },
-          { name: 'Social Studies', code: 'SST', school_id: school.id },
-          { name: 'CRE', code: 'CRE', school_id: school.id },
-          { name: 'Creative Arts', code: 'CRA', school_id: school.id },
-          { name: 'Agriculture', code: 'AGR', school_id: school.id },
-          { name: 'Pre-Technical Studies', code: 'PTS', school_id: school.id },
-          { name: 'Integrated Science', code: 'INT', school_id: school.id },
-        ]
-        await supabase.from('subjects').insert(defaultSubjects)
-
-        const defaultExamTypes = [
-          { name: 'Opener', school_id: school.id },
-          { name: 'Mid-Term', school_id: school.id },
-          { name: 'End-Term', school_id: school.id },
-        ]
-        await supabase.from('exam_types').insert(defaultExamTypes)
+        // Use defaults
+        const subjectsToInsert = DEFAULT_SUBJECTS.map(s => ({
+          ...s,
+          school_id: school.id,
+        }))
+        await supabase.from('subjects').insert(subjectsToInsert)
       }
 
       // Generate the school link
@@ -222,7 +271,7 @@ export default function SetupSchoolPage() {
       setSuccess(true)
 
     } catch (err) {
-      console.error('Error creating school:', err)
+      console.error('[v0] Error creating school:', err)
       setError('Failed to create school. Please try again.')
     } finally {
       setIsLoading(false)
@@ -235,7 +284,6 @@ export default function SetupSchoolPage() {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
-      // Fallback for older browsers
       const textArea = document.createElement('textarea')
       textArea.value = generatedLink
       document.body.appendChild(textArea)
@@ -247,6 +295,7 @@ export default function SetupSchoolPage() {
     }
   }
 
+  // Success screen
   if (success) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center p-4">
@@ -286,10 +335,9 @@ export default function SetupSchoolPage() {
             <div className="bg-gray-50 rounded-lg p-4 space-y-2">
               <p className="text-sm font-medium text-gray-700">What was configured:</p>
               <ul className="text-sm text-gray-600 list-disc list-inside space-y-1">
-                <li>All classes (PP1 to Grade 9)</li>
+                <li>{selectedClasses.length} classes ({selectedClasses.join(', ')})</li>
+                <li>{selectedExamTypes.length} exam types ({selectedExamTypes.join(', ')})</li>
                 <li>All subjects (same as St James Koteko)</li>
-                <li>Exam types (Opener, Mid-Term, End-Term)</li>
-                <li>Streams (if configured in St James)</li>
               </ul>
             </div>
 
@@ -318,16 +366,16 @@ export default function SetupSchoolPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-lg shadow-lg">
+      <Card className="w-full max-w-xl shadow-lg">
         <CardHeader>
           <Button 
             variant="ghost" 
             size="sm" 
-            onClick={() => router.push('/select-school')}
+            onClick={() => step === 1 ? router.push('/select-school') : handleBack()}
             className="w-fit -ml-2 mb-2"
           >
             <ArrowLeft className="w-4 h-4 mr-1" />
-            Back
+            {step === 1 ? 'Back to Schools' : 'Back'}
           </Button>
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
@@ -336,11 +384,24 @@ export default function SetupSchoolPage() {
             <div>
               <CardTitle className="text-xl">Add New School</CardTitle>
               <CardDescription>
-                Set up a new school with the same system as St James Koteko
+                Step {step} of 3: {step === 1 ? 'School Details' : step === 2 ? 'Select Classes' : 'Exam Types'}
               </CardDescription>
             </div>
           </div>
+          
+          {/* Progress bar */}
+          <div className="flex gap-2 mt-4">
+            {[1, 2, 3].map(s => (
+              <div 
+                key={s} 
+                className={`h-2 flex-1 rounded-full transition-colors ${
+                  s <= step ? 'bg-blue-600' : 'bg-gray-200'
+                }`}
+              />
+            ))}
+          </div>
         </CardHeader>
+        
         <CardContent className="space-y-4">
           {error && (
             <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm">
@@ -348,146 +409,271 @@ export default function SetupSchoolPage() {
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="name">School Name *</Label>
-            <Input
-              id="name"
-              placeholder="e.g., ABC Primary School"
-              value={formData.name}
-              onChange={(e) => handleInputChange('name', e.target.value)}
-            />
-          </div>
+          {/* Step 1: School Details */}
+          {step === 1 && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">School Name *</Label>
+                <Input
+                  id="name"
+                  placeholder="e.g., ABC Primary School"
+                  value={formData.name}
+                  onChange={(e) => handleInputChange('name', e.target.value)}
+                />
+              </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="short_name">Short Name</Label>
-              <Input
-                id="short_name"
-                placeholder="e.g., ABCPS"
-                value={formData.short_name}
-                onChange={(e) => handleInputChange('short_name', e.target.value)}
-                maxLength={5}
-              />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="short_name">Short Name</Label>
+                  <Input
+                    id="short_name"
+                    placeholder="e.g., ABCPS"
+                    value={formData.short_name}
+                    onChange={(e) => handleInputChange('short_name', e.target.value)}
+                    maxLength={5}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="code">School Code *</Label>
+                  <Input
+                    id="code"
+                    placeholder="e.g., abc-primary"
+                    value={formData.code}
+                    onChange={(e) => handleInputChange('code', e.target.value.toLowerCase().replace(/\s+/g, '-'))}
+                  />
+                  <p className="text-xs text-gray-500">Used in the school URL</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="tagline">School Motto/Tagline</Label>
+                <Input
+                  id="tagline"
+                  placeholder="e.g., Excellence in Education"
+                  value={formData.tagline}
+                  onChange={(e) => handleInputChange('tagline', e.target.value)}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="school@example.com"
+                    value={formData.email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone</Label>
+                  <Input
+                    id="phone"
+                    placeholder="+254..."
+                    value={formData.phone}
+                    onChange={(e) => handleInputChange('phone', e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="address">Address</Label>
+                <Input
+                  id="address"
+                  placeholder="School location"
+                  value={formData.address}
+                  onChange={(e) => handleInputChange('address', e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="primary_color">Brand Color</Label>
+                <div className="flex gap-2">
+                  <input
+                    type="color"
+                    id="primary_color"
+                    value={formData.primary_color}
+                    onChange={(e) => handleInputChange('primary_color', e.target.value)}
+                    className="w-12 h-10 rounded border cursor-pointer"
+                  />
+                  <Input
+                    value={formData.primary_color}
+                    onChange={(e) => handleInputChange('primary_color', e.target.value)}
+                    className="font-mono"
+                  />
+                </div>
+              </div>
+
+              <hr className="my-4" />
+
+              <div className="space-y-2">
+                <Label htmlFor="admin_password">Admin Password *</Label>
+                <Input
+                  id="admin_password"
+                  type="password"
+                  placeholder="Min 6 characters"
+                  value={formData.admin_password}
+                  onChange={(e) => handleInputChange('admin_password', e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirm_password">Confirm Password *</Label>
+                <Input
+                  id="confirm_password"
+                  type="password"
+                  placeholder="Re-enter password"
+                  value={formData.confirm_password}
+                  onChange={(e) => handleInputChange('confirm_password', e.target.value)}
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="code">School Code *</Label>
-              <Input
-                id="code"
-                placeholder="e.g., abc-primary"
-                value={formData.code}
-                onChange={(e) => handleInputChange('code', e.target.value.toLowerCase().replace(/\s+/g, '-'))}
-              />
-              <p className="text-xs text-gray-500">Used in the school URL</p>
+          )}
+
+          {/* Step 2: Select Classes */}
+          {step === 2 && (
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <p className="text-sm text-gray-600">Select the classes for this school:</p>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setSelectedClasses(ALL_CLASSES.map(c => c.name))}
+                  >
+                    Select All
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setSelectedClasses([])}
+                  >
+                    Clear All
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-3 gap-2">
+                {ALL_CLASSES.map(c => (
+                  <button
+                    key={c.name}
+                    type="button"
+                    onClick={() => toggleClass(c.name)}
+                    className={`p-3 rounded-lg border-2 text-sm font-medium transition-all ${
+                      selectedClasses.includes(c.name)
+                        ? 'border-blue-600 bg-blue-50 text-blue-700'
+                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                    }`}
+                  >
+                    {selectedClasses.includes(c.name) && (
+                      <Check className="w-4 h-4 inline mr-1" />
+                    )}
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+              
+              <p className="text-sm text-gray-500">
+                {selectedClasses.length} classes selected
+              </p>
             </div>
-          </div>
+          )}
 
-          <div className="space-y-2">
-            <Label htmlFor="tagline">School Motto/Tagline</Label>
-            <Input
-              id="tagline"
-              placeholder="e.g., Excellence in Education"
-              value={formData.tagline}
-              onChange={(e) => handleInputChange('tagline', e.target.value)}
-            />
-          </div>
+          {/* Step 3: Exam Types */}
+          {step === 3 && (
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">Select exam types for this school:</p>
+              
+              <div className="flex flex-wrap gap-2">
+                {DEFAULT_EXAM_TYPES.map(et => (
+                  <button
+                    key={et}
+                    type="button"
+                    onClick={() => toggleExamType(et)}
+                    className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                      selectedExamTypes.includes(et)
+                        ? 'border-blue-600 bg-blue-50 text-blue-700'
+                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                    }`}
+                  >
+                    {selectedExamTypes.includes(et) && (
+                      <Check className="w-4 h-4 inline mr-1" />
+                    )}
+                    {et}
+                  </button>
+                ))}
+              </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="school@example.com"
-                value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-              />
+              <hr className="my-4" />
+              
+              <div className="space-y-2">
+                <Label>Add Custom Exam Type</Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="e.g., CAT 1, Weekly Test..."
+                    value={customExamType}
+                    onChange={(e) => setCustomExamType(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && addCustomExamType()}
+                  />
+                  <Button onClick={addCustomExamType} variant="outline">
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Show all selected exam types */}
+              <div className="space-y-2">
+                <Label className="text-sm text-gray-600">Selected Exam Types:</Label>
+                <div className="flex flex-wrap gap-2">
+                  {selectedExamTypes.map(et => (
+                    <span
+                      key={et}
+                      className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm"
+                    >
+                      {et}
+                      <button
+                        type="button"
+                        onClick={() => removeExamType(et)}
+                        className="hover:text-blue-900"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone</Label>
-              <Input
-                id="phone"
-                placeholder="+254..."
-                value={formData.phone}
-                onChange={(e) => handleInputChange('phone', e.target.value)}
-              />
-            </div>
-          </div>
+          )}
 
-          <div className="space-y-2">
-            <Label htmlFor="address">Address</Label>
-            <Input
-              id="address"
-              placeholder="School location"
-              value={formData.address}
-              onChange={(e) => handleInputChange('address', e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="primary_color">Brand Color</Label>
-            <div className="flex gap-2">
-              <input
-                type="color"
-                id="primary_color"
-                value={formData.primary_color}
-                onChange={(e) => handleInputChange('primary_color', e.target.value)}
-                className="w-12 h-10 rounded border cursor-pointer"
-              />
-              <Input
-                value={formData.primary_color}
-                onChange={(e) => handleInputChange('primary_color', e.target.value)}
-                className="font-mono"
-              />
-            </div>
-          </div>
-
-          <hr className="my-4" />
-
-          <div className="space-y-2">
-            <Label htmlFor="admin_password">Admin Password *</Label>
-            <Input
-              id="admin_password"
-              type="password"
-              placeholder="Min 6 characters"
-              value={formData.admin_password}
-              onChange={(e) => handleInputChange('admin_password', e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="confirm_password">Confirm Password *</Label>
-            <Input
-              id="confirm_password"
-              type="password"
-              placeholder="Re-enter password"
-              value={formData.confirm_password}
-              onChange={(e) => handleInputChange('confirm_password', e.target.value)}
-            />
-          </div>
-
-          <div className="bg-blue-50 rounded-lg p-3 text-sm text-blue-700">
-            <p className="font-medium mb-1">What will be created:</p>
-            <p>The school will get the same setup as St James Koteko - all classes, subjects, and exam types will be automatically configured.</p>
-          </div>
-
-          <Button 
-            onClick={handleCreateSchool} 
-            className="w-full"
-            disabled={isLoading}
-            size="lg"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Creating School...
-              </>
+          {/* Navigation buttons */}
+          <div className="flex gap-3 pt-4">
+            {step < 3 ? (
+              <Button onClick={handleNext} className="flex-1" size="lg">
+                Next
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
             ) : (
-              <>
-                <Check className="w-4 h-4 mr-2" />
-                Create School
-              </>
+              <Button 
+                onClick={handleCreateSchool} 
+                className="flex-1"
+                disabled={isLoading}
+                size="lg"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Creating School...
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4 mr-2" />
+                    Create School
+                  </>
+                )}
+              </Button>
             )}
-          </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
