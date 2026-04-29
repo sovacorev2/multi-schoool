@@ -88,6 +88,12 @@ export default function AdminPortalPage() {
   const [deadlineYear, setDeadlineYear] = useState(new Date().getFullYear())
   const [deadlineDate, setDeadlineDate] = useState('')
 
+  // Password management
+  const [classPasswords, setClassPasswords] = useState<{[key: string]: string}>({})
+  const [newAdminPassword, setNewAdminPassword] = useState('')
+  const [confirmAdminPassword, setConfirmAdminPassword] = useState('')
+  const [passwordUpdateSuccess, setPasswordUpdateSuccess] = useState('')
+
   // Load school from URL or context - redirect if no school
   useEffect(() => {
     const schoolCode = searchParams.get('school')
@@ -349,6 +355,50 @@ export default function AdminPortalPage() {
     }
   }
 
+  // Update class password
+  const updateClassPassword = async (classId: string) => {
+    const newPassword = classPasswords[classId]
+    if (!newPassword || !newPassword.trim()) return
+
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('classes')
+      .update({ password: newPassword.trim() })
+      .eq('id', classId)
+
+    if (!error) {
+      setPasswordUpdateSuccess(`Password updated for class successfully!`)
+      setClassPasswords(prev => ({ ...prev, [classId]: '' }))
+      setTimeout(() => setPasswordUpdateSuccess(''), 3000)
+    }
+  }
+
+  // Update admin password
+  const updateAdminPassword = async () => {
+    if (!newAdminPassword || !currentSchool) return
+    if (newAdminPassword !== confirmAdminPassword) {
+      alert('Passwords do not match!')
+      return
+    }
+    if (newAdminPassword.length < 4) {
+      alert('Password must be at least 4 characters!')
+      return
+    }
+
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('schools')
+      .update({ admin_password: newAdminPassword })
+      .eq('id', currentSchool.id)
+
+    if (!error) {
+      setPasswordUpdateSuccess('Admin password updated successfully!')
+      setNewAdminPassword('')
+      setConfirmAdminPassword('')
+      setTimeout(() => setPasswordUpdateSuccess(''), 3000)
+    }
+  }
+
   if (!currentSchool) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -480,7 +530,7 @@ export default function AdminPortalPage() {
           </div>
         ) : (
           <Tabs defaultValue="deadlines" className="space-y-6">
-            <TabsList className="grid grid-cols-5 w-full max-w-2xl">
+            <TabsList className="grid grid-cols-6 w-full max-w-3xl">
               <TabsTrigger value="deadlines" className="flex items-center gap-2">
                 <Clock className="w-4 h-4" />
                 Deadlines
@@ -488,6 +538,10 @@ export default function AdminPortalPage() {
               <TabsTrigger value="classes" className="flex items-center gap-2">
                 <GraduationCap className="w-4 h-4" />
                 Classes
+              </TabsTrigger>
+              <TabsTrigger value="passwords" className="flex items-center gap-2">
+                <Lock className="w-4 h-4" />
+                Passwords
               </TabsTrigger>
               <TabsTrigger value="subjects" className="flex items-center gap-2">
                 <BookOpen className="w-4 h-4" />
@@ -660,6 +714,121 @@ export default function AdminPortalPage() {
                         </Button>
                       </div>
                     ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Passwords Tab */}
+            <TabsContent value="passwords">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Lock className="w-5 h-5" />
+                    Manage Passwords
+                  </CardTitle>
+                  <CardDescription>Set or change passwords for classes and admin access</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {passwordUpdateSuccess && (
+                    <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
+                      {passwordUpdateSuccess}
+                    </div>
+                  )}
+
+                  {/* Class Passwords */}
+                  <div className="space-y-4">
+                    <h3 className="font-medium text-gray-700 flex items-center gap-2">
+                      <GraduationCap className="w-4 h-4" />
+                      Class Passwords
+                    </h3>
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-100">
+                          <tr>
+                            <th className="p-3 text-left">Class</th>
+                            <th className="p-3 text-left">Current Password</th>
+                            <th className="p-3 text-left">New Password</th>
+                            <th className="p-3 text-left">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {classes.map(c => (
+                            <tr key={c.id} className="border-t">
+                              <td className="p-3 font-medium">{c.name}</td>
+                              <td className="p-3">
+                                <code className="bg-gray-100 px-2 py-1 rounded text-sm">
+                                  {c.password || 'Not set'}
+                                </code>
+                              </td>
+                              <td className="p-3">
+                                <Input
+                                  type="text"
+                                  placeholder="Enter new password"
+                                  value={classPasswords[c.id] || ''}
+                                  onChange={(e) => setClassPasswords(prev => ({ 
+                                    ...prev, 
+                                    [c.id]: e.target.value 
+                                  }))}
+                                  className="w-48"
+                                />
+                              </td>
+                              <td className="p-3">
+                                <Button
+                                  size="sm"
+                                  onClick={() => updateClassPassword(c.id)}
+                                  disabled={!classPasswords[c.id]?.trim()}
+                                >
+                                  <Save className="w-4 h-4 mr-1" />
+                                  Update
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Admin Password */}
+                  <div className="space-y-4 pt-4 border-t">
+                    <h3 className="font-medium text-gray-700 flex items-center gap-2">
+                      <Shield className="w-4 h-4" />
+                      Admin Portal Password
+                    </h3>
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-4">
+                      <p className="text-sm text-amber-700">
+                        This password is used to access this Admin Portal. Change it carefully.
+                      </p>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">New Admin Password</label>
+                          <Input
+                            type="password"
+                            placeholder="Enter new password"
+                            value={newAdminPassword}
+                            onChange={(e) => setNewAdminPassword(e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Confirm Password</label>
+                          <Input
+                            type="password"
+                            placeholder="Confirm new password"
+                            value={confirmAdminPassword}
+                            onChange={(e) => setConfirmAdminPassword(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <Button
+                        onClick={updateAdminPassword}
+                        disabled={!newAdminPassword || !confirmAdminPassword}
+                        className="bg-amber-600 hover:bg-amber-700"
+                      >
+                        <Lock className="w-4 h-4 mr-2" />
+                        Update Admin Password
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
