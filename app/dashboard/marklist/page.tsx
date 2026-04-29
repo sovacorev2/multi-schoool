@@ -80,6 +80,22 @@ export default function MarklistPage() {
   const [isLoadingComparison, setIsLoadingComparison] = useState(false)
   const [comparisonClassId, setComparisonClassId] = useState<string>('')
   const [allClasses, setAllClasses] = useState<{ id: string; name: string }[]>([])
+  const [streamComparisonData, setStreamComparisonData] = useState<{
+    baseClassName: string
+    streams: {
+      name: string
+      streamName: string
+      classId: string
+      totalLearners: number
+      classAvg: number
+      passRate: number
+      subjects: { name: string; mean: number; highest: number; lowest: number }[]
+      topPerformer: { name: string; total: number; average: number }
+      rubricDistribution: { r4: number; r3: number; r2: number; r1: number }
+    }[]
+  } | null>(null)
+  const [isLoadingStreams, setIsLoadingStreams] = useState(false)
+  const [selectedBaseClass, setSelectedBaseClass] = useState<string>('')
   const [certificateData, setCertificateData] = useState<{ studentName: string; subjectName: string; score: number; className: string; examName: string; term: string; year: number } | null>(null)
   const [studentReportData, setStudentReportData] = useState<LearnerResult | null>(null)
   const [reportModalOpen, setReportModalOpen] = useState(false)
@@ -282,6 +298,160 @@ export default function MarklistPage() {
       setIsLoadingSchool(false)
     }
   }, [selectedSession])
+
+  // Stream Comparison: Compare streams within the same grade level
+  const fetchStreamComparison = useCallback(async (baseClassName: string) => {
+    if (!selectedSession || !baseClassName) return
+    setIsLoadingStreams(true)
+
+    const supabase = createClient()
+
+    try {
+      // Find all classes that start with the base class name (e.g., "Grade 3" matches "Grade 3 RED", "Grade 3 GREEN")
+      const { data: allClasses } = await supabase
+        .from('classes')
+        .select('*')
+        .eq('school_id', currentSchool?.id)
+        .order('name')
+      
+      if (!allClasses) return
+
+      // Filter to only classes that match the base class pattern
+      const streamClasses = allClasses.filter(c => {
+        const pattern = new RegExp(`^${baseClassName}(\\s+.+)?$`, 'i')
+        return pattern.test(c.name)
+      })
+
+      if (streamClasses.length === 0) {
+        setStreamComparisonData(null)
+        return
+      }
+
+      const streamsData = []
+
+      for (const cls of streamClasses) {
+        // Get matching session for this class
+        const { data: classSessions } = await supabase
+          .from('sessions')
+          .select('*, exam_types(*)')
+          .eq('class_id', cls.id)
+          .eq('term', selectedSession.term)
+          .eq('year', selectedSession.year)
+          .eq('exam_type_id', selectedSession.exam_type_id)
+
+        if (!classSessions || classSessions.length === 0) {
+          streamsData.push({
+            name: cls.name,
+            streamName: cls.name.replace(new RegExp(`^${baseClassName}\\s*`, 'i'), '') || 'Main',
+            classId: cls.id,
+            totalLearners: 0,
+            classAvg: 0,
+            passRate: 0,
+            subjects: [],
+            topPerformer: { name: 'N/A', total: 0, average: 0 },
+            rubricDistribution: { r4: 0, r3: 0, r2: 0, r1: 0 },
+          })
+          continue
+        }
+
+        const sessionId = classSessions[0].id
+
+        // Fetch all data for this stream
+        const [subjectsRes, learnersRes, marksRes] = await Promise.all([
+          supabase.from('subjects').select('*').eq('class_id', cls.id),
+          supabase.from('learners').select('*').eq('class_id', cls.id),
+          supabase.from('marks').select('*').eq('session_id', sessionId),
+        ])
+
+        const clsSubjects = subjectsRes.data || []
+        const clsLearners = learnersRes.data || []
+        const clsMarks = marksRes.data || []
+
+        // Calculate per-subject stats
+        const subjectStats = clsSubjects.map(subj => {
+          const subjMarks = clsMarks.filter(m => m.subject_id === subj.id && m.score !== null)
+          const scores = subjMarks.map(m => m.score || 0)
+          return {
+            name: subj.name,
+            mean: scores.length > 0 ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10 : 0,
+            highest: scores.length > 0 ? Math.max(...scores) : 0,
+            lowest: scores.length > 0 ? Math.min(...scores) : 0,
+          }
+        })
+
+        // Calculate learner totals
+        const learnerTotals = clsLearners.map(learner => {
+          const learnerMarks = clsMarks.filter(m => m.learner_id === learner.id && m.score !== null)
+          const total = learnerMarks.reduce((a, m) => a + (m.score || 0), 0)
+          const avg = learnerMarks.length > 0 ? total / learnerMarks.length : 0
+          return { name: learner.name, total, average: avg }
+        }).sort((a, b) => b.total - a.total)
+
+        const learnersWithMarks = learnerTotals.filter(l => l.total > 0)
+        const classAvg = learnersWithMarks.length > 0 
+          ? Math.round((learnersWithMarks.reduce((a, l) => a + l.average, 0) / learnersWithMarks.length) * 10) / 10 
+          : 0
+        const passRate = learnersWithMarks.length > 0
+          ? Math.round((learnersWithMarks.filter(l => l.average >= 40).length / learnersWithMarks.length) * 100)
+          : 0
+
+        // Rubric distribution
+        let r4 = 0, r3 = 0, r2 = 0, r1 = 0
+        clsMarks.forEach(m => {
+          const score = m.score || 0
+          if (score >= 80) r4++
+          else if (score >= 50) r3++
+          else if (score >= 30) r2++
+          else if (score > 0) r1++
+        })
+
+        const streamName = cls.name.replace(new RegExp(`^${baseClassName}\\s*`, 'i'), '').trim()
+        streamsData.push({
+          name: cls.name,
+          streamName: streamName || 'Main',
+          classId: cls.id,
+          totalLearners: clsLearners.length,
+          classAvg,
+          passRate,
+          subjects: subjectStats,
+          topPerformer: learnerTotals[0] || { name: 'N/A', total: 0, average: 0 },
+          rubricDistribution: { r4, r3, r2, r1 },
+        })
+      }
+
+      // Sort streams by average (descending)
+      streamsData.sort((a, b) => b.classAvg - a.classAvg)
+
+      setStreamComparisonData({
+        baseClassName,
+        streams: streamsData,
+      })
+    } catch (err) {
+      console.error('Stream comparison error:', err)
+    } finally {
+      setIsLoadingStreams(false)
+    }
+  }, [selectedSession, currentSchool])
+
+  // Get unique base class names for stream comparison dropdown
+  const getBaseClassNames = useCallback(() => {
+    const baseNames = new Set<string>()
+    allClasses.forEach(cls => {
+      const match = cls.name.match(/^(PP\s*\d+|Grade\s+\d+|Form\s+\d+)/i)
+      if (match) {
+        baseNames.add(match[1])
+      }
+    })
+    return Array.from(baseNames).sort((a, b) => {
+      const getOrder = (name: string) => {
+        if (name.toUpperCase().startsWith('PP')) return parseInt(name.replace(/PP\s*/i, '')) || 0
+        if (name.toUpperCase().includes('GRADE')) return 10 + (parseInt(name.replace(/GRADE\s*/i, '')) || 0)
+        if (name.toUpperCase().includes('FORM')) return 100 + (parseInt(name.replace(/FORM\s*/i, '')) || 0)
+        return 999
+      }
+      return getOrder(a) - getOrder(b)
+    })
+  }, [allClasses])
 
   // Exam comparison: find the previous session and compare
   const fetchExamComparison = useCallback(async (overrideClassId?: string) => {
@@ -1178,11 +1348,12 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
         <div className="print:hidden">
           <Tabs defaultValue="marklist" className="space-y-4">
             <TabsList className="flex flex-wrap h-auto gap-1 p-1 w-full max-w-4xl">
-              <TabsTrigger value="marklist" className="flex-1 min-w-[100px] text-xs sm:text-sm">Marklist</TabsTrigger>
-              <TabsTrigger value="class-performance" className="flex-1 min-w-[100px] text-xs sm:text-sm">Class Analysis</TabsTrigger>
-              <TabsTrigger value="subject-performance" className="flex-1 min-w-[100px] text-xs sm:text-sm">Subject Analysis</TabsTrigger>
-              <TabsTrigger value="exam-comparison" className="flex-1 min-w-[100px] text-xs sm:text-sm">Comparison</TabsTrigger>
-              <TabsTrigger value="school-performance" className="flex-1 min-w-[100px] text-xs sm:text-sm">School Analysis</TabsTrigger>
+              <TabsTrigger value="marklist" className="flex-1 min-w-[80px] text-xs sm:text-sm">Marklist</TabsTrigger>
+              <TabsTrigger value="class-performance" className="flex-1 min-w-[80px] text-xs sm:text-sm">Class Analysis</TabsTrigger>
+              <TabsTrigger value="subject-performance" className="flex-1 min-w-[80px] text-xs sm:text-sm">Subject Analysis</TabsTrigger>
+              <TabsTrigger value="exam-comparison" className="flex-1 min-w-[80px] text-xs sm:text-sm">Comparison</TabsTrigger>
+              <TabsTrigger value="stream-comparison" className="flex-1 min-w-[80px] text-xs sm:text-sm">Stream Analysis</TabsTrigger>
+              <TabsTrigger value="school-performance" className="flex-1 min-w-[80px] text-xs sm:text-sm">School Analysis</TabsTrigger>
             </TabsList>
 
             {/* Marklist Tab */}
@@ -1858,6 +2029,233 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                           </table>
                         </div>
                       </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Stream Comparison Tab */}
+            <TabsContent value="stream-comparison">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
+                  <CardTitle className="flex items-center gap-2">
+                    <GitCompareArrows className="w-5 h-5" />
+                    Stream Comparison Analysis
+                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Select value={selectedBaseClass} onValueChange={(val) => {
+                      setSelectedBaseClass(val)
+                      fetchStreamComparison(val)
+                    }}>
+                      <SelectTrigger className="w-48">
+                        <SelectValue placeholder="Select a grade level" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getBaseClassNames().map(name => (
+                          <SelectItem key={name} value={name}>{name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button size="sm" onClick={() => selectedBaseClass && fetchStreamComparison(selectedBaseClass)} disabled={isLoadingStreams || !selectedBaseClass}>
+                      {isLoadingStreams ? 'Loading...' : 'Compare Streams'}
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Info */}
+                  <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-4 rounded-lg border border-indigo-200">
+                    <h3 className="font-bold text-lg text-indigo-900">Cross-Stream Analysis</h3>
+                    <p className="text-sm text-indigo-700">
+                      Compare performance across different streams within the same grade level. Select a grade to see how each stream is performing.
+                    </p>
+                  </div>
+
+                  {!streamComparisonData && !isLoadingStreams && (
+                    <div className="text-center py-8 text-gray-500">
+                      Select a grade level above to compare streams
+                    </div>
+                  )}
+
+                  {isLoadingStreams && (
+                    <div className="text-center py-8 text-gray-500">Loading stream data...</div>
+                  )}
+
+                  {streamComparisonData && streamComparisonData.streams.length > 0 && (
+                    <>
+                      {/* Stream Overview Cards */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {streamComparisonData.streams.map((stream, idx) => (
+                          <Card key={stream.classId} className={`border-2 ${idx === 0 ? 'border-yellow-400 bg-yellow-50' : idx === 1 ? 'border-gray-300 bg-gray-50' : idx === 2 ? 'border-amber-600 bg-amber-50' : 'border-gray-200'}`}>
+                            <CardHeader className="pb-2">
+                              <div className="flex items-center justify-between">
+                                <CardTitle className="text-lg">{stream.name}</CardTitle>
+                                {idx < 3 && (
+                                  <span className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${idx === 0 ? 'bg-yellow-500' : idx === 1 ? 'bg-gray-400' : 'bg-amber-700'}`}>
+                                    {idx + 1}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-gray-500">Stream: {stream.streamName}</p>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                              <div className="grid grid-cols-2 gap-2 text-sm">
+                                <div className="bg-white p-2 rounded border">
+                                  <div className="text-2xl font-bold text-blue-600">{stream.classAvg}</div>
+                                  <div className="text-xs text-gray-500">Mean Score</div>
+                                </div>
+                                <div className="bg-white p-2 rounded border">
+                                  <div className="text-2xl font-bold text-green-600">{stream.passRate}%</div>
+                                  <div className="text-xs text-gray-500">Pass Rate</div>
+                                </div>
+                              </div>
+                              <div className="text-xs">
+                                <div className="flex justify-between py-1 border-b">
+                                  <span>Total Learners:</span>
+                                  <span className="font-semibold">{stream.totalLearners}</span>
+                                </div>
+                                <div className="flex justify-between py-1 border-b">
+                                  <span>Top Performer:</span>
+                                  <span className="font-semibold text-emerald-600">{stream.topPerformer.name}</span>
+                                </div>
+                                <div className="flex justify-between py-1">
+                                  <span>Top Score:</span>
+                                  <span className="font-semibold">{stream.topPerformer.total} ({stream.topPerformer.average.toFixed(1)} avg)</span>
+                                </div>
+                              </div>
+                              {/* Rubric distribution bar */}
+                              <div>
+                                <p className="text-xs font-semibold text-gray-600 mb-1">Rubric Distribution</p>
+                                <div className="flex h-4 rounded-full overflow-hidden border">
+                                  {(() => {
+                                    const total = stream.rubricDistribution.r4 + stream.rubricDistribution.r3 + stream.rubricDistribution.r2 + stream.rubricDistribution.r1
+                                    if (total === 0) return <div className="w-full bg-gray-200" />
+                                    return (
+                                      <>
+                                        <div className="bg-emerald-500" style={{ width: `${(stream.rubricDistribution.r4 / total) * 100}%` }} />
+                                        <div className="bg-blue-500" style={{ width: `${(stream.rubricDistribution.r3 / total) * 100}%` }} />
+                                        <div className="bg-amber-400" style={{ width: `${(stream.rubricDistribution.r2 / total) * 100}%` }} />
+                                        <div className="bg-red-500" style={{ width: `${(stream.rubricDistribution.r1 / total) * 100}%` }} />
+                                      </>
+                                    )
+                                  })()}
+                                </div>
+                                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                                  <span>R4: {stream.rubricDistribution.r4}</span>
+                                  <span>R3: {stream.rubricDistribution.r3}</span>
+                                  <span>R2: {stream.rubricDistribution.r2}</span>
+                                  <span>R1: {stream.rubricDistribution.r1}</span>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+
+                      {/* Subject-by-Subject Comparison Table */}
+                      <div className="mt-6">
+                        <h4 className="font-semibold text-lg mb-3">Subject Performance by Stream</h4>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm border-collapse">
+                            <thead>
+                              <tr className="bg-gray-100">
+                                <th className="border p-2 text-left font-semibold">Subject</th>
+                                {streamComparisonData.streams.map(stream => (
+                                  <th key={stream.classId} className="border p-2 text-center font-semibold" colSpan={3}>
+                                    {stream.streamName || stream.name}
+                                  </th>
+                                ))}
+                              </tr>
+                              <tr className="bg-gray-50">
+                                <th className="border p-2"></th>
+                                {streamComparisonData.streams.map(stream => (
+                                  <React.Fragment key={`header-${stream.classId}`}>
+                                    <th className="border p-1 text-center text-xs text-blue-600">Mean</th>
+                                    <th className="border p-1 text-center text-xs text-green-600">High</th>
+                                    <th className="border p-1 text-center text-xs text-red-600">Low</th>
+                                  </React.Fragment>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(() => {
+                                // Get all unique subjects across streams
+                                const allSubjects = new Set<string>()
+                                streamComparisonData.streams.forEach(s => s.subjects.forEach(subj => allSubjects.add(subj.name)))
+                                
+                                return Array.from(allSubjects).map(subjName => (
+                                  <tr key={subjName} className="hover:bg-gray-50">
+                                    <td className="border p-2 font-medium">{subjName}</td>
+                                    {streamComparisonData.streams.map(stream => {
+                                      const subj = stream.subjects.find(s => s.name === subjName)
+                                      // Find the highest mean across streams for this subject to highlight winner
+                                      const maxMean = Math.max(...streamComparisonData.streams
+                                        .map(s => s.subjects.find(sub => sub.name === subjName)?.mean || 0))
+                                      const isHighest = subj && subj.mean === maxMean && maxMean > 0
+                                      
+                                      return (
+                                        <React.Fragment key={`${stream.classId}-${subjName}`}>
+                                          <td className={`border p-1 text-center ${isHighest ? 'bg-green-100 font-bold text-green-700' : ''}`}>
+                                            {subj?.mean || '-'}
+                                          </td>
+                                          <td className="border p-1 text-center text-green-600">{subj?.highest || '-'}</td>
+                                          <td className="border p-1 text-center text-red-600">{subj?.lowest || '-'}</td>
+                                        </React.Fragment>
+                                      )
+                                    })}
+                                  </tr>
+                                ))
+                              })()}
+                            </tbody>
+                            <tfoot>
+                              <tr className="bg-gray-200 font-bold">
+                                <td className="border p-2">Overall Mean</td>
+                                {streamComparisonData.streams.map(stream => {
+                                  const maxAvg = Math.max(...streamComparisonData.streams.map(s => s.classAvg))
+                                  const isHighest = stream.classAvg === maxAvg && maxAvg > 0
+                                  return (
+                                    <td key={`avg-${stream.classId}`} colSpan={3} className={`border p-2 text-center ${isHighest ? 'bg-green-200 text-green-800' : ''}`}>
+                                      {stream.classAvg}
+                                    </td>
+                                  )
+                                })}
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+                      </div>
+
+                      {/* Summary Stats */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 text-center">
+                          <div className="text-3xl font-bold text-blue-700">{streamComparisonData.streams.length}</div>
+                          <div className="text-sm text-blue-600">Streams Compared</div>
+                        </div>
+                        <div className="bg-green-50 p-4 rounded-lg border border-green-200 text-center">
+                          <div className="text-3xl font-bold text-green-700">
+                            {streamComparisonData.streams.reduce((a, s) => a + s.totalLearners, 0)}
+                          </div>
+                          <div className="text-sm text-green-600">Total Learners</div>
+                        </div>
+                        <div className="bg-purple-50 p-4 rounded-lg border border-purple-200 text-center">
+                          <div className="text-3xl font-bold text-purple-700">
+                            {streamComparisonData.streams[0]?.name || '-'}
+                          </div>
+                          <div className="text-sm text-purple-600">Top Performing Stream</div>
+                        </div>
+                        <div className="bg-amber-50 p-4 rounded-lg border border-amber-200 text-center">
+                          <div className="text-3xl font-bold text-amber-700">
+                            {(streamComparisonData.streams.reduce((a, s) => a + s.classAvg, 0) / streamComparisonData.streams.length).toFixed(1)}
+                          </div>
+                          <div className="text-sm text-amber-600">Grade Average</div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {streamComparisonData && streamComparisonData.streams.length === 1 && (
+                    <div className="text-center py-8 text-gray-500">
+                      Only one stream found for {streamComparisonData.baseClassName}. Add more streams to compare.
                     </div>
                   )}
                 </CardContent>
