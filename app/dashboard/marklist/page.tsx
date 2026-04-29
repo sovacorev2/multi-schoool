@@ -586,10 +586,13 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
       return
     }
     
-    // Build subject headers
-    const subjectHeaders = subjects.map(s => 
-      `<th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9px; background: #e5e7eb;">${s.name.substring(0, 3).toUpperCase()}</th>
-       <th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 8px; background: #e5e7eb;">MKS</th>
+    // Build subject headers (two rows: subject name spanning 3 columns, then MKS/LVL/PTS)
+    const subjectHeadersRow1 = subjects.map(s => 
+      `<th colSpan="3" style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9px; background: #e5e7eb;">${s.name.substring(0, 3).toUpperCase()}</th>`
+    ).join('')
+    
+    const subjectHeadersRow2 = subjects.map(s => 
+      `<th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 8px; background: #e5e7eb;">MKS</th>
        <th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 8px; background: #e5e7eb; color: #1a3a52;">LVL</th>
        <th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 8px; background: #e5e7eb; color: #d97706;">PTS</th>`
     ).join('')
@@ -654,9 +657,16 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
             <tr style="background: #e5e7eb;">
               <th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9px; width: 30px;">No.</th>
               <th style="border: 1px solid #333; padding: 4px; text-align: left; font-size: 9px; min-width: 100px;">Name</th>
-              ${subjectHeaders}
+              ${subjectHeadersRow1}
               <th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9px; background: #e5e7eb;">Total</th>
               <th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9px; background: #e5e7eb;">Avg</th>
+            </tr>
+            <tr style="background: #e5e7eb;">
+              <th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 8px;"></th>
+              <th style="border: 1px solid #333; padding: 4px; text-align: left; font-size: 8px;"></th>
+              ${subjectHeadersRow2}
+              <th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 8px;"></th>
+              <th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 8px;"></th>
             </tr>
           </thead>
           <tbody>
