@@ -165,7 +165,7 @@ export default function MarksPage() {
   });
 
   const fetchInitialData = useCallback(async () => {
-    if (!currentClass || !currentSchool || !loggedInSession) return;
+    if (!currentClass || !currentSchool) return;
 
     const supabase = createClient();
 
@@ -208,7 +208,7 @@ export default function MarksPage() {
     setSubjects(subjectsRes.data || []);
     setLearners(learnersRes.data || []);
     setIsLoading(false);
-  }, [currentClass, currentSchool, loggedInSession]);
+  }, [currentClass, currentSchool]);
 
   useEffect(() => {
     fetchInitialData();
