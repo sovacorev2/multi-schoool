@@ -27,7 +27,7 @@ import {
 import { 
   Shield, Eye, EyeOff, Settings, Users, BookOpen, Calendar, 
   Clock, FileText, Plus, Trash2, Save, ArrowLeft, Lock, Unlock,
-  GraduationCap, ClipboardList, History
+  GraduationCap, ClipboardList, History, Edit
 } from 'lucide-react'
 import type { Class, ExamType } from '@/lib/types'
 
@@ -148,6 +148,12 @@ export default function AdminPortalPage() {
   const [classToDelete, setClassToDelete] = useState<{ id: string; name: string } | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
+
+  // Edit class name
+  const [editingClassId, setEditingClassId] = useState<string | null>(null)
+  const [editingClassName, setEditingClassName] = useState('')
+  const [isSavingEdit, setIsSavingEdit] = useState(false)
+  const [editError, setEditError] = useState('')
 
   // Password management
   const [classPasswords, setClassPasswords] = useState<{[key: string]: string}>({})
@@ -371,6 +377,45 @@ export default function AdminPortalPage() {
       setDeleteConfirmOpen(false)
       setClassToDelete(null)
       setIsDeleting(false)
+    }
+  }
+
+  const startEditClass = (classId: string, className: string) => {
+    setEditingClassId(classId)
+    setEditingClassName(className)
+    setEditError('')
+  }
+
+  const cancelEditClass = () => {
+    setEditingClassId(null)
+    setEditingClassName('')
+    setEditError('')
+  }
+
+  const saveEditClass = async (classId: string) => {
+    if (!editingClassName.trim()) {
+      setEditError('Class name cannot be empty')
+      return
+    }
+
+    setIsSavingEdit(true)
+    setEditError('')
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('classes')
+      .update({ name: editingClassName })
+      .eq('id', classId)
+    
+    if (error) {
+      setEditError(`Failed to update class: ${error.message}`)
+      setIsSavingEdit(false)
+    } else {
+      setClasses(classes.map(c => 
+        c.id === classId ? { ...c, name: editingClassName } : c
+      ))
+      setEditingClassId(null)
+      setEditingClassName('')
+      setIsSavingEdit(false)
     }
   }
 
@@ -948,18 +993,64 @@ export default function AdminPortalPage() {
                   <div className="grid grid-cols-3 gap-3">
                     {sortClasses(classes).map(c => (
                       <div key={c.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
-                        <span className="font-medium text-sm">{c.name}</span>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleDeleteClass(c.id, c.name)}
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        {editingClassId === c.id ? (
+                          <div className="flex-1 flex gap-2">
+                            <Input
+                              value={editingClassName}
+                              onChange={(e) => setEditingClassName(e.target.value)}
+                              className="h-8 text-sm"
+                              placeholder="Class name"
+                              autoFocus
+                            />
+                            <Button
+                              size="sm"
+                              onClick={() => saveEditClass(c.id)}
+                              disabled={isSavingEdit}
+                              className="h-8"
+                            >
+                              {isSavingEdit ? '...' : 'Save'}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={cancelEditClass}
+                              disabled={isSavingEdit}
+                              className="h-8"
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        ) : (
+                          <>
+                            <span className="font-medium text-sm">{c.name}</span>
+                            <div className="flex gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => startEditClass(c.id, c.name)}
+                                className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleDeleteClass(c.id, c.name)}
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </>
+                        )}
                       </div>
                     ))}
                   </div>
+                  {editError && (
+                    <div className="text-red-600 text-sm p-3 bg-red-50 rounded border border-red-200 mt-3">
+                      {editError}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
