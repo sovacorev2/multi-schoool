@@ -1,0 +1,26 @@
+{
+  "name": "Shuletech Exam System",
+  "short_name": "Shuletech",
+  "description": "Multi-school exam marks management system for teachers and administrators",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0D9488",
+  "orientation": "any",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icons/icon-512x512.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512x512.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["education", "productivity"]
+}
