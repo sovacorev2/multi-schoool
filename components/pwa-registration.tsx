@@ -20,21 +20,25 @@ export function PWARegistration() {
       navigator.serviceWorker
         .register('/sw.js')
         .then((registration) => {
-          console.log('SW registered:', registration.scope)
+          console.log('[v0] SW registered:', registration.scope)
         })
         .catch((error) => {
-          console.log('SW registration failed:', error)
+          console.log('[v0] SW registration failed:', error)
         })
+    } else {
+      console.log('[v0] Service worker not supported')
     }
 
     // Check if already installed
     if (window.matchMedia('(display-mode: standalone)').matches) {
+      console.log('[v0] App already installed (standalone mode)')
       setIsInstalled(true)
       return
     }
 
     // Listen for install prompt
     const handleBeforeInstallPrompt = (e: Event) => {
+      console.log('[v0] beforeinstallprompt fired!')
       e.preventDefault()
       setDeferredPrompt(e as BeforeInstallPromptEvent)
       
@@ -45,6 +49,7 @@ export function PWARegistration() {
       }
     }
 
+    console.log('[v0] Adding beforeinstallprompt listener')
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
 
     // Listen for app installed
