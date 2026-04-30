@@ -4,6 +4,7 @@ import { useSchool } from '@/lib/school-context'
 import { useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { X, Printer, Download } from 'lucide-react'
+import { getGradeLevelByClass, isUpperClass, GRADING_SCALE_SIMPLE, GRADING_SCALE_EXTENDED } from '@/lib/grading-utils'
 
 interface StudentReport {
   learner: { id: string; name: string; admission_number: string | null; gender?: string }
@@ -47,32 +48,30 @@ interface ReportStareheStyleProps {
   termHistory?: Record<string, TermHistory[]>
 }
 
-// Helper function to get grade from percentage
-function getGrade(score: number): string {
-  if (score >= 80) return 'A'
-  if (score >= 70) return 'B+'
-  if (score >= 60) return 'B'
-  if (score >= 50) return 'C+'
-  if (score >= 40) return 'C'
-  if (score >= 30) return 'D'
-  return 'E'
+// CBC Performance Level helper - returns level and points based on class
+function getCBCPerformanceLevel(score: number, className: string): { level: string; points: number } {
+  const result = getGradeLevelByClass(score, className)
+  return result || { level: '-', points: 0 }
 }
 
-// Helper function to get points from grade
-function getPoints(grade: string): number {
-  const pointsMap: Record<string, number> = { 'A': 12, 'B+': 10, 'B': 8, 'C+': 6, 'C': 4, 'D': 2, 'E': 1 }
-  return pointsMap[grade] || 0
+// Get full description for CBC performance level
+function getCBCLevelDescription(level: string): string {
+  if (level.startsWith('EE')) return 'Exceeding Expectation'
+  if (level.startsWith('ME')) return 'Meeting Expectation'
+  if (level.startsWith('AE')) return 'Approaching Expectation'
+  if (level.startsWith('BE')) return 'Below Expectation'
+  return ''
 }
 
-// Helper function to get remarks based on score
-function getRemarks(score: number | null): string {
+// Helper function to get CBC remarks based on performance level
+function getCBCRemarks(score: number | null, className: string): string {
   if (score === null) return ''
-  if (score >= 80) return 'EXCELLENT'
-  if (score >= 70) return 'VERY GOOD'
-  if (score >= 60) return 'GOOD'
-  if (score >= 50) return 'FAIR'
-  if (score >= 40) return 'WORK HARDER'
-  return 'PUT MORE EFFORT'
+  const perf = getCBCPerformanceLevel(score, className)
+  if (perf.level.startsWith('EE')) return 'EXCELLENT WORK'
+  if (perf.level.startsWith('ME')) return 'GOOD PROGRESS'
+  if (perf.level.startsWith('AE')) return 'NEEDS IMPROVEMENT'
+  if (perf.level.startsWith('BE')) return 'MORE EFFORT NEEDED'
+  return ''
 }
 
 export function ReportStareheStyle({
@@ -174,7 +173,7 @@ export function ReportStareheStyle({
       <div className="relative bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[90vh] flex flex-col mx-4">
         <div className="flex items-center justify-between p-4 border-b bg-gray-50 rounded-t-lg">
           <h2 className="text-lg font-bold">
-            Report Cards - Starehe Style ({reports.length} student{reports.length !== 1 ? 's' : ''})
+            CBC Report Cards ({reports.length} student{reports.length !== 1 ? 's' : ''})
           </h2>
           <div className="flex items-center gap-2">
             <Button onClick={handlePrint} className="bg-blue-600 hover:bg-blue-700 text-white">
@@ -190,19 +189,20 @@ export function ReportStareheStyle({
         <div className="flex-1 overflow-auto p-6 bg-gray-100">
           <div ref={printRef}>
             {reports.map((report, idx) => {
-              // Calculate subject-wise data
+              // Calculate subject-wise data using CBC performance levels
               const subjectData = subjects.map(subject => {
                 const score = report.marks[subject.id]
-                const grade = score !== null ? getGrade(score) : '-'
-                const points = score !== null ? getPoints(grade) : 0
-                const remarks = getRemarks(score)
-                return { subject, score, grade, points, remarks }
+                const perf = score !== null ? getCBCPerformanceLevel(score, className) : { level: '-', points: 0 }
+                const remarks = getCBCRemarks(score, className)
+                return { subject, score, level: perf.level, points: perf.points, remarks }
               })
 
               const totalPoints = subjectData.reduce((sum, s) => sum + s.points, 0)
-              const maxPoints = subjects.length * 12
+              // Max points depends on class level (4 per subject for lower, 8 for upper)
+              const maxPointsPerSubject = isUpperClass(className) ? 8 : 4
+              const maxPoints = subjects.length * maxPointsPerSubject
               const meanMark = report.average
-              const meanGrade = getGrade(meanMark)
+              const meanPerf = getCBCPerformanceLevel(meanMark, className)
 
               // Get term history for this student
               const studentHistory = termHistory[report.learner.id] || []
@@ -267,7 +267,7 @@ export function ReportStareheStyle({
                       <tr style={{ background: '#e5e7eb' }}>
                         <th style={{ border: '1px solid #333', padding: '4px 6px', textAlign: 'left', fontSize: '10px' }}>SUBJECT</th>
                         <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', width: '50px' }}>SCORE<br/>/100</th>
-                        <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', width: '40px' }}>GRD</th>
+                        <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', width: '40px' }}>LEVEL</th>
                         <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', width: '35px' }}>PTS</th>
                         <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', width: '60px' }}>CLASS<br/>POS</th>
                         <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', minWidth: '120px' }}>REMARKS</th>
@@ -284,7 +284,7 @@ export function ReportStareheStyle({
                             {item.score ?? '-'}
                           </td>
                           <td style={{ border: '1px solid #333', padding: '4px 6px', textAlign: 'center', fontSize: '10px', fontWeight: 'bold' }}>
-                            {item.grade}
+                            {item.level}
                           </td>
                           <td style={{ border: '1px solid #333', padding: '4px 6px', textAlign: 'center', fontSize: '10px' }}>
                             {item.points}
@@ -313,20 +313,21 @@ export function ReportStareheStyle({
                     </tbody>
                   </table>
 
-                  {/* Summary Section */}
+                  {/* Summary Section - CBC Format */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '10px' }}>
                     <div>
                       <div><strong>MEAN MARK:</strong> {meanMark.toFixed(1)}</div>
-                      <div><strong>MEAN GRADE:</strong> {meanGrade}</div>
+                      <div><strong>PERFORMANCE LEVEL:</strong> {meanPerf.level} ({getCBCLevelDescription(meanPerf.level)})</div>
                     </div>
                     <div>
                       <div><strong>TOTAL POINTS:</strong> {totalPoints}/{maxPoints}</div>
                       <div><strong>OVERALL POSITION:</strong> {report.rank} OF {totalStudents}</div>
                     </div>
                     <div style={{ textAlign: 'right', fontSize: '8px', color: '#666' }}>
-                      <div>X - MISSING SCORE</div>
-                      <div>Y - IRREGULARITY</div>
-                      <div>Z - NOT GRADED</div>
+                      <div>EE - Exceeding Expectation</div>
+                      <div>ME - Meeting Expectation</div>
+                      <div>AE - Approaching Expectation</div>
+                      <div>BE - Below Expectation</div>
                     </div>
                   </div>
 
@@ -340,7 +341,7 @@ export function ReportStareheStyle({
                         <th style={{ border: '1px solid #333', padding: '3px 4px' }}>IMPR.<br/>(+/-)</th>
                         <th style={{ border: '1px solid #333', padding: '3px 4px' }}>TOTAL<br/>POINTS</th>
                         <th style={{ border: '1px solid #333', padding: '3px 4px' }}>MEAN<br/>MARK</th>
-                        <th style={{ border: '1px solid #333', padding: '3px 4px' }}>MEAN<br/>GRADE</th>
+                        <th style={{ border: '1px solid #333', padding: '3px 4px' }}>PERF.<br/>LEVEL</th>
                         <th style={{ border: '1px solid #333', padding: '3px 4px' }}>STREAM<br/>POS</th>
                         <th style={{ border: '1px solid #333', padding: '3px 4px' }}>OVERALL<br/>POS</th>
                         <th style={{ border: '1px solid #333', padding: '3px 4px' }}>DAYS<br/>ABSENT</th>
@@ -367,7 +368,7 @@ export function ReportStareheStyle({
                               {isCurrent ? meanMark.toFixed(2) : (termData ? termData.average.toFixed(2) : '-')}
                             </td>
                             <td style={{ border: '1px solid #333', padding: '3px 4px', textAlign: 'center' }}>
-                              {isCurrent ? meanGrade : (termData ? getGrade(termData.average) : '-')}
+                              {isCurrent ? meanPerf.level : (termData ? getCBCPerformanceLevel(termData.average, className).level : '-')}
                             </td>
                             <td style={{ border: '1px solid #333', padding: '3px 4px', textAlign: 'center' }}>
                               {isCurrent ? (report.streamRank ? `${report.streamRank}/${report.streamTotal}` : '-') : '-'}
@@ -458,6 +459,32 @@ export function ReportStareheStyle({
                     <div style={{ display: 'flex', gap: '20px', fontSize: '9px', marginTop: '5px' }}>
                       <div><strong>SIGN:</strong> ____________</div>
                       <div><strong>DATE:</strong> ____________</div>
+                    </div>
+                  </div>
+
+                  {/* CBC Grading Key */}
+                  <div style={{ border: '1px solid #333', padding: '5px', marginBottom: '8px', fontSize: '8px' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '3px' }}>CBC PERFORMANCE LEVELS:</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-around' }}>
+                      {isUpperClass(className) ? (
+                        <>
+                          <span><strong>EE1</strong> (90-100) - 8pts</span>
+                          <span><strong>EE2</strong> (75-89) - 7pts</span>
+                          <span><strong>ME1</strong> (58-74) - 6pts</span>
+                          <span><strong>ME2</strong> (41-57) - 5pts</span>
+                          <span><strong>AE1</strong> (31-40) - 4pts</span>
+                          <span><strong>AE3</strong> (21-30) - 3pts</span>
+                          <span><strong>BE1</strong> (11-20) - 2pts</span>
+                          <span><strong>BE2</strong> (0-10) - 1pt</span>
+                        </>
+                      ) : (
+                        <>
+                          <span><strong>EE</strong> (75-100) - Exceeding Expectation - 4pts</span>
+                          <span><strong>ME</strong> (50-74) - Meeting Expectation - 3pts</span>
+                          <span><strong>AE</strong> (25-49) - Approaching Expectation - 2pts</span>
+                          <span><strong>BE</strong> (0-24) - Below Expectation - 1pt</span>
+                        </>
+                      )}
                     </div>
                   </div>
 
