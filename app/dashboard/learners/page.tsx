@@ -21,7 +21,7 @@ export default function LearnersPage() {
   const { currentSchool } = useSchool()
   const [learners, setLearners] = useState<Learner[]>([])
   const [name, setName] = useState('')
-  const [admissionNumber, setAdmissionNumber] = useState('')
+  const [assessmentNumber, setAssessmentNumber] = useState('')
   const [selectedGender, setSelectedGender] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -65,7 +65,7 @@ export default function LearnersPage() {
       const { data, error } = await supabase.from('learners').insert([
         {
           name: name.trim(),
-          admission_number: admissionNumber.trim() || null,
+          admission_number: assessmentNumber.trim() || null,
           gender: selectedGender || null,
           class_id: currentClass.id,
           school_id: currentSchool?.id,
@@ -76,7 +76,7 @@ export default function LearnersPage() {
       if (data) {
         setLearners([...learners, data[0]])
         setName('')
-        setAdmissionNumber('')
+        setAssessmentNumber('')
         setSelectedGender('')
       }
     } catch (error) {
@@ -129,13 +129,13 @@ export default function LearnersPage() {
               />
             </div>
 
-            {/* Admission Number */}
+            {/* Assessment Number */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Admission Number (Optional)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Assessment Number (Optional)</label>
               <input
                 type="text"
-                value={admissionNumber}
-                onChange={(e) => setAdmissionNumber(e.target.value)}
+                value={assessmentNumber}
+                onChange={(e) => setAssessmentNumber(e.target.value)}
                 placeholder="Optional"
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
@@ -188,7 +188,7 @@ export default function LearnersPage() {
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-8 py-4 text-left text-sm font-semibold text-gray-900">#</th>
-                  <th className="px-8 py-4 text-left text-sm font-semibold text-gray-900">Admission No.</th>
+                  <th className="px-8 py-4 text-left text-sm font-semibold text-gray-900">Assessment No.</th>
                   <th className="px-8 py-4 text-left text-sm font-semibold text-gray-900">Student Name</th>
                   <th className="px-8 py-4 text-left text-sm font-semibold text-gray-900">Gender</th>
                   <th className="px-8 py-4 text-center text-sm font-semibold text-gray-900">Actions</th>

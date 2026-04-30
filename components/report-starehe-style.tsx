@@ -257,7 +257,7 @@ export function ReportStareheStyle({
                   {/* Student Info Row */}
                   <div style={{ display: 'flex', gap: '20px', margin: '8px 0', fontSize: '11px' }}>
                     <div><span style={{ fontWeight: 'bold' }}>NAME:</span> {report.learner.name}</div>
-                    <div><span style={{ fontWeight: 'bold' }}>ADM. NO:</span> {report.learner.admission_number || '-'}</div>
+                    <div><span style={{ fontWeight: 'bold' }}>ASSESSMENT NO:</span> {report.learner.admission_number || '-'}</div>
                     <div><span style={{ fontWeight: 'bold' }}>CLASS:</span> {className}</div>
                   </div>
 

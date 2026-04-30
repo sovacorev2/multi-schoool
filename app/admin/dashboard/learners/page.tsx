@@ -131,7 +131,7 @@ export default function AdminLearnersPage() {
                   <TableHead>Name</TableHead>
                   <TableHead>Class</TableHead>
                   <TableHead>Gender</TableHead>
-                  <TableHead>Admission No.</TableHead>
+                  <TableHead>Assessment No.</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

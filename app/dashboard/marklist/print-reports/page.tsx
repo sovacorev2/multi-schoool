@@ -192,7 +192,7 @@ export default function PrintReportsPage() {
               </span>
               {report.learner.admission_number && (
                 <span style={{ marginLeft: '20px' }}>
-                  <span style={{ fontWeight: 'bold' }}>ADM NO:</span> {report.learner.admission_number}
+                  <span style={{ fontWeight: 'bold' }}>ASSESSMENT NO:</span> {report.learner.admission_number}
                 </span>
               )}
             </div>
