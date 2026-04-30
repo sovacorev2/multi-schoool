@@ -15,6 +15,15 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { 
   Shield, Eye, EyeOff, Settings, Users, BookOpen, Calendar, 
   Clock, FileText, Plus, Trash2, Save, ArrowLeft, Lock, Unlock,
@@ -133,6 +142,12 @@ export default function AdminPortalPage() {
   // Inline deadline editing
   const [editingDeadlineId, setEditingDeadlineId] = useState<string | null>(null)
   const [editingDeadlineValue, setEditingDeadlineValue] = useState('')
+
+  // Delete confirmation
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [classToDelete, setClassToDelete] = useState<{ id: string; name: string } | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
 
   // Password management
   const [classPasswords, setClassPasswords] = useState<{[key: string]: string}>({})
@@ -334,11 +349,28 @@ export default function AdminPortalPage() {
   }
 
   // Delete class
-  const deleteClass = async (id: string) => {
+  const handleDeleteClass = (classId: string, className: string) => {
+    setClassToDelete({ id: classId, name: className })
+    setDeleteConfirmOpen(true)
+    setDeleteError('')
+  }
+
+  const confirmDeleteClass = async () => {
+    if (!classToDelete) return
+    
+    setIsDeleting(true)
+    setDeleteError('')
     const supabase = createClient()
-    const { error } = await supabase.from('classes').delete().eq('id', id)
-    if (!error) {
-      setClasses(classes.filter(c => c.id !== id))
+    const { error } = await supabase.from('classes').delete().eq('id', classToDelete.id)
+    
+    if (error) {
+      setDeleteError(`Failed to delete class: ${error.message}`)
+      setIsDeleting(false)
+    } else {
+      setClasses(classes.filter(c => c.id !== classToDelete.id))
+      setDeleteConfirmOpen(false)
+      setClassToDelete(null)
+      setIsDeleting(false)
     }
   }
 
@@ -920,7 +952,7 @@ export default function AdminPortalPage() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => deleteClass(c.id)}
+                          onClick={() => handleDeleteClass(c.id, c.name)}
                           className="text-red-500 hover:text-red-700 hover:bg-red-50"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -1291,6 +1323,33 @@ export default function AdminPortalPage() {
             </TabsContent>
           </Tabs>
         )}
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Class</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete the class <strong>{classToDelete?.name}</strong>? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            {deleteError && (
+              <div className="text-red-600 text-sm p-2 bg-red-50 rounded border border-red-200">
+                {deleteError}
+              </div>
+            )}
+            <div className="flex gap-3 justify-end">
+              <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmDeleteClass}
+                disabled={isDeleting}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete Class'}
+              </AlertDialogAction>
+            </div>
+          </AlertDialogContent>
+        </AlertDialog>
       </main>
     </div>
   )
