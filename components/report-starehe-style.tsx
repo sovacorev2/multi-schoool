@@ -383,23 +383,64 @@ export function ReportStareheStyle({
                     </tbody>
                   </table>
 
-                  {/* Trend Graph and Comments Section */}
-                  <div style={{ display: 'flex', gap: '10px', marginBottom: '8px' }}>
+                  {/* Graphs and Comments Section */}
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                    {/* Subject Distribution Pie Chart */}
+                    <div style={{ flex: 1, border: '1px solid #333', padding: '5px' }}>
+                      <div style={{ fontSize: '9px', fontWeight: 'bold', marginBottom: '3px', textAlign: 'center' }}>SUBJECT DISTRIBUTION</div>
+                      <svg viewBox="0 0 100 80" style={{ width: '100%', height: '70px' }}>
+                        {(() => {
+                          // Create pie chart segments for each subject
+                          const total = subjectData.reduce((sum, s) => sum + (s.score || 0), 0)
+                          const colors = ['#1e40af', '#059669', '#dc2626', '#d97706', '#7c3aed', '#ec4899', '#0891b2', '#84cc16', '#f59e0b', '#6366f1']
+                          let startAngle = 0
+                          const cx = 30, cy = 40, r = 25
+                          
+                          return subjectData.map((item, i) => {
+                            const score = item.score || 0
+                            const sliceAngle = total > 0 ? (score / total) * 2 * Math.PI : 0
+                            const endAngle = startAngle + sliceAngle
+                            
+                            const x1 = cx + r * Math.cos(startAngle - Math.PI / 2)
+                            const y1 = cy + r * Math.sin(startAngle - Math.PI / 2)
+                            const x2 = cx + r * Math.cos(endAngle - Math.PI / 2)
+                            const y2 = cy + r * Math.sin(endAngle - Math.PI / 2)
+                            
+                            const largeArc = sliceAngle > Math.PI ? 1 : 0
+                            const pathData = `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`
+                            
+                            startAngle = endAngle
+                            
+                            return (
+                              <path key={i} d={pathData} fill={colors[i % colors.length]} stroke="#fff" strokeWidth="0.5" />
+                            )
+                          })
+                        })()}
+                        {/* Legend */}
+                        {subjectData.slice(0, 5).map((item, i) => (
+                          <g key={`legend-${i}`}>
+                            <rect x="60" y={5 + i * 12} width="6" height="6" fill={['#1e40af', '#059669', '#dc2626', '#d97706', '#7c3aed'][i]} />
+                            <text x="68" y={10 + i * 12} fontSize="5" fill="#333">{item.subject.name.substring(0, 8)}</text>
+                          </g>
+                        ))}
+                      </svg>
+                    </div>
+
                     {/* Trend Graph */}
                     <div style={{ flex: 1, border: '1px solid #333', padding: '5px' }}>
-                      <div style={{ fontSize: '10px', fontWeight: 'bold', marginBottom: '5px' }}>TREND</div>
-                      <svg viewBox="0 0 200 60" style={{ width: '100%', height: '60px' }}>
+                      <div style={{ fontSize: '9px', fontWeight: 'bold', marginBottom: '3px', textAlign: 'center' }}>PERFORMANCE TREND</div>
+                      <svg viewBox="0 0 200 55" style={{ width: '100%', height: '55px' }}>
                         {/* Grid lines */}
-                        <line x1="20" y1="5" x2="20" y2="55" stroke="#ddd" strokeWidth="0.5" />
-                        <line x1="20" y1="55" x2="195" y2="55" stroke="#ddd" strokeWidth="0.5" />
+                        <line x1="20" y1="5" x2="20" y2="50" stroke="#ddd" strokeWidth="0.5" />
+                        <line x1="20" y1="50" x2="195" y2="50" stroke="#ddd" strokeWidth="0.5" />
                         {/* Y-axis labels */}
                         <text x="15" y="10" fontSize="5" textAnchor="end">100</text>
                         <text x="15" y="30" fontSize="5" textAnchor="end">50</text>
-                        <text x="15" y="55" fontSize="5" textAnchor="end">0</text>
+                        <text x="15" y="50" fontSize="5" textAnchor="end">0</text>
                         {/* Plot points and lines */}
                         {trendData.map((point, i) => {
                           const x = 25 + (i * (170 / Math.max(trendData.length - 1, 1)))
-                          const y = 55 - ((point.y / 100) * 50)
+                          const y = 50 - ((point.y / 100) * 45)
                           const nextPoint = trendData[i + 1]
                           return (
                             <g key={i}>
@@ -409,7 +450,7 @@ export function ReportStareheStyle({
                                   x1={x}
                                   y1={y}
                                   x2={25 + ((i + 1) * (170 / Math.max(trendData.length - 1, 1)))}
-                                  y2={55 - ((nextPoint.y / 100) * 50)}
+                                  y2={50 - ((nextPoint.y / 100) * 45)}
                                   stroke="#1e40af"
                                   strokeWidth="1"
                                 />
@@ -419,44 +460,36 @@ export function ReportStareheStyle({
                         })}
                       </svg>
                     </div>
+                  </div>
 
-                    {/* Comments */}
-                    <div style={{ flex: 1.5 }}>
-                      <div style={{ border: '1px solid #333', padding: '5px', marginBottom: '5px', minHeight: '40px' }}>
-                        <div style={{ fontWeight: 'bold', fontSize: '9px' }}>CLASS TEACHER&apos;S REMARKS:</div>
-                        <div style={{ borderBottom: '1px dotted #999', height: '20px', marginTop: '3px' }}></div>
-                      </div>
-                      <div style={{ display: 'flex', gap: '10px', fontSize: '9px' }}>
-                        <div><strong>SIGN:</strong> ____________</div>
-                        <div><strong>DATE:</strong> ____________</div>
-                      </div>
+                  {/* Class Teacher Comments */}
+                  <div style={{ border: '1px solid #333', padding: '5px', marginBottom: '8px' }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '9px' }}>CLASS TEACHER&apos;S REMARKS:</div>
+                    <div style={{ borderBottom: '1px dotted #999', height: '20px', marginTop: '3px' }}></div>
+                    <div style={{ display: 'flex', gap: '15px', fontSize: '9px', marginTop: '5px' }}>
+                      <div><strong>NAME:</strong> ____________</div>
+                      <div><strong>SIGN:</strong> ____________</div>
+                      <div><strong>DATE:</strong> ____________</div>
                     </div>
                   </div>
 
-                  {/* Senior Master / Head Teacher */}
+                  {/* Head Teacher Remarks - CBC Primary School */}
                   <div style={{ border: '1px solid #333', padding: '5px', marginBottom: '8px' }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '9px' }}>HEAD TEACHER / SENIOR MASTER:</div>
+                    <div style={{ fontWeight: 'bold', fontSize: '9px' }}>HEAD TEACHER&apos;S REMARKS:</div>
                     <div style={{ borderBottom: '1px dotted #999', height: '20px', marginTop: '3px' }}></div>
                     <div style={{ display: 'flex', gap: '20px', fontSize: '9px', marginTop: '5px' }}>
                       <div><strong>SIGN:</strong> ____________</div>
                       <div><strong>DATE:</strong> ____________</div>
+                      <div><strong>STAMP:</strong></div>
                     </div>
                   </div>
 
-                  {/* Director/Principal Remarks */}
-                  <div style={{ marginBottom: '8px' }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '9px' }}>REMARKS BY DIRECTOR/PRINCIPAL:</div>
-                    <div style={{ borderBottom: '1px solid #333', height: '25px', marginTop: '3px' }}></div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', marginTop: '5px' }}>
-                      <div><strong>SIGN:</strong> ____________</div>
-                      <div><strong>DATE:</strong> ____________</div>
-                    </div>
-                  </div>
-
-                  {/* Report Seen By */}
+                  {/* Parent/Guardian Section */}
                   <div style={{ border: '1px solid #333', padding: '5px', marginBottom: '8px' }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '9px' }}>REPORT SEEN BY:</div>
+                    <div style={{ fontWeight: 'bold', fontSize: '9px' }}>PARENT/GUARDIAN&apos;S REMARKS:</div>
+                    <div style={{ borderBottom: '1px dotted #999', height: '20px', marginTop: '3px' }}></div>
                     <div style={{ display: 'flex', gap: '20px', fontSize: '9px', marginTop: '5px' }}>
+                      <div><strong>NAME:</strong> ____________</div>
                       <div><strong>SIGN:</strong> ____________</div>
                       <div><strong>DATE:</strong> ____________</div>
                     </div>
