@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, ArrowRight, Check, School, Loader2, Copy, ExternalLink, Plus, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, School, Loader2, Copy, ExternalLink, Plus, X, Upload, ImageIcon } from 'lucide-react'
+import Image from 'next/image'
 
 // Default classes
 const ALL_CLASSES = [
@@ -46,6 +47,13 @@ export default function SetupSchoolPage() {
   const [success, setSuccess] = useState(false)
   const [generatedLink, setGeneratedLink] = useState('')
   const [copied, setCopied] = useState(false)
+
+  // Logo upload state
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [logoPreview, setLogoPreview] = useState<string | null>(null)
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false)
+  const [logoError, setLogoError] = useState('')
 
   // School form data
   const [formData, setFormData] = useState({
@@ -87,6 +95,72 @@ export default function SetupSchoolPage() {
       ...prev,
       [className]: (prev[className] || []).filter(s => s !== streamName)
     }))
+  }
+
+  const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+    if (!validTypes.includes(file.type)) {
+      setLogoError('Invalid file type. Please upload a JPG, PNG, GIF, or WebP image.')
+      return
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setLogoError('File too large. Maximum size is 5MB.')
+      return
+    }
+
+    setLogoError('')
+    setLogoFile(file)
+    
+    // Create preview
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      setLogoPreview(event.target?.result as string)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const uploadLogo = async (schoolCode: string): Promise<string | null> => {
+    if (!logoFile) return null
+
+    setIsUploadingLogo(true)
+    try {
+      const formDataUpload = new FormData()
+      formDataUpload.append('file', logoFile)
+      formDataUpload.append('schoolCode', schoolCode)
+
+      const response = await fetch('/api/upload-logo', {
+        method: 'POST',
+        body: formDataUpload,
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Upload failed')
+      }
+
+      const { url } = await response.json()
+      setLogoUrl(url)
+      return url
+    } catch (err) {
+      console.error('Logo upload error:', err)
+      setLogoError(err instanceof Error ? err.message : 'Failed to upload logo')
+      return null
+    } finally {
+      setIsUploadingLogo(false)
+    }
+  }
+
+  const removeLogo = () => {
+    setLogoFile(null)
+    setLogoPreview(null)
+    setLogoUrl(null)
+    setLogoError('')
   }
 
   const handleInputChange = (field: string, value: string) => {
@@ -185,11 +259,23 @@ export default function SetupSchoolPage() {
         return
       }
 
+      // Upload logo if selected
+      let uploadedLogoUrl: string | null = null
+      if (logoFile) {
+        console.log('[v0] Uploading school logo...')
+        uploadedLogoUrl = await uploadLogo(formData.code)
+        if (!uploadedLogoUrl && logoFile) {
+          // Logo upload failed but we had a file - warn but continue
+          console.warn('[v0] Logo upload failed, continuing without logo')
+        }
+      }
+
       // Create the school
       console.log('[v0] Creating school with data:', {
         name: formData.name,
         code: formData.code,
-        admin_password: formData.admin_password ? '***' : 'MISSING'
+        admin_password: formData.admin_password ? '***' : 'MISSING',
+        logo_url: uploadedLogoUrl ? 'set' : 'not set'
       })
 
       const { data: school, error: schoolError } = await supabase
@@ -204,6 +290,7 @@ export default function SetupSchoolPage() {
           address: formData.address || null,
           primary_color: formData.primary_color,
           admin_password: formData.admin_password,
+          logo_url: uploadedLogoUrl,
           is_active: true,
         })
         .select()
@@ -561,6 +648,64 @@ export default function SetupSchoolPage() {
                     onChange={(e) => handleInputChange('primary_color', e.target.value)}
                     className="font-mono"
                   />
+                </div>
+              </div>
+
+              {/* Logo Upload Section */}
+              <div className="space-y-2">
+                <Label>School Logo</Label>
+                <div className="border-2 border-dashed border-gray-200 rounded-lg p-4">
+                  {logoPreview ? (
+                    <div className="flex items-center gap-4">
+                      <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
+                        <Image
+                          src={logoPreview}
+                          alt="Logo preview"
+                          fill
+                          className="object-contain"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-700">{logoFile?.name}</p>
+                        <p className="text-xs text-gray-500">
+                          {logoFile && (logoFile.size / 1024).toFixed(1)} KB
+                        </p>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={removeLogo}
+                          className="text-red-500 hover:text-red-700 mt-1 -ml-2"
+                        >
+                          <X className="w-4 h-4 mr-1" />
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center gap-2 cursor-pointer py-4">
+                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                        <ImageIcon className="w-6 h-6 text-gray-400" />
+                      </div>
+                      <div className="text-center">
+                        <span className="text-sm font-medium text-blue-600 hover:text-blue-700">
+                          Click to upload logo
+                        </span>
+                        <p className="text-xs text-gray-500 mt-1">
+                          JPG, PNG, GIF or WebP (max 5MB)
+                        </p>
+                      </div>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/gif,image/webp"
+                        onChange={handleLogoSelect}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
+                  {logoError && (
+                    <p className="text-sm text-red-500 mt-2">{logoError}</p>
+                  )}
                 </div>
               </div>
 
