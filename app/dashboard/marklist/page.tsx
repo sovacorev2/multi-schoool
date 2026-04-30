@@ -24,6 +24,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 import { ReportModal } from '@/components/report-modal'
+import { ReportStareheStyle } from '@/components/report-starehe-style'
 
 
 
@@ -2701,16 +2702,28 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
         </Card>
       )}
 
-      {/* Report Card Modal */}
-      <ReportModal
-        isOpen={reportModalOpen}
-        onClose={() => setReportModalOpen(false)}
-        reports={reportModalData}
-        subjects={subjects}
-        sessionInfo={sessions.find(s => s.id === selectedSessionId) || null}
-        className={currentClass?.name || ''}
-        totalStudents={results.length}
-      />
+      {/* Report Card Modal - Use Starehe style for Amagoro school */}
+      {currentSchool?.code === 'amagoro' ? (
+        <ReportStareheStyle
+          isOpen={reportModalOpen}
+          onClose={() => setReportModalOpen(false)}
+          reports={reportModalData}
+          subjects={subjects}
+          sessionInfo={sessions.find(s => s.id === selectedSessionId) || null}
+          className={currentClass?.name || ''}
+          totalStudents={results.length}
+        />
+      ) : (
+        <ReportModal
+          isOpen={reportModalOpen}
+          onClose={() => setReportModalOpen(false)}
+          reports={reportModalData}
+          subjects={subjects}
+          sessionInfo={sessions.find(s => s.id === selectedSessionId) || null}
+          className={currentClass?.name || ''}
+          totalStudents={results.length}
+        />
+      )}
 
       {/* Certificate Print Modal */}
       {certificateData && (
