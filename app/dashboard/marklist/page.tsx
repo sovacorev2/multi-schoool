@@ -847,8 +847,13 @@ const classGradeB = results.filter(r => r.average >= 60 && r.average < 80).lengt
 const classGradeC = results.filter(r => r.average >= 40 && r.average < 60).length
 const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).length
 const classGradeE = results.filter(r => r.average < 30).length
-const maleStudents = results.filter(r => r.learner.genders?.name === 'Male')
-const femaleStudents = results.filter(r => r.learner.genders?.name === 'Female')
+// Debug: log gender values to understand the data
+if (results.length > 0) {
+  console.log('[v0] Sample learner gender values:', results.slice(0, 3).map(r => ({ name: r.learner.name, gender: r.learner.gender })))
+}
+const maleStudents = results.filter(r => r.learner.gender === 'Male' || r.learner.gender === 'male' || r.learner.gender === 'M')
+const femaleStudents = results.filter(r => r.learner.gender === 'Female' || r.learner.gender === 'female' || r.learner.gender === 'F')
+console.log('[v0] Gender analysis:', { totalResults: results.length, maleCount: maleStudents.length, femaleCount: femaleStudents.length })
 const maleAverage = maleStudents.length > 0 ? (maleStudents.reduce((sum, r) => sum + r.average, 0) / maleStudents.length).toFixed(1) : '0'
 const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r) => sum + r.average, 0) / femaleStudents.length).toFixed(1) : '0'
 
