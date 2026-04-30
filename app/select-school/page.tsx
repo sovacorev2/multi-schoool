@@ -7,6 +7,7 @@ import { useSchool, type School } from '@/lib/school-context'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { School as SchoolIcon, ChevronRight, Plus } from 'lucide-react'
+import Image from 'next/image'
 
 export default function SchoolSelectionPage() {
   const [schools, setSchools] = useState<School[]>([])
@@ -95,11 +96,23 @@ export default function SchoolSelectionPage() {
               >
                 <CardContent className="flex items-center justify-between p-6">
                   <div className="flex items-center gap-4">
-                    <div 
-                      className="w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-lg"
-                      style={{ backgroundColor: school.primary_color || '#2563eb' }}
-                    >
-                      {school.short_name?.substring(0, 2) || school.name.substring(0, 2).toUpperCase()}
+                    <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center relative">
+                      <Image
+                        src={school.logo_url || `/logos/${school.code}.jpeg`}
+                        alt={`${school.name} logo`}
+                        fill
+                        className="object-contain"
+                        onError={(e) => {
+                          // Fallback to initials if logo fails to load
+                          const target = e.target as HTMLImageElement
+                          target.style.display = 'none'
+                          const parent = target.parentElement
+                          if (parent) {
+                            parent.innerHTML = `<span class="text-white font-bold text-lg">${school.short_name?.substring(0, 2) || school.name.substring(0, 2).toUpperCase()}</span>`
+                            parent.style.backgroundColor = school.primary_color || '#2563eb'
+                          }
+                        }}
+                      />
                     </div>
                     <div>
                       <h3 className="font-semibold text-lg text-gray-900">{school.name}</h3>
