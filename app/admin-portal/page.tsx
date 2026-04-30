@@ -1338,15 +1338,15 @@ export default function AdminPortalPage() {
                 {deleteError}
               </div>
             )}
-            <div className="flex gap-3 justify-end">
+            <div className="flex gap-3 justify-end mt-4">
               <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-              <AlertDialogAction
+              <Button
                 onClick={confirmDeleteClass}
                 disabled={isDeleting}
                 className="bg-red-600 hover:bg-red-700"
               >
                 {isDeleting ? 'Deleting...' : 'Delete Class'}
-              </AlertDialogAction>
+              </Button>
             </div>
           </AlertDialogContent>
         </AlertDialog>
