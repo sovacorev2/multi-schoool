@@ -126,21 +126,21 @@ export function ReportStareheStyle({
                     <style>
                       * { margin: 0; padding: 0; box-sizing: border-box; }
                       html, body { margin: 0; padding: 0; }
-                      body { font-family: 'Times New Roman', serif; font-size: 11px; line-height: 1.2; }
-                      @page { size: A4; margin: 8mm; }
+                      body { font-family: 'Times New Roman', serif; font-size: 12px; line-height: 1.3; }
+                      @page { size: A4; margin: 6mm; }
                       .page-break { page-break-after: always; }
                       .hidden { display: none; }
                       .print\\:table { display: table; }
                       img { max-width: 100%; height: auto; display: block; }
                       table { width: 100%; border-collapse: collapse; font-size: inherit; }
-                      th, td { border: 1px solid #333; padding: 3px; word-break: break-word; }
+                      th, td { border: 1px solid #333; padding: 5px; word-break: break-word; }
                       th { background-color: #ddd; font-weight: bold; }
                       tr { orphans: 2; widows: 2; }
                       svg { display: block; margin: 0 auto; max-width: 100%; }
                       .text-center { text-align: center; }
                       .text-left { text-align: left; }
-                      .text-xs { font-size: 10px; }
-                      .text-sm { font-size: 11px; }
+                      .text-xs { font-size: 11px; }
+                      .text-sm { font-size: 12px; }
                       .text-lg { font-size: 14px; }
                       .font-bold { font-weight: bold; }
                       .italic { font-style: italic; }
@@ -151,16 +151,16 @@ export function ReportStareheStyle({
                       .border-r-2 { border-right: 2px solid #333; }
                       .border-b { border-bottom: 1px solid #333; }
                       .border-t { border-top: 1px solid #333; }
-                      .p-1 { padding: 3px; }
-                      .p-2 { padding: 6px; }
-                      .p-3 { padding: 9px; }
-                      .mb-1 { margin-bottom: 3px; }
-                      .mb-2 { margin-bottom: 6px; }
-                      .mb-3 { margin-bottom: 9px; }
-                      .mt-1 { margin-top: 3px; }
-                      .mt-2 { margin-top: 6px; }
+                      .p-1 { padding: 4px; }
+                      .p-2 { padding: 8px; }
+                      .p-3 { padding: 12px; }
+                      .mb-1 { margin-bottom: 4px; }
+                      .mb-2 { margin-bottom: 8px; }
+                      .mb-3 { margin-bottom: 12px; }
+                      .mt-1 { margin-top: 4px; }
+                      .mt-2 { margin-top: 8px; }
                       .mt-0\.5 { margin-top: 2px; }
-                      .gap-2 { gap: 6px; }
+                      .gap-3 { gap: 12px; }
                       .bg-white { background-color: white; }
                       .bg-gray-50 { background-color: #f9f9f9; }
                       .bg-gray-100 { background-color: #f3f3f3; }
@@ -181,21 +181,21 @@ export function ReportStareheStyle({
                       .justify-between { justify-content: space-between; }
                       .items-center { align-items: center; }
                       .flex-col { flex-direction: column; }
-                      .pb-3 { padding-bottom: 9px; }
+                      .pb-3 { padding-bottom: 12px; }
                       .pb-1 { padding-bottom: 3px; }
-                      .pb-2 { padding-bottom: 6px; }
+                      .pb-2 { padding-bottom: 8px; }
                       .min-h-6 { min-height: 24px; }
-                      .min-h-14 { min-height: 56px; }
                       .min-h-12 { min-height: 48px; }
+                      .min-h-14 { min-height: 56px; }
                       .w-20 { width: 80px; }
                       .h-20 { height: 80px; }
-                      .w-28 { width: 112px; }
-                      .h-28 { height: 112px; }
-                      .space-y-1 > * + * { margin-top: 3px; }
-                      .space-y-2 > * + * { margin-top: 6px; }
+                      .w-32 { width: 128px; }
+                      .h-32 { height: 128px; }
+                      .space-y-1 > * + * { margin-top: 4px; }
+                      .space-y-2 > * + * { margin-top: 8px; }
                       .space-y-0\.5 > * + * { margin-top: 2px; }
                       @media print {
-                        body { margin: 0; padding: 0; font-size: 10px; }
+                        body { margin: 0; padding: 0; font-size: 12px; }
                         * { orphans: 3; widows: 3; }
                         img { page-break-inside: avoid; }
                         table { page-break-inside: avoid; }
@@ -223,21 +223,21 @@ export function ReportStareheStyle({
                     <style>
                       * { margin: 0; padding: 0; box-sizing: border-box; }
                       html, body { margin: 0; padding: 0; }
-                      body { font-family: 'Times New Roman', serif; font-size: 11px; line-height: 1.2; }
-                      @page { size: A4; margin: 8mm; }
+                      body { font-family: 'Times New Roman', serif; font-size: 12px; line-height: 1.3; }
+                      @page { size: A4; margin: 6mm; }
                       .page-break { page-break-after: always; }
                       .hidden { display: none; }
                       .print\\:table { display: table; }
                       img { max-width: 100%; height: auto; display: block; }
                       table { width: 100%; border-collapse: collapse; font-size: inherit; }
-                      th, td { border: 1px solid #333; padding: 3px; word-break: break-word; }
+                      th, td { border: 1px solid #333; padding: 5px; word-break: break-word; }
                       th { background-color: #ddd; font-weight: bold; }
                       tr { orphans: 2; widows: 2; }
                       svg { display: block; margin: 0 auto; max-width: 100%; }
                       .text-center { text-align: center; }
                       .text-left { text-align: left; }
-                      .text-xs { font-size: 10px; }
-                      .text-sm { font-size: 11px; }
+                      .text-xs { font-size: 11px; }
+                      .text-sm { font-size: 12px; }
                       .text-lg { font-size: 14px; }
                       .font-bold { font-weight: bold; }
                       .italic { font-style: italic; }
@@ -248,16 +248,16 @@ export function ReportStareheStyle({
                       .border-r-2 { border-right: 2px solid #333; }
                       .border-b { border-bottom: 1px solid #333; }
                       .border-t { border-top: 1px solid #333; }
-                      .p-1 { padding: 3px; }
-                      .p-2 { padding: 6px; }
-                      .p-3 { padding: 9px; }
-                      .mb-1 { margin-bottom: 3px; }
-                      .mb-2 { margin-bottom: 6px; }
-                      .mb-3 { margin-bottom: 9px; }
-                      .mt-1 { margin-top: 3px; }
-                      .mt-2 { margin-top: 6px; }
+                      .p-1 { padding: 4px; }
+                      .p-2 { padding: 8px; }
+                      .p-3 { padding: 12px; }
+                      .mb-1 { margin-bottom: 4px; }
+                      .mb-2 { margin-bottom: 8px; }
+                      .mb-3 { margin-bottom: 12px; }
+                      .mt-1 { margin-top: 4px; }
+                      .mt-2 { margin-top: 8px; }
                       .mt-0\.5 { margin-top: 2px; }
-                      .gap-2 { gap: 6px; }
+                      .gap-3 { gap: 12px; }
                       .bg-white { background-color: white; }
                       .bg-gray-50 { background-color: #f9f9f9; }
                       .bg-gray-100 { background-color: #f3f3f3; }
@@ -278,21 +278,21 @@ export function ReportStareheStyle({
                       .justify-between { justify-content: space-between; }
                       .items-center { align-items: center; }
                       .flex-col { flex-direction: column; }
-                      .pb-3 { padding-bottom: 9px; }
+                      .pb-3 { padding-bottom: 12px; }
                       .pb-1 { padding-bottom: 3px; }
-                      .pb-2 { padding-bottom: 6px; }
+                      .pb-2 { padding-bottom: 8px; }
                       .min-h-6 { min-height: 24px; }
-                      .min-h-14 { min-height: 56px; }
                       .min-h-12 { min-height: 48px; }
+                      .min-h-14 { min-height: 56px; }
                       .w-20 { width: 80px; }
                       .h-20 { height: 80px; }
-                      .w-28 { width: 112px; }
-                      .h-28 { height: 112px; }
-                      .space-y-1 > * + * { margin-top: 3px; }
-                      .space-y-2 > * + * { margin-top: 6px; }
+                      .w-32 { width: 128px; }
+                      .h-32 { height: 128px; }
+                      .space-y-1 > * + * { margin-top: 4px; }
+                      .space-y-2 > * + * { margin-top: 8px; }
                       .space-y-0\.5 > * + * { margin-top: 2px; }
                       @media print {
-                        body { margin: 0; padding: 0; font-size: 10px; }
+                        body { margin: 0; padding: 0; font-size: 12px; }
                         * { orphans: 3; widows: 3; }
                         img { page-break-inside: avoid; }
                         table { page-break-inside: avoid; }
@@ -338,86 +338,84 @@ export function ReportStareheStyle({
               return (
                 <div key={report.learner.id || idx} className="bg-white p-8 rounded-lg border-2 border-gray-200 page-break">
                   {/* School Header with Logo and Contact Info */}
-                  <div className="text-center mb-2 pb-2 border-b-2 border-gray-400">
+                  <div className="text-center mb-3 pb-3 border-b-2 border-gray-400">
                     {/* Contact Info on Left */}
-                    <div className="text-xs text-gray-700 mb-2">
-                      <div style={{ fontSize: '9px' }}>PO Box XXX</div>
-                      <div style={{ fontSize: '9px' }}>Tel: +254 XXX XXX XXX</div>
-                      <div style={{ fontSize: '9px' }}>Email: info@school.ke</div>
+                    <div className="text-sm text-gray-700 mb-3">
+                      <div style={{ fontSize: '11px' }}>PO Box XXX</div>
+                      <div style={{ fontSize: '11px' }}>Tel: +254 XXX XXX XXX</div>
+                      <div style={{ fontSize: '11px' }}>Email: info@school.ke</div>
                     </div>
                     
-                    {/* Centered Logo - Smaller */}
-                    {currentSchool?.logo_url && (
-                      <img src={currentSchool.logo_url} alt="School Logo" className="w-20 h-20 mx-auto mb-1 object-contain" />
-                    )}
+                    {/* Centered Logo - Larger */}
+                    <img src="/logos/amagoro.jpeg" alt="School Logo" className="w-32 h-32 mx-auto mb-2 object-contain" />
                     
-                    {/* School Name - Smaller */}
-                    <div className="font-bold text-sm text-blue-900 uppercase tracking-widest mb-0.5">{currentSchool?.name}</div>
-                    {currentSchool?.tagline && <div className="text-xs italic text-gray-700" style={{ fontSize: '9px' }}>{currentSchool.tagline}</div>}
+                    {/* School Name - Larger */}
+                    <div className="font-bold text-lg text-blue-900 uppercase tracking-widest mb-1">{currentSchool?.name || 'AMAGORO COMPREHENSIVE SCHOOL'}</div>
+                    {currentSchool?.tagline && <div className="text-sm italic text-gray-700" style={{ fontSize: '11px' }}>{currentSchool.tagline}</div>}
                   </div>
 
                   {/* Report Title with Exam Details */}
-                  <div className="text-center mb-2">
-                    <div className="border-2 border-black inline-block px-4 py-1 mb-1" style={{ fontSize: '11px' }}>
+                  <div className="text-center mb-3">
+                    <div className="border-2 border-black inline-block px-6 py-2 mb-2" style={{ fontSize: '13px' }}>
                       <div className="font-bold">PROGRESS REPORT - TERM {sessionInfo?.term || 'N/A'}, {sessionInfo?.year || 'N/A'}</div>
                     </div>
                     {sessionInfo?.exam_types?.name && (
-                      <div className="text-xs font-semibold text-gray-700 mt-1" style={{ fontSize: '9px' }}>
+                      <div className="font-semibold text-gray-700 mt-2" style={{ fontSize: '11px' }}>
                         {sessionInfo.exam_types.name.toUpperCase()} | TERM {sessionInfo?.term || 'N/A'} | {sessionInfo?.year || 'N/A'}
                       </div>
                     )}
                   </div>
 
                   {/* Student Info */}
-                  <div className="grid grid-cols-3 gap-2 mb-2 text-xs" style={{ fontSize: '10px' }}>
+                  <div className="grid grid-cols-3 gap-3 mb-3" style={{ fontSize: '11px' }}>
                     <div><span className="font-bold">NAME:</span> {report.learner.name}</div>
                     <div><span className="font-bold">ADMISSION NO:</span> {report.learner.admission_number || '-'}</div>
                     <div><span className="font-bold">CLASS:</span> {className}</div>
                   </div>
 
                   {/* Marks Table */}
-                  <table className="w-full border-collapse mb-2" style={{ fontSize: '9px' }}>
+                  <table className="w-full border-collapse mb-3" style={{ fontSize: '11px' }}>
                     <thead>
                       <tr className="bg-gray-200">
-                        <th className="border border-gray-400 p-1 text-left">SUBJECT</th>
-                        <th className="border border-gray-400 p-1 text-center w-10">SCORE</th>
-                        <th className="border border-gray-400 p-1 text-center w-10">LEVEL</th>
-                        <th className="border border-gray-400 p-1 text-center w-8">PTS</th>
-                        <th className="border border-gray-400 p-1 text-center w-12">POS</th>
-                        <th className="border border-gray-400 p-1 text-left">REMARKS</th>
+                        <th className="border border-gray-400 p-2 text-left">SUBJECT</th>
+                        <th className="border border-gray-400 p-2 text-center w-12">SCORE</th>
+                        <th className="border border-gray-400 p-2 text-center w-12">LEVEL</th>
+                        <th className="border border-gray-400 p-2 text-center w-10">PTS</th>
+                        <th className="border border-gray-400 p-2 text-center w-14">POS</th>
+                        <th className="border border-gray-400 p-2 text-left">REMARKS</th>
                       </tr>
                     </thead>
                     <tbody>
                       {subjectData.map((item, i) => (
                         <tr key={item.subject.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                          <td className="border border-gray-400 p-1">{item.subject.name.toUpperCase()}</td>
-                          <td className="border border-gray-400 p-1 text-center">{item.score ?? '-'}</td>
-                          <td className="border border-gray-400 p-1 text-center font-bold">{item.level}</td>
-                          <td className="border border-gray-400 p-1 text-center">{item.points}</td>
-                          <td className="border border-gray-400 p-1 text-center">{report.subjectPositions?.[item.subject.id] || '-'}/{totalStudents}</td>
-                          <td className="border border-gray-400 p-1" style={{ fontSize: '8px' }}>{item.remarks}</td>
+                          <td className="border border-gray-400 p-2">{item.subject.name.toUpperCase()}</td>
+                          <td className="border border-gray-400 p-2 text-center">{item.score ?? '-'}</td>
+                          <td className="border border-gray-400 p-2 text-center font-bold">{item.level}</td>
+                          <td className="border border-gray-400 p-2 text-center">{item.points}</td>
+                          <td className="border border-gray-400 p-2 text-center">{report.subjectPositions?.[item.subject.id] || '-'}/{totalStudents}</td>
+                          <td className="border border-gray-400 p-2" style={{ fontSize: '10px' }}>{item.remarks}</td>
                         </tr>
                       ))}
                       <tr className="bg-yellow-100 font-bold">
-                        <td className="border border-gray-400 p-1">TOTAL</td>
-                        <td className="border border-gray-400 p-1 text-center">{report.total}</td>
-                        <td className="border border-gray-400 p-1 text-center"></td>
-                        <td className="border border-gray-400 p-1 text-center">{totalPoints}</td>
-                        <td className="border border-gray-400 p-1 text-center"></td>
-                        <td className="border border-gray-400 p-1"></td>
+                        <td className="border border-gray-400 p-2">TOTAL</td>
+                        <td className="border border-gray-400 p-2 text-center">{report.total}</td>
+                        <td className="border border-gray-400 p-2 text-center"></td>
+                        <td className="border border-gray-400 p-2 text-center">{totalPoints}</td>
+                        <td className="border border-gray-400 p-2 text-center"></td>
+                        <td className="border border-gray-400 p-2"></td>
                       </tr>
                     </tbody>
                   </table>
 
                   {/* Summary - Mean Marks and Performance Level */}
-                  <div className="grid grid-cols-2 gap-2 mb-2" style={{ fontSize: '9px' }}>
-                    <div className="border border-gray-400 p-2">
+                  <div className="grid grid-cols-2 gap-3 mb-3" style={{ fontSize: '11px' }}>
+                    <div className="border border-gray-400 p-3">
                       <div><strong>MEAN MARKS:</strong> {meanMark.toFixed(1)}</div>
-                      <div className="mt-0.5"><strong>LEVEL:</strong> {meanPerf.level}</div>
+                      <div className="mt-1"><strong>LEVEL:</strong> {meanPerf.level}</div>
                     </div>
-                    <div className="border border-gray-400 p-2">
+                    <div className="border border-gray-400 p-3">
                       <div><strong>TOTAL POINTS:</strong> {totalPoints}/{maxPoints}</div>
-                      <div className="mt-0.5"><strong>POSITION:</strong> {report.rank}/{totalStudents}</div>
+                      <div className="mt-1"><strong>POSITION:</strong> {report.rank}/{totalStudents}</div>
                     </div>
                   </div>
 
@@ -446,11 +444,11 @@ export function ReportStareheStyle({
                   )}
 
                   {/* Subject Distribution and Performance Trend - Bordered Container */}
-                  <div className="border-2 border-gray-400 mb-2 grid grid-cols-2" style={{ fontSize: '9px' }}>
+                  <div className="border-2 border-gray-400 mb-3 grid grid-cols-2" style={{ fontSize: '11px' }}>
                     {/* Subject Distribution Pie Chart */}
-                    <div className="border-r-2 border-gray-400 p-2 flex flex-col items-center">
-                      <div className="font-bold mb-1 text-center">SUBJECT DIST</div>
-                      <svg viewBox="0 0 120 120" className="w-full" style={{ height: '70px' }}>
+                    <div className="border-r-2 border-gray-400 p-3 flex flex-col items-center">
+                      <div className="font-bold mb-2 text-center">SUBJECT DISTRIBUTION</div>
+                      <svg viewBox="0 0 120 120" className="w-full" style={{ height: '110px' }}>
                         {(() => {
                           const scores = subjectData.map(s => s.score || 0)
                           const total = scores.reduce((a, b) => a + b, 0)
@@ -483,6 +481,43 @@ export function ReportStareheStyle({
                         })()}
                       </svg>
                     </div>
+
+                    {/* Performance Trend Line Graph */}
+                    <div className="p-3 flex flex-col items-center">
+                      <div className="font-bold mb-2 text-center">PERFORMANCE TREND</div>
+                      {studentHistory && studentHistory.length > 0 ? (
+                        <svg viewBox="0 0 140 100" className="w-full" style={{ height: '110px' }}>
+                          <line x1="20" y1="10" x2="20" y2="85" stroke="#999" strokeWidth="0.5" />
+                          <line x1="20" y1="85" x2="135" y2="85" stroke="#999" strokeWidth="0.5" />
+                          <text x="16" y="15" fontSize="3" textAnchor="end">100</text>
+                          <text x="16" y="50" fontSize="3" textAnchor="end">50</text>
+                          <text x="16" y="87" fontSize="3" textAnchor="end">0</text>
+                          {studentHistory.map((history, i) => {
+                            const x = 25 + (i * (110 / Math.max(studentHistory.length - 1, 1)))
+                            const y = 85 - ((history.average / 100) * 75)
+                            const nextHistory = studentHistory[i + 1]
+                            return (
+                              <g key={i}>
+                                <circle cx={x} cy={y} r="1.2" fill="#1e40af" />
+                                {nextHistory && (
+                                  <line
+                                    x1={x}
+                                    y1={y}
+                                    x2={25 + ((i + 1) * (110 / Math.max(studentHistory.length - 1, 1)))}
+                                    y2={85 - ((nextHistory.average / 100) * 75)}
+                                    stroke="#1e40af"
+                                    strokeWidth="1.5"
+                                  />
+                                )}
+                              </g>
+                            )
+                          })}
+                        </svg>
+                      ) : (
+                        <div style={{ height: '110px' }} className="flex items-center justify-center text-gray-500">No trend data</div>
+                      )}
+                    </div>
+                  </div>
 
                     {/* Performance Trend Line Graph */}
                     <div className="p-2 flex flex-col items-center">
@@ -521,49 +556,51 @@ export function ReportStareheStyle({
                     </div>
                   </div>
 
-                  {/* Remarks Sections - Compact */}
-                  <div className="space-y-1 text-xs mb-1" style={{ fontSize: '8px' }}>
+                  {/* Remarks Sections - Larger */}
+                  <div className="space-y-2 text-xs mb-2" style={{ fontSize: '10px' }}>
                     {/* Class Teacher Remarks */}
                     <div className="border-2 border-gray-400">
-                      <div className="bg-gray-200 font-bold p-1 border-b border-gray-400">CLASS TEACHER'S REMARKS:</div>
-                      <div className="p-1 min-h-6"></div>
-                      <div className="flex justify-between px-1 pb-1 border-t border-gray-400 text-xs" style={{ fontSize: '7px' }}>
-                        <div>NAME: _____ SIGN: _____</div>
-                        <div>DATE: _____</div>
+                      <div className="bg-gray-200 font-bold p-2 border-b border-gray-400">CLASS TEACHER'S REMARKS:</div>
+                      <div className="p-2 min-h-12"></div>
+                      <div className="flex justify-between px-2 pb-2 border-t border-gray-400" style={{ fontSize: '10px' }}>
+                        <div>NAME: __________ SIGN: __________</div>
+                        <div>DATE: __________</div>
                       </div>
                     </div>
 
                     {/* Head Teacher Remarks */}
                     <div className="border-2 border-gray-400">
-                      <div className="bg-gray-200 font-bold p-1 border-b border-gray-400">HEAD TEACHER'S REMARKS:</div>
-                      <div className="p-1 min-h-6"></div>
-                      <div className="flex justify-between px-1 pb-1 border-t border-gray-400 text-xs" style={{ fontSize: '7px' }}>
-                        <div>SIGN: _____</div>
-                        <div>DATE: _____ STAMP:</div>
+                      <div className="bg-gray-200 font-bold p-2 border-b border-gray-400">HEAD TEACHER'S REMARKS:</div>
+                      <div className="p-2 min-h-12"></div>
+                      <div className="flex justify-between px-2 pb-2 border-t border-gray-400" style={{ fontSize: '10px' }}>
+                        <div>SIGN: __________</div>
+                        <div>DATE: __________</div>
+                        <div>STAMP:</div>
                       </div>
                     </div>
 
                     {/* Parent/Guardian Remarks */}
                     <div className="border-2 border-gray-400">
-                      <div className="bg-gray-200 font-bold p-1 border-b border-gray-400">PARENT/GUARDIAN'S REMARKS:</div>
-                      <div className="p-1 min-h-6"></div>
-                      <div className="flex justify-between px-1 pb-1 border-t border-gray-400 text-xs" style={{ fontSize: '7px' }}>
-                        <div>NAME: _____</div>
-                        <div>SIGN: _____ DATE: _____</div>
+                      <div className="bg-gray-200 font-bold p-2 border-b border-gray-400">PARENT/GUARDIAN'S REMARKS:</div>
+                      <div className="p-2 min-h-12"></div>
+                      <div className="flex justify-between px-2 pb-2 border-t border-gray-400" style={{ fontSize: '10px' }}>
+                        <div>NAME: __________</div>
+                        <div>SIGN: __________</div>
+                        <div>DATE: __________</div>
                       </div>
                     </div>
                   </div>
 
-                  {/* CBE Performance Levels Guide - Compact */}
-                  <div className="border-2 border-gray-400 p-1 mb-1" style={{ fontSize: '8px' }}>
-                    <div className="font-bold mb-0.5">CBE PERFORMANCE LEVELS:</div>
-                    <div style={{ fontSize: '7px' }} className="space-y-0.5">
-                      <div><strong>EE</strong>=Exceeding-4pts | <strong>ME</strong>=Meeting-3pts | <strong>PE</strong>=Partially-2pts | <strong>BE</strong>=Below-1pt</div>
+                  {/* CBE Performance Levels Guide */}
+                  <div className="border-2 border-gray-400 p-2 mb-2" style={{ fontSize: '10px' }}>
+                    <div className="font-bold mb-1">CBE PERFORMANCE LEVELS:</div>
+                    <div style={{ fontSize: '10px' }} className="space-y-0.5">
+                      <div><strong>EE</strong>=Exceeding Exp-4pts | <strong>ME</strong>=Meeting Exp-3pts | <strong>PE</strong>=Partially Exp-2pts | <strong>BE</strong>=Below Exp-1pt</div>
                     </div>
                   </div>
 
                   {/* Next Term Info */}
-                  <div className="border-2 border-gray-400 p-1" style={{ fontSize: '8px' }}>
+                  <div className="border-2 border-gray-400 p-2" style={{ fontSize: '10px' }}>
                     <div className="font-bold">NEXT TERM BUSES FROM: __________ TO: __________</div>
                   </div>
                 </div>
