@@ -108,14 +108,10 @@ async function autoLockExpiredSessions(
 
       if (!error) {
         // Log the auto-lock
-        await supabase.from("audit_logs").insert({
-          class_id: session.class_id,
-          session_id: session.id,
+        await supabase.from("activity_logs").insert({
+          school_id: currentSchool?.id,
           action: "deadline_auto_locked",
-          details: {
-            deadline: session.deadline_datetime,
-            exam: session.exam_types?.name,
-          },
+          details: `Session auto-locked: ${session.exam_types?.name} - Deadline: ${session.deadline_datetime}`,
           performed_by: "System",
         });
 
@@ -275,12 +271,10 @@ export default function MarksPage() {
     }
 
     // Log the action
-    await supabase.from("audit_logs").insert({
-      school_id: currentSchool.id,
-      class_id: currentClass.id,
-      session_id: data.id,
+    await supabase.from("activity_logs").insert({
+      school_id: currentSchool?.id,
       action: "session_created",
-      details: { term: newSession.term, year: parseInt(newSession.year), exam_type: examTypes.find(e => e.id === newSession.exam_type_id)?.name },
+      details: `Created session: ${examTypes.find(e => e.id === newSession.exam_type_id)?.name} - ${newSession.term} ${newSession.year} for ${currentClass.name}`,
       performed_by: currentClass.name,
     });
 
@@ -358,11 +352,10 @@ export default function MarksPage() {
     }
 
     // Log the action
-    await supabase.from("audit_logs").insert({
-      class_id: currentClass.id,
-      session_id: selectedSessionId,
+    await supabase.from("activity_logs").insert({
+      school_id: currentSchool?.id,
       action: "marks_submitted",
-      details: { learner_count: learners.length, subject_count: subjects.length },
+      details: `Submitted marks for ${learners.length} learners in ${subjects.length} subjects - ${currentClass.name}`,
       performed_by: currentClass.name,
     });
 

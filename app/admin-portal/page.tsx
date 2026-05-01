@@ -272,8 +272,8 @@ export default function AdminPortalPage() {
 
       // Load audit logs
       const { data: logsData } = await supabase
-        .from('audit_logs')
-        .select('*, classes(name), sessions(term, year, exam_types(name))')
+        .from('activity_logs')
+        .select('*')
         .eq('school_id', currentSchool.id)
         .order('created_at', { ascending: false })
         .limit(100)
@@ -284,8 +284,8 @@ export default function AdminPortalPage() {
           action: log.action,
           details: log.details,
           performed_by: log.performed_by,
-          class_name: log.classes?.name,
-          session_info: log.sessions ? `${log.sessions.exam_types?.name || ''} - ${log.sessions.term} ${log.sessions.year}` : '',
+          class_name: '',
+          session_info: '',
           created_at: log.created_at
         })))
       }

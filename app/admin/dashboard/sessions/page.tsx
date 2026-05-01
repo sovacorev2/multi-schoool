@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useClass } from "@/lib/class-context";
+import { useSchool } from "@/lib/school-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -67,7 +68,8 @@ interface SessionWithDetails {
 }
 
 export default function AdminPage() {
-  const { currentClass } = useClass();
+const { currentClass } = useClass();
+const { currentSchool } = useSchool();
   const [allClasses, setAllClasses] = useState<Class[]>([]);
   const [sessions, setSessions] = useState<SessionWithDetails[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
@@ -105,7 +107,7 @@ export default function AdminPage() {
         .order("year", { ascending: false })
         .order("term"),
       supabase
-        .from("audit_logs")
+        .from("activity_logs")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(100),
@@ -148,14 +150,10 @@ export default function AdminPage() {
       .eq("id", session.id);
 
     // Log the action
-    await supabase.from("audit_logs").insert({
-      class_id: session.class_id,
-      session_id: session.id,
+    await supabase.from("activity_logs").insert({
+      school_id: currentSchool?.id,
       action: newLockState ? "exam_locked" : "exam_unlocked",
-      details: { 
-        exam: `${session.exam_types?.name} - ${session.term} ${session.year}`,
-        class: session.classes?.name 
-      },
+      details: `${newLockState ? 'Locked' : 'Unlocked'} exam: ${session.exam_types?.name} - ${session.term} ${session.year} for ${session.classes?.name}`,
       performed_by: currentClass?.name || "Admin",
     });
 
@@ -189,15 +187,10 @@ export default function AdminPage() {
     console.log("[v0] Session unlocked successfully");
 
     // Log the action
-    await supabase.from("audit_logs").insert({
-      class_id: selectedSession.class_id,
-      session_id: selectedSession.id,
+    await supabase.from("activity_logs").insert({
+      school_id: currentSchool?.id,
       action: "exam_unlocked",
-      details: { 
-        exam: `${selectedSession.exam_types?.name} - ${selectedSession.term} ${selectedSession.year}`,
-        class: selectedSession.classes?.name,
-        reason: "Unlocked after deadline passed"
-      },
+      details: `Unlocked exam after deadline: ${selectedSession.exam_types?.name} - ${selectedSession.term} ${selectedSession.year} for ${selectedSession.classes?.name}`,
       performed_by: currentClass?.name || "Admin",
     });
 
@@ -236,15 +229,10 @@ export default function AdminPage() {
     console.log("[v0] Deadline set successfully:", data);
 
     // Log the action
-    await supabase.from("audit_logs").insert({
-      class_id: selectedSession.class_id,
-      session_id: selectedSession.id,
+    await supabase.from("activity_logs").insert({
+      school_id: currentSchool?.id,
       action: "deadline_set",
-      details: { 
-        deadline: deadline.toISOString(),
-        exam: `${selectedSession.exam_types?.name} - ${selectedSession.term} ${selectedSession.year}`,
-        class: selectedSession.classes?.name,
-      },
+      details: `Set deadline ${deadline.toISOString()} for ${selectedSession.exam_types?.name} - ${selectedSession.term} ${selectedSession.year} - ${selectedSession.classes?.name}`,
       performed_by: "Admin",
     });
 
