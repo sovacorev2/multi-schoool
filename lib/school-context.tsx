@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createClient } from '@/lib/supabase/client'
 
 export interface School {
   id: string
@@ -48,6 +49,34 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
     }
     setIsLoaded(true)
   }, [])
+
+  // Real-time subscription to update school features when super admin changes them
+  useEffect(() => {
+    if (!currentSchool?.id) return
+
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`school-${currentSchool.id}`)
+      .on(
+        'postgres_changes',
+        { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'schools',
+          filter: `id=eq.${currentSchool.id}`
+        },
+        (payload) => {
+          const updatedSchool = { ...currentSchool, ...payload.new } as School
+          setCurrentSchoolState(updatedSchool)
+          localStorage.setItem(SCHOOL_STORAGE_KEY, JSON.stringify(updatedSchool))
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [currentSchool?.id])
 
   const setCurrentSchool = (school: School | null) => {
     setCurrentSchoolState(school)

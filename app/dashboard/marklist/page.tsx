@@ -2286,6 +2286,21 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                       {isLoadingStreams ? 'Loading...' : 'Compare'}
                     </Button>
                     {streamComparisonData && (
+                      <>
+                      <Button size="sm" variant="default" onClick={() => selectedBaseClass && fetchCombinedMarklist(selectedBaseClass)} disabled={isLoadingCombined || !selectedBaseClass} className="bg-green-600 hover:bg-green-700 text-white">
+                        {isLoadingCombined ? 'Loading...' : 'Combined Marklist'}
+                      </Button>
+                      {combinedMarklistData && (
+                        <Button size="sm" variant="outline" onClick={() => {
+                          const params = new URLSearchParams()
+                          params.set('sessionId', selectedSessionId)
+                          params.set('baseClass', selectedBaseClass)
+                          window.open(`/dashboard/marklist/print-combined-marklist?${params.toString()}`, '_blank')
+                        }}>
+                          <Printer className="w-4 h-4 sm:mr-2" />
+                          <span className="hidden sm:inline">Print Combined</span>
+                        </Button>
+                      )}
                       <Button size="sm" variant="outline" onClick={(e) => {
                         e.preventDefault()
                         e.stopPropagation()
@@ -2592,6 +2607,53 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                       Only one stream found for {streamComparisonData.baseClassName}. Add more streams to compare.
                     </div>
                   )}
+
+                  {/* Combined Marklist Display */}
+                  {combinedMarklistData && (
+                    <div className="border-t pt-6 mt-6">
+                      <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                        <Users className="w-5 h-5" />
+                        Combined Marklist - {combinedMarklistData.baseClassName}
+                      </h3>
+                      <div className="overflow-x-auto">
+                        <table className="w-full border-collapse text-sm">
+                          <thead className="bg-gray-100">
+                            <tr>
+                              <th className="border border-gray-300 px-3 py-2 text-left">#</th>
+                              <th className="border border-gray-300 px-3 py-2 text-left">Student Name</th>
+                              <th className="border border-gray-300 px-3 py-2 text-left">Stream</th>
+                              {combinedMarklistData.subjects.map(subject => (
+                                <th key={subject.id} className="border border-gray-300 px-3 py-2 text-center text-xs">{subject.name}</th>
+                              ))}
+                              <th className="border border-gray-300 px-3 py-2 text-center">Total</th>
+                              <th className="border border-gray-300 px-3 py-2 text-center">Average</th>
+                              <th className="border border-gray-300 px-3 py-2 text-center">Rank</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {combinedMarklistData.learners.slice(0, 20).map((learner, idx) => (
+                              <tr key={learner.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                <td className="border border-gray-300 px-3 py-2">{idx + 1}</td>
+                                <td className="border border-gray-300 px-3 py-2 font-medium">{learner.name}</td>
+                                <td className="border border-gray-300 px-3 py-2 text-xs">{learner.stream}</td>
+                                {combinedMarklistData.subjects.map(subject => (
+                                  <td key={subject.id} className="border border-gray-300 px-3 py-2 text-center text-xs">
+                                    {learner.marks[subject.name] !== null && learner.marks[subject.name] !== undefined ? learner.marks[subject.name] : '-'}
+                                  </td>
+                                ))}
+                                <td className="border border-gray-300 px-3 py-2 text-center font-semibold">{learner.total}</td>
+                                <td className="border border-gray-300 px-3 py-2 text-center">{learner.average.toFixed(1)}%</td>
+                                <td className="border border-gray-300 px-3 py-2 text-center font-semibold">{learner.rank}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      {combinedMarklistData.learners.length > 20 && (
+                        <p className="text-xs text-gray-500 mt-2">Showing 20 of {combinedMarklistData.learners.length} students. Print to see all.</p>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -2843,44 +2905,46 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
         </Card>
       )}
 
-      {/* Report Card Modal - St James uses their own format, all other schools use CBC Starehe style */}
-      {currentSchool?.code === 'st-james' ? (
-        <ReportModal
-          isOpen={reportModalOpen}
-          onClose={() => setReportModalOpen(false)}
-          reports={reportModalData}
-          subjects={subjects}
-          sessionInfo={sessions.find(s => s.id === selectedSessionId) || null}
-          className={currentClass?.name || ''}
-          totalStudents={results.length}
-        />
-      ) : (
-        <ReportStareheStyle
-          isOpen={reportModalOpen}
-          onClose={() => setReportModalOpen(false)}
-          reports={reportModalData.map(report => ({
-            ...report,
-            subjectPositions: subjects.reduce((acc, subject) => {
-              const studentScore = report.marks[subject.id]
-              if (studentScore === null || studentScore === undefined) {
-                acc[subject.id] = 0
+      {/* Report Card Modal - Only render if feature is enabled */}
+      {currentSchool?.feature_report_cards && (
+        currentSchool?.code === 'stjames' ? (
+          <ReportModal
+            isOpen={reportModalOpen}
+            onClose={() => setReportModalOpen(false)}
+            reports={reportModalData}
+            subjects={subjects}
+            sessionInfo={sessions.find(s => s.id === selectedSessionId) || null}
+            className={currentClass?.name || ''}
+            totalStudents={results.length}
+          />
+        ) : (
+          <ReportStareheStyle
+            isOpen={reportModalOpen}
+            onClose={() => setReportModalOpen(false)}
+            reports={reportModalData.map(report => ({
+              ...report,
+              subjectPositions: subjects.reduce((acc, subject) => {
+                const studentScore = report.marks[subject.id]
+                if (studentScore === null || studentScore === undefined) {
+                  acc[subject.id] = 0
+                  return acc
+                }
+                // Calculate position for this subject
+                const higherScores = results.filter(r => {
+                  const score = r.marks[subject.id]
+                  return score !== null && score !== undefined && score > studentScore
+                }).length
+                acc[subject.id] = higherScores + 1
                 return acc
-              }
-              // Calculate position for this subject
-              const higherScores = results.filter(r => {
-                const score = r.marks[subject.id]
-                return score !== null && score !== undefined && score > studentScore
-              }).length
-              acc[subject.id] = higherScores + 1
-              return acc
-            }, {} as Record<string, number>)
-          }))}
-          subjects={subjects}
-          sessionInfo={sessions.find(s => s.id === selectedSessionId) || null}
-          className={currentClass?.name || ''}
-          totalStudents={results.length}
-          classTeacherName={currentClass?.teacher_name}
-        />
+              }, {} as Record<string, number>)
+            }))}
+            subjects={subjects}
+            sessionInfo={sessions.find(s => s.id === selectedSessionId) || null}
+            className={currentClass?.name || ''}
+            totalStudents={results.length}
+            classTeacherName={currentClass?.teacher_name}
+          />
+        )
       )}
 
       {/* WhatsApp Bulk Send Modal */}

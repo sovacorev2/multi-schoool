@@ -38,7 +38,7 @@ export default function AdminOverviewPage() {
           supabase.from("classes").select("id", { count: "exact" }),
           supabase.from("learners").select("id", { count: "exact" }),
           supabase.from("sessions").select("*"),
-          supabase.from("audit_logs").select("*").order("created_at", { ascending: false }).limit(5),
+          supabase.from("activity_logs").select("*").order("created_at", { ascending: false }).limit(5),
         ])
 
         const sessions = sessionsRes.data || []

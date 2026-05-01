@@ -58,6 +58,30 @@ export default function SuperAdminPage() {
   useEffect(() => {
     if (isAuthenticated) {
       fetchSchools()
+      
+      // Set up real-time subscription for schools table
+      const channel = supabase
+        .channel('schools-changes')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'schools' },
+          (payload) => {
+            if (payload.eventType === 'UPDATE') {
+              setSchools(prev => prev.map(s => 
+                s.id === payload.new.id ? { ...s, ...payload.new } : s
+              ))
+            } else if (payload.eventType === 'INSERT') {
+              setSchools(prev => [...prev, payload.new as School].sort((a, b) => a.name.localeCompare(b.name)))
+            } else if (payload.eventType === 'DELETE') {
+              setSchools(prev => prev.filter(s => s.id !== payload.old.id))
+            }
+          }
+        )
+        .subscribe()
+
+      return () => {
+        supabase.removeChannel(channel)
+      }
     }
   }, [isAuthenticated])
 
@@ -86,15 +110,33 @@ export default function SuperAdminPage() {
 
   async function toggleFeature(schoolId: string, feature: keyof School, currentValue: boolean) {
     setSavingSchool(schoolId)
+    const school = schools.find(s => s.id === schoolId)
+    
     const { error } = await supabase
       .from('schools')
       .update({ [feature]: !currentValue })
       .eq('id', schoolId)
     
     if (!error) {
+      // Update local state immediately for responsiveness
       setSchools(schools.map(s => 
         s.id === schoolId ? { ...s, [feature]: !currentValue } : s
       ))
+      
+      // Log the feature toggle action
+      const featureNames: Record<string, string> = {
+        feature_report_cards: 'Report Cards',
+        feature_whatsapp_reports: 'WhatsApp Reports',
+        feature_certificates: 'Certificates',
+        feature_bulk_sms: 'Bulk SMS'
+      }
+      
+      await supabase.from('activity_logs').insert({
+        school_id: schoolId,
+        action: !currentValue ? 'feature_enabled' : 'feature_disabled',
+        details: `${!currentValue ? 'Enabled' : 'Disabled'} ${featureNames[feature] || feature} for ${school?.name}`,
+        performed_by: 'Super Admin'
+      })
     }
     setSavingSchool(null)
   }

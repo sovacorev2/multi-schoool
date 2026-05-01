@@ -272,8 +272,8 @@ export default function AdminPortalPage() {
 
       // Load audit logs
       const { data: logsData } = await supabase
-        .from('audit_logs')
-        .select('*, classes(name), sessions(term, year, exam_types(name))')
+        .from('activity_logs')
+        .select('*')
         .eq('school_id', currentSchool.id)
         .order('created_at', { ascending: false })
         .limit(100)
@@ -284,8 +284,8 @@ export default function AdminPortalPage() {
           action: log.action,
           details: log.details,
           performed_by: log.performed_by,
-          class_name: log.classes?.name,
-          session_info: log.sessions ? `${log.sessions.exam_types?.name || ''} - ${log.sessions.term} ${log.sessions.year}` : '',
+          class_name: '',
+          session_info: '',
           created_at: log.created_at
         })))
       }
@@ -354,6 +354,41 @@ export default function AdminPortalPage() {
       
       setClasses([...classes, data])
       setNewClassName('')
+    }
+  }
+
+  // Update school settings
+  const updateSchoolSettings = async () => {
+    if (!school) return
+    
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('schools')
+      .update({
+        name: school.name,
+        short_name: school.short_name,
+        tagline: school.tagline,
+        email: school.email,
+        phone: school.phone,
+        address: school.address,
+        primary_color: school.primary_color
+      })
+      .eq('id', school.id)
+    
+    if (!error) {
+      // Update school context so changes reflect in report headers immediately
+      setCurrentSchool(school)
+      alert('School settings updated successfully!')
+      
+      // Log the action
+      await supabase.from('activity_logs').insert({
+        school_id: school.id,
+        action: 'school_settings_updated',
+        details: `Updated school information: name, contact, address, color`,
+        performed_by: 'Admin Portal'
+      })
+    } else {
+      alert('Failed to update school settings: ' + error.message)
     }
   }
 

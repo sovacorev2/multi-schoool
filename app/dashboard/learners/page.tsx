@@ -5,7 +5,16 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useClass } from '@/lib/class-context'
 import { useSchool } from '@/lib/school-context'
-import { Plus, Trash2, Edit2, X, Save } from 'lucide-react'
+import { Plus, Trash2, Edit2, X, Save, ArrowUpCircle, CheckSquare, Square } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+
+interface Class {
+  id: string
+  name: string
+  code: string
+  display_order: number
+  school_id: string
+}
 
 interface Learner {
   id: string
@@ -35,11 +44,19 @@ export default function LearnersPage() {
   const [editGender, setEditGender] = useState('')
   const [editParentPhone, setEditParentPhone] = useState('')
   const [isUpdating, setIsUpdating] = useState(false)
+  
+  // Promotion state
+  const [showPromotionMode, setShowPromotionMode] = useState(false)
+  const [selectedLearners, setSelectedLearners] = useState<string[]>([])
+  const [allClasses, setAllClasses] = useState<Class[]>([])
+  const [targetClassId, setTargetClassId] = useState('')
+  const [isPromoting, setIsPromoting] = useState(false)
 
   const supabase = createClient()
 
   useEffect(() => {
     fetchData()
+    fetchAllClasses()
   }, [currentClass?.id])
 
   async function fetchData() {
@@ -63,6 +80,85 @@ export default function LearnersPage() {
       console.error('Error fetching data:', error)
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  async function fetchAllClasses() {
+    if (!currentSchool?.id) return
+    
+    try {
+      const { data, error } = await supabase
+        .from('classes')
+        .select('*')
+        .eq('school_id', currentSchool.id)
+        .order('display_order', { ascending: true })
+      
+      if (error) throw error
+      if (data) setAllClasses(data)
+    } catch (error) {
+      console.error('Error fetching classes:', error)
+    }
+  }
+
+  async function handlePromoteStudents() {
+    if (selectedLearners.length === 0 || !targetClassId) {
+      alert('Please select students and a target class')
+      return
+    }
+
+    const targetClass = allClasses.find(c => c.id === targetClassId)
+    if (!targetClass) return
+
+    const confirmed = confirm(
+      `Are you sure you want to promote ${selectedLearners.length} student(s) to ${targetClass.name}?\n\n` +
+      `Note: Their previous exam results will be preserved and accessible through historical sessions.`
+    )
+    if (!confirmed) return
+
+    setIsPromoting(true)
+    try {
+      const { error } = await supabase
+        .from('learners')
+        .update({ class_id: targetClassId })
+        .in('id', selectedLearners)
+
+      if (error) throw error
+
+      // Log activity
+      await supabase.from('activity_logs').insert({
+        school_id: currentSchool?.id,
+        action: 'promote_students',
+        details: `Promoted ${selectedLearners.length} students from ${currentClass?.name} to ${targetClass.name}`,
+        performed_by: currentClass?.name || 'Teacher'
+      })
+
+      // Remove promoted students from current list
+      setLearners(learners.filter(l => !selectedLearners.includes(l.id)))
+      setSelectedLearners([])
+      setTargetClassId('')
+      setShowPromotionMode(false)
+      alert(`Successfully promoted ${selectedLearners.length} student(s) to ${targetClass.name}`)
+    } catch (error) {
+      console.error('Error promoting students:', error)
+      alert('Failed to promote students. Please try again.')
+    } finally {
+      setIsPromoting(false)
+    }
+  }
+
+  function toggleSelectLearner(learnerId: string) {
+    setSelectedLearners(prev => 
+      prev.includes(learnerId) 
+        ? prev.filter(id => id !== learnerId)
+        : [...prev, learnerId]
+    )
+  }
+
+  function toggleSelectAll() {
+    if (selectedLearners.length === learners.length) {
+      setSelectedLearners([])
+    } else {
+      setSelectedLearners(learners.map(l => l.id))
     }
   }
 
@@ -163,10 +259,73 @@ export default function LearnersPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Manage Learners</h1>
-        <p className="text-gray-600 mt-2">Add, edit, and manage learners for {currentClass?.name}</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Manage Learners</h1>
+          <p className="text-gray-600 mt-1">Add, edit, and manage learners for {currentClass?.name}</p>
+        </div>
+        <Button
+          onClick={() => {
+            setShowPromotionMode(!showPromotionMode)
+            setSelectedLearners([])
+            setTargetClassId('')
+          }}
+          variant={showPromotionMode ? "destructive" : "outline"}
+          className="flex items-center gap-2"
+        >
+          {showPromotionMode ? (
+            <>
+              <X className="w-4 h-4" />
+              Cancel Promotion
+            </>
+          ) : (
+            <>
+              <ArrowUpCircle className="w-4 h-4" />
+              Promote Students
+            </>
+          )}
+        </Button>
       </div>
+
+      {/* Promotion Panel */}
+      {showPromotionMode && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <h3 className="font-semibold text-amber-800 mb-3 flex items-center gap-2">
+            <ArrowUpCircle className="w-5 h-5" />
+            Promote Students to Next Class
+          </h3>
+          <p className="text-sm text-amber-700 mb-4">
+            Select students below and choose the target class. Historical exam data will be preserved.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <select
+              value={targetClassId}
+              onChange={(e) => setTargetClassId(e.target.value)}
+              className="flex-1 px-3 py-2 border border-amber-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+            >
+              <option value="">Select target class...</option>
+              {allClasses
+                .filter(c => c.id !== currentClass?.id)
+                .map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))
+              }
+            </select>
+            <Button
+              onClick={handlePromoteStudents}
+              disabled={selectedLearners.length === 0 || !targetClassId || isPromoting}
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              {isPromoting ? 'Promoting...' : `Promote ${selectedLearners.length} Selected`}
+            </Button>
+          </div>
+          {selectedLearners.length > 0 && (
+            <p className="text-sm text-amber-600 mt-2">
+              {selectedLearners.length} student(s) selected for promotion
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Add Learner Form */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
@@ -257,6 +416,21 @@ export default function LearnersPage() {
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
+                  {showPromotionMode && (
+                    <th className="px-4 py-4 text-center">
+                      <button
+                        onClick={toggleSelectAll}
+                        className="p-1 hover:bg-gray-200 rounded"
+                        title={selectedLearners.length === learners.length ? "Deselect all" : "Select all"}
+                      >
+                        {selectedLearners.length === learners.length ? (
+                          <CheckSquare className="w-5 h-5 text-amber-600" />
+                        ) : (
+                          <Square className="w-5 h-5 text-gray-400" />
+                        )}
+                      </button>
+                    </th>
+                  )}
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">#</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Assessment No.</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Student Name</th>
@@ -267,7 +441,21 @@ export default function LearnersPage() {
               </thead>
               <tbody>
                 {learners.map((learner, index) => (
-                  <tr key={learner.id} className="border-b border-gray-200 hover:bg-gray-50">
+                  <tr key={learner.id} className={`border-b border-gray-200 hover:bg-gray-50 ${selectedLearners.includes(learner.id) ? 'bg-amber-50' : ''}`}>
+                    {showPromotionMode && (
+                      <td className="px-4 py-4 text-center">
+                        <button
+                          onClick={() => toggleSelectLearner(learner.id)}
+                          className="p-1 hover:bg-gray-200 rounded"
+                        >
+                          {selectedLearners.includes(learner.id) ? (
+                            <CheckSquare className="w-5 h-5 text-amber-600" />
+                          ) : (
+                            <Square className="w-5 h-5 text-gray-400" />
+                          )}
+                        </button>
+                      </td>
+                    )}
                     <td className="px-6 py-4 text-sm text-gray-900">{index + 1}</td>
                     {editingId === learner.id ? (
                       <>
