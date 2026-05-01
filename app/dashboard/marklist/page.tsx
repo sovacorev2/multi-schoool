@@ -439,7 +439,7 @@ export default function MarklistPage() {
           classAvg,
           passRate,
           subjects: subjectStats,
-          topPerformer: learnerTotals[0] ? learnerTotals[0].name : 'N/A',
+          topPerformer: learnerTotals[0] ? { name: learnerTotals[0].name, total: learnerTotals[0].total, average: learnerTotals[0].average } : { name: 'N/A', total: 0, average: 0 },
           rubricDistribution: { r4, r3, r2, r1 },
         })
       }
@@ -859,16 +859,11 @@ const classGradeA = results.filter(r => r.average >= 80).length
 const classGradeB = results.filter(r => r.average >= 60 && r.average < 80).length
 const classGradeC = results.filter(r => r.average >= 40 && r.average < 60).length
 const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).length
-const classGradeE = results.filter(r => r.average < 30).length
-// Debug: log gender values to understand the data
-if (results.length > 0) {
-  console.log('[v0] Sample learner gender values:', results.slice(0, 3).map(r => ({ name: r.learner.name, gender: r.learner.gender })))
-}
-const maleStudents = results.filter(r => r.learner.gender === 'Male' || r.learner.gender === 'male' || r.learner.gender === 'M')
-const femaleStudents = results.filter(r => r.learner.gender === 'Female' || r.learner.gender === 'female' || r.learner.gender === 'F')
-console.log('[v0] Gender analysis:', { totalResults: results.length, maleCount: maleStudents.length, femaleCount: femaleStudents.length })
-const maleAverage = maleStudents.length > 0 ? (maleStudents.reduce((sum, r) => sum + r.average, 0) / maleStudents.length).toFixed(1) : '0'
-const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r) => sum + r.average, 0) / femaleStudents.length).toFixed(1) : '0'
+  const classGradeE = results.filter(r => r.average < 30).length
+  const maleStudents = results.filter(r => r.learner.gender === 'Male' || r.learner.gender === 'male' || r.learner.gender === 'M')
+  const femaleStudents = results.filter(r => r.learner.gender === 'Female' || r.learner.gender === 'female' || r.learner.gender === 'F')
+  const maleAverage = maleStudents.length > 0 ? (maleStudents.reduce((sum, r) => sum + r.average, 0) / maleStudents.length).toFixed(1) : '0'
+  const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r) => sum + r.average, 0) / femaleStudents.length).toFixed(1) : '0'
 
   const handleDownloadCSV = () => {
     const headers = ['No.', 'Name', ...subjects.map((s) => s.name), 'Total', 'Average']
@@ -1711,7 +1706,7 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                                         `━━━━━━━━━━━━━━━━\n` +
                                         `${subjectDetails}\n\n` +
                                         `📈 *OVERALL SUMMARY*\n` +
-                                        `━━━━━━━━━━━━━━━━\n` +
+                                        `━━━━━━━━━━━━━���━━\n` +
                                         `• Total Marks: *${result.total}*\n` +
                                         `• Mean Score: *${result.average.toFixed(1)}%*\n` +
                                         `• Performance Level: *${performanceLevel}*\n` +
@@ -2484,7 +2479,7 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                                 <td style="border: 1px solid #333; padding: 6px; font-weight: ${idx === 0 ? 'bold' : 'normal'};">${stream.className || '-'}</td>
                                 <td style="border: 1px solid #333; padding: 6px; text-align: center;">${stream.learnerCount || '-'}</td>
                                 <td style="border: 1px solid #333; padding: 6px; text-align: center; font-weight: bold;">${stream.classAvg ? stream.classAvg.toFixed(1) : '-'}</td>
-                                <td style="border: 1px solid #333; padding: 6px; text-align: center;">${stream.passRate !== undefined ? stream.passRate.toFixed(0) + '%' : '-'}</td>
+                                <td style="border: 1px solid #333; padding: 6px; text-align: center;">${typeof stream.passRate === 'number' ? stream.passRate.toFixed(0) + '%' : (stream.passRate ? stream.passRate + '%' : '-')}</td>
                                 <td style="border: 1px solid #333; padding: 6px;">${stream.topPerformer || '-'}</td>
                               </tr>
                             `).join('')
