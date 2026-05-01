@@ -68,6 +68,7 @@ interface SessionWithDetails {
 
 export default function AdminPage() {
   const { currentClass } = useClass();
+  const { currentSchool } = useSchool();
   const [allClasses, setAllClasses] = useState<Class[]>([]);
   const [sessions, setSessions] = useState<SessionWithDetails[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
