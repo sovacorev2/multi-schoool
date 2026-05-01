@@ -234,7 +234,7 @@ export function ReportModal({
                       {currentSchool?.name || 'School'}
                     </h1>
                     <div className="info" style={{ fontSize: '10px', fontWeight: 600 }}>
-                      SCHOOL REPORT FORM {sessionInfo?.year} | {sessionInfo?.exam_types?.name?.toUpperCase()} | TERM {sessionInfo?.term} | {className}
+                      SCHOOL REPORT FORM {sessionInfo?.year || 'N/A'} | {sessionInfo?.exam_types?.name?.toUpperCase() || 'EXAM'} | TERM {sessionInfo?.term || 'N/A'} | {className}
                     </div>
                   </div>
 
