@@ -1355,24 +1355,31 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                       history[learnerId] = termData
                     })
                     
-                    // Fetch historical marks data
-                    const { data: historicalMarks } = await supabase
-                      .from('marks')
-                      .select('learner_id, total_marks, average_score, position, sessions(term, year)')
-                      .in('learner_id', results.map(r => r.learner.id))
-                      .neq('session_id', selectedSessionId)
-                    
-                    if (historicalMarks) {
-                      historicalMarks.forEach((m: any) => {
-                        if (!history[m.learner_id]) history[m.learner_id] = []
-                        history[m.learner_id].push({
-                          term: m.sessions?.term,
-                          year: m.sessions?.year,
-                          total: m.total_marks || 0,
-                          average: m.average_score || 0,
-                          rank: m.position || 0
+                    // Fetch historical marks data only if we have learner IDs
+                    const learnerIds = results.map(r => r.learner.id).filter(Boolean)
+                    if (learnerIds.length > 0 && selectedSessionId) {
+                      const { data: historicalMarks, error } = await supabase
+                        .from('marks')
+                        .select('learner_id, total_marks, average_score, position, sessions(term, year)')
+                        .in('learner_id', learnerIds)
+                        .neq('session_id', selectedSessionId)
+                      
+                      if (error) {
+                        console.error('[v0] Historical marks fetch error:', error)
+                      }
+                      
+                      if (historicalMarks) {
+                        historicalMarks.forEach((m: any) => {
+                          if (!history[m.learner_id]) history[m.learner_id] = []
+                          history[m.learner_id].push({
+                            term: m.sessions?.term,
+                            year: m.sessions?.year,
+                            total: m.total_marks || 0,
+                            average: m.average_score || 0,
+                            rank: m.position || 0
+                          })
                         })
-                      })
+                      }
                     }
                     
                     // Sort each learner's history chronologically
@@ -1384,8 +1391,9 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                     })
                     
                     setTermHistory(history)
-                  } catch (error) {
-                    console.error('Error fetching term history:', error)
+                  } catch (err) {
+                    console.error('[v0] Term history fetch error:', err)
+                    // Still open the report even if history fetch fails
                   }
                   
                   setReportModalOpen(true)
@@ -3074,29 +3082,36 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
           <ReportStareheStyle
             isOpen={reportModalOpen}
             onClose={() => setReportModalOpen(false)}
-            reports={reportModalData.map(report => ({
-              ...report,
-              subjectPositions: subjects.reduce((acc, subject) => {
-                const studentScore = report.marks[subject.id]
-                if (studentScore === null || studentScore === undefined) {
-                  acc[subject.id] = 0
-                  return acc
+            reports={reportModalData.map(report => {
+              try {
+                return {
+                  ...report,
+                  subjectPositions: subjects.reduce((acc, subject) => {
+                    const studentScore = report.marks[subject.id]
+                    if (studentScore === null || studentScore === undefined) {
+                      acc[subject.id] = 0
+                      return acc
+                    }
+                    // Calculate position for this subject
+                    const higherScores = results.filter(r => {
+                      const score = r.marks[subject.id]
+                      return score !== null && score !== undefined && score > studentScore
+                    }).length
+                    acc[subject.id] = higherScores + 1
+                    return acc
+                  }, {} as Record<string, number>)
                 }
-                // Calculate position for this subject
-                const higherScores = results.filter(r => {
-                  const score = r.marks[subject.id]
-                  return score !== null && score !== undefined && score > studentScore
-                }).length
-                acc[subject.id] = higherScores + 1
-                return acc
-              }, {} as Record<string, number>)
-            }))}
+              } catch (err) {
+                console.error('[v0] Error mapping report:', err, report)
+                return report
+              }
+            })}
             subjects={subjects}
             sessionInfo={sessions.find(s => s.id === selectedSessionId) || null}
             className={currentClass?.name || ''}
             totalStudents={results.length}
             classTeacherName={currentClass?.teacher_name}
-            termHistory={termHistory}
+            termHistory={termHistory || {}}
           />
         )
       )}
