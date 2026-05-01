@@ -14,6 +14,7 @@ export interface Learner {
   name: string
   admission_number: string | null
   gender: string | null
+  parent_phone: string | null
   stream_id: string | null
   created_at: string
 }
