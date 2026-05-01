@@ -2843,44 +2843,46 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
         </Card>
       )}
 
-      {/* Report Card Modal - St James uses their own format, all other schools use CBC Starehe style */}
-      {currentSchool?.code === 'st-james' ? (
-        <ReportModal
-          isOpen={reportModalOpen}
-          onClose={() => setReportModalOpen(false)}
-          reports={reportModalData}
-          subjects={subjects}
-          sessionInfo={sessions.find(s => s.id === selectedSessionId) || null}
-          className={currentClass?.name || ''}
-          totalStudents={results.length}
-        />
-      ) : (
-        <ReportStareheStyle
-          isOpen={reportModalOpen}
-          onClose={() => setReportModalOpen(false)}
-          reports={reportModalData.map(report => ({
-            ...report,
-            subjectPositions: subjects.reduce((acc, subject) => {
-              const studentScore = report.marks[subject.id]
-              if (studentScore === null || studentScore === undefined) {
-                acc[subject.id] = 0
+      {/* Report Card Modal - Only render if feature is enabled */}
+      {currentSchool?.feature_report_cards && (
+        currentSchool?.code === 'stjames' ? (
+          <ReportModal
+            isOpen={reportModalOpen}
+            onClose={() => setReportModalOpen(false)}
+            reports={reportModalData}
+            subjects={subjects}
+            sessionInfo={sessions.find(s => s.id === selectedSessionId) || null}
+            className={currentClass?.name || ''}
+            totalStudents={results.length}
+          />
+        ) : (
+          <ReportStareheStyle
+            isOpen={reportModalOpen}
+            onClose={() => setReportModalOpen(false)}
+            reports={reportModalData.map(report => ({
+              ...report,
+              subjectPositions: subjects.reduce((acc, subject) => {
+                const studentScore = report.marks[subject.id]
+                if (studentScore === null || studentScore === undefined) {
+                  acc[subject.id] = 0
+                  return acc
+                }
+                // Calculate position for this subject
+                const higherScores = results.filter(r => {
+                  const score = r.marks[subject.id]
+                  return score !== null && score !== undefined && score > studentScore
+                }).length
+                acc[subject.id] = higherScores + 1
                 return acc
-              }
-              // Calculate position for this subject
-              const higherScores = results.filter(r => {
-                const score = r.marks[subject.id]
-                return score !== null && score !== undefined && score > studentScore
-              }).length
-              acc[subject.id] = higherScores + 1
-              return acc
-            }, {} as Record<string, number>)
-          }))}
-          subjects={subjects}
-          sessionInfo={sessions.find(s => s.id === selectedSessionId) || null}
-          className={currentClass?.name || ''}
-          totalStudents={results.length}
-          classTeacherName={currentClass?.teacher_name}
-        />
+              }, {} as Record<string, number>)
+            }))}
+            subjects={subjects}
+            sessionInfo={sessions.find(s => s.id === selectedSessionId) || null}
+            className={currentClass?.name || ''}
+            totalStudents={results.length}
+            classTeacherName={currentClass?.teacher_name}
+          />
+        )
       )}
 
       {/* WhatsApp Bulk Send Modal */}
