@@ -1585,17 +1585,28 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                                     onClick={() => {
                                       const phone = result.learner.parent_phone?.replace(/[^0-9]/g, '')
                                       const formattedPhone = phone?.startsWith('0') ? `254${phone.substring(1)}` : phone
+                                      const gradeInfo = getGradeLevelByClass(Math.round(result.average), currentClass?.name)
+                                      const performanceLevel = gradeInfo?.level || '-'
                                       const message = encodeURIComponent(
+                                        `*${currentSchool?.name?.toUpperCase() || 'SCHOOL'}*\n` +
+                                        `━━━━━━━━━━━━━━━━\n` +
+                                        `📊 *EXAM RESULTS NOTIFICATION*\n\n` +
                                         `Dear Parent/Guardian,\n\n` +
-                                        `${currentSchool?.name || 'School'} - ${selectedSession?.exam_types?.name || 'Exam'} Results\n\n` +
-                                        `Student: ${result.learner.name}\n` +
-                                        `Class: ${currentClass?.name || ''}\n` +
-                                        `Term ${selectedSession?.term}, ${selectedSession?.year}\n\n` +
-                                        `Total Marks: ${result.total}\n` +
-                                        `Average: ${result.average.toFixed(1)}%\n` +
-                                        `Position: ${result.rank} of ${results.length}\n\n` +
-                                        `Thank you for your continued support.\n\n` +
-                                        `- ${currentSchool?.name || 'School'}`
+                                        `We are pleased to share the ${selectedSession?.exam_types?.name || 'Exam'} results for:\n\n` +
+                                        `👤 *Student:* ${result.learner.name}\n` +
+                                        `📚 *Class:* ${currentClass?.name || ''}\n` +
+                                        `📅 *Term:* ${selectedSession?.term}, ${selectedSession?.year}\n\n` +
+                                        `📈 *PERFORMANCE SUMMARY*\n` +
+                                        `━━━━━━━━━━━━━━━━\n` +
+                                        `• Mean Score: *${result.average.toFixed(1)}%*\n` +
+                                        `• Performance Level: *${performanceLevel}*\n` +
+                                        `• Class Position: *${result.rank} of ${results.length}*\n` +
+                                        `• Total Marks: *${result.total}*\n\n` +
+                                        `Thank you for your continued support in your child's education.\n\n` +
+                                        `For any queries, please contact us.\n` +
+                                        `📞 0735348043\n\n` +
+                                        `_${currentSchool?.name || 'School'}_\n` +
+                                        `_Powered by Shuletech_`
                                       )
                                       window.open(`https://wa.me/${formattedPhone}?text=${message}`, '_blank')
                                     }}

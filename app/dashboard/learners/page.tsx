@@ -217,7 +217,7 @@ export default function LearnersPage() {
                     <td className="px-6 py-4 text-sm text-gray-600">{learner.admission_number || '-'}</td>
                     <td className="px-6 py-4 text-sm font-medium text-gray-900">{learner.name}</td>
                     <td className="px-6 py-4 text-sm text-gray-600">{learner.gender || '-'}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{(learner as { parent_phone?: string }).parent_phone || '-'}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{learner.parent_phone || '-'}</td>
                     <td className="px-6 py-4 text-center">
                       <button
                         onClick={() => handleDeleteLearner(learner.id)}
