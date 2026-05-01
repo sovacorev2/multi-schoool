@@ -14,6 +14,12 @@ export interface School {
   logo_url: string | null
   primary_color: string
   is_active: boolean
+  feature_report_cards?: boolean
+  feature_whatsapp_reports?: boolean
+  feature_certificates?: boolean
+  feature_bulk_sms?: boolean
+  subscription_plan?: string
+  subscription_expires_at?: string | null
 }
 
 interface SchoolContextType {
