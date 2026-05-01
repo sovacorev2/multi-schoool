@@ -92,7 +92,7 @@ export default function MarklistPage() {
       classAvg: number
       passRate: number
       subjects: { name: string; mean: number; highest: number; lowest: number }[]
-      topPerformer: { name: string; total: number; average: number }
+      topPerformer: string
       rubricDistribution: { r4: number; r3: number; r2: number; r1: number }
     }[]
   } | null>(null)
@@ -439,7 +439,7 @@ export default function MarklistPage() {
           classAvg,
           passRate,
           subjects: subjectStats,
-          topPerformer: learnerTotals[0] ? { name: learnerTotals[0].name, total: learnerTotals[0].total, average: learnerTotals[0].average } : { name: 'N/A', total: 0, average: 0 },
+          topPerformer: learnerTotals[0] ? learnerTotals[0].name : 'N/A',
           rubricDistribution: { r4, r3, r2, r1 },
         })
       }
@@ -2497,7 +2497,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                               const allMeans = streamComparisonData.streams.map(s => s.subjects.find(ss => ss.name === subjName)?.mean || 0)
                               const maxMean = Math.max(...allMeans)
                               const isHighest = subj.mean === maxMean && subj.mean > 0
-                              return `<td style="border: 1px solid #333; padding: 4px; text-align: center; ${isHighest ? 'background: #dcfce7; font-weight: bold;' : ''}">${subj.mean.toFixed(1)}</td>`
+                              return `<td style="border: 1px solid #333; padding: 4px; text-align: center; ${isHighest ? 'background: #dcfce7; font-weight: bold;' : ''}">${subj.mean !== undefined ? subj.mean.toFixed(1) : '-'}</td>`
                             }).join('')
                             return `<tr><td style="border: 1px solid #333; padding: 6px; font-weight: 500;">${subjName}</td>${streamCells}</tr>`
                           }).join('')
@@ -2623,7 +2623,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                 </div>
                                 <div className="flex justify-between py-1">
                                   <span>Top Score:</span>
-                                  <span className="font-semibold">{stream.topPerformer.total} ({stream.topPerformer.average.toFixed(1)} avg)</span>
+                                  <span className="font-semibold">{stream.topPerformer || 'N/A'}</span>
                                 </div>
                               </div>
                               {/* Rubric distribution bar */}
@@ -3169,7 +3169,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                           `📚 *Class:* ${currentClass?.name || ''}\n` +
                           `📅 *Term:* ${selectedSession?.term}, ${selectedSession?.year}\n\n` +
                           `📖 *SUBJECT PERFORMANCE*\n` +
-                          `━━━━━━━━━━━━━━━━\n` +
+                          `━━━━━���━━━━━━━━━━\n` +
                           `${subjectDetails}\n\n` +
                           `📈 *OVERALL SUMMARY*\n` +
                           `━━━━━━━━━━━━━━━━\n` +
