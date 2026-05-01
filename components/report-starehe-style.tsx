@@ -175,20 +175,25 @@ export function ReportStareheStyle({
 
               return (
                 <div key={report.learner.id || idx} className="bg-white p-8 rounded-lg border-2 border-gray-200 page-break">
-                  {/* School Info */}
-                  <div className="text-center mb-6">
+                  {/* School Header with Logo */}
+                  <div className="text-center mb-6 border-b-2 border-gray-300 pb-4">
                     {currentSchool?.logo_url && (
-                      <img src={currentSchool.logo_url} alt="School Logo" className="w-20 h-20 mx-auto mb-3 object-contain" />
+                      <img src={currentSchool.logo_url} alt="School Logo" className="w-32 h-32 mx-auto mb-4 object-contain" />
                     )}
-                    <div className="font-bold text-lg text-blue-900 uppercase">{currentSchool?.name}</div>
-                    {currentSchool?.tagline && <div className="text-sm italic">{currentSchool.tagline}</div>}
-                    <div className="text-xs text-gray-600 mt-2">{currentSchool?.address || ''}</div>
-                    <div className="text-xs text-gray-600">{currentSchool?.phone || ''}</div>
+                    <div className="font-bold text-xl text-blue-900 uppercase tracking-wide">{currentSchool?.name}</div>
+                    {currentSchool?.tagline && <div className="text-sm italic text-gray-700 mt-1">{currentSchool.tagline}</div>}
                   </div>
 
-                  {/* Report Title */}
-                  <div className="text-center border-2 border-black inline-block mx-auto block mb-4 px-4 py-2">
-                    <div className="font-bold">PROGRESS REPORT - TERM {sessionInfo?.term}, {sessionInfo?.year}</div>
+                  {/* Report Title with Exam Details */}
+                  <div className="text-center mb-4">
+                    <div className="border-2 border-black inline-block px-6 py-2 mb-2">
+                      <div className="font-bold text-sm">PROGRESS REPORT - TERM {sessionInfo?.term || 'N/A'}, {sessionInfo?.year || 'N/A'}</div>
+                    </div>
+                    {sessionInfo?.exam_types?.name && (
+                      <div className="text-xs font-semibold text-gray-700 mt-2">
+                        {sessionInfo.exam_types.name.toUpperCase()} | TERM {sessionInfo?.term || 'N/A'} | {sessionInfo?.year || 'N/A'}
+                      </div>
+                    )}
                   </div>
 
                   {/* Student Info */}
@@ -283,6 +288,41 @@ export function ReportStareheStyle({
                       </svg>
                     </div>
                   )}
+
+                  {/* Remarks Sections */}
+                  <div className="space-y-3 text-xs">
+                    {/* Class Teacher Remarks */}
+                    <div className="border border-gray-400">
+                      <div className="bg-gray-100 font-bold p-2">CLASS TEACHER'S REMARKS:</div>
+                      <div className="p-3 min-h-12"></div>
+                      <div className="flex justify-between px-3 pb-2 text-xs">
+                        <div>NAME: __________ SIGN: __________</div>
+                        <div>DATE: __________</div>
+                      </div>
+                    </div>
+
+                    {/* Head Teacher Remarks */}
+                    <div className="border border-gray-400">
+                      <div className="bg-gray-100 font-bold p-2">HEAD TEACHER'S REMARKS:</div>
+                      <div className="p-3 min-h-12"></div>
+                      <div className="flex justify-between px-3 pb-2 text-xs">
+                        <div>SIGN: __________</div>
+                        <div>DATE: __________</div>
+                        <div>STAMP:</div>
+                      </div>
+                    </div>
+
+                    {/* Parent/Guardian Remarks */}
+                    <div className="border border-gray-400">
+                      <div className="bg-gray-100 font-bold p-2">PARENT/GUARDIAN'S REMARKS:</div>
+                      <div className="p-3 min-h-12"></div>
+                      <div className="flex justify-between px-3 pb-2 text-xs">
+                        <div>NAME: __________</div>
+                        <div>SIGN: __________</div>
+                        <div>DATE: __________</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )
             } catch (err) {
