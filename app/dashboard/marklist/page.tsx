@@ -2362,27 +2362,23 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
   </div>
   <h3 style="font-size: 12px; font-weight: bold; margin-bottom: 8px; background: #f3f4f6; padding: 6px;">STREAM PERFORMANCE OVERVIEW</h3>
   <table style="font-size: 11px;">
-    <thead>
       <tr style="background: #e5e7eb;">
-        <th style="border: 1px solid #333; padding: 6px; text-align: center; width: 50px;">Rank</th>
+        <th style="border: 1px solid #333; padding: 6px; text-align: left;">Rank</th>
         <th style="border: 1px solid #333; padding: 6px; text-align: left;">Stream</th>
-        <th style="border: 1px solid #333; padding: 6px; text-align: center;">Learners</th>
-        <th style="border: 1px solid #333; padding: 6px; text-align: center;">Mean Score</th>
+        <th style="border: 1px solid #333; padding: 6px; text-align: center;">Students</th>
+        <th style="border: 1px solid #333; padding: 6px; text-align: center;">Avg Score</th>
         <th style="border: 1px solid #333; padding: 6px; text-align: center;">Pass Rate</th>
         <th style="border: 1px solid #333; padding: 6px; text-align: left;">Top Performer</th>
       </tr>
-    </thead>
-    <tbody>${streamOverviewRows}</tbody>
-  </table>
-  <h3 style="font-size: 12px; font-weight: bold; margin-bottom: 8px; background: #f3f4f6; padding: 6px;">SUBJECT-WISE COMPARISON (Mean Scores)</h3>
-  <table style="font-size: 10px;">
-    <thead>
+      ${streamOverviewRows}
+    </table>
+  <h3 style="font-size: 12px; font-weight: bold; margin: 15px 0 8px 0; background: #f3f4f6; padding: 6px;">SUBJECT PERFORMANCE COMPARISON</h3>
+  <table style="font-size: 11px;">
       <tr style="background: #e5e7eb;">
         <th style="border: 1px solid #333; padding: 6px; text-align: left;">Subject</th>
         ${streamHeaders}
       </tr>
-    </thead>
-    <tbody>${subjectComparisonRows}</tbody>
+      <tbody>${subjectComparisonRows}</tbody>
   </table>
   <p style="font-size: 9px; color: #666; margin-top: 20px; text-align: center;">Generated on ${new Date().toLocaleDateString()} | Shuletech Exam System</p>
 </body>
@@ -2406,6 +2402,7 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                         <Download className="w-4 h-4 mr-1" />
                         <span className="hidden sm:inline">Download Report</span>
                       </Button>
+                      </>
                     )}
                   </div>
                 </CardHeader>
