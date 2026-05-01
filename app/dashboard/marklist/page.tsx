@@ -25,6 +25,7 @@ import { Label } from '@/components/ui/label'
 
 
 import { ReportStareheStyle } from '@/components/report-starehe-style'
+import { ReportModal } from '@/components/report-modal'
 
 
 
@@ -1624,22 +1625,22 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                                       
                                       const message = encodeURIComponent(
                                         `*${currentSchool?.name?.toUpperCase() || 'SCHOOL'}*\n` +
-                                        `------------------------\n` +
-                                        `*EXAM RESULTS NOTIFICATION*\n\n` +
+                                        `━━━━━━━━━━━━━━━━\n` +
+                                        `📊 *EXAM RESULTS NOTIFICATION*\n\n` +
                                         `Dear Parent/Guardian,\n\n` +
                                         `We are pleased to share the ${selectedSession?.exam_types?.name || 'Exam'} results for:\n\n` +
-                                        `*Student:* ${result.learner.name}\n` +
-                                        `*Class:* ${currentClass?.name || ''}\n` +
-                                        `*Term:* ${selectedSession?.term}, ${selectedSession?.year}\n\n` +
-                                        `*SUBJECT PERFORMANCE*\n` +
-                                        `------------------------\n` +
+                                        `👤 *Student:* ${result.learner.name}\n` +
+                                        `📚 *Class:* ${currentClass?.name || ''}\n` +
+                                        `📅 *Term:* ${selectedSession?.term}, ${selectedSession?.year}\n\n` +
+                                        `📖 *SUBJECT PERFORMANCE*\n` +
+                                        `━━━━━━━━━━━━━━━━\n` +
                                         `${subjectDetails}\n\n` +
-                                        `*OVERALL SUMMARY*\n` +
-                                        `------------------------\n` +
-                                        `Total Marks: *${result.total}*\n` +
-                                        `Mean Score: *${result.average.toFixed(1)}%*\n` +
-                                        `Performance Level: *${performanceLevel}*\n` +
-                                        `Class Position: *${result.rank} of ${results.length}*\n\n` +
+                                        `📈 *OVERALL SUMMARY*\n` +
+                                        `━━━━━━━━━━━━━━━━\n` +
+                                        `• Total Marks: *${result.total}*\n` +
+                                        `• Mean Score: *${result.average.toFixed(1)}%*\n` +
+                                        `• Performance Level: *${performanceLevel}*\n` +
+                                        `• Class Position: *${result.rank} of ${results.length}*\n\n` +
                                         `Thank you for your continued support in your child's education.\n\n` +
                                         `_${currentSchool?.name || 'School'}_\n` +
                                         `_Powered by Shuletech_`
@@ -2838,33 +2839,45 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
         </Card>
       )}
 
-      {/* Report Card Modal - Standard CBC Report for all schools */}
-      <ReportStareheStyle
-        isOpen={reportModalOpen}
-        onClose={() => setReportModalOpen(false)}
-        reports={reportModalData.map(report => ({
-          ...report,
-          subjectPositions: subjects.reduce((acc, subject) => {
-            const studentScore = report.marks[subject.id]
-            if (studentScore === null || studentScore === undefined) {
-              acc[subject.id] = 0
+      {/* Report Card Modal - St James uses their own format, all other schools use CBC Starehe style */}
+      {currentSchool?.code === 'st-james' ? (
+        <ReportModal
+          isOpen={reportModalOpen}
+          onClose={() => setReportModalOpen(false)}
+          reports={reportModalData}
+          subjects={subjects}
+          sessionInfo={sessions.find(s => s.id === selectedSessionId) || null}
+          className={currentClass?.name || ''}
+          totalStudents={results.length}
+        />
+      ) : (
+        <ReportStareheStyle
+          isOpen={reportModalOpen}
+          onClose={() => setReportModalOpen(false)}
+          reports={reportModalData.map(report => ({
+            ...report,
+            subjectPositions: subjects.reduce((acc, subject) => {
+              const studentScore = report.marks[subject.id]
+              if (studentScore === null || studentScore === undefined) {
+                acc[subject.id] = 0
+                return acc
+              }
+              // Calculate position for this subject
+              const higherScores = results.filter(r => {
+                const score = r.marks[subject.id]
+                return score !== null && score !== undefined && score > studentScore
+              }).length
+              acc[subject.id] = higherScores + 1
               return acc
-            }
-            // Calculate position for this subject
-            const higherScores = results.filter(r => {
-              const score = r.marks[subject.id]
-              return score !== null && score !== undefined && score > studentScore
-            }).length
-            acc[subject.id] = higherScores + 1
-            return acc
-          }, {} as Record<string, number>)
-        }))}
-        subjects={subjects}
-        sessionInfo={sessions.find(s => s.id === selectedSessionId) || null}
-        className={currentClass?.name || ''}
-        totalStudents={results.length}
-        classTeacherName={currentClass?.teacher_name}
-      />
+            }, {} as Record<string, number>)
+          }))}
+          subjects={subjects}
+          sessionInfo={sessions.find(s => s.id === selectedSessionId) || null}
+          className={currentClass?.name || ''}
+          totalStudents={results.length}
+          classTeacherName={currentClass?.teacher_name}
+        />
+      )}
 
       {/* WhatsApp Bulk Send Modal */}
       {whatsappModalOpen && whatsappQueue.length > 0 && (
@@ -2911,28 +2924,30 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                           const score = result.marks[subject.id]
                           if (score === null || score === undefined) return null
                           const subjectGrade = getGradeLevelByClass(Math.round(score), currentClass?.name)
-                          return `- ${subject.name}: *${score}%* (${subjectGrade?.level || '-'})`
+                          return `• ${subject.name}: *${score}%* (${subjectGrade?.level || '-'})`
                         }).filter(Boolean).join('\n')
                         
                         const message = encodeURIComponent(
                           `*${currentSchool?.name?.toUpperCase() || 'SCHOOL'}*\n` +
-                          `------------------------\n` +
-                          `*EXAM RESULTS NOTIFICATION*\n\n` +
+                          `━━━━━━━━━━━━━━━━\n` +
+                          `📊 *EXAM RESULTS NOTIFICATION*\n\n` +
                           `Dear Parent/Guardian,\n\n` +
-                          `Results for ${selectedSession?.exam_types?.name || 'Exam'}:\n\n` +
-                          `*Student:* ${result.learner.name}\n` +
-                          `*Class:* ${currentClass?.name || ''}\n` +
-                          `*Term:* ${selectedSession?.term}, ${selectedSession?.year}\n\n` +
-                          `*SUBJECTS*\n` +
-                          `------------------------\n` +
+                          `We are pleased to share the ${selectedSession?.exam_types?.name || 'Exam'} results for:\n\n` +
+                          `👤 *Student:* ${result.learner.name}\n` +
+                          `📚 *Class:* ${currentClass?.name || ''}\n` +
+                          `📅 *Term:* ${selectedSession?.term}, ${selectedSession?.year}\n\n` +
+                          `📖 *SUBJECT PERFORMANCE*\n` +
+                          `━━━━━━━━━━━━━━━━\n` +
                           `${subjectDetails}\n\n` +
-                          `*SUMMARY*\n` +
-                          `------------------------\n` +
-                          `Total: *${result.total}*\n` +
-                          `Mean: *${result.average.toFixed(1)}%*\n` +
-                          `Level: *${performanceLevel}*\n` +
-                          `Position: *${result.rank}/${results.length}*\n\n` +
-                          `_${currentSchool?.name || 'School'}_`
+                          `📈 *OVERALL SUMMARY*\n` +
+                          `━━━━━━━━━━━━━━━━\n` +
+                          `• Total Marks: *${result.total}*\n` +
+                          `• Mean Score: *${result.average.toFixed(1)}%*\n` +
+                          `• Performance Level: *${performanceLevel}*\n` +
+                          `• Class Position: *${result.rank} of ${results.length}*\n\n` +
+                          `Thank you for your continued support in your child's education.\n\n` +
+                          `_${currentSchool?.name || 'School'}_\n` +
+                          `_Powered by Shuletech_`
                         )
                         window.open(`https://wa.me/${formattedPhone}?text=${message}`, '_blank')
                         setWhatsappSentCount(prev => prev + 1)
