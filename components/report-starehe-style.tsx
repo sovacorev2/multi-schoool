@@ -120,11 +120,73 @@ export function ReportStareheStyle({
           <Button
             onClick={() => {
               if (reportRef.current) {
-                const printWindow = window.open('', '', 'width=900,height=600')
+                const printWindow = window.open('', '', 'width=900,height=1200')
                 if (printWindow) {
-                  printWindow.document.write(reportRef.current.innerHTML)
+                  const printCSS = `
+                    <style>
+                      * { margin: 0; padding: 0; box-sizing: border-box; }
+                      body { font-family: 'Times New Roman', serif; font-size: 12px; line-height: 1.4; }
+                      @page { size: A4; margin: 10mm; }
+                      .page-break { page-break-after: always; }
+                      img { max-width: 100%; height: auto; }
+                      table { width: 100%; border-collapse: collapse; }
+                      th, td { border: 1px solid #333; padding: 4px; }
+                      th { background-color: #ddd; font-weight: bold; }
+                      tr:nth-child(even) { background-color: #f9f9f9; }
+                      .text-center { text-align: center; }
+                      .text-left { text-align: left; }
+                      .text-xs { font-size: 10px; }
+                      .text-sm { font-size: 11px; }
+                      .text-lg { font-size: 14px; }
+                      .font-bold { font-weight: bold; }
+                      .italic { font-style: italic; }
+                      .uppercase { text-transform: uppercase; }
+                      .border { border: 1px solid #333; }
+                      .border-2 { border: 2px solid #333; }
+                      .border-b-2 { border-bottom: 2px solid #333; }
+                      .p-1\.5 { padding: 6px; }
+                      .p-2 { padding: 8px; }
+                      .p-3 { padding: 12px; }
+                      .p-8 { padding: 32px; }
+                      .mb-1 { margin-bottom: 4px; }
+                      .mb-2 { margin-bottom: 8px; }
+                      .mb-3 { margin-bottom: 12px; }
+                      .mb-4 { margin-bottom: 16px; }
+                      .mt-1 { margin-top: 4px; }
+                      .mt-2 { margin-top: 8px; }
+                      .gap-4 { gap: 16px; }
+                      .bg-white { background-color: white; }
+                      .bg-gray-50 { background-color: #f9f9f9; }
+                      .bg-gray-100 { background-color: #f3f3f3; }
+                      .bg-gray-200 { background-color: #e5e5e5; }
+                      .bg-yellow-100 { background-color: #fef3c7; }
+                      .grid { display: grid; }
+                      .grid-cols-2 { grid-template-columns: 1fr 1fr; }
+                      .grid-cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+                      .mx-auto { margin-left: auto; margin-right: auto; }
+                      .w-28 { width: 112px; }
+                      .h-28 { height: 112px; }
+                      .object-contain { object-fit: contain; }
+                      .text-blue-900 { color: #1e3a8a; }
+                      .text-gray-700 { color: #374151; }
+                      .tracking-widest { letter-spacing: 0.1em; }
+                      .inline-block { display: inline-block; }
+                      .flex { display: flex; }
+                      .justify-between { justify-content: space-between; }
+                      .pb-3 { padding-bottom: 12px; }
+                      svg { display: block; margin: 0 auto; }
+                      @media print {
+                        body { margin: 0; padding: 0; }
+                        .page-break { page-break-after: always; }
+                        img { display: block; }
+                      }
+                    </style>
+                  `
+                  printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">${printCSS}</head><body>${reportRef.current.innerHTML}</body></html>`)
                   printWindow.document.close()
-                  setTimeout(() => printWindow.print(), 250)
+                  setTimeout(() => {
+                    printWindow.print()
+                  }, 500)
                 }
               }
             }}
@@ -137,7 +199,67 @@ export function ReportStareheStyle({
             onClick={() => {
               if (reportRef.current) {
                 const html = reportRef.current.innerHTML
-                const blob = new Blob([`<!DOCTYPE html><html><head><style>body{font-family:'Times New Roman',serif}</style></head><body>${html}</body></html>`], { type: 'text/html' })
+                const printCSS = `
+                    <style>
+                      * { margin: 0; padding: 0; box-sizing: border-box; }
+                      body { font-family: 'Times New Roman', serif; font-size: 12px; line-height: 1.4; }
+                      @page { size: A4; margin: 10mm; }
+                      .page-break { page-break-after: always; }
+                      img { max-width: 100%; height: auto; }
+                      table { width: 100%; border-collapse: collapse; }
+                      th, td { border: 1px solid #333; padding: 4px; }
+                      th { background-color: #ddd; font-weight: bold; }
+                      tr:nth-child(even) { background-color: #f9f9f9; }
+                      .text-center { text-align: center; }
+                      .text-left { text-align: left; }
+                      .text-xs { font-size: 10px; }
+                      .text-sm { font-size: 11px; }
+                      .text-lg { font-size: 14px; }
+                      .font-bold { font-weight: bold; }
+                      .italic { font-style: italic; }
+                      .uppercase { text-transform: uppercase; }
+                      .border { border: 1px solid #333; }
+                      .border-2 { border: 2px solid #333; }
+                      .border-b-2 { border-bottom: 2px solid #333; }
+                      .p-1\.5 { padding: 6px; }
+                      .p-2 { padding: 8px; }
+                      .p-3 { padding: 12px; }
+                      .p-8 { padding: 32px; }
+                      .mb-1 { margin-bottom: 4px; }
+                      .mb-2 { margin-bottom: 8px; }
+                      .mb-3 { margin-bottom: 12px; }
+                      .mb-4 { margin-bottom: 16px; }
+                      .mt-1 { margin-top: 4px; }
+                      .mt-2 { margin-top: 8px; }
+                      .gap-4 { gap: 16px; }
+                      .bg-white { background-color: white; }
+                      .bg-gray-50 { background-color: #f9f9f9; }
+                      .bg-gray-100 { background-color: #f3f3f3; }
+                      .bg-gray-200 { background-color: #e5e5e5; }
+                      .bg-yellow-100 { background-color: #fef3c7; }
+                      .grid { display: grid; }
+                      .grid-cols-2 { grid-template-columns: 1fr 1fr; }
+                      .grid-cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+                      .mx-auto { margin-left: auto; margin-right: auto; }
+                      .w-28 { width: 112px; }
+                      .h-28 { height: 112px; }
+                      .object-contain { object-fit: contain; }
+                      .text-blue-900 { color: #1e3a8a; }
+                      .text-gray-700 { color: #374151; }
+                      .tracking-widest { letter-spacing: 0.1em; }
+                      .inline-block { display: inline-block; }
+                      .flex { display: flex; }
+                      .justify-between { justify-content: space-between; }
+                      .pb-3 { padding-bottom: 12px; }
+                      svg { display: block; margin: 0 auto; }
+                      @media print {
+                        body { margin: 0; padding: 0; }
+                        .page-break { page-break-after: always; }
+                        img { display: block; }
+                      }
+                    </style>
+                  `
+                const blob = new Blob([`<!DOCTYPE html><html><head><meta charset="UTF-8">${printCSS}</head><body>${html}</body></html>`], { type: 'text/html' })
                 const url = URL.createObjectURL(blob)
                 const a = document.createElement('a')
                 a.href = url
