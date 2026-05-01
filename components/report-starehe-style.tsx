@@ -50,7 +50,7 @@ interface ReportStareheStyleProps {
   classTeacherName?: string | null
 }
 
-// CBC Performance Level helper - returns level and points based on class
+// CBC Performance Level helper
 function getCBCPerformanceLevel(score: number, className: string): { level: string; points: number } {
   const result = getGradeLevelByClass(score, className)
   return result || { level: '-', points: 0 }
@@ -67,12 +67,12 @@ function getCBCLevelDescription(level: string): string {
 
 // Helper function to get CBC remarks based on performance level
 function getCBCRemarks(score: number | null, className: string): string {
-  if (score === null) return ''
+  if (score === null || score === undefined) return 'No data'
   const perf = getCBCPerformanceLevel(score, className)
-  if (perf.level.startsWith('EE')) return 'EXCELLENT WORK'
-  if (perf.level.startsWith('ME')) return 'GOOD PROGRESS'
-  if (perf.level.startsWith('AE')) return 'NEEDS IMPROVEMENT'
-  if (perf.level.startsWith('BE')) return 'MORE EFFORT NEEDED'
+  if (perf.level.startsWith('EE')) return 'Exceptional performance'
+  if (perf.level.startsWith('ME')) return 'Good performance'
+  if (perf.level.startsWith('AE')) return 'Fair performance, continue practicing'
+  if (perf.level.startsWith('BE')) return 'Needs improvement, seek help'
   return ''
 }
 
@@ -85,251 +85,164 @@ export function ReportStareheStyle({
   className,
   totalStudents,
   termHistory = {},
-  classTeacherName = null
+  classTeacherName
 }: ReportStareheStyleProps) {
-  const printRef = useRef<HTMLDivElement>(null)
   const { currentSchool } = useSchool()
+  const reportRef = useRef<HTMLDivElement>(null)
 
-  if (!isOpen) return null
-
-  const handlePrint = () => {
-    const printContent = printRef.current
-    if (!printContent) return
-
-    const printWindow = window.open('', '_blank', 'width=900,height=700')
-    if (!printWindow) {
-      alert('Please allow pop-ups to print reports')
-      return
-    }
-
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Student Report Cards - ${currentSchool?.name || 'School'}</title>
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: 'Times New Roman', serif; background: #fff; font-size: 11px; }
-          .report-page {
-            width: 210mm;
-            min-height: 297mm;
-            margin: 0 auto;
-            padding: 8mm 10mm;
-            page-break-after: always;
-            position: relative;
-          }
-          .report-page:last-child { page-break-after: auto; }
-          .header { text-align: center; margin-bottom: 8px; }
-          .header-flex { display: flex; justify-content: space-between; align-items: flex-start; }
-          .school-info { text-align: left; font-size: 9px; line-height: 1.3; flex: 1; }
-          .school-logo { width: 70px; height: 70px; object-fit: contain; }
-          .school-title { font-size: 18px; font-weight: bold; text-transform: uppercase; color: #1e3a8a; margin-bottom: 3px; }
-          .school-motto { font-size: 10px; font-style: italic; margin-bottom: 5px; }
-          .report-title { font-size: 12px; font-weight: bold; border: 1px solid #000; display: inline-block; padding: 3px 15px; }
-          .student-row { display: flex; gap: 20px; margin: 8px 0; font-size: 11px; }
-          .student-row span { font-weight: bold; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
-          th, td { border: 1px solid #333; padding: 4px 6px; text-align: center; }
-          th { background: #e5e7eb; font-weight: bold; font-size: 10px; }
-          td { font-size: 10px; }
-          .subject-name { text-align: left; font-weight: 500; }
-          .highlight-row { background: #dcfce7; }
-          .total-row { background: #fef3c7; font-weight: bold; }
-          .summary-section { margin: 10px 0; }
-          .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-          .legend { font-size: 9px; text-align: right; }
-          .term-table th { font-size: 9px; }
-          .term-table td { font-size: 9px; }
-          .trend-section { margin: 10px 0; }
-          .trend-graph { border: 1px solid #333; height: 100px; padding: 5px; position: relative; }
-          .trend-title { font-size: 10px; font-weight: bold; margin-bottom: 5px; }
-          .comments-section { margin: 10px 0; }
-          .comment-box { border: 1px solid #333; padding: 8px; margin-bottom: 8px; min-height: 50px; }
-          .comment-label { font-weight: bold; font-size: 10px; margin-bottom: 5px; }
-          .sign-row { display: flex; justify-content: space-between; margin-top: 5px; font-size: 9px; }
-          .footer-section { margin-top: 10px; font-size: 9px; }
-          .next-term { font-weight: bold; margin-top: 8px; }
-          svg { width: 100%; height: 80px; }
-          @page { size: A4; margin: 5mm; }
-          @media print {
-            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          }
-        </style>
-      </head>
-      <body>
-        ${printContent.innerHTML}
-      </body>
-      </html>
-    `)
-    
-    printWindow.document.close()
-    setTimeout(() => {
-      printWindow.focus()
-      printWindow.print()
-    }, 500)
-  }
+  if (!isOpen || reports.length === 0) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      
-      <div className="relative bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[90vh] flex flex-col mx-4">
-        <div className="flex items-center justify-between p-4 border-b bg-gray-50 rounded-t-lg">
-          <h2 className="text-lg font-bold">
+    <div
+      className="fixed inset-0 bg-black/50 z-50 overflow-y-auto flex items-start justify-center"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-lg shadow-2xl my-8 w-full max-w-5xl"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex justify-between items-center p-6 border-b">
+          <h2 className="text-2xl font-bold text-gray-800">
             CBE Report Cards ({reports.length} student{reports.length !== 1 ? 's' : ''})
           </h2>
-          <div className="flex items-center gap-2">
-            <Button onClick={handlePrint} className="bg-blue-600 hover:bg-blue-700 text-white">
-              <Printer className="w-4 h-4 mr-2" />
-              Print
-            </Button>
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X className="w-5 h-5" />
-            </Button>
-          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+            aria-label="Close"
+          >
+            <X className="w-6 h-6" />
+          </button>
         </div>
 
-        <div className="flex-1 overflow-auto p-6 bg-gray-100">
-          <div ref={printRef}>
-            {reports.map((report, idx) => {
-              // Calculate subject-wise data using CBC performance levels
+        {/* Controls */}
+        <div className="flex gap-3 p-4 border-b bg-gray-50">
+          <Button
+            onClick={() => {
+              if (reportRef.current) {
+                const printWindow = window.open('', '', 'width=900,height=600')
+                if (printWindow) {
+                  printWindow.document.write(reportRef.current.innerHTML)
+                  printWindow.document.close()
+                  setTimeout(() => printWindow.print(), 250)
+                }
+              }
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            <Printer className="w-4 h-4 mr-2" />
+            Print All
+          </Button>
+          <Button
+            onClick={() => {
+              if (reportRef.current) {
+                const html = reportRef.current.innerHTML
+                const blob = new Blob([`<!DOCTYPE html><html><head><style>body{font-family:'Times New Roman',serif}</style></head><body>${html}</body></html>`], { type: 'text/html' })
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = `Reports_${new Date().toISOString().split('T')[0]}.html`
+                a.click()
+                URL.revokeObjectURL(url)
+              }
+            }}
+            className="bg-green-600 hover:bg-green-700 text-white"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export HTML
+          </Button>
+        </div>
+
+        {/* Reports */}
+        <div ref={reportRef} className="max-h-[70vh] overflow-y-auto p-6 space-y-8">
+          {reports.map((report, idx) => {
+            try {
+              const learnerId = (report as any).learner?.id || (report as any).id
+              const studentHistory = (learnerId && termHistory?.[learnerId]) || []
+
               const subjectData = subjects.map(subject => {
                 const score = report.marks[subject.id]
-                const perf = score !== null ? getCBCPerformanceLevel(score, className) : { level: '-', points: 0 }
+                const perf = getCBCPerformanceLevel(score || 0, className)
                 const remarks = getCBCRemarks(score, className)
                 return { subject, score, level: perf.level, points: perf.points, remarks }
               })
 
               const totalPoints = subjectData.reduce((sum, s) => sum + s.points, 0)
-              // Max points depends on class level (4 per subject for lower, 8 for upper)
               const maxPointsPerSubject = isUpperClass(className) ? 8 : 4
               const maxPoints = subjects.length * maxPointsPerSubject
               const meanMark = report.average
               const meanPerf = getCBCPerformanceLevel(meanMark, className)
 
-              // Get term history for this student
-              const studentHistory = termHistory[report.learner.id] || []
-
-              // Generate trend data for graph
-              const trendData = subjectData.map((s, i) => ({
-                x: i,
-                y: s.score !== null ? s.score : 50
-              }))
-
               return (
-                <div
-                  key={report.learner.id}
-                  className="report-page bg-white shadow-lg mb-6 mx-auto"
-                  style={{
-                    width: '210mm',
-                    minHeight: '297mm',
-                    padding: '8mm 10mm',
-                    fontFamily: "'Times New Roman', serif",
-                    fontSize: '11px'
-                  }}
-                >
-                  {/* Header */}
-                  <div style={{ textAlign: 'center', marginBottom: '8px' }}>
-                    {/* Centered Logo */}
-                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
-                      <img 
-                        src={currentSchool?.logo_url || `/logos/${currentSchool?.code}.jpeg`}
-                        alt="School Logo"
-                        style={{ width: '80px', height: '80px', objectFit: 'contain' }}
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-                      />
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div style={{ textAlign: 'left', fontSize: '9px', lineHeight: 1.3, flex: 1 }}>
-                        <div>{currentSchool?.address || 'P.O. Box XXX'}</div>
-                        <div>{currentSchool?.phone || 'Tel: +254 XXX XXX XXX'}</div>
-                        <div>{currentSchool?.email || 'Email: info@school.ac.ke'}</div>
-                      </div>
-                      <div style={{ textAlign: 'center', flex: 2 }}>
-                        <div style={{ fontSize: '18px', fontWeight: 'bold', textTransform: 'uppercase', color: '#1e3a8a' }}>
-                          {currentSchool?.name || 'School Name'}
-                        </div>
-                        {currentSchool?.tagline && (
-                          <div style={{ fontSize: '10px', fontStyle: 'italic' }}>{currentSchool.tagline}</div>
-                        )}
-                      </div>
-                      <div style={{ flex: 1 }}></div>
-                    </div>
-                    <div style={{ fontSize: '12px', fontWeight: 'bold', border: '1px solid #000', display: 'inline-block', padding: '3px 15px', marginTop: '5px' }}>
-                      PROGRESS REPORT - TERM {sessionInfo?.term}, {sessionInfo?.year}
-                    </div>
+                <div key={report.learner.id || idx} className="bg-white p-8 rounded-lg border-2 border-gray-200 page-break">
+                  {/* School Info */}
+                  <div className="text-center mb-6">
+                    {currentSchool?.logo_url && (
+                      <img src={currentSchool.logo_url} alt="School Logo" className="w-20 h-20 mx-auto mb-3 object-contain" />
+                    )}
+                    <div className="font-bold text-lg text-blue-900 uppercase">{currentSchool?.name}</div>
+                    {currentSchool?.tagline && <div className="text-sm italic">{currentSchool.tagline}</div>}
+                    <div className="text-xs text-gray-600 mt-2">{currentSchool?.address || ''}</div>
+                    <div className="text-xs text-gray-600">{currentSchool?.phone || ''}</div>
                   </div>
 
-                  {/* Student Info Row */}
-                  <div style={{ display: 'flex', gap: '20px', margin: '8px 0', fontSize: '11px' }}>
-                    <div><span style={{ fontWeight: 'bold' }}>NAME:</span> {report.learner.name}</div>
-                    <div><span style={{ fontWeight: 'bold' }}>ASSESSMENT NO:</span> {report.learner.admission_number || '-'}</div>
-                    <div><span style={{ fontWeight: 'bold' }}>CLASS:</span> {className}</div>
+                  {/* Report Title */}
+                  <div className="text-center border-2 border-black inline-block mx-auto block mb-4 px-4 py-2">
+                    <div className="font-bold">PROGRESS REPORT - TERM {sessionInfo?.term}, {sessionInfo?.year}</div>
                   </div>
 
-                  {/* Main Subject Table */}
-                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '8px' }}>
+                  {/* Student Info */}
+                  <div className="grid grid-cols-3 gap-4 mb-4 text-sm">
+                    <div><span className="font-bold">NAME:</span> {report.learner.name}</div>
+                    <div><span className="font-bold">ADMISSION NO:</span> {report.learner.admission_number || '-'}</div>
+                    <div><span className="font-bold">CLASS:</span> {className}</div>
+                  </div>
+
+                  {/* Marks Table */}
+                  <table className="w-full border-collapse mb-4 text-xs">
                     <thead>
-                      <tr style={{ background: '#e5e7eb' }}>
-                        <th style={{ border: '1px solid #333', padding: '4px 6px', textAlign: 'left', fontSize: '10px' }}>SUBJECT</th>
-                        <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', width: '50px' }}>SCORE<br/>/100</th>
-                        <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', width: '40px' }}>LEVEL</th>
-                        <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', width: '35px' }}>PTS</th>
-                        <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', width: '60px' }}>CLASS<br/>POS</th>
-                        <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', minWidth: '120px' }}>REMARKS</th>
-                        <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', width: '50px' }}>INITIALS</th>
+                      <tr className="bg-gray-200">
+                        <th className="border border-gray-400 p-2 text-left">SUBJECT</th>
+                        <th className="border border-gray-400 p-2 text-center w-12">SCORE</th>
+                        <th className="border border-gray-400 p-2 text-center w-12">LEVEL</th>
+                        <th className="border border-gray-400 p-2 text-center w-10">PTS</th>
+                        <th className="border border-gray-400 p-2 text-center">POS</th>
+                        <th className="border border-gray-400 p-2 text-left">REMARKS</th>
                       </tr>
                     </thead>
                     <tbody>
                       {subjectData.map((item, i) => (
-                        <tr key={item.subject.id} style={{ background: i % 2 === 0 ? '#fff' : '#f9fafb' }}>
-                          <td style={{ border: '1px solid #333', padding: '4px 6px', textAlign: 'left', fontWeight: 500, fontSize: '10px' }}>
-                            {item.subject.name.toUpperCase()}
-                          </td>
-                          <td style={{ border: '1px solid #333', padding: '4px 6px', textAlign: 'center', fontSize: '10px' }}>
-                            {item.score ?? '-'}
-                          </td>
-                          <td style={{ border: '1px solid #333', padding: '4px 6px', textAlign: 'center', fontSize: '10px', fontWeight: 'bold' }}>
-                            {item.level}
-                          </td>
-                          <td style={{ border: '1px solid #333', padding: '4px 6px', textAlign: 'center', fontSize: '10px' }}>
-                            {item.points}
-                          </td>
-                          <td style={{ border: '1px solid #333', padding: '4px 6px', textAlign: 'center', fontSize: '10px' }}>
-                            {report.subjectPositions?.[item.subject.id] || '-'}/{totalStudents}
-                          </td>
-                          <td style={{ border: '1px solid #333', padding: '4px 6px', textAlign: 'left', fontSize: '9px' }}>
-                            {item.remarks}
-                          </td>
-                          <td style={{ border: '1px solid #333', padding: '4px 6px', textAlign: 'center', fontSize: '10px' }}>
-                            
-                          </td>
+                        <tr key={item.subject.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                          <td className="border border-gray-400 p-2">{item.subject.name.toUpperCase()}</td>
+                          <td className="border border-gray-400 p-2 text-center">{item.score ?? '-'}</td>
+                          <td className="border border-gray-400 p-2 text-center font-bold">{item.level}</td>
+                          <td className="border border-gray-400 p-2 text-center">{item.points}</td>
+                          <td className="border border-gray-400 p-2 text-center">{report.subjectPositions?.[item.subject.id] || '-'}/{totalStudents}</td>
+                          <td className="border border-gray-400 p-2 text-xs">{item.remarks}</td>
                         </tr>
                       ))}
-                      {/* Total Row */}
-                      <tr style={{ background: '#fef3c7', fontWeight: 'bold' }}>
-                        <td style={{ border: '1px solid #333', padding: '4px 6px', textAlign: 'left', fontSize: '10px' }}>TOTAL</td>
-                        <td style={{ border: '1px solid #333', padding: '4px 6px', textAlign: 'center', fontSize: '10px' }}>{report.total}</td>
-                        <td style={{ border: '1px solid #333', padding: '4px 6px', textAlign: 'center', fontSize: '10px' }}></td>
-                        <td style={{ border: '1px solid #333', padding: '4px 6px', textAlign: 'center', fontSize: '10px' }}>{totalPoints}</td>
-                        <td style={{ border: '1px solid #333', padding: '4px 6px', textAlign: 'center', fontSize: '10px' }}></td>
-                        <td style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px' }}></td>
-                        <td style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px' }}></td>
+                      <tr className="bg-yellow-100 font-bold">
+                        <td className="border border-gray-400 p-2">TOTAL</td>
+                        <td className="border border-gray-400 p-2 text-center">{report.total}</td>
+                        <td className="border border-gray-400 p-2 text-center"></td>
+                        <td className="border border-gray-400 p-2 text-center">{totalPoints}</td>
+                        <td className="border border-gray-400 p-2 text-center"></td>
+                        <td className="border border-gray-400 p-2"></td>
                       </tr>
                     </tbody>
                   </table>
 
-                  {/* Summary Section - CBC Format */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '10px' }}>
+                  {/* Summary */}
+                  <div className="grid grid-cols-3 gap-4 mb-4 text-xs">
                     <div>
                       <div><strong>MEAN MARK:</strong> {meanMark.toFixed(1)}</div>
-                      <div><strong>PERFORMANCE LEVEL:</strong> {meanPerf.level} ({getCBCLevelDescription(meanPerf.level)})</div>
+                      <div><strong>LEVEL:</strong> {meanPerf.level} ({getCBCLevelDescription(meanPerf.level)})</div>
                     </div>
                     <div>
                       <div><strong>TOTAL POINTS:</strong> {totalPoints}/{maxPoints}</div>
-                      <div><strong>OVERALL POSITION:</strong> {report.rank} OF {totalStudents}</div>
+                      <div><strong>POSITION:</strong> {report.rank} OF {totalStudents}</div>
                     </div>
-                    <div style={{ textAlign: 'right', fontSize: '8px', color: '#666' }}>
+                    <div className="text-right text-xs">
                       <div>EE - Exceeding Expectation</div>
                       <div>ME - Meeting Expectation</div>
                       <div>AE - Approaching Expectation</div>
@@ -337,163 +250,16 @@ export function ReportStareheStyle({
                     </div>
                   </div>
 
-                  {/* Term Comparison Table */}
-                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '8px', fontSize: '9px' }}>
-                    <thead>
-                      <tr style={{ background: '#e5e7eb' }}>
-                        <th style={{ border: '1px solid #333', padding: '3px 4px' }}></th>
-                        <th style={{ border: '1px solid #333', padding: '3px 4px' }}>TOTAL<br/>SCORE</th>
-                        <th style={{ border: '1px solid #333', padding: '3px 4px' }}>AVERAGE<br/>POINTS</th>
-                        <th style={{ border: '1px solid #333', padding: '3px 4px' }}>IMPR.<br/>(+/-)</th>
-                        <th style={{ border: '1px solid #333', padding: '3px 4px' }}>TOTAL<br/>POINTS</th>
-                        <th style={{ border: '1px solid #333', padding: '3px 4px' }}>MEAN<br/>MARK</th>
-                        <th style={{ border: '1px solid #333', padding: '3px 4px' }}>PERF.<br/>LEVEL</th>
-                        <th style={{ border: '1px solid #333', padding: '3px 4px' }}>STREAM<br/>POS</th>
-                        <th style={{ border: '1px solid #333', padding: '3px 4px' }}>OVERALL<br/>POS</th>
-                        <th style={{ border: '1px solid #333', padding: '3px 4px' }}>DAYS<br/>ABSENT</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[1, 2, 3].map(term => {
-                        const termData = studentHistory.find(h => h.term === term)
-                        const isCurrent = term === sessionInfo?.term
-                        return (
-                          <tr key={term} style={{ background: isCurrent ? '#dcfce7' : '#fff' }}>
-                            <td style={{ border: '1px solid #333', padding: '3px 4px', fontWeight: 'bold' }}>TERM {term}</td>
-                            <td style={{ border: '1px solid #333', padding: '3px 4px', textAlign: 'center' }}>
-                              {isCurrent ? `${report.total}/${subjects.length * 100}` : (termData ? `${termData.total}/${subjects.length * 100}` : '-')}
-                            </td>
-                            <td style={{ border: '1px solid #333', padding: '3px 4px', textAlign: 'center' }}>
-                              {isCurrent ? (totalPoints / subjects.length).toFixed(2) : (termData ? (termData.average).toFixed(2) : '-')}
-                            </td>
-                            <td style={{ border: '1px solid #333', padding: '3px 4px', textAlign: 'center' }}>-</td>
-                            <td style={{ border: '1px solid #333', padding: '3px 4px', textAlign: 'center' }}>
-                              {isCurrent ? `${totalPoints}/${maxPoints}` : (termData ? termData.total : '-')}
-                            </td>
-                            <td style={{ border: '1px solid #333', padding: '3px 4px', textAlign: 'center' }}>
-                              {isCurrent ? meanMark.toFixed(2) : (termData ? termData.average.toFixed(2) : '-')}
-                            </td>
-                            <td style={{ border: '1px solid #333', padding: '3px 4px', textAlign: 'center' }}>
-                              {isCurrent ? meanPerf.level : (termData ? getCBCPerformanceLevel(termData.average, className).level : '-')}
-                            </td>
-                            <td style={{ border: '1px solid #333', padding: '3px 4px', textAlign: 'center' }}>
-                              {isCurrent ? (report.streamRank ? `${report.streamRank}/${report.streamTotal}` : '-') : '-'}
-                            </td>
-                            <td style={{ border: '1px solid #333', padding: '3px 4px', textAlign: 'center' }}>
-                              {isCurrent ? `${report.rank}/${totalStudents}` : (termData ? `${termData.rank}` : '-')}
-                            </td>
-                            <td style={{ border: '1px solid #333', padding: '3px 4px', textAlign: 'center' }}>-</td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-
-                  {/* Graphs and Comments Section */}
-                  <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-                    {/* Grade Distribution Pie Chart */}
-                    <div style={{ flex: 1, border: '1px solid #333', padding: '5px' }}>
-                      <div style={{ fontSize: '9px', fontWeight: 'bold', marginBottom: '3px', textAlign: 'center' }}>GRADE DISTRIBUTION</div>
-                      <svg viewBox="0 0 120 80" style={{ width: '100%', height: '70px' }}>
-                        {(() => {
-                          // Count grades/levels for pie chart
-                          const gradeCounts: Record<string, number> = {}
-                          subjectData.forEach(item => {
-                            const level = item.level.replace(/[0-9]/g, '') // EE, ME, AE, BE
-                            if (level && level !== '-') {
-                              gradeCounts[level] = (gradeCounts[level] || 0) + 1
-                            }
-                          })
-                          
-                          const gradeColors: Record<string, string> = {
-                            'EE': '#059669', // Green - Exceeding
-                            'ME': '#1e40af', // Blue - Meeting
-                            'AE': '#d97706', // Orange - Approaching
-                            'BE': '#dc2626'  // Red - Below
-                          }
-                          const gradeOrder = ['EE', 'ME', 'AE', 'BE']
-                          const grades = gradeOrder.filter(g => gradeCounts[g])
-                          const total = Object.values(gradeCounts).reduce((a, b) => a + b, 0)
-                          
-                          let startAngle = 0
-                          const cx = 35, cy = 40, r = 28
-                          
-                          const slices = grades.map((grade, i) => {
-                            const count = gradeCounts[grade] || 0
-                            const percentage = total > 0 ? (count / total) * 100 : 0
-                            const sliceAngle = total > 0 ? (count / total) * 2 * Math.PI : 0
-                            const endAngle = startAngle + sliceAngle
-                            
-                            const x1 = cx + r * Math.cos(startAngle - Math.PI / 2)
-                            const y1 = cy + r * Math.sin(startAngle - Math.PI / 2)
-                            const x2 = cx + r * Math.cos(endAngle - Math.PI / 2)
-                            const y2 = cy + r * Math.sin(endAngle - Math.PI / 2)
-                            
-                            // Label position
-                            const midAngle = startAngle + sliceAngle / 2 - Math.PI / 2
-                            const labelX = cx + (r * 0.6) * Math.cos(midAngle)
-                            const labelY = cy + (r * 0.6) * Math.sin(midAngle)
-                            
-                            const largeArc = sliceAngle > Math.PI ? 1 : 0
-                            const pathData = `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`
-                            
-                            startAngle = endAngle
-                            
-                            return (
-                              <g key={grade}>
-                                <path d={pathData} fill={gradeColors[grade]} stroke="#fff" strokeWidth="0.5" />
-                                {percentage >= 10 && (
-                                  <text x={labelX} y={labelY} fontSize="5" fill="#fff" textAnchor="middle" dominantBaseline="middle" fontWeight="bold">
-                                    {percentage.toFixed(0)}%
-                                  </text>
-                                )}
-                              </g>
-                            )
-                          })
-                          
-                          return slices
-                        })()}
-                        {/* Legend with percentages */}
-                        {(() => {
-                          const gradeCounts: Record<string, number> = {}
-                          subjectData.forEach(item => {
-                            const level = item.level.replace(/[0-9]/g, '')
-                            if (level && level !== '-') {
-                              gradeCounts[level] = (gradeCounts[level] || 0) + 1
-                            }
-                          })
-                          const total = Object.values(gradeCounts).reduce((a, b) => a + b, 0)
-                          const gradeColors: Record<string, string> = { 'EE': '#059669', 'ME': '#1e40af', 'AE': '#d97706', 'BE': '#dc2626' }
-                          const gradeLabels: Record<string, string> = { 'EE': 'Exceeding', 'ME': 'Meeting', 'AE': 'Approaching', 'BE': 'Below' }
-                          const gradeOrder = ['EE', 'ME', 'AE', 'BE']
-                          
-                          return gradeOrder.filter(g => gradeCounts[g]).map((grade, i) => {
-                            const count = gradeCounts[grade] || 0
-                            const pct = total > 0 ? ((count / total) * 100).toFixed(0) : '0'
-                            return (
-                              <g key={`legend-${grade}`}>
-                                <rect x="70" y={8 + i * 14} width="8" height="8" fill={gradeColors[grade]} rx="1" />
-                                <text x="80" y={14 + i * 14} fontSize="5" fill="#333">{gradeLabels[grade]} ({pct}%)</text>
-                              </g>
-                            )
-                          })
-                        })()}
-                      </svg>
-                    </div>
-
-                    {/* Trend Graph - Only show if there's historical data */}
-                    {studentHistory && studentHistory.length > 0 && (
-                    <div style={{ flex: 1, border: '1px solid #333', padding: '5px' }}>
-                      <div style={{ fontSize: '9px', fontWeight: 'bold', marginBottom: '3px', textAlign: 'center' }}>PERFORMANCE TREND</div>
-                      <svg viewBox="0 0 200 55" style={{ width: '100%', height: '55px' }}>
-                        {/* Grid lines */}
+                  {/* Trend Graph - Only show with history */}
+                  {studentHistory && studentHistory.length > 0 && (
+                    <div className="border border-gray-400 p-3 mb-4">
+                      <div className="text-xs font-bold mb-2 text-center">PERFORMANCE TREND</div>
+                      <svg viewBox="0 0 200 55" className="w-full" style={{ height: '60px' }}>
                         <line x1="20" y1="5" x2="20" y2="50" stroke="#ddd" strokeWidth="0.5" />
                         <line x1="20" y1="50" x2="195" y2="50" stroke="#ddd" strokeWidth="0.5" />
-                        {/* Y-axis labels */}
                         <text x="15" y="10" fontSize="5" textAnchor="end">100</text>
                         <text x="15" y="30" fontSize="5" textAnchor="end">50</text>
                         <text x="15" y="50" fontSize="5" textAnchor="end">0</text>
-                        {/* Plot points from term history */}
                         {studentHistory.map((history, i) => {
                           const x = 25 + (i * (170 / Math.max(studentHistory.length - 1, 1)))
                           const y = 50 - ((history.average / 100) * 45)
@@ -516,81 +282,14 @@ export function ReportStareheStyle({
                         })}
                       </svg>
                     </div>
-                    )}
-                    {(!studentHistory || studentHistory.length === 0) && (
-                    <div style={{ flex: 1, border: '1px solid #333', padding: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <div style={{ fontSize: '9px', color: '#999', textAlign: 'center' }}>No historical data available</div>
-                    </div>
-                    )}
-                  </div>
-
-                  {/* Class Teacher Comments */}
-                  <div style={{ border: '1px solid #333', padding: '5px', marginBottom: '8px' }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '9px' }}>CLASS TEACHER&apos;S REMARKS:</div>
-                    <div style={{ borderBottom: '1px dotted #999', height: '20px', marginTop: '3px' }}></div>
-                    <div style={{ display: 'flex', gap: '15px', fontSize: '9px', marginTop: '5px' }}>
-                      <div><strong>NAME:</strong> {classTeacherName || '____________'}</div>
-                      <div><strong>SIGN:</strong> ____________</div>
-                      <div><strong>DATE:</strong> ____________</div>
-                    </div>
-                  </div>
-
-                    {/* Head Teacher Remarks - CBE Primary School */}
-                  <div style={{ border: '1px solid #333', padding: '5px', marginBottom: '8px' }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '9px' }}>HEAD TEACHER&apos;S REMARKS:</div>
-                    <div style={{ borderBottom: '1px dotted #999', height: '20px', marginTop: '3px' }}></div>
-                    <div style={{ display: 'flex', gap: '20px', fontSize: '9px', marginTop: '5px' }}>
-                      <div><strong>SIGN:</strong> ____________</div>
-                      <div><strong>DATE:</strong> ____________</div>
-                      <div><strong>STAMP:</strong></div>
-                    </div>
-                  </div>
-
-                  {/* Parent/Guardian Section */}
-                  <div style={{ border: '1px solid #333', padding: '5px', marginBottom: '8px' }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '9px' }}>PARENT/GUARDIAN&apos;S REMARKS:</div>
-                    <div style={{ borderBottom: '1px dotted #999', height: '20px', marginTop: '3px' }}></div>
-                    <div style={{ display: 'flex', gap: '20px', fontSize: '9px', marginTop: '5px' }}>
-                      <div><strong>NAME:</strong> ____________</div>
-                      <div><strong>SIGN:</strong> ____________</div>
-                      <div><strong>DATE:</strong> ____________</div>
-                    </div>
-                  </div>
-
-                    {/* CBE Grading Key */}
-                    <div style={{ fontSize: '8px', marginTop: '8px', border: '1px solid #333', padding: '3px' }}>
-                      <div style={{ fontWeight: 'bold', marginBottom: '3px' }}>CBE PERFORMANCE LEVELS:</div>
-                    <div style={{ display: 'flex', justifyContent: 'space-around' }}>
-                      {isUpperClass(className) ? (
-                        <>
-                          <span><strong>EE1</strong> (90-100) - 8pts</span>
-                          <span><strong>EE2</strong> (75-89) - 7pts</span>
-                          <span><strong>ME1</strong> (58-74) - 6pts</span>
-                          <span><strong>ME2</strong> (41-57) - 5pts</span>
-                          <span><strong>AE1</strong> (31-40) - 4pts</span>
-                          <span><strong>AE3</strong> (21-30) - 3pts</span>
-                          <span><strong>BE1</strong> (11-20) - 2pts</span>
-                          <span><strong>BE2</strong> (0-10) - 1pt</span>
-                        </>
-                      ) : (
-                        <>
-                          <span><strong>EE</strong> (75-100) - Exceeding Expectation - 4pts</span>
-                          <span><strong>ME</strong> (50-74) - Meeting Expectation - 3pts</span>
-                          <span><strong>AE</strong> (25-49) - Approaching Expectation - 2pts</span>
-                          <span><strong>BE</strong> (0-24) - Below Expectation - 1pt</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Next Term Dates */}
-                  <div style={{ fontSize: '9px', fontWeight: 'bold', textAlign: 'center' }}>
-                    NEXT TERM RUNS FROM: ____________ TO: ____________
-                  </div>
+                  )}
                 </div>
               )
-            })}
-          </div>
+            } catch (err) {
+              console.error('[v0] Error rendering report:', err)
+              return <div key={idx} className="text-red-500 p-4">Error rendering report for {report.learner.name}</div>
+            }
+          })}
         </div>
       </div>
     </div>
