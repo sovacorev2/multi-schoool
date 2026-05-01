@@ -125,15 +125,15 @@ export function ReportStareheStyle({
                   const printCSS = `
                     <style>
                       * { margin: 0; padding: 0; box-sizing: border-box; }
-                      html, body { margin: 0; padding: 0; }
-                      body { font-family: 'Times New Roman', serif; font-size: 12px; line-height: 1.3; }
-                      @page { size: A4; margin: 6mm; }
-                      .page-break { page-break-after: always; }
+                      html, body { margin: 0; padding: 0; height: 100%; }
+                      body { font-family: 'Times New Roman', serif; font-size: 12px; line-height: 1.4; background: white; }
+                      @page { size: A4; margin: 5mm; }
+                      .page-break { page-break-after: always; page-break-inside: avoid; }
                       .hidden { display: none; }
                       .print\\:table { display: table; }
                       img { max-width: 100%; height: auto; display: block; }
-                      table { width: 100%; border-collapse: collapse; font-size: inherit; }
-                      th, td { border: 1px solid #333; padding: 5px; word-break: break-word; }
+                      table { width: 100%; border-collapse: collapse; font-size: inherit; margin-bottom: 10px; }
+                      th, td { border: 1px solid #333; padding: 6px; word-break: break-word; }
                       th { background-color: #ddd; font-weight: bold; }
                       tr { orphans: 2; widows: 2; }
                       svg { display: block; margin: 0 auto; max-width: 100%; }
@@ -154,9 +154,11 @@ export function ReportStareheStyle({
                       .p-1 { padding: 4px; }
                       .p-2 { padding: 8px; }
                       .p-3 { padding: 12px; }
+                      .p-4 { padding: 16px; }
                       .mb-1 { margin-bottom: 4px; }
                       .mb-2 { margin-bottom: 8px; }
                       .mb-3 { margin-bottom: 12px; }
+                      .mb-4 { margin-bottom: 16px; }
                       .mt-1 { margin-top: 4px; }
                       .mt-2 { margin-top: 8px; }
                       .mt-0\.5 { margin-top: 2px; }
@@ -195,7 +197,7 @@ export function ReportStareheStyle({
                       .space-y-2 > * + * { margin-top: 8px; }
                       .space-y-0\.5 > * + * { margin-top: 2px; }
                       @media print {
-                        body { margin: 0; padding: 0; font-size: 12px; }
+                        body { margin: 0; padding: 0; font-size: 12px; min-height: 100vh; }
                         * { orphans: 3; widows: 3; }
                         img { page-break-inside: avoid; }
                         table { page-break-inside: avoid; }
@@ -222,15 +224,15 @@ export function ReportStareheStyle({
                 const printCSS = `
                     <style>
                       * { margin: 0; padding: 0; box-sizing: border-box; }
-                      html, body { margin: 0; padding: 0; }
-                      body { font-family: 'Times New Roman', serif; font-size: 12px; line-height: 1.3; }
-                      @page { size: A4; margin: 6mm; }
-                      .page-break { page-break-after: always; }
+                      html, body { margin: 0; padding: 0; height: 100%; }
+                      body { font-family: 'Times New Roman', serif; font-size: 12px; line-height: 1.4; background: white; }
+                      @page { size: A4; margin: 5mm; }
+                      .page-break { page-break-after: always; page-break-inside: avoid; }
                       .hidden { display: none; }
                       .print\\:table { display: table; }
                       img { max-width: 100%; height: auto; display: block; }
-                      table { width: 100%; border-collapse: collapse; font-size: inherit; }
-                      th, td { border: 1px solid #333; padding: 5px; word-break: break-word; }
+                      table { width: 100%; border-collapse: collapse; font-size: inherit; margin-bottom: 10px; }
+                      th, td { border: 1px solid #333; padding: 6px; word-break: break-word; }
                       th { background-color: #ddd; font-weight: bold; }
                       tr { orphans: 2; widows: 2; }
                       svg { display: block; margin: 0 auto; max-width: 100%; }
@@ -251,9 +253,11 @@ export function ReportStareheStyle({
                       .p-1 { padding: 4px; }
                       .p-2 { padding: 8px; }
                       .p-3 { padding: 12px; }
+                      .p-4 { padding: 16px; }
                       .mb-1 { margin-bottom: 4px; }
                       .mb-2 { margin-bottom: 8px; }
                       .mb-3 { margin-bottom: 12px; }
+                      .mb-4 { margin-bottom: 16px; }
                       .mt-1 { margin-top: 4px; }
                       .mt-2 { margin-top: 8px; }
                       .mt-0\.5 { margin-top: 2px; }
@@ -292,7 +296,7 @@ export function ReportStareheStyle({
                       .space-y-2 > * + * { margin-top: 8px; }
                       .space-y-0\.5 > * + * { margin-top: 2px; }
                       @media print {
-                        body { margin: 0; padding: 0; font-size: 12px; }
+                        body { margin: 0; padding: 0; font-size: 12px; min-height: 100vh; }
                         * { orphans: 3; widows: 3; }
                         img { page-break-inside: avoid; }
                         table { page-break-inside: avoid; }
@@ -316,7 +320,7 @@ export function ReportStareheStyle({
         </div>
 
         {/* Reports */}
-        <div ref={reportRef} className="max-h-[70vh] overflow-y-auto p-6 space-y-8">
+        <div ref={reportRef} className="space-y-8 bg-white">
           {reports.map((report, idx) => {
             try {
               const learnerId = (report as any).learner?.id || (report as any).id
@@ -336,9 +340,9 @@ export function ReportStareheStyle({
               const meanPerf = getCBCPerformanceLevel(meanMark, className)
 
               return (
-                <div key={report.learner.id || idx} className="bg-white p-8 rounded-lg border-2 border-gray-200 page-break">
+                <div key={report.learner.id || idx} className="bg-white p-4 page-break" style={{ minHeight: '100vh', pageBreakInside: 'avoid' }}>
                   {/* School Header with Logo and Contact Info */}
-                  <div className="text-center mb-3 pb-3 border-b-2 border-gray-400">
+                  <div className="text-center mb-4 pb-3 border-b-2 border-gray-400">
                     {/* Contact Info on Left */}
                     <div className="text-sm text-gray-700 mb-3">
                       <div style={{ fontSize: '11px' }}>PO Box XXX</div>
@@ -347,7 +351,7 @@ export function ReportStareheStyle({
                     </div>
                     
                     {/* Centered Logo - Larger */}
-                    <img src="/logos/amagoro.jpeg" alt="School Logo" className="w-32 h-32 mx-auto mb-2 object-contain" />
+                    <img src="/logos/amagoro.jpeg" alt="School Logo" className="w-32 h-32 mx-auto mb-3 object-contain" />
                     
                     {/* School Name - Larger */}
                     <div className="font-bold text-lg text-blue-900 uppercase tracking-widest mb-1">{currentSchool?.name || 'AMAGORO COMPREHENSIVE SCHOOL'}</div>
@@ -355,7 +359,7 @@ export function ReportStareheStyle({
                   </div>
 
                   {/* Report Title with Exam Details */}
-                  <div className="text-center mb-3">
+                  <div className="text-center mb-4">
                     <div className="border-2 border-black inline-block px-6 py-2 mb-2" style={{ fontSize: '13px' }}>
                       <div className="font-bold">PROGRESS REPORT - TERM {sessionInfo?.term || 'N/A'}, {sessionInfo?.year || 'N/A'}</div>
                     </div>
