@@ -24,9 +24,9 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { 
-  Shield, Eye, EyeOff, Settings, Users, BookOpen, Calendar, 
+  Shield, Eye, EyeOff, Settings, BookOpen, Calendar, 
   Clock, FileText, Plus, Trash2, Save, ArrowLeft, Lock, Unlock,
-  GraduationCap, ClipboardList, History, Edit
+  GraduationCap, ClipboardList, History, Edit, Users
 } from 'lucide-react'
 import type { Class, ExamType } from '@/lib/types'
 
