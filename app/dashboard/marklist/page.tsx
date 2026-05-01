@@ -2301,8 +2301,6 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                           <span className="hidden sm:inline">Print Combined</span>
                         </Button>
                       )}
-                      </>
-                    )}
                       <Button size="sm" variant="outline" onClick={(e) => {
                         e.preventDefault()
                         e.stopPropagation()
