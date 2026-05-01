@@ -481,7 +481,8 @@ export function ReportStareheStyle({
                       </svg>
                     </div>
 
-                    {/* Trend Graph */}
+                    {/* Trend Graph - Only show if there's historical data */}
+                    {studentHistory && studentHistory.length > 0 && (
                     <div style={{ flex: 1, border: '1px solid #333', padding: '5px' }}>
                       <div style={{ fontSize: '9px', fontWeight: 'bold', marginBottom: '3px', textAlign: 'center' }}>PERFORMANCE TREND</div>
                       <svg viewBox="0 0 200 55" style={{ width: '100%', height: '55px' }}>
@@ -492,20 +493,20 @@ export function ReportStareheStyle({
                         <text x="15" y="10" fontSize="5" textAnchor="end">100</text>
                         <text x="15" y="30" fontSize="5" textAnchor="end">50</text>
                         <text x="15" y="50" fontSize="5" textAnchor="end">0</text>
-                        {/* Plot points and lines */}
-                        {trendData.map((point, i) => {
-                          const x = 25 + (i * (170 / Math.max(trendData.length - 1, 1)))
-                          const y = 50 - ((point.y / 100) * 45)
-                          const nextPoint = trendData[i + 1]
+                        {/* Plot points from term history */}
+                        {studentHistory.map((history, i) => {
+                          const x = 25 + (i * (170 / Math.max(studentHistory.length - 1, 1)))
+                          const y = 50 - ((history.average / 100) * 45)
+                          const nextHistory = studentHistory[i + 1]
                           return (
                             <g key={i}>
                               <circle cx={x} cy={y} r="2" fill="#1e40af" />
-                              {nextPoint && (
+                              {nextHistory && (
                                 <line
                                   x1={x}
                                   y1={y}
-                                  x2={25 + ((i + 1) * (170 / Math.max(trendData.length - 1, 1)))}
-                                  y2={50 - ((nextPoint.y / 100) * 45)}
+                                  x2={25 + ((i + 1) * (170 / Math.max(studentHistory.length - 1, 1)))}
+                                  y2={50 - ((nextHistory.average / 100) * 45)}
                                   stroke="#1e40af"
                                   strokeWidth="1"
                                 />
@@ -515,6 +516,12 @@ export function ReportStareheStyle({
                         })}
                       </svg>
                     </div>
+                    )}
+                    {(!studentHistory || studentHistory.length === 0) && (
+                    <div style={{ flex: 1, border: '1px solid #333', padding: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ fontSize: '9px', color: '#999', textAlign: 'center' }}>No historical data available</div>
+                    </div>
+                    )}
                   </div>
 
                   {/* Class Teacher Comments */}

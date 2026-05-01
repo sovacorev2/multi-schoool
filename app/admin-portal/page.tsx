@@ -357,6 +357,41 @@ export default function AdminPortalPage() {
     }
   }
 
+  // Update school settings
+  const updateSchoolSettings = async () => {
+    if (!school) return
+    
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('schools')
+      .update({
+        name: school.name,
+        short_name: school.short_name,
+        tagline: school.tagline,
+        email: school.email,
+        phone: school.phone,
+        address: school.address,
+        primary_color: school.primary_color
+      })
+      .eq('id', school.id)
+    
+    if (!error) {
+      // Update school context so changes reflect in report headers immediately
+      setCurrentSchool(school)
+      alert('School settings updated successfully!')
+      
+      // Log the action
+      await supabase.from('activity_logs').insert({
+        school_id: school.id,
+        action: 'school_settings_updated',
+        details: `Updated school information: name, contact, address, color`,
+        performed_by: 'Admin Portal'
+      })
+    } else {
+      alert('Failed to update school settings: ' + error.message)
+    }
+  }
+
   // Delete class
   const handleDeleteClass = (classId: string, className: string) => {
     setClassToDelete({ id: classId, name: className })
