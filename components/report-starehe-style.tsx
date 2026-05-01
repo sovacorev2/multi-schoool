@@ -523,43 +523,6 @@ export function ReportStareheStyle({
                     </div>
                   </div>
 
-                    {/* Performance Trend Line Graph */}
-                    <div className="p-2 flex flex-col items-center">
-                      <div className="font-bold mb-1 text-center">PERFORMANCE TREND</div>
-                      {studentHistory && studentHistory.length > 0 ? (
-                        <svg viewBox="0 0 140 100" className="w-full" style={{ height: '70px' }}>
-                          <line x1="20" y1="10" x2="20" y2="85" stroke="#999" strokeWidth="0.5" />
-                          <line x1="20" y1="85" x2="135" y2="85" stroke="#999" strokeWidth="0.5" />
-                          <text x="16" y="15" fontSize="3" textAnchor="end">100</text>
-                          <text x="16" y="50" fontSize="3" textAnchor="end">50</text>
-                          <text x="16" y="87" fontSize="3" textAnchor="end">0</text>
-                          {studentHistory.map((history, i) => {
-                            const x = 25 + (i * (110 / Math.max(studentHistory.length - 1, 1)))
-                            const y = 85 - ((history.average / 100) * 75)
-                            const nextHistory = studentHistory[i + 1]
-                            return (
-                              <g key={i}>
-                                <circle cx={x} cy={y} r="1.2" fill="#1e40af" />
-                                {nextHistory && (
-                                  <line
-                                    x1={x}
-                                    y1={y}
-                                    x2={25 + ((i + 1) * (110 / Math.max(studentHistory.length - 1, 1)))}
-                                    y2={85 - ((nextHistory.average / 100) * 75)}
-                                    stroke="#1e40af"
-                                    strokeWidth="1.5"
-                                  />
-                                )}
-                              </g>
-                            )
-                          })}
-                        </svg>
-                      ) : (
-                        <div className="text-xs text-gray-500 flex items-center justify-center" style={{ height: '70px' }}>No trend data</div>
-                      )}
-                    </div>
-                  </div>
-
                   {/* Remarks Sections - Larger */}
                   <div className="space-y-2 text-xs mb-2" style={{ fontSize: '10px' }}>
                     {/* Class Teacher Remarks */}
