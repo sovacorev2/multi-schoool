@@ -25,7 +25,6 @@ import { Label } from '@/components/ui/label'
 
 
 import { ReportStareheStyle } from '@/components/report-starehe-style'
-import { ReportModal } from '@/components/report-modal'
 
 
 
@@ -3061,20 +3060,9 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
         </Card>
       )}
 
-      {/* Report Card Modal - Only render if feature is enabled */}
+      {/* Report Card Modal - Starehe Style for all schools */}
       {currentSchool?.feature_report_cards && (
-        currentSchool?.code === 'stjames' ? (
-          <ReportModal
-            isOpen={reportModalOpen}
-            onClose={() => setReportModalOpen(false)}
-            reports={reportModalData}
-            subjects={subjects}
-            sessionInfo={sessions.find(s => s.id === selectedSessionId) || null}
-            className={currentClass?.name || ''}
-            totalStudents={results.length}
-          />
-        ) : (
-          <ReportStareheStyle
+        <ReportStareheStyle
             isOpen={reportModalOpen}
             onClose={() => setReportModalOpen(false)}
             reports={reportModalData.map(report => {
@@ -3108,7 +3096,6 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
             classTeacherName={currentClass?.teacher_name}
             termHistory={termHistory || {}}
           />
-        )
       )}
 
       {/* WhatsApp Bulk Send Modal */}
