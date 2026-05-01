@@ -599,28 +599,6 @@ export default function AdminPortalPage() {
   }
 
   // Update school settings
-  const updateSchoolSettings = async () => {
-    if (!school || !currentSchool) return
-
-    const supabase = createClient()
-    const { error } = await supabase
-      .from('schools')
-      .update({
-        name: school.name,
-        short_name: school.short_name,
-        tagline: school.tagline,
-        email: school.email,
-        phone: school.phone,
-        address: school.address,
-        primary_color: school.primary_color,
-      })
-      .eq('id', currentSchool.id)
-
-    if (!error) {
-      setCurrentSchool({ ...currentSchool, ...school })
-      alert('School settings updated!')
-    }
-  }
 
   // Update class password
   const updateClassPassword = async (classId: string) => {
