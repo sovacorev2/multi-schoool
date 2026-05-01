@@ -1587,6 +1587,15 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                                       const formattedPhone = phone?.startsWith('0') ? `254${phone.substring(1)}` : phone
                                       const gradeInfo = getGradeLevelByClass(Math.round(result.average), currentClass?.name)
                                       const performanceLevel = gradeInfo?.level || '-'
+                                      
+                                      // Build subject details
+                                      const subjectDetails = subjects.map(subject => {
+                                        const score = result.marks[subject.id]
+                                        if (score === null || score === undefined) return null
+                                        const subjectGrade = getGradeLevelByClass(Math.round(score), currentClass?.name)
+                                        return `• ${subject.name}: *${score}%* (${subjectGrade?.level || '-'})`
+                                      }).filter(Boolean).join('\n')
+                                      
                                       const message = encodeURIComponent(
                                         `*${currentSchool?.name?.toUpperCase() || 'SCHOOL'}*\n` +
                                         `━━━━━━━━━━━━━━━━\n` +
@@ -1596,12 +1605,15 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                                         `👤 *Student:* ${result.learner.name}\n` +
                                         `📚 *Class:* ${currentClass?.name || ''}\n` +
                                         `📅 *Term:* ${selectedSession?.term}, ${selectedSession?.year}\n\n` +
-                                        `📈 *PERFORMANCE SUMMARY*\n` +
+                                        `📖 *SUBJECT PERFORMANCE*\n` +
                                         `━━━━━━━━━━━━━━━━\n` +
+                                        `${subjectDetails}\n\n` +
+                                        `📈 *OVERALL SUMMARY*\n` +
+                                        `━━━━━━━━━━━━━━━━\n` +
+                                        `• Total Marks: *${result.total}*\n` +
                                         `• Mean Score: *${result.average.toFixed(1)}%*\n` +
                                         `• Performance Level: *${performanceLevel}*\n` +
-                                        `• Class Position: *${result.rank} of ${results.length}*\n` +
-                                        `• Total Marks: *${result.total}*\n\n` +
+                                        `• Class Position: *${result.rank} of ${results.length}*\n\n` +
                                         `Thank you for your continued support in your child's education.\n\n` +
                                         `_${currentSchool?.name || 'School'}_\n` +
                                         `_Powered by Shuletech_`
