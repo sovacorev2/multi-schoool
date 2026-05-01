@@ -1326,6 +1326,65 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
               <FileText className="w-4 h-4 mr-2" />
               Print All Reports
             </Button>
+            <Button 
+              onClick={() => {
+                // Get all students with parent phone numbers
+                const studentsWithPhone = results.filter(r => r.learner.parent_phone)
+                if (studentsWithPhone.length === 0) {
+                  alert('No students have registered parent phone numbers. Please add parent phone numbers in the Learners tab.')
+                  return
+                }
+                
+                // Open all WhatsApp messages in sequence
+                const confirmed = confirm(`Send results to ${studentsWithPhone.length} parents via WhatsApp?\n\nThis will open WhatsApp for each parent. You will need to click Send for each message.`)
+                if (!confirmed) return
+                
+                studentsWithPhone.forEach((result, index) => {
+                  setTimeout(() => {
+                    const phone = result.learner.parent_phone?.replace(/[^0-9]/g, '')
+                    const formattedPhone = phone?.startsWith('0') ? `254${phone.substring(1)}` : phone
+                    const gradeInfo = getGradeLevelByClass(Math.round(result.average), currentClass?.name)
+                    const performanceLevel = gradeInfo?.level || '-'
+                    
+                    const subjectDetails = subjects.map(subject => {
+                      const score = result.marks[subject.id]
+                      if (score === null || score === undefined) return null
+                      const subjectGrade = getGradeLevelByClass(Math.round(score), currentClass?.name)
+                      return `- ${subject.name}: *${score}%* (${subjectGrade?.level || '-'})`
+                    }).filter(Boolean).join('\n')
+                    
+                    const message = encodeURIComponent(
+                      `*${currentSchool?.name?.toUpperCase() || 'SCHOOL'}*\n` +
+                      `------------------------\n` +
+                      `*EXAM RESULTS NOTIFICATION*\n\n` +
+                      `Dear Parent/Guardian,\n\n` +
+                      `Results for ${selectedSession?.exam_types?.name || 'Exam'}:\n\n` +
+                      `*Student:* ${result.learner.name}\n` +
+                      `*Class:* ${currentClass?.name || ''}\n` +
+                      `*Term:* ${selectedSession?.term}, ${selectedSession?.year}\n\n` +
+                      `*SUBJECTS*\n` +
+                      `------------------------\n` +
+                      `${subjectDetails}\n\n` +
+                      `*SUMMARY*\n` +
+                      `------------------------\n` +
+                      `Total: *${result.total}*\n` +
+                      `Mean: *${result.average.toFixed(1)}%*\n` +
+                      `Level: *${performanceLevel}*\n` +
+                      `Position: *${result.rank}/${results.length}*\n\n` +
+                      `_${currentSchool?.name || 'School'}_`
+                    )
+                    window.open(`https://wa.me/${formattedPhone}?text=${message}`, '_blank')
+                  }, index * 1500) // 1.5 second delay between each to avoid overwhelming
+                })
+              }} 
+              disabled={results.length === 0 || !selectedSessionId || !currentClass?.id} 
+              className="bg-emerald-600 text-white hover:bg-emerald-700 h-9"
+            >
+              <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+              </svg>
+              Send All via WhatsApp
+            </Button>
           </div>
         </div>
 
@@ -1598,22 +1657,22 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                                       
                                       const message = encodeURIComponent(
                                         `*${currentSchool?.name?.toUpperCase() || 'SCHOOL'}*\n` +
-                                        `━━━━━━━━━━━━━━━━\n` +
-                                        `📊 *EXAM RESULTS NOTIFICATION*\n\n` +
+                                        `------------------------\n` +
+                                        `*EXAM RESULTS NOTIFICATION*\n\n` +
                                         `Dear Parent/Guardian,\n\n` +
                                         `We are pleased to share the ${selectedSession?.exam_types?.name || 'Exam'} results for:\n\n` +
-                                        `👤 *Student:* ${result.learner.name}\n` +
-                                        `📚 *Class:* ${currentClass?.name || ''}\n` +
-                                        `📅 *Term:* ${selectedSession?.term}, ${selectedSession?.year}\n\n` +
-                                        `📖 *SUBJECT PERFORMANCE*\n` +
-                                        `━━━━━━━━━━━━━━━━\n` +
+                                        `*Student:* ${result.learner.name}\n` +
+                                        `*Class:* ${currentClass?.name || ''}\n` +
+                                        `*Term:* ${selectedSession?.term}, ${selectedSession?.year}\n\n` +
+                                        `*SUBJECT PERFORMANCE*\n` +
+                                        `------------------------\n` +
                                         `${subjectDetails}\n\n` +
-                                        `📈 *OVERALL SUMMARY*\n` +
-                                        `━━━━━━━━━━━━━━━━\n` +
-                                        `• Total Marks: *${result.total}*\n` +
-                                        `• Mean Score: *${result.average.toFixed(1)}%*\n` +
-                                        `• Performance Level: *${performanceLevel}*\n` +
-                                        `• Class Position: *${result.rank} of ${results.length}*\n\n` +
+                                        `*OVERALL SUMMARY*\n` +
+                                        `------------------------\n` +
+                                        `Total Marks: *${result.total}*\n` +
+                                        `Mean Score: *${result.average.toFixed(1)}%*\n` +
+                                        `Performance Level: *${performanceLevel}*\n` +
+                                        `Class Position: *${result.rank} of ${results.length}*\n\n` +
                                         `Thank you for your continued support in your child's education.\n\n` +
                                         `_${currentSchool?.name || 'School'}_\n` +
                                         `_Powered by Shuletech_`
