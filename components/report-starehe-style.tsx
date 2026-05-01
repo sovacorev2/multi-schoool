@@ -125,14 +125,18 @@ export function ReportStareheStyle({
                   const printCSS = `
                     <style>
                       * { margin: 0; padding: 0; box-sizing: border-box; }
-                      body { font-family: 'Times New Roman', serif; font-size: 12px; line-height: 1.4; }
-                      @page { size: A4; margin: 10mm; }
+                      html, body { margin: 0; padding: 0; }
+                      body { font-family: 'Times New Roman', serif; font-size: 11px; line-height: 1.2; }
+                      @page { size: A4; margin: 8mm; }
                       .page-break { page-break-after: always; }
-                      img { max-width: 100%; height: auto; }
-                      table { width: 100%; border-collapse: collapse; }
-                      th, td { border: 1px solid #333; padding: 4px; }
+                      .hidden { display: none; }
+                      .print\\:table { display: table; }
+                      img { max-width: 100%; height: auto; display: block; }
+                      table { width: 100%; border-collapse: collapse; font-size: inherit; }
+                      th, td { border: 1px solid #333; padding: 3px; word-break: break-word; }
                       th { background-color: #ddd; font-weight: bold; }
-                      tr:nth-child(even) { background-color: #f9f9f9; }
+                      tr { orphans: 2; widows: 2; }
+                      svg { display: block; margin: 0 auto; max-width: 100%; }
                       .text-center { text-align: center; }
                       .text-left { text-align: left; }
                       .text-xs { font-size: 10px; }
@@ -144,17 +148,19 @@ export function ReportStareheStyle({
                       .border { border: 1px solid #333; }
                       .border-2 { border: 2px solid #333; }
                       .border-b-2 { border-bottom: 2px solid #333; }
-                      .p-1\.5 { padding: 6px; }
-                      .p-2 { padding: 8px; }
-                      .p-3 { padding: 12px; }
-                      .p-8 { padding: 32px; }
-                      .mb-1 { margin-bottom: 4px; }
-                      .mb-2 { margin-bottom: 8px; }
-                      .mb-3 { margin-bottom: 12px; }
-                      .mb-4 { margin-bottom: 16px; }
-                      .mt-1 { margin-top: 4px; }
-                      .mt-2 { margin-top: 8px; }
-                      .gap-4 { gap: 16px; }
+                      .border-r-2 { border-right: 2px solid #333; }
+                      .border-b { border-bottom: 1px solid #333; }
+                      .border-t { border-top: 1px solid #333; }
+                      .p-1 { padding: 3px; }
+                      .p-2 { padding: 6px; }
+                      .p-3 { padding: 9px; }
+                      .mb-1 { margin-bottom: 3px; }
+                      .mb-2 { margin-bottom: 6px; }
+                      .mb-3 { margin-bottom: 9px; }
+                      .mt-1 { margin-top: 3px; }
+                      .mt-2 { margin-top: 6px; }
+                      .mt-0\.5 { margin-top: 2px; }
+                      .gap-2 { gap: 6px; }
                       .bg-white { background-color: white; }
                       .bg-gray-50 { background-color: #f9f9f9; }
                       .bg-gray-100 { background-color: #f3f3f3; }
@@ -164,21 +170,35 @@ export function ReportStareheStyle({
                       .grid-cols-2 { grid-template-columns: 1fr 1fr; }
                       .grid-cols-3 { grid-template-columns: 1fr 1fr 1fr; }
                       .mx-auto { margin-left: auto; margin-right: auto; }
-                      .w-28 { width: 112px; }
-                      .h-28 { height: 112px; }
                       .object-contain { object-fit: contain; }
                       .text-blue-900 { color: #1e3a8a; }
                       .text-gray-700 { color: #374151; }
-                      .tracking-widest { letter-spacing: 0.1em; }
+                      .text-gray-600 { color: #4b5563; }
+                      .text-gray-500 { color: #6b7280; }
+                      .tracking-widest { letter-spacing: 0.05em; }
                       .inline-block { display: inline-block; }
                       .flex { display: flex; }
                       .justify-between { justify-content: space-between; }
-                      .pb-3 { padding-bottom: 12px; }
-                      svg { display: block; margin: 0 auto; }
+                      .items-center { align-items: center; }
+                      .flex-col { flex-direction: column; }
+                      .pb-3 { padding-bottom: 9px; }
+                      .pb-1 { padding-bottom: 3px; }
+                      .pb-2 { padding-bottom: 6px; }
+                      .min-h-6 { min-height: 24px; }
+                      .min-h-14 { min-height: 56px; }
+                      .min-h-12 { min-height: 48px; }
+                      .w-20 { width: 80px; }
+                      .h-20 { height: 80px; }
+                      .w-28 { width: 112px; }
+                      .h-28 { height: 112px; }
+                      .space-y-1 > * + * { margin-top: 3px; }
+                      .space-y-2 > * + * { margin-top: 6px; }
+                      .space-y-0\.5 > * + * { margin-top: 2px; }
                       @media print {
-                        body { margin: 0; padding: 0; }
-                        .page-break { page-break-after: always; }
-                        img { display: block; }
+                        body { margin: 0; padding: 0; font-size: 10px; }
+                        * { orphans: 3; widows: 3; }
+                        img { page-break-inside: avoid; }
+                        table { page-break-inside: avoid; }
                       }
                     </style>
                   `
@@ -202,14 +222,18 @@ export function ReportStareheStyle({
                 const printCSS = `
                     <style>
                       * { margin: 0; padding: 0; box-sizing: border-box; }
-                      body { font-family: 'Times New Roman', serif; font-size: 12px; line-height: 1.4; }
-                      @page { size: A4; margin: 10mm; }
+                      html, body { margin: 0; padding: 0; }
+                      body { font-family: 'Times New Roman', serif; font-size: 11px; line-height: 1.2; }
+                      @page { size: A4; margin: 8mm; }
                       .page-break { page-break-after: always; }
-                      img { max-width: 100%; height: auto; }
-                      table { width: 100%; border-collapse: collapse; }
-                      th, td { border: 1px solid #333; padding: 4px; }
+                      .hidden { display: none; }
+                      .print\\:table { display: table; }
+                      img { max-width: 100%; height: auto; display: block; }
+                      table { width: 100%; border-collapse: collapse; font-size: inherit; }
+                      th, td { border: 1px solid #333; padding: 3px; word-break: break-word; }
                       th { background-color: #ddd; font-weight: bold; }
-                      tr:nth-child(even) { background-color: #f9f9f9; }
+                      tr { orphans: 2; widows: 2; }
+                      svg { display: block; margin: 0 auto; max-width: 100%; }
                       .text-center { text-align: center; }
                       .text-left { text-align: left; }
                       .text-xs { font-size: 10px; }
@@ -221,17 +245,19 @@ export function ReportStareheStyle({
                       .border { border: 1px solid #333; }
                       .border-2 { border: 2px solid #333; }
                       .border-b-2 { border-bottom: 2px solid #333; }
-                      .p-1\.5 { padding: 6px; }
-                      .p-2 { padding: 8px; }
-                      .p-3 { padding: 12px; }
-                      .p-8 { padding: 32px; }
-                      .mb-1 { margin-bottom: 4px; }
-                      .mb-2 { margin-bottom: 8px; }
-                      .mb-3 { margin-bottom: 12px; }
-                      .mb-4 { margin-bottom: 16px; }
-                      .mt-1 { margin-top: 4px; }
-                      .mt-2 { margin-top: 8px; }
-                      .gap-4 { gap: 16px; }
+                      .border-r-2 { border-right: 2px solid #333; }
+                      .border-b { border-bottom: 1px solid #333; }
+                      .border-t { border-top: 1px solid #333; }
+                      .p-1 { padding: 3px; }
+                      .p-2 { padding: 6px; }
+                      .p-3 { padding: 9px; }
+                      .mb-1 { margin-bottom: 3px; }
+                      .mb-2 { margin-bottom: 6px; }
+                      .mb-3 { margin-bottom: 9px; }
+                      .mt-1 { margin-top: 3px; }
+                      .mt-2 { margin-top: 6px; }
+                      .mt-0\.5 { margin-top: 2px; }
+                      .gap-2 { gap: 6px; }
                       .bg-white { background-color: white; }
                       .bg-gray-50 { background-color: #f9f9f9; }
                       .bg-gray-100 { background-color: #f3f3f3; }
@@ -241,21 +267,35 @@ export function ReportStareheStyle({
                       .grid-cols-2 { grid-template-columns: 1fr 1fr; }
                       .grid-cols-3 { grid-template-columns: 1fr 1fr 1fr; }
                       .mx-auto { margin-left: auto; margin-right: auto; }
-                      .w-28 { width: 112px; }
-                      .h-28 { height: 112px; }
                       .object-contain { object-fit: contain; }
                       .text-blue-900 { color: #1e3a8a; }
                       .text-gray-700 { color: #374151; }
-                      .tracking-widest { letter-spacing: 0.1em; }
+                      .text-gray-600 { color: #4b5563; }
+                      .text-gray-500 { color: #6b7280; }
+                      .tracking-widest { letter-spacing: 0.05em; }
                       .inline-block { display: inline-block; }
                       .flex { display: flex; }
                       .justify-between { justify-content: space-between; }
-                      .pb-3 { padding-bottom: 12px; }
-                      svg { display: block; margin: 0 auto; }
+                      .items-center { align-items: center; }
+                      .flex-col { flex-direction: column; }
+                      .pb-3 { padding-bottom: 9px; }
+                      .pb-1 { padding-bottom: 3px; }
+                      .pb-2 { padding-bottom: 6px; }
+                      .min-h-6 { min-height: 24px; }
+                      .min-h-14 { min-height: 56px; }
+                      .min-h-12 { min-height: 48px; }
+                      .w-20 { width: 80px; }
+                      .h-20 { height: 80px; }
+                      .w-28 { width: 112px; }
+                      .h-28 { height: 112px; }
+                      .space-y-1 > * + * { margin-top: 3px; }
+                      .space-y-2 > * + * { margin-top: 6px; }
+                      .space-y-0\.5 > * + * { margin-top: 2px; }
                       @media print {
-                        body { margin: 0; padding: 0; }
-                        .page-break { page-break-after: always; }
-                        img { display: block; }
+                        body { margin: 0; padding: 0; font-size: 10px; }
+                        * { orphans: 3; widows: 3; }
+                        img { page-break-inside: avoid; }
+                        table { page-break-inside: avoid; }
                       }
                     </style>
                   `
@@ -298,125 +338,107 @@ export function ReportStareheStyle({
               return (
                 <div key={report.learner.id || idx} className="bg-white p-8 rounded-lg border-2 border-gray-200 page-break">
                   {/* School Header with Logo and Contact Info */}
-                  <div className="text-center mb-4 pb-3 border-b-2 border-gray-400">
+                  <div className="text-center mb-2 pb-2 border-b-2 border-gray-400">
                     {/* Contact Info on Left */}
-                    <div className="text-xs text-gray-700 mb-3">
-                      <div>PO Box XXX</div>
-                      <div>Tel: +254 XXX XXX XXX</div>
-                      <div>Email: info@school.ke</div>
+                    <div className="text-xs text-gray-700 mb-2">
+                      <div style={{ fontSize: '9px' }}>PO Box XXX</div>
+                      <div style={{ fontSize: '9px' }}>Tel: +254 XXX XXX XXX</div>
+                      <div style={{ fontSize: '9px' }}>Email: info@school.ke</div>
                     </div>
                     
-                    {/* Centered Logo */}
+                    {/* Centered Logo - Smaller */}
                     {currentSchool?.logo_url && (
-                      <img src={currentSchool.logo_url} alt="School Logo" className="w-28 h-28 mx-auto mb-2 object-contain" />
+                      <img src={currentSchool.logo_url} alt="School Logo" className="w-20 h-20 mx-auto mb-1 object-contain" />
                     )}
                     
-                    {/* School Name - Large and Bold */}
-                    <div className="font-bold text-lg text-blue-900 uppercase tracking-widest mb-1">{currentSchool?.name}</div>
-                    {currentSchool?.tagline && <div className="text-xs italic text-gray-700">{currentSchool.tagline}</div>}
+                    {/* School Name - Smaller */}
+                    <div className="font-bold text-sm text-blue-900 uppercase tracking-widest mb-0.5">{currentSchool?.name}</div>
+                    {currentSchool?.tagline && <div className="text-xs italic text-gray-700" style={{ fontSize: '9px' }}>{currentSchool.tagline}</div>}
                   </div>
 
                   {/* Report Title with Exam Details */}
-                  <div className="text-center mb-4">
-                    <div className="border-2 border-black inline-block px-6 py-2 mb-2">
-                      <div className="font-bold text-sm">PROGRESS REPORT - TERM {sessionInfo?.term || 'N/A'}, {sessionInfo?.year || 'N/A'}</div>
+                  <div className="text-center mb-2">
+                    <div className="border-2 border-black inline-block px-4 py-1 mb-1" style={{ fontSize: '11px' }}>
+                      <div className="font-bold">PROGRESS REPORT - TERM {sessionInfo?.term || 'N/A'}, {sessionInfo?.year || 'N/A'}</div>
                     </div>
                     {sessionInfo?.exam_types?.name && (
-                      <div className="text-xs font-semibold text-gray-700 mt-2">
+                      <div className="text-xs font-semibold text-gray-700 mt-1" style={{ fontSize: '9px' }}>
                         {sessionInfo.exam_types.name.toUpperCase()} | TERM {sessionInfo?.term || 'N/A'} | {sessionInfo?.year || 'N/A'}
                       </div>
                     )}
                   </div>
 
                   {/* Student Info */}
-                  <div className="grid grid-cols-3 gap-4 mb-4 text-sm">
+                  <div className="grid grid-cols-3 gap-2 mb-2 text-xs" style={{ fontSize: '10px' }}>
                     <div><span className="font-bold">NAME:</span> {report.learner.name}</div>
                     <div><span className="font-bold">ADMISSION NO:</span> {report.learner.admission_number || '-'}</div>
                     <div><span className="font-bold">CLASS:</span> {className}</div>
                   </div>
 
                   {/* Marks Table */}
-                  <table className="w-full border-collapse mb-4 text-xs">
+                  <table className="w-full border-collapse mb-2" style={{ fontSize: '9px' }}>
                     <thead>
                       <tr className="bg-gray-200">
-                        <th className="border border-gray-400 p-2 text-left">SUBJECT</th>
-                        <th className="border border-gray-400 p-2 text-center w-12">SCORE</th>
-                        <th className="border border-gray-400 p-2 text-center w-12">LEVEL</th>
-                        <th className="border border-gray-400 p-2 text-center w-10">PTS</th>
-                        <th className="border border-gray-400 p-2 text-center">POS</th>
-                        <th className="border border-gray-400 p-2 text-left">REMARKS</th>
+                        <th className="border border-gray-400 p-1 text-left">SUBJECT</th>
+                        <th className="border border-gray-400 p-1 text-center w-10">SCORE</th>
+                        <th className="border border-gray-400 p-1 text-center w-10">LEVEL</th>
+                        <th className="border border-gray-400 p-1 text-center w-8">PTS</th>
+                        <th className="border border-gray-400 p-1 text-center w-12">POS</th>
+                        <th className="border border-gray-400 p-1 text-left">REMARKS</th>
                       </tr>
                     </thead>
                     <tbody>
                       {subjectData.map((item, i) => (
                         <tr key={item.subject.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                          <td className="border border-gray-400 p-2">{item.subject.name.toUpperCase()}</td>
-                          <td className="border border-gray-400 p-2 text-center">{item.score ?? '-'}</td>
-                          <td className="border border-gray-400 p-2 text-center font-bold">{item.level}</td>
-                          <td className="border border-gray-400 p-2 text-center">{item.points}</td>
-                          <td className="border border-gray-400 p-2 text-center">{report.subjectPositions?.[item.subject.id] || '-'}/{totalStudents}</td>
-                          <td className="border border-gray-400 p-2 text-xs">{item.remarks}</td>
+                          <td className="border border-gray-400 p-1">{item.subject.name.toUpperCase()}</td>
+                          <td className="border border-gray-400 p-1 text-center">{item.score ?? '-'}</td>
+                          <td className="border border-gray-400 p-1 text-center font-bold">{item.level}</td>
+                          <td className="border border-gray-400 p-1 text-center">{item.points}</td>
+                          <td className="border border-gray-400 p-1 text-center">{report.subjectPositions?.[item.subject.id] || '-'}/{totalStudents}</td>
+                          <td className="border border-gray-400 p-1" style={{ fontSize: '8px' }}>{item.remarks}</td>
                         </tr>
                       ))}
                       <tr className="bg-yellow-100 font-bold">
-                        <td className="border border-gray-400 p-2">TOTAL</td>
-                        <td className="border border-gray-400 p-2 text-center">{report.total}</td>
-                        <td className="border border-gray-400 p-2 text-center"></td>
-                        <td className="border border-gray-400 p-2 text-center">{totalPoints}</td>
-                        <td className="border border-gray-400 p-2 text-center"></td>
-                        <td className="border border-gray-400 p-2"></td>
+                        <td className="border border-gray-400 p-1">TOTAL</td>
+                        <td className="border border-gray-400 p-1 text-center">{report.total}</td>
+                        <td className="border border-gray-400 p-1 text-center"></td>
+                        <td className="border border-gray-400 p-1 text-center">{totalPoints}</td>
+                        <td className="border border-gray-400 p-1 text-center"></td>
+                        <td className="border border-gray-400 p-1"></td>
                       </tr>
                     </tbody>
                   </table>
 
                   {/* Summary - Mean Marks and Performance Level */}
-                  <div className="grid grid-cols-2 gap-4 mb-4 text-xs">
-                    <div className="border border-gray-400 p-3">
+                  <div className="grid grid-cols-2 gap-2 mb-2" style={{ fontSize: '9px' }}>
+                    <div className="border border-gray-400 p-2">
                       <div><strong>MEAN MARKS:</strong> {meanMark.toFixed(1)}</div>
-                      <div className="mt-1"><strong>PERFORMANCE LEVEL:</strong> {meanPerf.level}</div>
-                      <div className="text-gray-600 mt-2 text-xs">
-                        <div>EE - Exceeding Expectation - 4pts</div>
-                        <div>ME - Meeting Expectation - 3pts</div>
-                        <div>PE - Partially Expectation - 2pts</div>
-                        <div>BE - Below Expectation - 1pt</div>
-                      </div>
+                      <div className="mt-0.5"><strong>LEVEL:</strong> {meanPerf.level}</div>
                     </div>
-                    <div className="border border-gray-400 p-3 flex flex-col justify-center">
+                    <div className="border border-gray-400 p-2">
                       <div><strong>TOTAL POINTS:</strong> {totalPoints}/{maxPoints}</div>
-                      <div className="mt-1"><strong>OVERALL POSITION:</strong> {report.rank} of {totalStudents}</div>
+                      <div className="mt-0.5"><strong>POSITION:</strong> {report.rank}/{totalStudents}</div>
                     </div>
                   </div>
 
-                  {/* Historical Performance Table */}
+                  {/* Historical Performance Table - Hide on print to save space */}
                   {studentHistory && studentHistory.length > 0 && (
-                    <table className="w-full border-collapse mb-4 text-xs">
+                    <table className="w-full border-collapse mb-2 text-xs hidden print:table" style={{ fontSize: '8px' }}>
                       <thead>
                         <tr className="bg-gray-200 border-2 border-gray-400">
-                          <th className="border border-gray-400 p-1.5 text-left font-bold">TERM</th>
-                          <th className="border border-gray-400 p-1.5 text-center font-bold">TOTAL SCORE</th>
-                          <th className="border border-gray-400 p-1.5 text-center font-bold">AVERAGE POINTS</th>
-                          <th className="border border-gray-400 p-1.5 text-center font-bold">IMPL (%)</th>
-                          <th className="border border-gray-400 p-1.5 text-center font-bold">TOTAL POINTS</th>
-                          <th className="border border-gray-400 p-1.5 text-center font-bold">MEAN MARK</th>
-                          <th className="border border-gray-400 p-1.5 text-center font-bold">PERF LEVEL</th>
-                          <th className="border border-gray-400 p-1.5 text-center font-bold">STREAM POS</th>
-                          <th className="border border-gray-400 p-1.5 text-center font-bold">OVERALL POS</th>
-                          <th className="border border-gray-400 p-1.5 text-center font-bold">DAYS ABSENT</th>
+                          <th className="border border-gray-400 p-1 text-left font-bold">TERM</th>
+                          <th className="border border-gray-400 p-1 text-center font-bold">SCORE</th>
+                          <th className="border border-gray-400 p-1 text-center font-bold">AVG</th>
+                          <th className="border border-gray-400 p-1 text-center font-bold">POS</th>
                         </tr>
                       </thead>
                       <tbody>
                         {studentHistory.map((history, i) => (
                           <tr key={i} className="border-b border-gray-400 text-center">
-                            <td className="border border-gray-400 p-1.5 text-left font-semibold">TERM {history.term}</td>
-                            <td className="border border-gray-400 p-1.5">{history.total || '-'}</td>
-                            <td className="border border-gray-400 p-1.5">-</td>
-                            <td className="border border-gray-400 p-1.5">-</td>
-                            <td className="border border-gray-400 p-1.5">-</td>
-                            <td className="border border-gray-400 p-1.5">{history.average ? history.average.toFixed(1) : '-'}</td>
-                            <td className="border border-gray-400 p-1.5">-</td>
-                            <td className="border border-gray-400 p-1.5">-</td>
-                            <td className="border border-gray-400 p-1.5">{history.rank || '-'}</td>
-                            <td className="border border-gray-400 p-1.5">{history.daysAbsent || '-'}</td>
+                            <td className="border border-gray-400 p-1 text-left font-semibold">T{history.term}</td>
+                            <td className="border border-gray-400 p-1">{history.total || '-'}</td>
+                            <td className="border border-gray-400 p-1">{history.average ? history.average.toFixed(1) : '-'}</td>
+                            <td className="border border-gray-400 p-1">{history.rank || '-'}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -424,11 +446,11 @@ export function ReportStareheStyle({
                   )}
 
                   {/* Subject Distribution and Performance Trend - Bordered Container */}
-                  <div className="border-2 border-gray-400 mb-4 grid grid-cols-2">
+                  <div className="border-2 border-gray-400 mb-2 grid grid-cols-2" style={{ fontSize: '9px' }}>
                     {/* Subject Distribution Pie Chart */}
-                    <div className="border-r-2 border-gray-400 p-4 flex flex-col items-center">
-                      <div className="text-xs font-bold mb-3 text-center">SUBJECT DISTRIBUTION</div>
-                      <svg viewBox="0 0 120 120" className="w-full" style={{ height: '90px' }}>
+                    <div className="border-r-2 border-gray-400 p-2 flex flex-col items-center">
+                      <div className="font-bold mb-1 text-center">SUBJECT DIST</div>
+                      <svg viewBox="0 0 120 120" className="w-full" style={{ height: '70px' }}>
                         {(() => {
                           const scores = subjectData.map(s => s.score || 0)
                           const total = scores.reduce((a, b) => a + b, 0)
@@ -463,10 +485,10 @@ export function ReportStareheStyle({
                     </div>
 
                     {/* Performance Trend Line Graph */}
-                    <div className="p-4 flex flex-col items-center">
-                      <div className="text-xs font-bold mb-3 text-center">PERFORMANCE TREND</div>
+                    <div className="p-2 flex flex-col items-center">
+                      <div className="font-bold mb-1 text-center">PERFORMANCE TREND</div>
                       {studentHistory && studentHistory.length > 0 ? (
-                        <svg viewBox="0 0 140 100" className="w-full" style={{ height: '90px' }}>
+                        <svg viewBox="0 0 140 100" className="w-full" style={{ height: '70px' }}>
                           <line x1="20" y1="10" x2="20" y2="85" stroke="#999" strokeWidth="0.5" />
                           <line x1="20" y1="85" x2="135" y2="85" stroke="#999" strokeWidth="0.5" />
                           <text x="16" y="15" fontSize="3" textAnchor="end">100</text>
@@ -494,60 +516,55 @@ export function ReportStareheStyle({
                           })}
                         </svg>
                       ) : (
-                        <div className="text-xs text-gray-500 flex items-center justify-center h-24">No historical data available</div>
+                        <div className="text-xs text-gray-500 flex items-center justify-center" style={{ height: '70px' }}>No trend data</div>
                       )}
                     </div>
                   </div>
 
-                  {/* Remarks Sections */}
-                  <div className="space-y-2 text-xs mb-3">
+                  {/* Remarks Sections - Compact */}
+                  <div className="space-y-1 text-xs mb-1" style={{ fontSize: '8px' }}>
                     {/* Class Teacher Remarks */}
                     <div className="border-2 border-gray-400">
-                      <div className="bg-gray-200 font-bold p-2 border-b border-gray-400">CLASS TEACHER'S REMARKS:</div>
-                      <div className="p-3 min-h-14"></div>
-                      <div className="flex justify-between px-3 pb-2 border-t border-gray-400 text-xs">
-                        <div>NAME: __________ SIGN: __________</div>
-                        <div>DATE: __________</div>
+                      <div className="bg-gray-200 font-bold p-1 border-b border-gray-400">CLASS TEACHER'S REMARKS:</div>
+                      <div className="p-1 min-h-6"></div>
+                      <div className="flex justify-between px-1 pb-1 border-t border-gray-400 text-xs" style={{ fontSize: '7px' }}>
+                        <div>NAME: _____ SIGN: _____</div>
+                        <div>DATE: _____</div>
                       </div>
                     </div>
 
                     {/* Head Teacher Remarks */}
                     <div className="border-2 border-gray-400">
-                      <div className="bg-gray-200 font-bold p-2 border-b border-gray-400">HEAD TEACHER'S REMARKS:</div>
-                      <div className="p-3 min-h-14"></div>
-                      <div className="flex justify-between px-3 pb-2 border-t border-gray-400 text-xs">
-                        <div>SIGN: __________</div>
-                        <div>DATE: __________</div>
-                        <div>STAMP:</div>
+                      <div className="bg-gray-200 font-bold p-1 border-b border-gray-400">HEAD TEACHER'S REMARKS:</div>
+                      <div className="p-1 min-h-6"></div>
+                      <div className="flex justify-between px-1 pb-1 border-t border-gray-400 text-xs" style={{ fontSize: '7px' }}>
+                        <div>SIGN: _____</div>
+                        <div>DATE: _____ STAMP:</div>
                       </div>
                     </div>
 
                     {/* Parent/Guardian Remarks */}
                     <div className="border-2 border-gray-400">
-                      <div className="bg-gray-200 font-bold p-2 border-b border-gray-400">PARENT/GUARDIAN'S REMARKS:</div>
-                      <div className="p-3 min-h-14"></div>
-                      <div className="flex justify-between px-3 pb-2 border-t border-gray-400 text-xs">
-                        <div>NAME: __________</div>
-                        <div>SIGN: __________</div>
-                        <div>DATE: __________</div>
+                      <div className="bg-gray-200 font-bold p-1 border-b border-gray-400">PARENT/GUARDIAN'S REMARKS:</div>
+                      <div className="p-1 min-h-6"></div>
+                      <div className="flex justify-between px-1 pb-1 border-t border-gray-400 text-xs" style={{ fontSize: '7px' }}>
+                        <div>NAME: _____</div>
+                        <div>SIGN: _____ DATE: _____</div>
                       </div>
                     </div>
                   </div>
 
-                  {/* CBE Performance Levels Guide */}
-                  <div className="border-2 border-gray-400 p-3 mb-2">
-                    <div className="font-bold text-xs mb-2">CBE PERFORMANCE LEVELS:</div>
-                    <div className="text-xs space-y-1">
-                      <div><strong>EE</strong> = Exceeding Expectation - 4pts</div>
-                      <div><strong>ME</strong> = Meeting Expectation - 3pts</div>
-                      <div><strong>PE</strong> = Partially Expectation - 2pts</div>
-                      <div><strong>BE</strong> = Below Expectation - 1pt</div>
+                  {/* CBE Performance Levels Guide - Compact */}
+                  <div className="border-2 border-gray-400 p-1 mb-1" style={{ fontSize: '8px' }}>
+                    <div className="font-bold mb-0.5">CBE PERFORMANCE LEVELS:</div>
+                    <div style={{ fontSize: '7px' }} className="space-y-0.5">
+                      <div><strong>EE</strong>=Exceeding-4pts | <strong>ME</strong>=Meeting-3pts | <strong>PE</strong>=Partially-2pts | <strong>BE</strong>=Below-1pt</div>
                     </div>
                   </div>
 
                   {/* Next Term Info */}
-                  <div className="border-2 border-gray-400 p-3">
-                    <div className="font-bold text-xs">NEXT TERM BUSES FROM: __________ TO: __________</div>
+                  <div className="border-2 border-gray-400 p-1" style={{ fontSize: '8px' }}>
+                    <div className="font-bold">NEXT TERM BUSES FROM: __________ TO: __________</div>
                   </div>
                 </div>
               )
