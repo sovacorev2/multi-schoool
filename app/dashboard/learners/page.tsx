@@ -23,6 +23,7 @@ interface Learner {
   admission_number: string | null
   gender: string | null
   parent_phone: string | null
+  birth_cert_number: string | null
   created_at: string
 }
 
@@ -34,6 +35,7 @@ export default function LearnersPage() {
   const [assessmentNumber, setAssessmentNumber] = useState('')
   const [selectedGender, setSelectedGender] = useState('')
   const [parentPhone, setParentPhone] = useState('')
+  const [birthCertNumber, setBirthCertNumber] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   
@@ -43,6 +45,7 @@ export default function LearnersPage() {
   const [editAssessmentNumber, setEditAssessmentNumber] = useState('')
   const [editGender, setEditGender] = useState('')
   const [editParentPhone, setEditParentPhone] = useState('')
+  const [editBirthCertNumber, setEditBirthCertNumber] = useState('')
   const [isUpdating, setIsUpdating] = useState(false)
   
   // Promotion state
@@ -174,6 +177,7 @@ export default function LearnersPage() {
           admission_number: assessmentNumber.trim() || null,
           gender: selectedGender || null,
           parent_phone: parentPhone.trim() || null,
+          birth_cert_number: birthCertNumber.trim() || null,
           class_id: currentClass.id,
           school_id: currentSchool?.id,
         },
@@ -186,6 +190,7 @@ export default function LearnersPage() {
         setAssessmentNumber('')
         setSelectedGender('')
         setParentPhone('')
+        setBirthCertNumber('')
       }
     } catch (error) {
       console.error('Error adding learner:', error)
@@ -212,6 +217,7 @@ export default function LearnersPage() {
     setEditAssessmentNumber(learner.admission_number || '')
     setEditGender(learner.gender || '')
     setEditParentPhone(learner.parent_phone || '')
+    setEditBirthCertNumber(learner.birth_cert_number || '')
   }
 
   function cancelEdit() {
@@ -220,6 +226,7 @@ export default function LearnersPage() {
     setEditAssessmentNumber('')
     setEditGender('')
     setEditParentPhone('')
+    setEditBirthCertNumber('')
   }
 
   async function handleUpdateLearner(learnerId: string) {
@@ -234,6 +241,7 @@ export default function LearnersPage() {
           admission_number: editAssessmentNumber.trim() || null,
           gender: editGender || null,
           parent_phone: editParentPhone.trim() || null,
+          birth_cert_number: editBirthCertNumber.trim() || null,
         })
         .eq('id', learnerId)
 
@@ -241,7 +249,7 @@ export default function LearnersPage() {
 
       setLearners(learners.map(l => 
         l.id === learnerId 
-          ? { ...l, name: editName.trim(), admission_number: editAssessmentNumber.trim() || null, gender: editGender || null, parent_phone: editParentPhone.trim() || null }
+          ? { ...l, name: editName.trim(), admission_number: editAssessmentNumber.trim() || null, gender: editGender || null, parent_phone: editParentPhone.trim() || null, birth_cert_number: editBirthCertNumber.trim() || null }
           : l
       ))
       cancelEdit()
@@ -384,6 +392,18 @@ export default function LearnersPage() {
               />
             </div>
 
+            {/* Birth Certificate Number */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Birth Certificate Number (Optional)</label>
+              <input
+                type="text"
+                value={birthCertNumber}
+                onChange={(e) => setBirthCertNumber(e.target.value)}
+                placeholder="e.g. 123456789"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
             {/* Add Button */}
             <div className="flex items-end">
               <button
@@ -436,6 +456,7 @@ export default function LearnersPage() {
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Student Name</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Gender</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Parent Phone</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Birth Cert #</th>
                   <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Actions</th>
                 </tr>
               </thead>
@@ -498,6 +519,15 @@ export default function LearnersPage() {
                             placeholder="0712345678"
                           />
                         </td>
+                        <td className="px-6 py-4">
+                          <input
+                            type="text"
+                            value={editBirthCertNumber}
+                            onChange={(e) => setEditBirthCertNumber(e.target.value)}
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            placeholder="123456789"
+                          />
+                        </td>
                         <td className="px-6 py-4 text-center">
                           <div className="flex justify-center gap-1">
                             <button
@@ -524,6 +554,7 @@ export default function LearnersPage() {
                         <td className="px-6 py-4 text-sm font-medium text-gray-900">{learner.name}</td>
                         <td className="px-6 py-4 text-sm text-gray-600">{learner.gender || '-'}</td>
                         <td className="px-6 py-4 text-sm text-gray-600">{learner.parent_phone || '-'}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600">{learner.birth_cert_number || '-'}</td>
                         <td className="px-6 py-4 text-center">
                           <div className="flex justify-center gap-1">
                             <button

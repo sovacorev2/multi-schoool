@@ -452,7 +452,11 @@ export default function MarklistPage() {
         streams: streamsData,
       })
     } catch (err) {
-      console.error('Stream comparison error:', err)
+      console.error('[v0] Stream comparison error:', err)
+      if (err instanceof Error) {
+        console.error('[v0] Error details:', err.message, err.stack)
+      }
+      alert('Error loading stream comparison. Please try again.')
     } finally {
       setIsLoadingStreams(false)
     }
@@ -1330,33 +1334,56 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                   // Fetch term history for trend graphs
                   try {
                     const supabase = createClient()
-                    const learnerId = results[0]?.learner?.id
-                    if (learnerId) {
-                      const { data } = await supabase
-                        .from('marks')
-                        .select('*, sessions(term, year)')
-                        .eq('learner_id', learnerId)
-                        .order('sessions(year)', { ascending: false })
-                        .order('sessions(term)', { ascending: false })
+                    const history: Record<string, any[]> = {}
+                    
+                    // Build history for each learner including current session
+                    results.forEach(result => {
+                      const learnerId = result.learner.id
+                      const termData: any[] = []
                       
-                      if (data) {
-                        const history: Record<string, any[]> = {}
-                        results.forEach(result => {
-                          const studentMarks = data.filter((m: any) => m.learner_id === result.learner.id)
-                          history[result.learner.id] = studentMarks.map(m => ({
-                            term: m.sessions?.term,
-                            year: m.sessions?.year,
-                            total: m.total_marks || 0,
-                            average: m.average_score || 0,
-                            rank: m.position || 0
-                          })).sort((a, b) => {
-                            if (a.year !== b.year) return a.year - b.year
-                            return a.term - b.term
-                          })
+                      // Add current exam data
+                      if (result.total !== null && result.total !== undefined) {
+                        termData.push({
+                          term: selectedSession?.term || 0,
+                          year: selectedSession?.year || new Date().getFullYear(),
+                          total: result.total,
+                          average: result.average_score || 0,
+                          rank: result.position || 0
                         })
-                        setTermHistory(history)
                       }
+                      
+                      history[learnerId] = termData
+                    })
+                    
+                    // Fetch historical marks data
+                    const { data: historicalMarks } = await supabase
+                      .from('marks')
+                      .select('learner_id, total_marks, average_score, position, sessions(term, year)')
+                      .in('learner_id', results.map(r => r.learner.id))
+                      .neq('session_id', selectedSessionId)
+                    
+                    if (historicalMarks) {
+                      historicalMarks.forEach((m: any) => {
+                        if (!history[m.learner_id]) history[m.learner_id] = []
+                        history[m.learner_id].push({
+                          term: m.sessions?.term,
+                          year: m.sessions?.year,
+                          total: m.total_marks || 0,
+                          average: m.average_score || 0,
+                          rank: m.position || 0
+                        })
+                      })
                     }
+                    
+                    // Sort each learner's history chronologically
+                    Object.keys(history).forEach(learnerId => {
+                      history[learnerId].sort((a, b) => {
+                        if (a.year !== b.year) return a.year - b.year
+                        return a.term - b.term
+                      })
+                    })
+                    
+                    setTermHistory(history)
                   } catch (error) {
                     console.error('Error fetching term history:', error)
                   }

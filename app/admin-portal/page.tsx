@@ -124,8 +124,6 @@ export default function AdminPortalPage() {
   // Form state
   const [newExamType, setNewExamType] = useState('')
   const [newClassName, setNewClassName] = useState('')
-  const [newSubjectName, setNewSubjectName] = useState('')
-  const [newSubjectCode, setNewSubjectCode] = useState('')
   
   // Stream management
   const [streamBaseClass, setStreamBaseClass] = useState('')
@@ -501,36 +499,6 @@ export default function AdminPortalPage() {
   }
 
   // Add subject
-  const addSubject = async () => {
-    if (!newSubjectName.trim() || !currentSchool) return
-    
-    const supabase = createClient()
-    const { data, error } = await supabase
-      .from('subjects')
-      .insert({ 
-        name: newSubjectName.trim(),
-        code: newSubjectCode.trim() || newSubjectName.substring(0, 3).toUpperCase(),
-        school_id: currentSchool.id
-      })
-      .select()
-      .single()
-
-    if (!error && data) {
-      setSubjects([...subjects, data])
-      setNewSubjectName('')
-      setNewSubjectCode('')
-    }
-  }
-
-  // Delete subject
-  const deleteSubject = async (id: string) => {
-    const supabase = createClient()
-    const { error } = await supabase.from('subjects').delete().eq('id', id)
-    if (!error) {
-      setSubjects(subjects.filter(s => s.id !== id))
-    }
-  }
-
   // Create exam session (deadline is set separately via inline edit)
   const createExamSession = async () => {
     if (!deadlineClass || !deadlineExamType || !currentSchool) return
@@ -826,10 +794,6 @@ export default function AdminPortalPage() {
               <TabsTrigger value="passwords" className="flex items-center gap-2">
                 <Lock className="w-4 h-4" />
                 Passwords
-              </TabsTrigger>
-              <TabsTrigger value="subjects" className="flex items-center gap-2">
-                <BookOpen className="w-4 h-4" />
-                Subjects
               </TabsTrigger>
               <TabsTrigger value="exams" className="flex items-center gap-2">
                 <ClipboardList className="w-4 h-4" />
@@ -1280,57 +1244,6 @@ export default function AdminPortalPage() {
               </Card>
             </TabsContent>
 
-            {/* Subjects Tab */}
-            <TabsContent value="subjects">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BookOpen className="w-5 h-5" />
-                    Manage Subjects
-                  </CardTitle>
-                  <CardDescription>Add or remove subjects for this school</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Subject name"
-                      value={newSubjectName}
-                      onChange={(e) => setNewSubjectName(e.target.value)}
-                      className="flex-1"
-                    />
-                    <Input
-                      placeholder="Code (e.g., MAT)"
-                      value={newSubjectCode}
-                      onChange={(e) => setNewSubjectCode(e.target.value)}
-                      className="w-32"
-                    />
-                    <Button onClick={addSubject} disabled={!newSubjectName.trim()}>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Subject
-                    </Button>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-3">
-                    {subjects.map(s => (
-                      <div key={s.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div>
-                          <span className="font-medium">{s.name}</span>
-                          <span className="text-xs text-gray-500 ml-2">({s.code})</span>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => deleteSubject(s.id)}
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
 
             {/* Exam Types Tab */}
             <TabsContent value="exams">
