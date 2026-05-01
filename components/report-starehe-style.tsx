@@ -175,13 +175,23 @@ export function ReportStareheStyle({
 
               return (
                 <div key={report.learner.id || idx} className="bg-white p-8 rounded-lg border-2 border-gray-200 page-break">
-                  {/* School Header with Logo */}
-                  <div className="text-center mb-6 border-b-2 border-gray-300 pb-4">
+                  {/* School Header with Logo and Contact Info */}
+                  <div className="text-center mb-4 pb-3 border-b-2 border-gray-400">
+                    {/* Contact Info on Left */}
+                    <div className="text-xs text-gray-700 mb-3">
+                      <div>PO Box XXX</div>
+                      <div>Tel: +254 XXX XXX XXX</div>
+                      <div>Email: info@school.ke</div>
+                    </div>
+                    
+                    {/* Centered Logo */}
                     {currentSchool?.logo_url && (
-                      <img src={currentSchool.logo_url} alt="School Logo" className="w-32 h-32 mx-auto mb-4 object-contain" />
+                      <img src={currentSchool.logo_url} alt="School Logo" className="w-28 h-28 mx-auto mb-2 object-contain" />
                     )}
-                    <div className="font-bold text-xl text-blue-900 uppercase tracking-wide">{currentSchool?.name}</div>
-                    {currentSchool?.tagline && <div className="text-sm italic text-gray-700 mt-1">{currentSchool.tagline}</div>}
+                    
+                    {/* School Name - Large and Bold */}
+                    <div className="font-bold text-lg text-blue-900 uppercase tracking-widest mb-1">{currentSchool?.name}</div>
+                    {currentSchool?.tagline && <div className="text-xs italic text-gray-700">{currentSchool.tagline}</div>}
                   </div>
 
                   {/* Report Title with Exam Details */}
@@ -237,37 +247,76 @@ export function ReportStareheStyle({
                     </tbody>
                   </table>
 
-                  {/* Summary */}
-                  <div className="grid grid-cols-3 gap-4 mb-4 text-xs">
-                    <div>
-                      <div><strong>MEAN MARK:</strong> {meanMark.toFixed(1)}</div>
-                      <div><strong>LEVEL:</strong> {meanPerf.level} ({getCBCLevelDescription(meanPerf.level)})</div>
+                  {/* Summary - Mean Marks and Performance Level */}
+                  <div className="grid grid-cols-2 gap-4 mb-4 text-xs">
+                    <div className="border border-gray-400 p-3">
+                      <div><strong>MEAN MARKS:</strong> {meanMark.toFixed(1)}</div>
+                      <div className="mt-1"><strong>PERFORMANCE LEVEL:</strong> {meanPerf.level}</div>
+                      <div className="text-gray-600 mt-2 text-xs">
+                        <div>EE - Exceeding Expectation - 4pts</div>
+                        <div>ME - Meeting Expectation - 3pts</div>
+                        <div>PE - Partially Expectation - 2pts</div>
+                        <div>BE - Below Expectation - 1pt</div>
+                      </div>
                     </div>
-                    <div>
+                    <div className="border border-gray-400 p-3 flex flex-col justify-center">
                       <div><strong>TOTAL POINTS:</strong> {totalPoints}/{maxPoints}</div>
-                      <div><strong>POSITION:</strong> {report.rank} OF {totalStudents}</div>
-                    </div>
-                    <div className="text-right text-xs">
-                      <div>EE - Exceeding Expectation</div>
-                      <div>ME - Meeting Expectation</div>
-                      <div>AE - Approaching Expectation</div>
-                      <div>BE - Below Expectation</div>
+                      <div className="mt-1"><strong>OVERALL POSITION:</strong> {report.rank} of {totalStudents}</div>
                     </div>
                   </div>
 
-                  {/* Subject Distribution and Performance Trend - Side by side */}
-                  <div className="grid grid-cols-2 gap-3 mb-4">
+                  {/* Historical Performance Table */}
+                  {studentHistory && studentHistory.length > 0 && (
+                    <table className="w-full border-collapse mb-4 text-xs">
+                      <thead>
+                        <tr className="bg-gray-200 border-2 border-gray-400">
+                          <th className="border border-gray-400 p-1.5 text-left font-bold">TERM</th>
+                          <th className="border border-gray-400 p-1.5 text-center font-bold">TOTAL SCORE</th>
+                          <th className="border border-gray-400 p-1.5 text-center font-bold">AVERAGE POINTS</th>
+                          <th className="border border-gray-400 p-1.5 text-center font-bold">IMPL (%)</th>
+                          <th className="border border-gray-400 p-1.5 text-center font-bold">TOTAL POINTS</th>
+                          <th className="border border-gray-400 p-1.5 text-center font-bold">MEAN MARK</th>
+                          <th className="border border-gray-400 p-1.5 text-center font-bold">PERF LEVEL</th>
+                          <th className="border border-gray-400 p-1.5 text-center font-bold">STREAM POS</th>
+                          <th className="border border-gray-400 p-1.5 text-center font-bold">OVERALL POS</th>
+                          <th className="border border-gray-400 p-1.5 text-center font-bold">DAYS ABSENT</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {studentHistory.map((history, i) => (
+                          <tr key={i} className="border-b border-gray-400 text-center">
+                            <td className="border border-gray-400 p-1.5 text-left font-semibold">TERM {history.term}</td>
+                            <td className="border border-gray-400 p-1.5">{history.total || '-'}</td>
+                            <td className="border border-gray-400 p-1.5">-</td>
+                            <td className="border border-gray-400 p-1.5">-</td>
+                            <td className="border border-gray-400 p-1.5">-</td>
+                            <td className="border border-gray-400 p-1.5">{history.average ? history.average.toFixed(1) : '-'}</td>
+                            <td className="border border-gray-400 p-1.5">-</td>
+                            <td className="border border-gray-400 p-1.5">-</td>
+                            <td className="border border-gray-400 p-1.5">{history.rank || '-'}</td>
+                            <td className="border border-gray-400 p-1.5">{history.daysAbsent || '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+
+                  {/* Subject Distribution and Performance Trend - Bordered Container */}
+                  <div className="border-2 border-gray-400 mb-4 grid grid-cols-2">
                     {/* Subject Distribution Pie Chart */}
-                    <div className="border border-gray-400 p-3">
-                      <div className="text-xs font-bold mb-2 text-center">SUBJECT DISTRIBUTION</div>
-                      <svg viewBox="0 0 120 120" className="w-full" style={{ height: '100px' }}>
+                    <div className="border-r-2 border-gray-400 p-4 flex flex-col items-center">
+                      <div className="text-xs font-bold mb-3 text-center">SUBJECT DISTRIBUTION</div>
+                      <svg viewBox="0 0 120 120" className="w-full" style={{ height: '90px' }}>
                         {(() => {
                           const scores = subjectData.map(s => s.score || 0)
                           const total = scores.reduce((a, b) => a + b, 0)
+                          if (total === 0) return null
+                          
                           const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#14b8a6']
                           
                           let currentAngle = 0
                           return scores.map((score, i) => {
+                            if (score === 0) return null
                             const sliceAngle = (score / total) * 360
                             const startAngle = currentAngle
                             const endAngle = currentAngle + sliceAngle
@@ -275,39 +324,39 @@ export function ReportStareheStyle({
                             const startRad = (startAngle * Math.PI) / 180
                             const endRad = (endAngle * Math.PI) / 180
                             
-                            const x1 = 60 + 40 * Math.cos(startRad)
-                            const y1 = 60 + 40 * Math.sin(startRad)
-                            const x2 = 60 + 40 * Math.cos(endRad)
-                            const y2 = 60 + 40 * Math.sin(endRad)
+                            const x1 = 60 + 38 * Math.cos(startRad)
+                            const y1 = 60 + 38 * Math.sin(startRad)
+                            const x2 = 60 + 38 * Math.cos(endRad)
+                            const y2 = 60 + 38 * Math.sin(endRad)
                             
                             const largeArc = sliceAngle > 180 ? 1 : 0
-                            const path = `M 60 60 L ${x1} ${y1} A 40 40 0 ${largeArc} 1 ${x2} ${y2} Z`
+                            const path = `M 60 60 L ${x1} ${y1} A 38 38 0 ${largeArc} 1 ${x2} ${y2} Z`
                             
                             currentAngle = endAngle
                             
-                            return <path key={i} d={path} fill={colors[i % colors.length]} stroke="white" strokeWidth="0.5" />
+                            return <path key={i} d={path} fill={colors[i % colors.length]} stroke="white" strokeWidth="1" />
                           })
                         })()}
                       </svg>
                     </div>
 
                     {/* Performance Trend Line Graph */}
-                    {studentHistory && studentHistory.length > 0 && (
-                      <div className="border border-gray-400 p-3">
-                        <div className="text-xs font-bold mb-2 text-center">PERFORMANCE TREND</div>
-                        <svg viewBox="0 0 140 100" className="w-full" style={{ height: '100px' }}>
-                          <line x1="20" y1="10" x2="20" y2="85" stroke="#ddd" strokeWidth="0.5" />
-                          <line x1="20" y1="85" x2="135" y2="85" stroke="#ddd" strokeWidth="0.5" />
-                          <text x="15" y="15" fontSize="4" textAnchor="end">100</text>
-                          <text x="15" y="50" fontSize="4" textAnchor="end">50</text>
-                          <text x="15" y="85" fontSize="4" textAnchor="end">0</text>
+                    <div className="p-4 flex flex-col items-center">
+                      <div className="text-xs font-bold mb-3 text-center">PERFORMANCE TREND</div>
+                      {studentHistory && studentHistory.length > 0 ? (
+                        <svg viewBox="0 0 140 100" className="w-full" style={{ height: '90px' }}>
+                          <line x1="20" y1="10" x2="20" y2="85" stroke="#999" strokeWidth="0.5" />
+                          <line x1="20" y1="85" x2="135" y2="85" stroke="#999" strokeWidth="0.5" />
+                          <text x="16" y="15" fontSize="3" textAnchor="end">100</text>
+                          <text x="16" y="50" fontSize="3" textAnchor="end">50</text>
+                          <text x="16" y="87" fontSize="3" textAnchor="end">0</text>
                           {studentHistory.map((history, i) => {
                             const x = 25 + (i * (110 / Math.max(studentHistory.length - 1, 1)))
                             const y = 85 - ((history.average / 100) * 75)
                             const nextHistory = studentHistory[i + 1]
                             return (
                               <g key={i}>
-                                <circle cx={x} cy={y} r="1.5" fill="#1e40af" />
+                                <circle cx={x} cy={y} r="1.2" fill="#1e40af" />
                                 {nextHistory && (
                                   <line
                                     x1={x}
@@ -315,34 +364,36 @@ export function ReportStareheStyle({
                                     x2={25 + ((i + 1) * (110 / Math.max(studentHistory.length - 1, 1)))}
                                     y2={85 - ((nextHistory.average / 100) * 75)}
                                     stroke="#1e40af"
-                                    strokeWidth="1"
+                                    strokeWidth="1.5"
                                   />
                                 )}
                               </g>
                             )
                           })}
                         </svg>
-                      </div>
-                    )}
+                      ) : (
+                        <div className="text-xs text-gray-500 flex items-center justify-center h-24">No historical data available</div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Remarks Sections */}
-                  <div className="space-y-3 text-xs">
+                  <div className="space-y-2 text-xs mb-3">
                     {/* Class Teacher Remarks */}
-                    <div className="border border-gray-400">
-                      <div className="bg-gray-100 font-bold p-2">CLASS TEACHER'S REMARKS:</div>
-                      <div className="p-3 min-h-12"></div>
-                      <div className="flex justify-between px-3 pb-2 text-xs">
+                    <div className="border-2 border-gray-400">
+                      <div className="bg-gray-200 font-bold p-2 border-b border-gray-400">CLASS TEACHER'S REMARKS:</div>
+                      <div className="p-3 min-h-14"></div>
+                      <div className="flex justify-between px-3 pb-2 border-t border-gray-400 text-xs">
                         <div>NAME: __________ SIGN: __________</div>
                         <div>DATE: __________</div>
                       </div>
                     </div>
 
                     {/* Head Teacher Remarks */}
-                    <div className="border border-gray-400">
-                      <div className="bg-gray-100 font-bold p-2">HEAD TEACHER'S REMARKS:</div>
-                      <div className="p-3 min-h-12"></div>
-                      <div className="flex justify-between px-3 pb-2 text-xs">
+                    <div className="border-2 border-gray-400">
+                      <div className="bg-gray-200 font-bold p-2 border-b border-gray-400">HEAD TEACHER'S REMARKS:</div>
+                      <div className="p-3 min-h-14"></div>
+                      <div className="flex justify-between px-3 pb-2 border-t border-gray-400 text-xs">
                         <div>SIGN: __________</div>
                         <div>DATE: __________</div>
                         <div>STAMP:</div>
@@ -350,15 +401,31 @@ export function ReportStareheStyle({
                     </div>
 
                     {/* Parent/Guardian Remarks */}
-                    <div className="border border-gray-400">
-                      <div className="bg-gray-100 font-bold p-2">PARENT/GUARDIAN'S REMARKS:</div>
-                      <div className="p-3 min-h-12"></div>
-                      <div className="flex justify-between px-3 pb-2 text-xs">
+                    <div className="border-2 border-gray-400">
+                      <div className="bg-gray-200 font-bold p-2 border-b border-gray-400">PARENT/GUARDIAN'S REMARKS:</div>
+                      <div className="p-3 min-h-14"></div>
+                      <div className="flex justify-between px-3 pb-2 border-t border-gray-400 text-xs">
                         <div>NAME: __________</div>
                         <div>SIGN: __________</div>
                         <div>DATE: __________</div>
                       </div>
                     </div>
+                  </div>
+
+                  {/* CBE Performance Levels Guide */}
+                  <div className="border-2 border-gray-400 p-3 mb-2">
+                    <div className="font-bold text-xs mb-2">CBE PERFORMANCE LEVELS:</div>
+                    <div className="text-xs space-y-1">
+                      <div><strong>EE</strong> = Exceeding Expectation - 4pts</div>
+                      <div><strong>ME</strong> = Meeting Expectation - 3pts</div>
+                      <div><strong>PE</strong> = Partially Expectation - 2pts</div>
+                      <div><strong>BE</strong> = Below Expectation - 1pt</div>
+                    </div>
+                  </div>
+
+                  {/* Next Term Info */}
+                  <div className="border-2 border-gray-400 p-3">
+                    <div className="font-bold text-xs">NEXT TERM BUSES FROM: __________ TO: __________</div>
                   </div>
                 </div>
               )
