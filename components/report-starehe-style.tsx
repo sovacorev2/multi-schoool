@@ -230,6 +230,15 @@ export function ReportStareheStyle({
                 >
                   {/* Header */}
                   <div style={{ textAlign: 'center', marginBottom: '8px' }}>
+                    {/* Centered Logo */}
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+                      <img 
+                        src={currentSchool?.logo_url || `/logos/${currentSchool?.code}.jpeg`}
+                        alt="School Logo"
+                        style={{ width: '80px', height: '80px', objectFit: 'contain' }}
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                      />
+                    </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <div style={{ textAlign: 'left', fontSize: '9px', lineHeight: 1.3, flex: 1 }}>
                         <div>{currentSchool?.address || 'P.O. Box XXX'}</div>
@@ -237,12 +246,6 @@ export function ReportStareheStyle({
                         <div>{currentSchool?.email || 'Email: info@school.ac.ke'}</div>
                       </div>
                       <div style={{ textAlign: 'center', flex: 2 }}>
-                        <img 
-                          src={currentSchool?.logo_url || `/logos/${currentSchool?.code}.jpeg`}
-                          alt="School Logo"
-                          style={{ width: '70px', height: '70px', objectFit: 'contain', marginBottom: '5px' }}
-                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-                        />
                         <div style={{ fontSize: '18px', fontWeight: 'bold', textTransform: 'uppercase', color: '#1e3a8a' }}>
                           {currentSchool?.name || 'School Name'}
                         </div>
