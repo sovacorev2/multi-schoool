@@ -26,7 +26,7 @@ import {
 import { 
   Shield, Eye, EyeOff, Settings, Users, BookOpen, Calendar, 
   Clock, FileText, Plus, Trash2, Save, ArrowLeft, Lock, Unlock,
-  GraduationCap, ClipboardList, History, Edit, Users
+  GraduationCap, ClipboardList, History, Edit
 } from 'lucide-react'
 import type { Class, ExamType } from '@/lib/types'
 
