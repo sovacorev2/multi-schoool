@@ -209,7 +209,11 @@ const { currentSchool } = useSchool();
     
     setDeadlineLoading(true);
     const supabase = createClient();
-    const deadline = new Date(`${deadlineForm.date}T${deadlineForm.time || "23:59"}`);
+    
+    // Parse time correctly to avoid timezone offset issues
+    const [hours, minutes] = (deadlineForm.time || "23:59").split(':').map(Number);
+    const deadline = new Date(`${deadlineForm.date}`);
+    deadline.setHours(hours, minutes, 0, 0);
     
     console.log("[v0] Setting deadline:", deadline.toISOString(), "for session:", selectedSession.id);
     
