@@ -23,6 +23,7 @@ export default function LearnersPage() {
   const [name, setName] = useState('')
   const [assessmentNumber, setAssessmentNumber] = useState('')
   const [selectedGender, setSelectedGender] = useState('')
+  const [parentPhone, setParentPhone] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -67,6 +68,7 @@ export default function LearnersPage() {
           name: name.trim(),
           admission_number: assessmentNumber.trim() || null,
           gender: selectedGender || null,
+          parent_phone: parentPhone.trim() || null,
           class_id: currentClass.id,
           school_id: currentSchool?.id,
         },
@@ -78,6 +80,7 @@ export default function LearnersPage() {
         setName('')
         setAssessmentNumber('')
         setSelectedGender('')
+        setParentPhone('')
       }
     } catch (error) {
       console.error('Error adding learner:', error)
@@ -155,6 +158,18 @@ export default function LearnersPage() {
               </select>
             </div>
 
+            {/* Parent Phone */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Parent Phone (Optional)</label>
+              <input
+                type="tel"
+                value={parentPhone}
+                onChange={(e) => setParentPhone(e.target.value)}
+                placeholder="e.g. 0712345678"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
             {/* Add Button */}
             <div className="flex items-end">
               <button
@@ -187,21 +202,23 @@ export default function LearnersPage() {
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-8 py-4 text-left text-sm font-semibold text-gray-900">#</th>
-                  <th className="px-8 py-4 text-left text-sm font-semibold text-gray-900">Assessment No.</th>
-                  <th className="px-8 py-4 text-left text-sm font-semibold text-gray-900">Student Name</th>
-                  <th className="px-8 py-4 text-left text-sm font-semibold text-gray-900">Gender</th>
-                  <th className="px-8 py-4 text-center text-sm font-semibold text-gray-900">Actions</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">#</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Assessment No.</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Student Name</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Gender</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Parent Phone</th>
+                  <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {learners.map((learner, index) => (
                   <tr key={learner.id} className="border-b border-gray-200 hover:bg-gray-50">
-                    <td className="px-8 py-4 text-sm text-gray-900">{index + 1}</td>
-                    <td className="px-8 py-4 text-sm text-gray-600">{learner.admission_number || '-'}</td>
-                    <td className="px-8 py-4 text-sm font-medium text-gray-900">{learner.name}</td>
-                    <td className="px-8 py-4 text-sm text-gray-600">{learner.gender || '-'}</td>
-                    <td className="px-8 py-4 text-center">
+                    <td className="px-6 py-4 text-sm text-gray-900">{index + 1}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{learner.admission_number || '-'}</td>
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{learner.name}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{learner.gender || '-'}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{(learner as { parent_phone?: string }).parent_phone || '-'}</td>
+                    <td className="px-6 py-4 text-center">
                       <button
                         onClick={() => handleDeleteLearner(learner.id)}
                         className="inline-flex p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"

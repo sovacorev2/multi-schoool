@@ -7,8 +7,9 @@ import { X, Printer, Download } from 'lucide-react'
 import { getGradeLevelByClass, isUpperClass, GRADING_SCALE_SIMPLE, GRADING_SCALE_EXTENDED } from '@/lib/grading-utils'
 
 interface StudentReport {
-  learner: { id: string; name: string; admission_number: string | null; gender?: string }
+  learner: { id: string; name: string; admission_number: string | null; gender?: string; parent_phone?: string | null }
   marks: Record<string, number | null>
+  subjectPositions?: Record<string, number>
   total: number
   rank: number
   average: number
@@ -46,6 +47,7 @@ interface ReportStareheStyleProps {
   className: string
   totalStudents: number
   termHistory?: Record<string, TermHistory[]>
+  classTeacherName?: string | null
 }
 
 // CBC Performance Level helper - returns level and points based on class
@@ -82,7 +84,8 @@ export function ReportStareheStyle({
   sessionInfo,
   className,
   totalStudents,
-  termHistory = {}
+  termHistory = {},
+  classTeacherName = null
 }: ReportStareheStyleProps) {
   const printRef = useRef<HTMLDivElement>(null)
   const { currentSchool } = useSchool()
@@ -290,7 +293,7 @@ export function ReportStareheStyle({
                             {item.points}
                           </td>
                           <td style={{ border: '1px solid #333', padding: '4px 6px', textAlign: 'center', fontSize: '10px' }}>
-                            {report.rank}/{totalStudents}
+                            {report.subjectPositions?.[item.subject.id] || '-'}/{totalStudents}
                           </td>
                           <td style={{ border: '1px solid #333', padding: '4px 6px', textAlign: 'left', fontSize: '9px' }}>
                             {item.remarks}
@@ -385,20 +388,37 @@ export function ReportStareheStyle({
 
                   {/* Graphs and Comments Section */}
                   <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-                    {/* Subject Distribution Pie Chart */}
+                    {/* Grade Distribution Pie Chart */}
                     <div style={{ flex: 1, border: '1px solid #333', padding: '5px' }}>
-                      <div style={{ fontSize: '9px', fontWeight: 'bold', marginBottom: '3px', textAlign: 'center' }}>SUBJECT DISTRIBUTION</div>
-                      <svg viewBox="0 0 100 80" style={{ width: '100%', height: '70px' }}>
+                      <div style={{ fontSize: '9px', fontWeight: 'bold', marginBottom: '3px', textAlign: 'center' }}>GRADE DISTRIBUTION</div>
+                      <svg viewBox="0 0 120 80" style={{ width: '100%', height: '70px' }}>
                         {(() => {
-                          // Create pie chart segments for each subject
-                          const total = subjectData.reduce((sum, s) => sum + (s.score || 0), 0)
-                          const colors = ['#1e40af', '#059669', '#dc2626', '#d97706', '#7c3aed', '#ec4899', '#0891b2', '#84cc16', '#f59e0b', '#6366f1']
-                          let startAngle = 0
-                          const cx = 30, cy = 40, r = 25
+                          // Count grades/levels for pie chart
+                          const gradeCounts: Record<string, number> = {}
+                          subjectData.forEach(item => {
+                            const level = item.level.replace(/[0-9]/g, '') // EE, ME, AE, BE
+                            if (level && level !== '-') {
+                              gradeCounts[level] = (gradeCounts[level] || 0) + 1
+                            }
+                          })
                           
-                          return subjectData.map((item, i) => {
-                            const score = item.score || 0
-                            const sliceAngle = total > 0 ? (score / total) * 2 * Math.PI : 0
+                          const gradeColors: Record<string, string> = {
+                            'EE': '#059669', // Green - Exceeding
+                            'ME': '#1e40af', // Blue - Meeting
+                            'AE': '#d97706', // Orange - Approaching
+                            'BE': '#dc2626'  // Red - Below
+                          }
+                          const gradeOrder = ['EE', 'ME', 'AE', 'BE']
+                          const grades = gradeOrder.filter(g => gradeCounts[g])
+                          const total = Object.values(gradeCounts).reduce((a, b) => a + b, 0)
+                          
+                          let startAngle = 0
+                          const cx = 35, cy = 40, r = 28
+                          
+                          const slices = grades.map((grade, i) => {
+                            const count = gradeCounts[grade] || 0
+                            const percentage = total > 0 ? (count / total) * 100 : 0
+                            const sliceAngle = total > 0 ? (count / total) * 2 * Math.PI : 0
                             const endAngle = startAngle + sliceAngle
                             
                             const x1 = cx + r * Math.cos(startAngle - Math.PI / 2)
@@ -406,23 +426,55 @@ export function ReportStareheStyle({
                             const x2 = cx + r * Math.cos(endAngle - Math.PI / 2)
                             const y2 = cy + r * Math.sin(endAngle - Math.PI / 2)
                             
+                            // Label position
+                            const midAngle = startAngle + sliceAngle / 2 - Math.PI / 2
+                            const labelX = cx + (r * 0.6) * Math.cos(midAngle)
+                            const labelY = cy + (r * 0.6) * Math.sin(midAngle)
+                            
                             const largeArc = sliceAngle > Math.PI ? 1 : 0
                             const pathData = `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`
                             
                             startAngle = endAngle
                             
                             return (
-                              <path key={i} d={pathData} fill={colors[i % colors.length]} stroke="#fff" strokeWidth="0.5" />
+                              <g key={grade}>
+                                <path d={pathData} fill={gradeColors[grade]} stroke="#fff" strokeWidth="0.5" />
+                                {percentage >= 10 && (
+                                  <text x={labelX} y={labelY} fontSize="5" fill="#fff" textAnchor="middle" dominantBaseline="middle" fontWeight="bold">
+                                    {percentage.toFixed(0)}%
+                                  </text>
+                                )}
+                              </g>
+                            )
+                          })
+                          
+                          return slices
+                        })()}
+                        {/* Legend with percentages */}
+                        {(() => {
+                          const gradeCounts: Record<string, number> = {}
+                          subjectData.forEach(item => {
+                            const level = item.level.replace(/[0-9]/g, '')
+                            if (level && level !== '-') {
+                              gradeCounts[level] = (gradeCounts[level] || 0) + 1
+                            }
+                          })
+                          const total = Object.values(gradeCounts).reduce((a, b) => a + b, 0)
+                          const gradeColors: Record<string, string> = { 'EE': '#059669', 'ME': '#1e40af', 'AE': '#d97706', 'BE': '#dc2626' }
+                          const gradeLabels: Record<string, string> = { 'EE': 'Exceeding', 'ME': 'Meeting', 'AE': 'Approaching', 'BE': 'Below' }
+                          const gradeOrder = ['EE', 'ME', 'AE', 'BE']
+                          
+                          return gradeOrder.filter(g => gradeCounts[g]).map((grade, i) => {
+                            const count = gradeCounts[grade] || 0
+                            const pct = total > 0 ? ((count / total) * 100).toFixed(0) : '0'
+                            return (
+                              <g key={`legend-${grade}`}>
+                                <rect x="70" y={8 + i * 14} width="8" height="8" fill={gradeColors[grade]} rx="1" />
+                                <text x="80" y={14 + i * 14} fontSize="5" fill="#333">{gradeLabels[grade]} ({pct}%)</text>
+                              </g>
                             )
                           })
                         })()}
-                        {/* Legend */}
-                        {subjectData.slice(0, 5).map((item, i) => (
-                          <g key={`legend-${i}`}>
-                            <rect x="60" y={5 + i * 12} width="6" height="6" fill={['#1e40af', '#059669', '#dc2626', '#d97706', '#7c3aed'][i]} />
-                            <text x="68" y={10 + i * 12} fontSize="5" fill="#333">{item.subject.name.substring(0, 8)}</text>
-                          </g>
-                        ))}
                       </svg>
                     </div>
 
@@ -467,7 +519,7 @@ export function ReportStareheStyle({
                     <div style={{ fontWeight: 'bold', fontSize: '9px' }}>CLASS TEACHER&apos;S REMARKS:</div>
                     <div style={{ borderBottom: '1px dotted #999', height: '20px', marginTop: '3px' }}></div>
                     <div style={{ display: 'flex', gap: '15px', fontSize: '9px', marginTop: '5px' }}>
-                      <div><strong>NAME:</strong> ____________</div>
+                      <div><strong>NAME:</strong> {classTeacherName || '____________'}</div>
                       <div><strong>SIGN:</strong> ____________</div>
                       <div><strong>DATE:</strong> ____________</div>
                     </div>

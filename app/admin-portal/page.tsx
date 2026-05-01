@@ -26,7 +26,7 @@ import {
 import { 
   Shield, Eye, EyeOff, Settings, Users, BookOpen, Calendar, 
   Clock, FileText, Plus, Trash2, Save, ArrowLeft, Lock, Unlock,
-  GraduationCap, ClipboardList, History, Edit
+  GraduationCap, ClipboardList, History, Edit, Users
 } from 'lucide-react'
 import type { Class, ExamType } from '@/lib/types'
 
@@ -159,6 +159,10 @@ export default function AdminPortalPage() {
   const [newAdminPassword, setNewAdminPassword] = useState('')
   const [confirmAdminPassword, setConfirmAdminPassword] = useState('')
   const [passwordUpdateSuccess, setPasswordUpdateSuccess] = useState('')
+
+  // Class teacher management
+  const [classTeachers, setClassTeachers] = useState<{[key: string]: string}>({})
+  const [teacherUpdateSuccess, setTeacherUpdateSuccess] = useState('')
 
   // Load school from URL or context - redirect if no school
   useEffect(() => {
@@ -601,6 +605,26 @@ export default function AdminPortalPage() {
     }
   }
 
+  // Update class teacher name
+  const updateClassTeacher = async (classId: string) => {
+    const teacherName = classTeachers[classId]
+    
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('classes')
+      .update({ teacher_name: teacherName?.trim() || null })
+      .eq('id', classId)
+
+    if (!error) {
+      setTeacherUpdateSuccess(`Class teacher updated successfully!`)
+      // Update local classes state
+      setClasses(prev => prev.map(c => 
+        c.id === classId ? { ...c, teacher_name: teacherName?.trim() || null } : c
+      ))
+      setTimeout(() => setTeacherUpdateSuccess(''), 3000)
+    }
+  }
+
   // Update admin password
   const updateAdminPassword = async () => {
     if (!newAdminPassword || !currentSchool) return
@@ -773,7 +797,7 @@ export default function AdminPortalPage() {
           </div>
         ) : (
           <Tabs defaultValue="deadlines" className="space-y-6">
-            <TabsList className="grid grid-cols-7 w-full max-w-4xl">
+            <TabsList className="grid grid-cols-8 w-full max-w-5xl">
               <TabsTrigger value="deadlines" className="flex items-center gap-2">
                 <Clock className="w-4 h-4" />
                 Deadlines
@@ -781,6 +805,10 @@ export default function AdminPortalPage() {
               <TabsTrigger value="classes" className="flex items-center gap-2">
                 <GraduationCap className="w-4 h-4" />
                 Classes
+              </TabsTrigger>
+              <TabsTrigger value="teachers" className="flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                Teachers
               </TabsTrigger>
               <TabsTrigger value="passwords" className="flex items-center gap-2">
                 <Lock className="w-4 h-4" />
@@ -794,15 +822,15 @@ export default function AdminPortalPage() {
                 <ClipboardList className="w-4 h-4" />
                 Exam Types
               </TabsTrigger>
-<TabsTrigger value="settings" className="flex items-center gap-2">
-  <Settings className="w-4 h-4" />
-  Settings
-</TabsTrigger>
-<TabsTrigger value="audit" className="flex items-center gap-2">
-  <History className="w-4 h-4" />
-  Audit Logs
-</TabsTrigger>
-</TabsList>
+              <TabsTrigger value="settings" className="flex items-center gap-2">
+                <Settings className="w-4 h-4" />
+                Settings
+              </TabsTrigger>
+              <TabsTrigger value="audit" className="flex items-center gap-2">
+                <History className="w-4 h-4" />
+                Audit Logs
+              </TabsTrigger>
+            </TabsList>
 
             {/* Deadlines Tab */}
             <TabsContent value="deadlines">
@@ -1165,6 +1193,76 @@ export default function AdminPortalPage() {
                       </Button>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Teachers Tab */}
+            <TabsContent value="teachers">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="w-5 h-5" />
+                    Assign Class Teachers
+                  </CardTitle>
+                  <CardDescription>Set the class teacher for each class (shown on report cards)</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {teacherUpdateSuccess && (
+                    <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
+                      {teacherUpdateSuccess}
+                    </div>
+                  )}
+                  
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="p-3 text-left">Class</th>
+                          <th className="p-3 text-left">Current Teacher</th>
+                          <th className="p-3 text-left">Teacher Name</th>
+                          <th className="p-3 text-left">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sortClasses(classes).map(c => (
+                          <tr key={c.id} className="border-t">
+                            <td className="p-3 font-medium">{c.name}</td>
+                            <td className="p-3">
+                              <span className={c.teacher_name ? "text-green-600 font-medium" : "text-gray-400 italic"}>
+                                {c.teacher_name || 'Not assigned'}
+                              </span>
+                            </td>
+                            <td className="p-3">
+                              <Input
+                                type="text"
+                                placeholder="Enter teacher name"
+                                value={classTeachers[c.id] ?? c.teacher_name ?? ''}
+                                onChange={(e) => setClassTeachers(prev => ({ 
+                                  ...prev, 
+                                  [c.id]: e.target.value 
+                                }))}
+                                className="w-56"
+                              />
+                            </td>
+                            <td className="p-3">
+                              <Button
+                                size="sm"
+                                onClick={() => updateClassTeacher(c.id)}
+                              >
+                                <Save className="w-4 h-4 mr-1" />
+                                Save
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  <p className="text-sm text-gray-500">
+                    The class teacher name will appear on student report cards for CBC primary schools.
+                  </p>
                 </CardContent>
               </Card>
             </TabsContent>
