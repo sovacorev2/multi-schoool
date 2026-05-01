@@ -176,7 +176,7 @@ export function ReportStareheStyle({
       <div className="relative bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[90vh] flex flex-col mx-4">
         <div className="flex items-center justify-between p-4 border-b bg-gray-50 rounded-t-lg">
           <h2 className="text-lg font-bold">
-            CBC Report Cards ({reports.length} student{reports.length !== 1 ? 's' : ''})
+            CBE Report Cards ({reports.length} student{reports.length !== 1 ? 's' : ''})
           </h2>
           <div className="flex items-center gap-2">
             <Button onClick={handlePrint} className="bg-blue-600 hover:bg-blue-700 text-white">
@@ -535,7 +535,7 @@ export function ReportStareheStyle({
                     </div>
                   </div>
 
-                  {/* Head Teacher Remarks - CBC Primary School */}
+                    {/* Head Teacher Remarks - CBE Primary School */}
                   <div style={{ border: '1px solid #333', padding: '5px', marginBottom: '8px' }}>
                     <div style={{ fontWeight: 'bold', fontSize: '9px' }}>HEAD TEACHER&apos;S REMARKS:</div>
                     <div style={{ borderBottom: '1px dotted #999', height: '20px', marginTop: '3px' }}></div>
@@ -557,9 +557,9 @@ export function ReportStareheStyle({
                     </div>
                   </div>
 
-                  {/* CBC Grading Key */}
-                  <div style={{ border: '1px solid #333', padding: '5px', marginBottom: '8px', fontSize: '8px' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '3px' }}>CBC PERFORMANCE LEVELS:</div>
+                    {/* CBE Grading Key */}
+                    <div style={{ fontSize: '8px', marginTop: '8px', border: '1px solid #333', padding: '3px' }}>
+                      <div style={{ fontWeight: 'bold', marginBottom: '3px' }}>CBE PERFORMANCE LEVELS:</div>
                     <div style={{ display: 'flex', justifyContent: 'space-around' }}>
                       {isUpperClass(className) ? (
                         <>

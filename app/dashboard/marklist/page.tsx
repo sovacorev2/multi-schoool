@@ -118,6 +118,7 @@ export default function MarklistPage() {
   const [studentReportData, setStudentReportData] = useState<LearnerResult | null>(null)
   const [reportModalOpen, setReportModalOpen] = useState(false)
   const [reportModalData, setReportModalData] = useState<LearnerResult[]>([])
+  const [termHistory, setTermHistory] = useState<Record<string, any[]>>({})
   
   // WhatsApp bulk send state
   const [whatsappModalOpen, setWhatsappModalOpen] = useState(false)
@@ -372,7 +373,7 @@ export default function MarklistPage() {
             classAvg: 0,
             passRate: 0,
             subjects: [],
-            topPerformer: { name: 'N/A', total: 0, average: 0 },
+            topPerformer: 'N/A',
             rubricDistribution: { r4: 0, r3: 0, r2: 0, r1: 0 },
           })
           continue
@@ -416,7 +417,7 @@ export default function MarklistPage() {
           ? Math.round((learnersWithMarks.reduce((a, l) => a + l.average, 0) / learnersWithMarks.length) * 10) / 10 
           : 0
         const passRate = learnersWithMarks.length > 0
-          ? Math.round((learnersWithMarks.filter(l => l.average >= 40).length / learnersWithMarks.length) * 100)
+          ? Math.round((learnersWithMarks.filter(l => l.average >= 50).length / learnersWithMarks.length) * 100)
           : 0
 
         // Rubric distribution
@@ -438,7 +439,7 @@ export default function MarklistPage() {
           classAvg,
           passRate,
           subjects: subjectStats,
-          topPerformer: learnerTotals[0] || { name: 'N/A', total: 0, average: 0 },
+          topPerformer: learnerTotals[0] ? learnerTotals[0].name : 'N/A',
           rubricDistribution: { r4, r3, r2, r1 },
         })
       }
@@ -1323,8 +1324,43 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
             </Button>
             {currentSchool?.feature_report_cards && (
               <Button 
-                onClick={() => {
+                onClick={async () => {
                   setReportModalData(results)
+                  
+                  // Fetch term history for trend graphs
+                  try {
+                    const supabase = createClient()
+                    const learnerId = results[0]?.learner?.id
+                    if (learnerId) {
+                      const { data } = await supabase
+                        .from('marks')
+                        .select('*, sessions(term, year)')
+                        .eq('learner_id', learnerId)
+                        .order('sessions(year)', { ascending: false })
+                        .order('sessions(term)', { ascending: false })
+                      
+                      if (data) {
+                        const history: Record<string, any[]> = {}
+                        results.forEach(result => {
+                          const studentMarks = data.filter((m: any) => m.learner_id === result.learner.id)
+                          history[result.learner.id] = studentMarks.map(m => ({
+                            term: m.sessions?.term,
+                            year: m.sessions?.year,
+                            total: m.total_marks || 0,
+                            average: m.average_score || 0,
+                            rank: m.position || 0
+                          })).sort((a, b) => {
+                            if (a.year !== b.year) return a.year - b.year
+                            return a.term - b.term
+                          })
+                        })
+                        setTermHistory(history)
+                      }
+                    }
+                  } catch (error) {
+                    console.error('Error fetching term history:', error)
+                  }
+                  
                   setReportModalOpen(true)
                 }} 
                 disabled={results.length === 0 || !selectedSessionId || !currentClass?.id} 
@@ -2410,10 +2446,10 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                             .map((stream, idx) => `
                               <tr style="background: ${idx === 0 ? '#dcfce7' : idx % 2 === 0 ? '#fff' : '#f9fafb'};">
                                 <td style="border: 1px solid #333; padding: 6px; text-align: center; font-weight: bold;">${idx + 1}</td>
-                                <td style="border: 1px solid #333; padding: 6px; font-weight: ${idx === 0 ? 'bold' : 'normal'};">${stream.className}</td>
-                                <td style="border: 1px solid #333; padding: 6px; text-align: center;">${stream.learnerCount}</td>
-                                <td style="border: 1px solid #333; padding: 6px; text-align: center; font-weight: bold;">${stream.classAvg.toFixed(1)}</td>
-                                <td style="border: 1px solid #333; padding: 6px; text-align: center;">${stream.passRate.toFixed(0)}%</td>
+                                <td style="border: 1px solid #333; padding: 6px; font-weight: ${idx === 0 ? 'bold' : 'normal'};">${stream.className || '-'}</td>
+                                <td style="border: 1px solid #333; padding: 6px; text-align: center;">${stream.learnerCount || '-'}</td>
+                                <td style="border: 1px solid #333; padding: 6px; text-align: center; font-weight: bold;">${stream.classAvg ? stream.classAvg.toFixed(1) : '-'}</td>
+                                <td style="border: 1px solid #333; padding: 6px; text-align: center;">${stream.passRate !== undefined ? stream.passRate.toFixed(0) + '%' : '-'}</td>
                                 <td style="border: 1px solid #333; padding: 6px;">${stream.topPerformer || '-'}</td>
                               </tr>
                             `).join('')
@@ -3033,6 +3069,7 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
             className={currentClass?.name || ''}
             totalStudents={results.length}
             classTeacherName={currentClass?.teacher_name}
+            termHistory={termHistory}
           />
         )
       )}
