@@ -2292,10 +2292,103 @@ const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r
                       </Button>
                       {combinedMarklistData && (
                         <Button size="sm" variant="outline" onClick={() => {
-                          const params = new URLSearchParams()
-                          params.set('sessionId', selectedSessionId)
-                          params.set('baseClass', selectedBaseClass)
-                          window.open(`/dashboard/marklist/print-combined-marklist?${params.toString()}`, '_blank')
+                          try {
+                            // Build table rows with color coding
+                            const tableRows = combinedMarklistData.learners.map((learner, idx) => {
+                              const isTop3 = learner.rank <= 3
+                              const rowBg = learner.rank === 1 ? '#fef3c7' : learner.rank === 2 ? '#f3f4f6' : learner.rank === 3 ? '#fef1f5' : '#fff'
+                              
+                              const subjectCells = combinedMarklistData.subjects.map(subj => {
+                                const score = learner.marks[subj.name]
+                                let scoreStyle = ''
+                                if (score !== null) {
+                                  if (score >= 80) scoreStyle = 'color: #15803d; font-weight: bold;'
+                                  else if (score >= 50) scoreStyle = 'color: #2563eb;'
+                                  else if (score >= 30) scoreStyle = 'color: #b45309;'
+                                  else scoreStyle = 'color: #dc2626;'
+                                }
+                                return `<td style="border: 1px solid #333; padding: 6px; text-align: center; ${scoreStyle}">${score !== null ? score : '-'}</td>`
+                              }).join('')
+                              
+                              return `
+                                <tr style="background: ${rowBg};">
+                                  <td style="border: 1px solid #333; padding: 6px; text-align: center; ${isTop3 ? 'font-weight: bold;' : ''}">${learner.rank}</td>
+                                  <td style="border: 1px solid #333; padding: 6px; ${isTop3 ? 'font-weight: 600;' : ''}">${learner.name}</td>
+                                  <td style="border: 1px solid #333; padding: 6px; text-align: center; font-size: 12px;">${learner.stream}</td>
+                                  ${subjectCells}
+                                  <td style="border: 1px solid #333; padding: 6px; text-align: center; font-weight: bold;">${learner.total}</td>
+                                  <td style="border: 1px solid #333; padding: 6px; text-align: center; font-weight: 600;">${learner.average.toFixed(1)}%</td>
+                                </tr>
+                              `
+                            }).join('')
+
+                            // Build subject headers
+                            const subjectHeaders = combinedMarklistData.subjects.map(subj => 
+                              `<th style="border: 1px solid #333; padding: 6px; text-align: center; background: #e5e7eb;">${subj.name}</th>`
+                            ).join('')
+
+                            const reportContent = `<!DOCTYPE html>
+<html>
+<head>
+  <title>${selectedBaseClass} Combined Marklist</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+    body { padding: 20px; background: white; }
+    table { border-collapse: collapse; width: 100%; margin-top: 15px; }
+    th { background: #e5e7eb; font-weight: bold; padding: 8px; border: 1px solid #333; text-align: left; }
+    td { padding: 8px; border: 1px solid #333; }
+    .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 15px; }
+    .header h1 { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
+    .header h2 { font-size: 14px; font-weight: 600; margin-bottom: 5px; }
+    .header p { font-size: 12px; color: #666; }
+    .footer { text-align: center; font-size: 10px; color: #999; margin-top: 20px; padding-top: 10px; border-top: 1px solid #ddd; }
+    @media print { body { padding: 10px; } @page { size: A4 landscape; margin: 10mm; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>${currentSchool?.name || 'School'}</h1>
+    <h2>${selectedBaseClass} - COMBINED MARKLIST</h2>
+    <p>${selectedSession?.exam_types?.name || 'Examination'} - Term ${selectedSession?.term || ''}, ${selectedSession?.year || ''}</p>
+  </div>
+  
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 40px; text-align: center;">Rank</th>
+        <th>Student Name</th>
+        <th style="text-align: center;">Stream</th>
+        ${subjectHeaders}
+        <th style="width: 50px; text-align: center;">Total</th>
+        <th style="width: 60px; text-align: center;">Average</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${tableRows}
+    </tbody>
+  </table>
+
+  <div class="footer">
+    <p>Generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</p>
+    <p>${currentSchool?.name} - Examination Management System</p>
+  </div>
+</body>
+</html>`
+
+                            // Create blob and download
+                            const blob = new Blob([reportContent], { type: 'text/html' })
+                            const url = URL.createObjectURL(blob)
+                            const link = document.createElement('a')
+                            link.href = url
+                            link.download = `${selectedBaseClass}_Combined_Marklist_${new Date().toISOString().split('T')[0]}.html`
+                            document.body.appendChild(link)
+                            link.click()
+                            document.body.removeChild(link)
+                            URL.revokeObjectURL(url)
+                          } catch (error) {
+                            console.error('Error generating combined marklist:', error)
+                            alert('Failed to generate combined marklist. Please try again.')
+                          }
                         }}>
                           <Printer className="w-4 h-4 sm:mr-2" />
                           <span className="hidden sm:inline">Print Combined</span>
