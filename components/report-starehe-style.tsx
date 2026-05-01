@@ -255,39 +255,76 @@ export function ReportStareheStyle({
                     </div>
                   </div>
 
-                  {/* Trend Graph - Only show with history */}
-                  {studentHistory && studentHistory.length > 0 && (
-                    <div className="border border-gray-400 p-3 mb-4">
-                      <div className="text-xs font-bold mb-2 text-center">PERFORMANCE TREND</div>
-                      <svg viewBox="0 0 200 55" className="w-full" style={{ height: '60px' }}>
-                        <line x1="20" y1="5" x2="20" y2="50" stroke="#ddd" strokeWidth="0.5" />
-                        <line x1="20" y1="50" x2="195" y2="50" stroke="#ddd" strokeWidth="0.5" />
-                        <text x="15" y="10" fontSize="5" textAnchor="end">100</text>
-                        <text x="15" y="30" fontSize="5" textAnchor="end">50</text>
-                        <text x="15" y="50" fontSize="5" textAnchor="end">0</text>
-                        {studentHistory.map((history, i) => {
-                          const x = 25 + (i * (170 / Math.max(studentHistory.length - 1, 1)))
-                          const y = 50 - ((history.average / 100) * 45)
-                          const nextHistory = studentHistory[i + 1]
-                          return (
-                            <g key={i}>
-                              <circle cx={x} cy={y} r="2" fill="#1e40af" />
-                              {nextHistory && (
-                                <line
-                                  x1={x}
-                                  y1={y}
-                                  x2={25 + ((i + 1) * (170 / Math.max(studentHistory.length - 1, 1)))}
-                                  y2={50 - ((nextHistory.average / 100) * 45)}
-                                  stroke="#1e40af"
-                                  strokeWidth="1"
-                                />
-                              )}
-                            </g>
-                          )
-                        })}
+                  {/* Subject Distribution and Performance Trend - Side by side */}
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    {/* Subject Distribution Pie Chart */}
+                    <div className="border border-gray-400 p-3">
+                      <div className="text-xs font-bold mb-2 text-center">SUBJECT DISTRIBUTION</div>
+                      <svg viewBox="0 0 120 120" className="w-full" style={{ height: '100px' }}>
+                        {(() => {
+                          const scores = subjectData.map(s => s.score || 0)
+                          const total = scores.reduce((a, b) => a + b, 0)
+                          const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#14b8a6']
+                          
+                          let currentAngle = 0
+                          return scores.map((score, i) => {
+                            const sliceAngle = (score / total) * 360
+                            const startAngle = currentAngle
+                            const endAngle = currentAngle + sliceAngle
+                            
+                            const startRad = (startAngle * Math.PI) / 180
+                            const endRad = (endAngle * Math.PI) / 180
+                            
+                            const x1 = 60 + 40 * Math.cos(startRad)
+                            const y1 = 60 + 40 * Math.sin(startRad)
+                            const x2 = 60 + 40 * Math.cos(endRad)
+                            const y2 = 60 + 40 * Math.sin(endRad)
+                            
+                            const largeArc = sliceAngle > 180 ? 1 : 0
+                            const path = `M 60 60 L ${x1} ${y1} A 40 40 0 ${largeArc} 1 ${x2} ${y2} Z`
+                            
+                            currentAngle = endAngle
+                            
+                            return <path key={i} d={path} fill={colors[i % colors.length]} stroke="white" strokeWidth="0.5" />
+                          })
+                        })()}
                       </svg>
                     </div>
-                  )}
+
+                    {/* Performance Trend Line Graph */}
+                    {studentHistory && studentHistory.length > 0 && (
+                      <div className="border border-gray-400 p-3">
+                        <div className="text-xs font-bold mb-2 text-center">PERFORMANCE TREND</div>
+                        <svg viewBox="0 0 140 100" className="w-full" style={{ height: '100px' }}>
+                          <line x1="20" y1="10" x2="20" y2="85" stroke="#ddd" strokeWidth="0.5" />
+                          <line x1="20" y1="85" x2="135" y2="85" stroke="#ddd" strokeWidth="0.5" />
+                          <text x="15" y="15" fontSize="4" textAnchor="end">100</text>
+                          <text x="15" y="50" fontSize="4" textAnchor="end">50</text>
+                          <text x="15" y="85" fontSize="4" textAnchor="end">0</text>
+                          {studentHistory.map((history, i) => {
+                            const x = 25 + (i * (110 / Math.max(studentHistory.length - 1, 1)))
+                            const y = 85 - ((history.average / 100) * 75)
+                            const nextHistory = studentHistory[i + 1]
+                            return (
+                              <g key={i}>
+                                <circle cx={x} cy={y} r="1.5" fill="#1e40af" />
+                                {nextHistory && (
+                                  <line
+                                    x1={x}
+                                    y1={y}
+                                    x2={25 + ((i + 1) * (110 / Math.max(studentHistory.length - 1, 1)))}
+                                    y2={85 - ((nextHistory.average / 100) * 75)}
+                                    stroke="#1e40af"
+                                    strokeWidth="1"
+                                  />
+                                )}
+                              </g>
+                            )
+                          })}
+                        </svg>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Remarks Sections */}
                   <div className="space-y-3 text-xs">
