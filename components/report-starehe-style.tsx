@@ -100,6 +100,18 @@ export function ReportStareheStyle({
   const classWords = (className || '').trim().split(/\s+/)
   const isStreamedClass = classWords.length > 2
   const streamName = isStreamedClass ? classWords.slice(2).join(' ') : ''
+  
+  console.log('[v0] ReportStareheStyle opened:', {
+    className,
+    isStreamedClass,
+    streamName,
+    reportsCount: reports.length,
+    termHistoryKeys: Object.keys(termHistory).length,
+    firstReportOverallRank: reports[0]?.overall_rank,
+    firstReportTotalInGrade: reports[0]?.total_in_grade,
+    firstReportRank: reports[0]?.rank,
+    firstHistoryLength: termHistory[reports[0]?.learner?.id]?.length || 0
+  })
 
   return (
     <div
@@ -334,6 +346,17 @@ export function ReportStareheStyle({
             try {
               const learnerId = (report as any).learner?.id || (report as any).id
               const studentHistory = (learnerId && termHistory?.[learnerId]) || []
+              
+              if (idx === 0) {
+                console.log('[v0] First report processing:', {
+                  learnerId,
+                  overall_rank: report.overall_rank,
+                  total_in_grade: report.total_in_grade,
+                  rank: report.rank,
+                  studentHistoryLength: studentHistory.length,
+                  studentHistory: studentHistory
+                })
+              }
 
               const subjectData = subjects.map(subject => {
                 const score = report.marks[subject.id]
