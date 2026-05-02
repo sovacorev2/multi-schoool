@@ -121,6 +121,7 @@ export default function MarklistPage() {
   const [studentReportData, setStudentReportData] = useState<LearnerResult | null>(null)
   const [reportModalOpen, setReportModalOpen] = useState(false)
   const [reportModalData, setReportModalData] = useState<LearnerResult[]>([])
+  const [results, setResults] = useState<LearnerResult[]>([])
   const [termHistory, setTermHistory] = useState<Record<string, any[]>>({})
   
   // WhatsApp bulk send state
