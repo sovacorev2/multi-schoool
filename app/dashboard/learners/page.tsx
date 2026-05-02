@@ -54,6 +54,7 @@ export default function LearnersPage() {
   const [allClasses, setAllClasses] = useState<Class[]>([])
   const [targetClassId, setTargetClassId] = useState('')
   const [isPromoting, setIsPromoting] = useState(false)
+  const [promotedLearnersInTarget, setPromotedLearnersInTarget] = useState<Set<string>>(new Set())
 
   const supabase = createClient()
 
@@ -103,7 +104,26 @@ export default function LearnersPage() {
     }
   }
 
-  async function handlePromoteStudents() {
+  async function fetchPromotedLearnersInTarget(classId: string) {
+    try {
+      // Fetch learners already in target class - these are the ones already promoted
+      const { data } = await supabase
+        .from('learners')
+        .select('id')
+        .eq('class_id', classId)
+      
+      if (data) {
+        setPromotedLearnersInTarget(new Set(data.map(l => l.id)))
+      }
+    } catch (error) {
+      console.error('Error fetching promoted learners:', error)
+    }
+  }
+
+  function handleTargetClassChange(classId: string) {
+    setTargetClassId(classId)
+    fetchPromotedLearnersInTarget(classId)
+  }
     if (selectedLearners.length === 0 || !targetClassId) {
       alert('Please select students and a target class')
       return
@@ -324,7 +344,7 @@ export default function LearnersPage() {
           <div className="flex flex-col sm:flex-row gap-3">
             <select
               value={targetClassId}
-              onChange={(e) => setTargetClassId(e.target.value)}
+              onChange={(e) => handleTargetClassChange(e.target.value)}
               className="flex-1 px-3 py-2 border border-amber-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
             >
               <option value="">Select target class...</option>
@@ -347,6 +367,11 @@ export default function LearnersPage() {
             <p className="text-sm text-amber-600 mt-2">
               {selectedLearners.length} student(s) selected for promotion
             </p>
+          )}
+          {targetClassId && promotedLearnersInTarget.size > 0 && (
+            <div className="mt-3 p-3 bg-amber-100 border border-amber-300 rounded text-sm text-amber-800">
+              <strong>⚠️ Already Promoted:</strong> {promotedLearnersInTarget.size} student(s) are already in the target class and will be skipped.
+            </div>
           )}
         </div>
       )}
@@ -477,20 +502,28 @@ export default function LearnersPage() {
                 </tr>
               </thead>
               <tbody>
-                {learners.map((learner, index) => (
-                  <tr key={learner.id} className={`border-b border-gray-200 hover:bg-gray-50 ${selectedLearners.includes(learner.id) ? 'bg-amber-50' : ''}`}>
+                {learners.map((learner, index) => {
+                  const isAlreadyPromoted = promotedLearnersInTarget.has(learner.id)
+                  return (
+                  <tr key={learner.id} className={`border-b border-gray-200 hover:bg-gray-50 ${isAlreadyPromoted ? 'bg-red-50' : selectedLearners.includes(learner.id) ? 'bg-amber-50' : ''}`}>
                     {showPromotionMode && (
                       <td className="px-4 py-4 text-center">
-                        <button
-                          onClick={() => toggleSelectLearner(learner.id)}
-                          className="p-1 hover:bg-gray-200 rounded"
-                        >
-                          {selectedLearners.includes(learner.id) ? (
-                            <CheckSquare className="w-5 h-5 text-amber-600" />
-                          ) : (
-                            <Square className="w-5 h-5 text-gray-400" />
-                          )}
-                        </button>
+                        {isAlreadyPromoted ? (
+                          <div title="Already promoted to target class" className="p-1">
+                            <span className="text-red-600 font-bold">✓</span>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => toggleSelectLearner(learner.id)}
+                            className="p-1 hover:bg-gray-200 rounded"
+                          >
+                            {selectedLearners.includes(learner.id) ? (
+                              <CheckSquare className="w-5 h-5 text-amber-600" />
+                            ) : (
+                              <Square className="w-5 h-5 text-gray-400" />
+                            )}
+                          </button>
+                        )}
                       </td>
                     )}
                     <td className="px-6 py-4 text-sm text-gray-900">{index + 1}</td>
@@ -592,7 +625,7 @@ export default function LearnersPage() {
                       </>
                     )}
                   </tr>
-                ))}
+                )})}
               </tbody>
             </table>
           </div>
