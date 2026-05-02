@@ -1474,11 +1474,11 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                     // Build history for each learner including current session
                     results.forEach(result => {
                       const learnerId = result.learner.id
-                      const termData: any[] = []
+                      history[learnerId] = [] // Start fresh for this learner
                       
                       // Add current exam data
                       if (result.total !== null && result.total !== undefined) {
-                        termData.push({
+                        history[learnerId].push({
                           term: selectedSession?.term || 0,
                           year: selectedSession?.year || new Date().getFullYear(),
                           total: result.total,
@@ -1486,8 +1486,6 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                           rank: result.rank || 0
                         })
                       }
-                      
-                      history[learnerId] = termData
                     })
                     
                     // Fetch historical marks data only if we have learner IDs
