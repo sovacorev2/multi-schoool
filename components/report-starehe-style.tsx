@@ -38,6 +38,7 @@ interface TermHistory {
   rank: number
   streamRank?: number
   daysAbsent?: number
+  exam_type?: string
 }
 
 interface ReportStareheStyleProps {
@@ -498,27 +499,42 @@ export function ReportStareheStyle({
                       </div>
                     </div>
 
-                    {/* Line Chart - Performance Trend */}
+                    {/* Bar Chart - Performance Trend (Accumulates all exams) */}
                     <div style={{ border: '1px solid #666', padding: '6px', textAlign: 'center' }}>
                       <div style={{ fontWeight: 'bold', marginBottom: '4px', fontSize: '9px' }}>PERFORMANCE TREND</div>
-                      <svg viewBox="0 0 140 95" style={{ width: '100%', maxWidth: '90px', margin: '0 auto', display: 'block', height: 'auto' }}>
+                      <svg viewBox="0 0 140 95" style={{ width: '100%', maxWidth: '120px', margin: '0 auto', display: 'block', height: 'auto' }}>
+                        {/* Y-axis */}
                         <line x1="20" y1="10" x2="20" y2="70" stroke="#999" strokeWidth="0.5" />
-                        <line x1="20" y1="70" x2="130" y2="70" stroke="#999" strokeWidth="0.5" />
-                        <text x="16" y="15" fontSize="7" textAnchor="end">100</text>
-                        <text x="16" y="45" fontSize="7" textAnchor="end">50</text>
-                        <text x="16" y="75" fontSize="7" textAnchor="end">0</text>
+                        {/* X-axis */}
+                        <line x1="20" y1="70" x2="135" y2="70" stroke="#999" strokeWidth="0.5" />
+                        {/* Y-axis labels */}
+                        <text x="18" y="12" fontSize="5" textAnchor="end">100</text>
+                        <text x="18" y="32" fontSize="5" textAnchor="end">75</text>
+                        <text x="18" y="42" fontSize="5" textAnchor="end">50</text>
+                        <text x="18" y="62" fontSize="5" textAnchor="end">25</text>
+                        <text x="18" y="72" fontSize="5" textAnchor="end">0</text>
+                        {/* Horizontal gridlines */}
+                        <line x1="20" y1="25" x2="135" y2="25" stroke="#eee" strokeWidth="0.3" strokeDasharray="1,1" />
+                        <line x1="20" y1="40" x2="135" y2="40" stroke="#eee" strokeWidth="0.3" strokeDasharray="1,1" />
+                        <line x1="20" y1="55" x2="135" y2="55" stroke="#eee" strokeWidth="0.3" strokeDasharray="1,1" />
+                        
                         {(() => {
                           // Get student's history from termHistory
                           const learnerHistory = termHistory?.[report.learner.id] || []
                           
-                          // Combine historical exams + current exam
+                          // Build all exams including history + current
                           const allExams: any[] = []
                           
                           // Add historical exams (sorted chronologically)
                           if (learnerHistory && learnerHistory.length > 0) {
                             learnerHistory.forEach((h: any) => {
+                              // Determine exam type label based on term
+                              let examLabel = `Y${h.year}T${h.term}`
+                              if (h.exam_type) {
+                                examLabel = `${h.exam_type.substring(0, 3).toUpperCase()} T${h.term}`
+                              }
                               allExams.push({
-                                label: `Y${h.year}T${h.term}`,
+                                label: examLabel,
                                 average: h.average || 0,
                                 isHistory: true
                               })
@@ -532,28 +548,47 @@ export function ReportStareheStyle({
                             isHistory: false
                           })
                           
-                          const totalPoints = allExams.length
+                          const totalBars = allExams.length
+                          const chartWidth = 110 // 135 - 25 (start position)
+                          const barWidth = Math.min(15, (chartWidth / totalBars) * 0.7)
+                          const barSpacing = chartWidth / totalBars
                           
                           return allExams.map((exam, i) => {
-                            const x = 25 + (i * (100 / Math.max(totalPoints - 1, 1)))
-                            const y = 70 - ((exam.average / 100) * 60)
-                            const nextExam = allExams[i + 1]
+                            const x = 25 + (i * barSpacing) + (barSpacing - barWidth) / 2
+                            const barHeight = (exam.average / 100) * 60
+                            const y = 70 - barHeight
+                            const fill = exam.isHistory ? '#1e40af' : '#ef4444'
                             
                             return (
                               <g key={i}>
-                                <circle cx={x} cy={y} r="1.5" fill={exam.isHistory ? '#1e40af' : '#ef4444'} />
-                                {nextExam && (
-                                  <line
-                                    x1={x}
-                                    y1={y}
-                                    x2={25 + ((i + 1) * (100 / Math.max(totalPoints - 1, 1)))}
-                                    y2={70 - ((nextExam.average / 100) * 60)}
-                                    stroke={exam.isHistory ? '#1e40af' : '#ef4444'}
-                                    strokeWidth="1.5"
-                                  />
-                                )}
-                                {/* Exam labels */}
-                                <text x={x} y="82" fontSize="6" textAnchor="middle" fill="#000">
+                                {/* Bar */}
+                                <rect
+                                  x={x}
+                                  y={y}
+                                  width={barWidth}
+                                  height={barHeight}
+                                  fill={fill}
+                                  opacity="0.85"
+                                />
+                                {/* Score label on top of bar */}
+                                <text
+                                  x={x + barWidth / 2}
+                                  y={y - 1}
+                                  fontSize="4.5"
+                                  textAnchor="middle"
+                                  fill="#000"
+                                  fontWeight="bold"
+                                >
+                                  {exam.average.toFixed(0)}
+                                </text>
+                                {/* Exam label below bar */}
+                                <text
+                                  x={x + barWidth / 2}
+                                  y="78"
+                                  fontSize="4"
+                                  textAnchor="middle"
+                                  fill="#000"
+                                >
                                   {exam.label}
                                 </text>
                               </g>
@@ -561,10 +596,10 @@ export function ReportStareheStyle({
                           })
                         })()}
                         {/* Legend */}
-                        <circle cx="35" cy="90" r="1" fill="#ef4444" />
-                        <text x="40" y="92" fontSize="6">Current</text>
-                        <circle cx="80" cy="90" r="1" fill="#1e40af" />
-                        <text x="85" y="92" fontSize="6">History</text>
+                        <rect x="30" y="86" width="3" height="3" fill="#1e40af" />
+                        <text x="35" y="89" fontSize="5">Previous</text>
+                        <rect x="75" y="86" width="3" height="3" fill="#ef4444" />
+                        <text x="80" y="89" fontSize="5">Current</text>
                       </svg>
                     </div>
                   </div>
