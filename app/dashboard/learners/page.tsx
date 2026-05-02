@@ -167,23 +167,47 @@ export default function LearnersPage() {
 
   async function handleAddLearner(e: React.FormEvent) {
     e.preventDefault()
-    if (!name.trim() || !currentClass) return
+    console.log("[v0] handleAddLearner called")
+    console.log("[v0] name:", name)
+    console.log("[v0] currentClass:", currentClass)
+    console.log("[v0] currentSchool:", currentSchool)
+    
+    if (!name.trim() || !currentClass) {
+      console.log("[v0] Missing name or currentClass, returning")
+      alert("Please enter a learner name and select a class")
+      return
+    }
 
     setIsSubmitting(true)
     try {
-      const { data, error } = await supabase.from('learners').insert([
-        {
-          name: name.trim(),
-          admission_number: assessmentNumber.trim() || null,
-          gender: selectedGender || null,
-          parent_phone: parentPhone.trim() || null,
-          birth_cert_number: birthCertNumber.trim() || null,
-          class_id: currentClass.id,
-          school_id: currentSchool?.id,
-        },
-      ]).select()
+      const learnerData = {
+        name: name.trim(),
+        admission_number: assessmentNumber.trim() || null,
+        gender: selectedGender || null,
+        parent_phone: parentPhone.trim() || null,
+        birth_cert_number: birthCertNumber.trim() || null,
+        class_id: currentClass.id,
+        school_id: currentSchool?.id,
+      }
+      console.log("[v0] Submitting learner data:", learnerData)
+      
+      const { data, error } = await supabase.from('learners').insert([learnerData]).select()
 
-      if (error) throw error
+      if (error) {
+        console.error("[v0] Error from Supabase:", error)
+        
+        // Check if it's a missing column error
+        if (error.message && error.message.includes('column')) {
+          alert(`Database schema issue: ${error.message}\n\nPlease contact support or run the database migration script.`)
+        } else if (error.message && error.message.includes('permission')) {
+          alert(`Permission error: ${error.message}\n\nPlease ensure you have selected a valid school and class.`)
+        } else {
+          alert(`Error adding learner: ${error.message}`)
+        }
+        throw error
+      }
+      
+      console.log("[v0] Successfully added learner:", data)
       if (data) {
         setLearners([...learners, data[0]])
         setName('')
@@ -191,6 +215,7 @@ export default function LearnersPage() {
         setSelectedGender('')
         setParentPhone('')
         setBirthCertNumber('')
+        alert('Learner added successfully!')
       }
     } catch (error) {
       console.error('Error adding learner:', error)
