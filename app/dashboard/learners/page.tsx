@@ -167,13 +167,8 @@ export default function LearnersPage() {
 
   async function handleAddLearner(e: React.FormEvent) {
     e.preventDefault()
-    console.log("[v0] handleAddLearner called")
-    console.log("[v0] name:", name)
-    console.log("[v0] currentClass:", currentClass)
-    console.log("[v0] currentSchool:", currentSchool)
     
     if (!name.trim() || !currentClass) {
-      console.log("[v0] Missing name or currentClass, returning")
       alert("Please enter a learner name and select a class")
       return
     }
@@ -189,13 +184,10 @@ export default function LearnersPage() {
         class_id: currentClass.id,
         school_id: currentSchool?.id,
       }
-      console.log("[v0] Submitting learner data:", learnerData)
       
       const { data, error } = await supabase.from('learners').insert([learnerData]).select()
 
       if (error) {
-        console.error("[v0] Error from Supabase:", error)
-        
         // Check if it's a missing column error
         if (error.message && error.message.includes('column')) {
           alert(`Database schema issue: ${error.message}\n\nPlease contact support or run the database migration script.`)
@@ -207,7 +199,6 @@ export default function LearnersPage() {
         throw error
       }
       
-      console.log("[v0] Successfully added learner:", data)
       if (data) {
         setLearners([...learners, data[0]])
         setName('')

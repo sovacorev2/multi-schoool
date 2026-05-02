@@ -606,16 +606,11 @@ export function ReportStareheStyle({
                 </div>
               )
             } catch (err) {
-              const errorMsg = err instanceof Error ? err.message : String(err)
-              const errorStack = err instanceof Error ? err.stack : ''
-              console.error('[v0] Error rendering report for', report.learner.name, ':', errorMsg)
-              console.error('[v0] Error stack:', errorStack)
-              console.error('[v0] Report data:', report)
+              console.error('Error rendering report:', err)
               return (
                 <div key={idx} className="text-red-500 p-4 border border-red-300 bg-red-50 rounded">
                   <div className="font-bold">Error rendering report for {report.learner.name}</div>
-                  <div className="text-sm mt-2">{errorMsg}</div>
-                  {errorStack && <div className="text-xs mt-2 font-mono overflow-auto max-h-48">{errorStack}</div>}
+                  <div className="text-sm mt-2">{err instanceof Error ? err.message : String(err)}</div>
                 </div>
               )
             }

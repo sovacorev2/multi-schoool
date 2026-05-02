@@ -56,10 +56,11 @@ export default function PrintReportsPage() {
           setClassName(classData?.name || '')
         }
 
-        // Fetch subjects
+        // Fetch subjects for the specific class
         const { data: subjectsData } = await supabase
           .from('subjects')
           .select('*')
+          .eq('class_id', classId)
           .order('name')
         setSubjects(subjectsData || [])
 
