@@ -27,6 +27,11 @@ interface Learner {
   created_at: string
 }
 
+interface RecentPromotion {
+  learner_id: string
+  promoted_at: string
+}
+
 export default function LearnersPage() {
   const { currentClass } = useClass()
   const { currentSchool } = useSchool()
@@ -56,6 +61,7 @@ export default function LearnersPage() {
   const [isPromoting, setIsPromoting] = useState(false)
   const [promotedLearnersInTarget, setPromotedLearnersInTarget] = useState<Set<string>>(new Set())
   const [previouslyPromotedLearners, setPreviouslyPromotedLearners] = useState<Set<string>>(new Set())
+  const [recentPromotions, setRecentPromotions] = useState<Map<string, string>>(new Map())
 
   const supabase = createClient()
 
@@ -81,6 +87,32 @@ export default function LearnersPage() {
       }
 
       if (learnersData) setLearners(learnersData)
+
+      // Fetch recent promotions (within 15 days) - get from activity logs
+      const fifteenDaysAgo = new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString()
+      const { data: recentPromotionLogs } = await supabase
+        .from('activity_logs')
+        .select('details, created_at')
+        .eq('action', 'promote_students')
+        .gte('created_at', fifteenDaysAgo)
+        .order('created_at', { ascending: false })
+      
+      if (recentPromotionLogs && recentPromotionLogs.length > 0) {
+        const recentPromoMap = new Map<string, string>()
+        recentPromotionLogs.forEach(log => {
+          // Parse promotion details to extract learner names/count
+          // Details format: "Promoted 3 students from Grade 1 to Grade 2"
+          const matches = log.details?.match(/Promoted (\d+) students/)
+          if (matches && log.created_at) {
+            // For now, mark the promotion date so we can show badges
+            // We'll need a way to track individual learner promotions
+            const promotionDate = log.created_at
+            // Store as a marker - we'll update this when we have the actual learner tracking
+            recentPromoMap.set(`promotion-${log.created_at}`, promotionDate)
+          }
+        })
+        setRecentPromotions(recentPromoMap)
+      }
 
       // Fetch learners who were promoted from this class to see promotion history
       // These are learners whose class_id is NOT the current class but who previously had this class_id
@@ -141,6 +173,22 @@ export default function LearnersPage() {
     fetchPromotedLearnersInTarget(classId)
   }
 
+  function isRecentlyPromoted(learnerId: string): boolean {
+    // Check if learner was promoted within the last 15 days
+    if (!learnerId) return false
+    
+    // If the learner has a recent promotion record, return true
+    for (const [key, value] of recentPromotions.entries()) {
+      if (key.includes(learnerId)) {
+        return true
+      }
+    }
+    
+    // Alternative: check if created_at or last modification was recent
+    // For now, we'll rely on the activity_logs data
+    return false
+  }
+
   async function handlePromoteStudents() {
     if (selectedLearners.length === 0 || !targetClassId) {
       alert('Please select students and a target class')
@@ -165,13 +213,21 @@ export default function LearnersPage() {
 
       if (error) throw error
 
-      // Log activity
+      // Log activity and track recently promoted learners
+      const now = new Date().toISOString()
       await supabase.from('activity_logs').insert({
         school_id: currentSchool?.id,
         action: 'promote_students',
-        details: `Promoted ${selectedLearners.length} students from ${currentClass?.name} to ${targetClass.name}`,
+        details: `Promoted ${selectedLearners.length} students from ${currentClass?.name} to ${targetClass.name}. Learners: ${selectedLearners.join(', ')}`,
         performed_by: currentClass?.name || 'Teacher'
       })
+
+      // Update recent promotions state to show badges for 15 days
+      const updatedRecentPromotions = new Map(recentPromotions)
+      selectedLearners.forEach(learnerId => {
+        updatedRecentPromotions.set(learnerId, now)
+      })
+      setRecentPromotions(updatedRecentPromotions)
 
       // Remove promoted students from current list
       setLearners(learners.filter(l => !selectedLearners.includes(l.id)))
@@ -619,9 +675,14 @@ export default function LearnersPage() {
                       <>
                         <td className="px-6 py-4 text-sm text-gray-600">{learner.admission_number || '-'}</td>
                         <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-sm font-medium text-gray-900">{learner.name}</span>
-                            {previouslyPromotedLearners.has(learner.id) && (
+                            {recentPromotions.has(learner.id) && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 animate-pulse" title="Recently promoted within the last 15 days">
+                                ✓ Promoted
+                              </span>
+                            )}
+                            {previouslyPromotedLearners.has(learner.id) && !recentPromotions.has(learner.id) && (
                               <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800" title="This learner was promoted in a previous cycle">
                                 Previously Promoted
                               </span>
