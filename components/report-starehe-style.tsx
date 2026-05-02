@@ -508,41 +508,59 @@ export function ReportStareheStyle({
                         <text x="16" y="45" fontSize="7" textAnchor="end">50</text>
                         <text x="16" y="75" fontSize="7" textAnchor="end">0</text>
                         {(() => {
-                          // studentHistory contains ALL previous exams, sorted chronologically
-                          // We add current exam at the end
-                          const allData = studentHistory && studentHistory.length > 0 
-                            ? [...studentHistory, { term: 0, year: 0, total: 0, average: meanMark, rank: 0 }]
-                            : [{ term: 0, year: 0, total: 0, average: meanMark, rank: 0 }]
+                          // Get student's history from termHistory
+                          const learnerHistory = termHistory?.[report.learner.id] || []
                           
-                          const totalPoints = allData.length
+                          // Combine historical exams + current exam
+                          const allExams: any[] = []
                           
-                          return allData.map((data, i) => {
+                          // Add historical exams (sorted chronologically)
+                          if (learnerHistory && learnerHistory.length > 0) {
+                            learnerHistory.forEach((h: any) => {
+                              allExams.push({
+                                label: `Y${h.year}T${h.term}`,
+                                average: h.average || 0,
+                                isHistory: true
+                              })
+                            })
+                          }
+                          
+                          // Add current exam at the end
+                          allExams.push({
+                            label: 'CURRENT',
+                            average: meanMark,
+                            isHistory: false
+                          })
+                          
+                          const totalPoints = allExams.length
+                          
+                          return allExams.map((exam, i) => {
                             const x = 25 + (i * (100 / Math.max(totalPoints - 1, 1)))
-                            const y = 70 - ((data.average / 100) * 60)
-                            const nextData = allData[i + 1]
-                            const isCurrentExam = i === allData.length - 1
+                            const y = 70 - ((exam.average / 100) * 60)
+                            const nextExam = allExams[i + 1]
+                            
                             return (
                               <g key={i}>
-                                <circle cx={x} cy={y} r="1.5" fill={isCurrentExam ? '#ef4444' : '#1e40af'} />
-                                {nextData && (
+                                <circle cx={x} cy={y} r="1.5" fill={exam.isHistory ? '#1e40af' : '#ef4444'} />
+                                {nextExam && (
                                   <line
                                     x1={x}
                                     y1={y}
                                     x2={25 + ((i + 1) * (100 / Math.max(totalPoints - 1, 1)))}
-                                    y2={70 - ((nextData.average / 100) * 60)}
-                                    stroke={i === allData.length - 2 ? '#ef4444' : '#1e40af'}
+                                    y2={70 - ((nextExam.average / 100) * 60)}
+                                    stroke={exam.isHistory ? '#1e40af' : '#ef4444'}
                                     strokeWidth="1.5"
                                   />
                                 )}
-                                {/* Exam labels with exam type */}
+                                {/* Exam labels */}
                                 <text x={x} y="82" fontSize="6" textAnchor="middle" fill="#000">
-                                  {isCurrentExam ? 'CUR' : `Y${data.year}T${data.term}`}
+                                  {exam.label}
                                 </text>
                               </g>
                             )
                           })
                         })()}
-                        {/* Legend for current vs history */}
+                        {/* Legend */}
                         <circle cx="35" cy="90" r="1" fill="#ef4444" />
                         <text x="40" y="92" fontSize="6">Current</text>
                         <circle cx="80" cy="90" r="1" fill="#1e40af" />
