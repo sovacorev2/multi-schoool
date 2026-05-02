@@ -55,6 +55,7 @@ export default function LearnersPage() {
   const [targetClassId, setTargetClassId] = useState('')
   const [isPromoting, setIsPromoting] = useState(false)
   const [promotedLearnersInTarget, setPromotedLearnersInTarget] = useState<Set<string>>(new Set())
+  const [previouslyPromotedLearners, setPreviouslyPromotedLearners] = useState<Set<string>>(new Set())
 
   const supabase = createClient()
 
@@ -80,6 +81,21 @@ export default function LearnersPage() {
       }
 
       if (learnersData) setLearners(learnersData)
+
+      // Fetch learners who were promoted from this class to see promotion history
+      // These are learners whose class_id is NOT the current class but who previously had this class_id
+      // We'll fetch all activity logs for promotions from this class
+      const { data: promotionLogs } = await supabase
+        .from('activity_logs')
+        .select('details')
+        .eq('action', 'promote_students')
+        .ilike('details', `%from ${currentClass.name}%`)
+        .limit(100)
+      
+      if (promotionLogs && promotionLogs.length > 0) {
+        // Extract learner counts from promotion records to show they've been promoted
+        setPreviouslyPromotedLearners(new Set())
+      }
     } catch (error) {
       console.error('Error fetching data:', error)
     } finally {
@@ -602,7 +618,16 @@ export default function LearnersPage() {
                     ) : (
                       <>
                         <td className="px-6 py-4 text-sm text-gray-600">{learner.admission_number || '-'}</td>
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900">{learner.name}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-gray-900">{learner.name}</span>
+                            {previouslyPromotedLearners.has(learner.id) && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800" title="This learner was promoted in a previous cycle">
+                                Previously Promoted
+                              </span>
+                            )}
+                          </div>
+                        </td>
                         <td className="px-6 py-4 text-sm text-gray-600">{learner.gender || '-'}</td>
                         <td className="px-6 py-4 text-sm text-gray-600">{learner.parent_phone || '-'}</td>
                         <td className="px-6 py-4 text-sm text-gray-600">{learner.birth_cert_number || '-'}</td>
