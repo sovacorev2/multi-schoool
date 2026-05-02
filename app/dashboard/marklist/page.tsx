@@ -769,7 +769,12 @@ export default function MarklistPage() {
 
   // Fetch learners with marks and calculate results
   useEffect(() => {
-    if (!selectedSession || marks.length === 0) {
+    if (!selectedSession || !subjects || subjects.length === 0) {
+      setResults([])
+      return
+    }
+
+    if (marks.length === 0) {
       setResults([])
       return
     }
@@ -788,7 +793,13 @@ export default function MarklistPage() {
       .from('learners')
       .select('*')
       .in('id', Array.from(learnerIdsInSession))
-      .then(({ data: sessionLearners }) => {
+      .then(({ data: sessionLearners, error }) => {
+        if (error) {
+          console.error('[v0] Error fetching learners:', error)
+          setResults([])
+          return
+        }
+
         const results: LearnerResult[] = (sessionLearners || [])
           .map((learner) => {
             const learnerMarks: Record<string, number | null> = {}
@@ -839,7 +850,11 @@ export default function MarklistPage() {
 
         setResults(results)
       })
-  }, [selectedSession, marks, subjects, currentClass?.name])
+      .catch((err) => {
+        console.error('[v0] Unexpected error fetching learners:', err)
+        setResults([])
+      })
+  }, [selectedSession?.id, marks.length, subjects.length, currentClass?.name])
 
   const subjectPerformance = subjects
   .map((subject) => {
