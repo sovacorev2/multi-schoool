@@ -1595,6 +1595,17 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                     })
                     
                     // Set both report data and term history together
+                    console.log('[v0] Setting report data:', {
+                      resultCount: updatedResults.length,
+                      firstResult: updatedResults[0] ? {
+                        name: updatedResults[0].learner?.name,
+                        rank: updatedResults[0].rank,
+                        overall_rank: updatedResults[0].overall_rank,
+                        total_in_grade: updatedResults[0].total_in_grade
+                      } : null,
+                      historyCount: Object.keys(history).length,
+                      firstHistory: history[Object.keys(history)[0]]?.length || 0
+                    })
                     setReportModalData(updatedResults)
                     setTermHistory(history)
                   } catch (err) {
