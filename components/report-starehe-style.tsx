@@ -344,21 +344,21 @@ export function ReportStareheStyle({
                   {/* School Header */}
                   <div style={{ textAlign: 'center', marginBottom: '10px', paddingBottom: '8px', borderBottom: '2px solid #999' }}>
                     {/* Logo */}
-                    {currentSchool?.logo_url ? (
+                    {currentSchool && currentSchool.logo_url ? (
                       <img src={currentSchool.logo_url} alt="School Logo" style={{ width: '60px', height: '60px', margin: '0 auto 5px', objectFit: 'contain' }} />
                     ) : (
-                      <div style={{ width: '60px', height: '60px', margin: '0 auto 5px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: currentSchool?.primary_color || '#2563eb', color: 'white', fontSize: '24px', fontWeight: 'bold', borderRadius: '50%' }}>
-                        {currentSchool?.short_name?.substring(0, 2) || currentSchool?.name?.substring(0, 2).toUpperCase() || 'SC'}
+                      <div style={{ width: '60px', height: '60px', margin: '0 auto 5px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: (currentSchool && currentSchool.primary_color) || '#2563eb', color: 'white', fontSize: '24px', fontWeight: 'bold', borderRadius: '50%' }}>
+                        {(currentSchool && currentSchool.short_name) ? currentSchool.short_name.substring(0, 2) : (currentSchool && currentSchool.name) ? currentSchool.name.substring(0, 2).toUpperCase() : 'SC'}
                       </div>
                     )}
                     
                     {/* School Name */}
                     <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#003366', marginBottom: '3px', letterSpacing: '1px' }}>
-                      {currentSchool?.name || 'AMAGORO COMPREHENSIVE SCHOOL'}
+                      {(currentSchool && currentSchool.name) || 'SCHOOL'}
                     </div>
                     
                     {/* Motto/Tagline */}
-                    {currentSchool?.tagline && (
+                    {currentSchool && currentSchool.tagline && (
                       <div style={{ fontSize: '12px', fontStyle: 'italic', color: '#666', marginBottom: '8px' }}>
                         {currentSchool.tagline}
                       </div>
@@ -423,7 +423,7 @@ export function ReportStareheStyle({
 
                   {/* Mean Marks and Summary Row */}
                   <div style={{ marginBottom: '6px', fontSize: '9px' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: currentClass?.name.includes(' ') ? '1fr 1fr 1fr' : '1fr 1fr', gap: '8px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: className.includes(' ') ? '1fr 1fr 1fr' : '1fr 1fr', gap: '8px' }}>
                       <div style={{ border: '1px solid #666', padding: '5px' }}>
                         <div><strong>MEAN MARKS:</strong> {meanMark.toFixed(1)}</div>
                         <div style={{ marginTop: '2px' }}><strong>PERF LEVEL:</strong> {meanPerf.level}</div>
@@ -432,10 +432,10 @@ export function ReportStareheStyle({
                         <div><strong>TOTAL PTS:</strong> {totalPoints}/{maxPoints}</div>
                         <div style={{ marginTop: '2px' }}><strong>OVERALL POS:</strong> {report.rank}/{totalStudents}</div>
                       </div>
-                      {currentClass?.name.includes(' ') && (
+                      {className.includes(' ') && (
                         <div style={{ border: '1px solid #666', padding: '5px' }}>
                           <div><strong>STREAM POS:</strong> {report.stream_rank || '-'}</div>
-                          <div style={{ marginTop: '2px' }}><strong>STREAM:</strong> {currentClass.name.split(' ').slice(1).join(' ')}</div>
+                          <div style={{ marginTop: '2px' }}><strong>STREAM:</strong> {className.split(' ').slice(1).join(' ')}</div>
                         </div>
                       )}
                     </div>
@@ -606,8 +606,13 @@ export function ReportStareheStyle({
                 </div>
               )
             } catch (err) {
-              console.error('[v0] Error rendering report:', err)
-              return <div key={idx} className="text-red-500 p-4">Error rendering report for {report.learner.name}</div>
+              console.error('Error rendering report:', err)
+              return (
+                <div key={idx} className="text-red-500 p-4 border border-red-300 bg-red-50 rounded">
+                  <div className="font-bold">Error rendering report for {report.learner.name}</div>
+                  <div className="text-sm mt-2">{err instanceof Error ? err.message : String(err)}</div>
+                </div>
+              )
             }
           })}
         </div>
