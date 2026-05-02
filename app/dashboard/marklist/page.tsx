@@ -767,7 +767,16 @@ export default function MarklistPage() {
     })
   }, [currentSchool?.id])
 
-  const results: LearnerResult[] = learners
+  // Get unique learner IDs from marks for this session
+  const learnerIdsInSession = new Set(marks.map(m => m.learner_id))
+  
+  // Fetch all learners who have marks in this session (including those promoted out)
+  const { data: sessionLearners } = await supabase
+    .from('learners')
+    .select('*')
+    .in('id', Array.from(learnerIdsInSession))
+  
+  const results: LearnerResult[] = (sessionLearners || [])
     .map((learner) => {
       const learnerMarks: Record<string, number | null> = {}
       let total = 0
