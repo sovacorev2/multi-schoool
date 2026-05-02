@@ -767,67 +767,81 @@ export default function MarklistPage() {
     })
   }, [currentSchool?.id])
 
-  // Get unique learner IDs from marks for this session
-  const learnerIdsInSession = new Set(marks.map(m => m.learner_id))
-  
-  // Fetch all learners who have marks in this session (including those promoted out)
-  const { data: sessionLearners } = await supabase
-    .from('learners')
-    .select('*')
-    .in('id', Array.from(learnerIdsInSession))
-  
-  const results: LearnerResult[] = (sessionLearners || [])
-    .map((learner) => {
-      const learnerMarks: Record<string, number | null> = {}
-      let total = 0
-      let subjectsWithMarks = 0
+  // Fetch learners with marks and calculate results
+  useEffect(() => {
+    if (!selectedSession || marks.length === 0) {
+      setResults([])
+      return
+    }
 
-      subjects.forEach((subject) => {
-        const mark = marks.find((m) => m.learner_id === learner.id && m.subject_id === subject.id)
-        learnerMarks[subject.id] = mark?.score ?? null
-        if (mark?.score !== null && mark?.score !== undefined) {
-          total += mark.score
-          subjectsWithMarks++
-        }
+    const supabase = createClient()
+    
+    // Get unique learner IDs from marks for this session
+    const learnerIdsInSession = new Set(marks.map(m => m.learner_id))
+    
+    if (learnerIdsInSession.size === 0) {
+      setResults([])
+      return
+    }
+
+    supabase
+      .from('learners')
+      .select('*')
+      .in('id', Array.from(learnerIdsInSession))
+      .then(({ data: sessionLearners }) => {
+        const results: LearnerResult[] = (sessionLearners || [])
+          .map((learner) => {
+            const learnerMarks: Record<string, number | null> = {}
+            let total = 0
+            let subjectsWithMarks = 0
+
+            subjects.forEach((subject) => {
+              const mark = marks.find((m) => m.learner_id === learner.id && m.subject_id === subject.id)
+              learnerMarks[subject.id] = mark?.score ?? null
+              if (mark?.score !== null && mark?.score !== undefined) {
+                total += mark.score
+                subjectsWithMarks++
+              }
+            })
+
+            const average = subjectsWithMarks > 0 ? total / subjectsWithMarks : 0
+
+            return {
+              learner,
+              marks: learnerMarks,
+              total,
+              average,
+              rank: 0,
+            }
+          })
+          .filter((result) => Object.values(result.marks).some((m) => m !== null))
+          .sort((a, b) => b.total - a.total)
+          .map((result, index, arr) => {
+            if (index === 0) {
+              result.rank = 1
+            } else if (result.total === arr[index - 1].total) {
+              result.rank = arr[index - 1].rank
+            } else {
+              result.rank = index + 1
+            }
+            
+            // Set overall_rank and total_in_grade
+            const className = currentClass?.name || ''
+            if (className.includes(' ')) {
+              result.total_in_grade = arr.length
+            } else {
+              result.total_in_grade = arr.length
+            }
+            result.overall_rank = result.rank
+            
+            return result
+          })
+
+        setResults(results)
       })
+  }, [selectedSession, marks, subjects, currentClass?.name])
 
-      const average = subjectsWithMarks > 0 ? total / subjectsWithMarks : 0
-
-      return {
-        learner,
-        marks: learnerMarks,
-        total,
-        average,
-        rank: 0,
-      }
-    })
-    .filter((result) => Object.values(result.marks).some((m) => m !== null))
-    .sort((a, b) => b.total - a.total)
-    .map((result, index, arr) => {
-      if (index === 0) {
-        result.rank = 1
-      } else if (result.total === arr[index - 1].total) {
-        result.rank = arr[index - 1].rank
-      } else {
-        result.rank = index + 1
-      }
-      
-      // For streamed classes, set overall_rank to current rank (will be updated if stream comparison is done)
-      // For non-streamed classes, overall_rank = rank
-      const className = currentClass?.name || ''
-      if (className.includes(' ')) {
-        // Streamed class - use the combined marklist total if available
-        result.total_in_grade = arr.length
-      } else {
-        // Non-streamed class
-        result.total_in_grade = arr.length
-      }
-      result.overall_rank = result.rank
-      
-      return result
-    })
-
-const subjectPerformance = subjects
+  const subjectPerformance = subjects
   .map((subject) => {
     const subjectScores = results
       .map((r) => r.marks[subject.id])
