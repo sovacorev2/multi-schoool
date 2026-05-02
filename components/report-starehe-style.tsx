@@ -508,7 +508,12 @@ export function ReportStareheStyle({
                         <text x="16" y="45" fontSize="7" textAnchor="end">50</text>
                         <text x="16" y="75" fontSize="7" textAnchor="end">0</text>
                         {(() => {
-                          const allData = studentHistory && studentHistory.length > 0 ? [...studentHistory, { average: meanMark }] : [{ average: meanMark }]
+                          // studentHistory contains ALL previous exams, sorted chronologically
+                          // We add current exam at the end
+                          const allData = studentHistory && studentHistory.length > 0 
+                            ? [...studentHistory, { term: 0, year: 0, total: 0, average: meanMark, rank: 0 }]
+                            : [{ term: 0, year: 0, total: 0, average: meanMark, rank: 0 }]
+                          
                           const totalPoints = allData.length
                           
                           return allData.map((data, i) => {
@@ -529,9 +534,9 @@ export function ReportStareheStyle({
                                     strokeWidth="1.5"
                                   />
                                 )}
-                                {/* Exam labels */}
+                                {/* Exam labels with exam type */}
                                 <text x={x} y="82" fontSize="6" textAnchor="middle" fill="#000">
-                                  {isCurrentExam ? 'CUR' : 'HST' + (i + 1)}
+                                  {isCurrentExam ? 'CUR' : `Y${data.year}T${data.term}`}
                                 </text>
                               </g>
                             )
