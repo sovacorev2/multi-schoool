@@ -50,6 +50,7 @@ export default function MarklistPage() {
   const [marks, setMarks] = useState<Mark[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedSessionId, setSelectedSessionId] = useState<string>('')
+  const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString())
   const [teacherName, setTeacherName] = useState<string>('')
   const [selectedSession, setSelectedSession] = useState<SessionWithExamType | null>(null)
   const [schoolPerformance, setSchoolPerformance] = useState<{
@@ -1430,6 +1431,25 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
             <CardTitle className="text-base">Select Exam Session</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            {Array.from(new Set(sessions.map(s => s.year))).length > 1 && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Filter by Year</Label>
+                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue placeholder="Select year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from(new Set(sessions.map(s => s.year)))
+                      .sort((a, b) => b - a)
+                      .map((year) => (
+                        <SelectItem key={year} value={year.toString()} className="text-sm">
+                          {year}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label className="text-xs">Exam Session</Label>
               <Select value={selectedSessionId} onValueChange={setSelectedSessionId}>
@@ -1437,11 +1457,13 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                   <SelectValue placeholder="Select a session" />
                 </SelectTrigger>
                 <SelectContent>
-                  {sessions.map((session) => (
-                    <SelectItem key={session.id} value={session.id} className="text-sm">
-                      {session.exam_types?.name} • {session.term} • {session.year}
-                    </SelectItem>
-                  ))}
+                  {sessions
+                    .filter(session => session.year.toString() === selectedYear)
+                    .map((session) => (
+                      <SelectItem key={session.id} value={session.id} className="text-sm">
+                        {session.exam_types?.name} • {session.term} • {session.year}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>

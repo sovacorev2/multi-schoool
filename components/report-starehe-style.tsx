@@ -423,7 +423,7 @@ export function ReportStareheStyle({
 
                   {/* Mean Marks and Summary Row */}
                   <div style={{ marginBottom: '6px', fontSize: '9px' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: currentClass?.name.includes(' ') ? '1fr 1fr 1fr' : '1fr 1fr', gap: '8px' }}>
                       <div style={{ border: '1px solid #666', padding: '5px' }}>
                         <div><strong>MEAN MARKS:</strong> {meanMark.toFixed(1)}</div>
                         <div style={{ marginTop: '2px' }}><strong>PERF LEVEL:</strong> {meanPerf.level}</div>
@@ -432,12 +432,18 @@ export function ReportStareheStyle({
                         <div><strong>TOTAL PTS:</strong> {totalPoints}/{maxPoints}</div>
                         <div style={{ marginTop: '2px' }}><strong>OVERALL POS:</strong> {report.rank}/{totalStudents}</div>
                       </div>
+                      {currentClass?.name.includes(' ') && (
+                        <div style={{ border: '1px solid #666', padding: '5px' }}>
+                          <div><strong>STREAM POS:</strong> {report.stream_rank || '-'}</div>
+                          <div style={{ marginTop: '2px' }}><strong>STREAM:</strong> {currentClass.name.split(' ').slice(1).join(' ')}</div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
                   {/* Charts Row - Side by Side */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '8px' }}>
-                    {/* Pie Chart - Subject Distribution */}
+                    {/* Pie Chart - Subject Distribution with Legend */}
                     <div style={{ border: '1px solid #666', padding: '6px', textAlign: 'center' }}>
                       <div style={{ fontWeight: 'bold', marginBottom: '4px', fontSize: '9px' }}>SUBJECT DISTRIBUTION</div>
                       <svg viewBox="0 0 120 120" style={{ width: '100%', maxWidth: '90px', margin: '0 auto', display: 'block', height: 'auto' }}>
@@ -487,12 +493,24 @@ export function ReportStareheStyle({
                           return slices
                         })()}
                       </svg>
+                      {/* Legend */}
+                      <div style={{ marginTop: '6px', fontSize: '7px', lineHeight: '1.3' }}>
+                        {subjectData.map((subject, i) => {
+                          const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#14b8a6']
+                          return (
+                            <div key={subject.subject.id} style={{ marginBottom: '2px' }}>
+                              <span style={{ display: 'inline-block', width: '8px', height: '8px', backgroundColor: colors[i % colors.length], marginRight: '3px', verticalAlign: 'middle' }}></span>
+                              {subject.subject.name.substring(0, 12)}
+                            </div>
+                          )
+                        })}
+                      </div>
                     </div>
 
                     {/* Line Chart - Performance Trend */}
                     <div style={{ border: '1px solid #666', padding: '6px', textAlign: 'center' }}>
                       <div style={{ fontWeight: 'bold', marginBottom: '4px', fontSize: '9px' }}>PERFORMANCE TREND</div>
-                      <svg viewBox="0 0 140 80" style={{ width: '100%', maxWidth: '90px', margin: '0 auto', display: 'block', height: 'auto' }}>
+                      <svg viewBox="0 0 140 95" style={{ width: '100%', maxWidth: '90px', margin: '0 auto', display: 'block', height: 'auto' }}>
                         <line x1="20" y1="10" x2="20" y2="70" stroke="#999" strokeWidth="0.5" />
                         <line x1="20" y1="70" x2="130" y2="70" stroke="#999" strokeWidth="0.5" />
                         <text x="16" y="15" fontSize="7" textAnchor="end">100</text>
@@ -506,9 +524,10 @@ export function ReportStareheStyle({
                             const x = 25 + (i * (100 / Math.max(totalPoints - 1, 1)))
                             const y = 70 - ((data.average / 100) * 60)
                             const nextData = allData[i + 1]
+                            const isCurrentExam = i === allData.length - 1
                             return (
                               <g key={i}>
-                                <circle cx={x} cy={y} r="1.5" fill={i === allData.length - 1 ? '#ef4444' : '#1e40af'} />
+                                <circle cx={x} cy={y} r="1.5" fill={isCurrentExam ? '#ef4444' : '#1e40af'} />
                                 {nextData && (
                                   <line
                                     x1={x}
@@ -519,10 +538,19 @@ export function ReportStareheStyle({
                                     strokeWidth="1.5"
                                   />
                                 )}
+                                {/* Exam labels */}
+                                <text x={x} y="82" fontSize="6" textAnchor="middle" fill="#000">
+                                  {isCurrentExam ? 'CUR' : 'HST' + (i + 1)}
+                                </text>
                               </g>
                             )
                           })
                         })()}
+                        {/* Legend for current vs history */}
+                        <circle cx="35" cy="90" r="1" fill="#ef4444" />
+                        <text x="40" y="92" fontSize="6">Current</text>
+                        <circle cx="80" cy="90" r="1" fill="#1e40af" />
+                        <text x="85" y="92" fontSize="6">History</text>
                       </svg>
                     </div>
                   </div>
