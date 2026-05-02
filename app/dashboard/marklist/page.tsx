@@ -1387,15 +1387,11 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                   const classWords = className.trim().split(/\s+/)
                   const isStreamedClass = classWords.length > 2
                   
-                  console.log('[v0] Print reports - className:', className, 'isStreamedClass:', isStreamedClass, 'words:', classWords)
-                  
                   if (isStreamedClass && selectedSessionId) {
                     try {
                       const supabase = createClient()
                       // Grade level is everything except the last word (the stream identifier)
                       const gradeLevel = classWords.slice(0, -1).join(' ') // e.g., "Grade 7" from "Grade 7 EAST"
-                      
-                      console.log('[v0] Detected streamed class. Grade level:', gradeLevel)
                       
                       // Find all stream classes in the same grade (must also have 3+ words)
                       const { data: streamClasses } = await supabase
@@ -1406,8 +1402,6 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                       
                       // Filter to only actual streams (3+ words to exclude the parent grade class if any)
                       const actualStreams = (streamClasses || []).filter(c => c.name.trim().split(/\s+/).length > 2)
-                      
-                      console.log('[v0] Found streams:', actualStreams.map(s => s.name))
                       
                       if (actualStreams.length >= 1) {
                         const streamClassIds = actualStreams.map(c => c.id)
@@ -1421,21 +1415,14 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                         if (allGradeLearners && allGradeLearners.length > 0) {
                           const learnerIds = allGradeLearners.map(l => l.id)
                           
-                          console.log('[v0] Fetching marks for', learnerIds.length, 'learners across all streams. Year:', selectedSession?.year, 'Term:', selectedSession?.term, 'ExamType:', selectedSession?.exam_type_id)
-                          
                           // Fetch all subject marks for these learners for the same year/term/exam_type
-                          const { data: allMarks, error: marksError } = await supabase
+                          const { data: allMarks } = await supabase
                             .from('marks')
                             .select('learner_id, score, subject_id')
                             .in('learner_id', learnerIds)
                             .eq('year', selectedSession?.year)
                             .eq('term', selectedSession?.term)
                             .eq('exam_type_id', selectedSession?.exam_type_id)
-                          
-                          if (marksError) {
-                            console.error('[v0] All marks fetch error:', marksError)
-                          }
-                          console.log('[v0] Fetched', allMarks?.length || 0, 'marks across all streams')
                           
                           if (allMarks && allMarks.length > 0) {
                             // Calculate average per learner from their subject scores
@@ -1475,21 +1462,12 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                             
                             const totalInGrade = learnerAverages.length
                             
-                            console.log('[v0] Total students in grade:', totalInGrade, 'Stream class size:', results.length)
-                            
                             // Update results with overall_rank and total_in_grade
                             updatedResults = results.map(r => ({
                               ...r,
                               overall_rank: overallRanks[r.learner.id] || r.rank,
                               total_in_grade: totalInGrade
                             }))
-                            
-                            console.log('[v0] Sample updated result:', { 
-                              learner: updatedResults[0]?.learner?.name,
-                              stream_rank: updatedResults[0]?.rank,
-                              overall_rank: updatedResults[0]?.overall_rank,
-                              total_in_grade: updatedResults[0]?.total_in_grade
-                            })
                           }
                         }
                       }
@@ -1523,10 +1501,8 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                     // Fetch historical marks data only if we have learner IDs
                     const learnerIds = updatedResults.map(r => r.learner.id).filter(Boolean)
                     if (learnerIds.length > 0 && selectedSession) {
-                      console.log('[v0] Fetching historical marks for', learnerIds.length, 'learners')
-                      
                       // Get ALL subject marks for these learners across all exams
-                      const { data: historicalMarks, error } = await supabase
+                      const { data: historicalMarks } = await supabase
                         .from('marks')
                         .select(`
                           learner_id,
@@ -1538,12 +1514,6 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                           exam_types(name)
                         `)
                         .in('learner_id', learnerIds)
-                      
-                      if (error) {
-                        console.error('[v0] Historical marks fetch error:', error)
-                      }
-                      
-                      console.log('[v0] Fetched', historicalMarks?.length || 0, 'total historical marks. Current exam:', { year: selectedSession.year, term: selectedSession.term, exam_type_id: selectedSession.exam_type_id })
                       
                       if (historicalMarks && historicalMarks.length > 0) {
                         // Group marks by learner, then by exam (year + term + exam_type)
@@ -1623,12 +1593,6 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                         return examTypeOrder(a.exam_type || '') - examTypeOrder(b.exam_type || '')
                       })
                     })
-                    
-                    // Log the constructed history for first learner for debugging
-                    const firstLearnerId = Object.keys(history)[0]
-                    if (firstLearnerId) {
-                      console.log('[v0] Sample history for first learner:', firstLearnerId, history[firstLearnerId])
-                    }
                     
                     // Set both report data and term history together
                     setReportModalData(updatedResults)
