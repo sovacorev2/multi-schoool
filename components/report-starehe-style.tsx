@@ -15,6 +15,8 @@ interface StudentReport {
   average: number
   streamRank?: number
   streamTotal?: number
+  overall_rank?: number
+  total_in_grade?: number
 }
 
 interface Subject {

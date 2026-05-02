@@ -155,7 +155,7 @@ export default function PrintReportsPage() {
             }}
           >
             <img 
-              src={currentSchool?.logo_url || `/logos/${currentSchool?.code}.jpeg`} 
+              src={currentSchool?.logo_url || `/logos/${currentSchool?.code}.png`} 
               alt={`${currentSchool?.name || 'School'} Logo`} 
               style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
               onError={(e) => {

@@ -728,7 +728,7 @@ export default function AdminPortalPage() {
           <div className="flex items-center gap-3">
             {/* School Logo */}
             <img 
-              src={currentSchool.logo_url || `/logos/${currentSchool.code}.jpeg`}
+              src={currentSchool.logo_url || `/logos/${currentSchool.code}.png`}
               alt={`${currentSchool.name} logo`}
               className="w-12 h-12 object-contain bg-white rounded-lg p-1"
               onError={(e) => {

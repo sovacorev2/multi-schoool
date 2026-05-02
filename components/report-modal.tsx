@@ -11,6 +11,8 @@ interface StudentReport {
   total: number
   rank: number
   average: number
+  overall_rank?: number
+  total_in_grade?: number
 }
 
 interface Subject {
@@ -206,7 +208,7 @@ export function ReportModal({
                   }}
                 >
                   <img 
-                    src={currentSchool?.logo_url || `/logos/${currentSchool?.code}.jpeg`} 
+                    src={currentSchool?.logo_url || `/logos/${currentSchool?.code}.png`} 
                     alt={`${currentSchool?.name || 'School'} Logo`} 
                     style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
                     onError={(e) => {
