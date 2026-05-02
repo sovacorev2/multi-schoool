@@ -423,7 +423,7 @@ export function ReportStareheStyle({
 
                   {/* Mean Marks and Summary Row */}
                   <div style={{ marginBottom: '6px', fontSize: '9px' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: currentClass?.name.includes(' ') ? '1fr 1fr 1fr' : '1fr 1fr', gap: '8px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: className.includes(' ') ? '1fr 1fr 1fr' : '1fr 1fr', gap: '8px' }}>
                       <div style={{ border: '1px solid #666', padding: '5px' }}>
                         <div><strong>MEAN MARKS:</strong> {meanMark.toFixed(1)}</div>
                         <div style={{ marginTop: '2px' }}><strong>PERF LEVEL:</strong> {meanPerf.level}</div>
@@ -432,10 +432,10 @@ export function ReportStareheStyle({
                         <div><strong>TOTAL PTS:</strong> {totalPoints}/{maxPoints}</div>
                         <div style={{ marginTop: '2px' }}><strong>OVERALL POS:</strong> {report.rank}/{totalStudents}</div>
                       </div>
-                      {currentClass?.name.includes(' ') && (
+                      {className.includes(' ') && (
                         <div style={{ border: '1px solid #666', padding: '5px' }}>
                           <div><strong>STREAM POS:</strong> {report.stream_rank || '-'}</div>
-                          <div style={{ marginTop: '2px' }}><strong>STREAM:</strong> {currentClass.name.split(' ').slice(1).join(' ')}</div>
+                          <div style={{ marginTop: '2px' }}><strong>STREAM:</strong> {className.split(' ').slice(1).join(' ')}</div>
                         </div>
                       )}
                     </div>
@@ -606,8 +606,18 @@ export function ReportStareheStyle({
                 </div>
               )
             } catch (err) {
-              console.error('[v0] Error rendering report:', err)
-              return <div key={idx} className="text-red-500 p-4">Error rendering report for {report.learner.name}</div>
+              const errorMsg = err instanceof Error ? err.message : String(err)
+              const errorStack = err instanceof Error ? err.stack : ''
+              console.error('[v0] Error rendering report for', report.learner.name, ':', errorMsg)
+              console.error('[v0] Error stack:', errorStack)
+              console.error('[v0] Report data:', report)
+              return (
+                <div key={idx} className="text-red-500 p-4 border border-red-300 bg-red-50 rounded">
+                  <div className="font-bold">Error rendering report for {report.learner.name}</div>
+                  <div className="text-sm mt-2">{errorMsg}</div>
+                  {errorStack && <div className="text-xs mt-2 font-mono overflow-auto max-h-48">{errorStack}</div>}
+                </div>
+              )
             }
           })}
         </div>
