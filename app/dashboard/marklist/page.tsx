@@ -51,6 +51,7 @@ export default function MarklistPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [selectedSessionId, setSelectedSessionId] = useState<string>('')
   const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString())
+  const [selectedTerm, setSelectedTerm] = useState<string>('')
   const [teacherName, setTeacherName] = useState<string>('')
   const [selectedSession, setSelectedSession] = useState<SessionWithExamType | null>(null)
   const [schoolPerformance, setSchoolPerformance] = useState<{
@@ -1434,7 +1435,11 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
             {Array.from(new Set(sessions.map(s => s.year))).length > 1 && (
               <div className="space-y-1.5">
                 <Label className="text-xs">Filter by Year</Label>
-                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                <Select value={selectedYear} onValueChange={(value) => {
+                  setSelectedYear(value);
+                  setSelectedTerm("");
+                  setSelectedSessionId("");
+                }}>
                   <SelectTrigger className="h-8 text-sm">
                     <SelectValue placeholder="Select year" />
                   </SelectTrigger>
@@ -1450,6 +1455,27 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                 </Select>
               </div>
             )}
+            {Array.from(new Set(sessions.filter(s => s.year.toString() === selectedYear).map(s => s.term))).length > 1 && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Filter by Term</Label>
+                <Select value={selectedTerm} onValueChange={(value) => {
+                  setSelectedTerm(value);
+                  setSelectedSessionId("");
+                }}>
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue placeholder="Select term" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from(new Set(sessions.filter(s => s.year.toString() === selectedYear).map(s => s.term)))
+                      .map((term) => (
+                        <SelectItem key={term} value={term} className="text-sm">
+                          {term}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label className="text-xs">Exam Session</Label>
               <Select value={selectedSessionId} onValueChange={setSelectedSessionId}>
@@ -1458,7 +1484,10 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                 </SelectTrigger>
                 <SelectContent>
                   {sessions
-                    .filter(session => session.year.toString() === selectedYear)
+                    .filter(session => 
+                      session.year.toString() === selectedYear &&
+                      (!selectedTerm || session.term === selectedTerm)
+                    )
                     .map((session) => (
                       <SelectItem key={session.id} value={session.id} className="text-sm">
                         {session.exam_types?.name} • {session.term} • {session.year}

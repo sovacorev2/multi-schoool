@@ -152,6 +152,7 @@ export default function MarksPage() {
   // Session selection
   const [selectedSessionId, setSelectedSessionId] = useState<string>("");
   const [selectedYear, setSelectedYear] = useState<string>(CURRENT_YEAR.toString());
+  const [selectedTerm, setSelectedTerm] = useState<string>("");
   const [isCreateSessionOpen, setIsCreateSessionOpen] = useState(false);
 
   // New session form
@@ -424,7 +425,11 @@ export default function MarksPage() {
               {/* Year Filter */}
               {Array.from(new Set(sessions.map(s => s.year))).length > 1 && (
                 <div className="w-full sm:w-32">
-                  <Select value={selectedYear} onValueChange={setSelectedYear}>
+                  <Select value={selectedYear} onValueChange={(value) => {
+                    setSelectedYear(value);
+                    setSelectedTerm("");
+                    setSelectedSessionId("");
+                  }}>
                     <SelectTrigger>
                       <SelectValue placeholder="Filter by year" />
                     </SelectTrigger>
@@ -440,6 +445,27 @@ export default function MarksPage() {
                   </Select>
                 </div>
               )}
+              {/* Term Filter */}
+              {Array.from(new Set(sessions.filter(s => s.year.toString() === selectedYear).map(s => s.term))).length > 1 && (
+                <div className="w-full sm:w-32">
+                  <Select value={selectedTerm} onValueChange={(value) => {
+                    setSelectedTerm(value);
+                    setSelectedSessionId("");
+                  }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Filter by term" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from(new Set(sessions.filter(s => s.year.toString() === selectedYear).map(s => s.term)))
+                        .map((term) => (
+                          <SelectItem key={term} value={term}>
+                            {term}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="flex-1">
                 <Select value={selectedSessionId} onValueChange={setSelectedSessionId}>
                   <SelectTrigger>
@@ -447,7 +473,10 @@ export default function MarksPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {sessions
-                      .filter(session => session.year.toString() === selectedYear)
+                      .filter(session => 
+                        session.year.toString() === selectedYear &&
+                        (!selectedTerm || session.term === selectedTerm)
+                      )
                       .map((session) => (
                         <SelectItem key={session.id} value={session.id}>
                           <span className="flex items-center">

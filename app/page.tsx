@@ -251,8 +251,8 @@ function HomePageContent() {
 
   const handleLogin = async () => {
     setError('')
-    if (!selectedClass || !selectedExamType) {
-      setError('Please select class and exam type')
+    if (!selectedClass || !selectedExamType || !selectedTerm) {
+      setError('Please select class, term, and exam type')
       return
     }
 
@@ -266,6 +266,52 @@ function HomePageContent() {
         setError('Invalid class selected')
         setIsLoading(false)
         return
+      }
+
+      // Auto-create session if it doesn't exist
+      try {
+        // First, check if session already exists
+        const { data: existingSession } = await supabase
+          .from('sessions')
+          .select('id')
+          .eq('class_id', selectedClass)
+          .eq('exam_type_id', selectedExamType)
+          .eq('term', selectedTerm)
+          .eq('year', parseInt(selectedYear))
+          .single()
+
+        // If session doesn't exist, create it
+        if (!existingSession) {
+          const { data: newSession, error: createError } = await supabase
+            .from('sessions')
+            .insert({
+              class_id: selectedClass,
+              school_id: currentSchool?.id,
+              exam_type_id: selectedExamType,
+              term: selectedTerm,
+              year: parseInt(selectedYear),
+              is_locked: false,
+            })
+            .select()
+            .single()
+
+          if (createError) {
+            console.error('[v0] Error creating session:', createError)
+            // Don't fail login, just log the error
+          } else if (newSession) {
+            console.log('[v0] Auto-created session:', newSession.id)
+            // Log the action
+            await supabase.from('activity_logs').insert({
+              school_id: currentSchool?.id,
+              action: 'session_auto_created',
+              details: `Auto-created session: ${selectedExamType} - ${selectedTerm} ${selectedYear} for ${selectedClassObj.name}`,
+              performed_by: selectedClassObj.name,
+            })
+          }
+        }
+      } catch (sessionError) {
+        console.error('[v0] Session creation error (non-fatal):', sessionError)
+        // Continue with login even if session creation fails
       }
 
       // Set class in context - Teachers do NOT use sessions
