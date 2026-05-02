@@ -1392,56 +1392,64 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                       const gradeLevel = className.split(' ').slice(0, 2).join(' ') // e.g., "Grade 7" from "Grade 7 East"
                       
                       // Find all stream classes in the same grade
+                      // Find all classes in same grade level (e.g., "Grade 7 East", "Grade 7 West", etc.)
                       const { data: streamClasses } = await supabase
                         .from('classes')
                         .select('id, name')
                         .eq('school_id', currentSchool?.id)
                         .ilike('name', `${gradeLevel}%`)
                       
-                      if (streamClasses && streamClasses.length > 1) {
-                        // Fetch all marks from all stream sessions for this exam type
+                      if (streamClasses && streamClasses.length >= 1) {
                         const streamClassIds = streamClasses.map(c => c.id)
                         
-                        // Get sessions for all streams with same exam type, term, year
-                        const { data: streamSessions } = await supabase
-                          .from('sessions')
+                        // Get all learners in these stream classes
+                        const { data: allGradeLearners } = await supabase
+                          .from('learners')
                           .select('id, class_id')
                           .in('class_id', streamClassIds)
-                          .eq('exam_type_id', selectedSession?.exam_type_id)
-                          .eq('term', selectedSession?.term)
-                          .eq('year', selectedSession?.year)
                         
-                        if (streamSessions && streamSessions.length > 0) {
-                          const sessionIds = streamSessions.map(s => s.id)
+                        if (allGradeLearners && allGradeLearners.length > 0) {
+                          const learnerIds = allGradeLearners.map(l => l.id)
                           
-                          // Fetch all marks with averages from all streams
+                          // Fetch all subject marks for these learners for the same year/term/exam_type
                           const { data: allMarks } = await supabase
                             .from('marks')
-                            .select('learner_id, average_score, session_id')
-                            .in('session_id', sessionIds)
-                            .not('average_score', 'is', null)
+                            .select('learner_id, score, subject_id')
+                            .in('learner_id', learnerIds)
+                            .eq('year', selectedSession?.year)
+                            .eq('term', selectedSession?.term)
+                            .eq('exam_type_id', selectedSession?.exam_type_id)
                           
                           if (allMarks && allMarks.length > 0) {
-                            // Get unique learners with their best average per session
-                            const learnerAverages: { learner_id: string; average: number }[] = []
-                            const seen = new Set<string>()
+                            // Calculate average per learner from their subject scores
+                            const learnerScores: Record<string, { total: number; count: number }> = {}
                             
                             allMarks.forEach(m => {
-                              if (!seen.has(m.learner_id)) {
-                                seen.add(m.learner_id)
-                                learnerAverages.push({ learner_id: m.learner_id, average: m.average_score || 0 })
+                              if (!learnerScores[m.learner_id]) {
+                                learnerScores[m.learner_id] = { total: 0, count: 0 }
+                              }
+                              if (m.score !== null && m.score !== undefined) {
+                                learnerScores[m.learner_id].total += Number(m.score)
+                                learnerScores[m.learner_id].count += 1
                               }
                             })
                             
-                            // Sort by average descending
-                            learnerAverages.sort((a, b) => b.average - a.average)
+                            // Build sorted list of learner averages
+                            const learnerAverages = Object.entries(learnerScores)
+                              .filter(([_, data]) => data.count > 0)
+                              .map(([learner_id, data]) => ({
+                                learner_id,
+                                average: data.total / data.count,
+                                total: data.total,
+                              }))
+                              .sort((a, b) => b.total - a.total)
                             
-                            // Assign overall ranks
+                            // Assign overall ranks (handling ties)
                             const overallRanks: Record<string, number> = {}
                             learnerAverages.forEach((la, idx) => {
                               if (idx === 0) {
                                 overallRanks[la.learner_id] = 1
-                              } else if (la.average === learnerAverages[idx - 1].average) {
+                              } else if (la.total === learnerAverages[idx - 1].total) {
                                 overallRanks[la.learner_id] = overallRanks[learnerAverages[idx - 1].learner_id]
                               } else {
                                 overallRanks[la.learner_id] = idx + 1
@@ -1450,7 +1458,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                             
                             const totalInGrade = learnerAverages.length
                             
-                            // Update results with overall_rank
+                            // Update results with overall_rank and total_in_grade
                             updatedResults = results.map(r => ({
                               ...r,
                               overall_rank: overallRanks[r.learner.id] || r.rank,
@@ -1490,52 +1498,74 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                     
                     // Fetch historical marks data only if we have learner IDs
                     const learnerIds = results.map(r => r.learner.id).filter(Boolean)
-                    if (learnerIds.length > 0 && selectedSessionId) {
-                      // Get ALL marks from other sessions (all exams) for these learners
+                    if (learnerIds.length > 0 && selectedSession) {
+                      // Get ALL subject marks from other exam types/terms/years for these learners
                       const { data: historicalMarks, error } = await supabase
                         .from('marks')
                         .select(`
-                          learner_id, 
-                          total_marks, 
-                          average_score, 
-                          position, 
-                          session_id,
-                          sessions(term, year, exam_types(name))
+                          learner_id,
+                          score,
+                          subject_id,
+                          year,
+                          term,
+                          exam_type_id,
+                          exam_types(name)
                         `)
                         .in('learner_id', learnerIds)
-                        .neq('session_id', selectedSessionId)
-                        .order('session_id', { ascending: false })
+                        .order('year', { ascending: true })
+                        .order('term', { ascending: true })
                       
                       if (error) {
                         console.error('[v0] Historical marks fetch error:', error)
                       }
                       
                       if (historicalMarks && historicalMarks.length > 0) {
-                        // Group historical marks by session, taking the best score per learner per session
-                        const sessionGrouped: Record<string, any> = {}
+                        // Group marks by learner, then by exam (year + term + exam_type)
+                        const learnerExams: Record<string, Record<string, { total: number; count: number; year: number; term: number; exam_type: string }>> = {}
+                        
                         historicalMarks.forEach((m: any) => {
-                          const sessionKey = `${m.sessions?.year}-T${m.sessions?.term}`
-                          if (!sessionGrouped[sessionKey]) {
-                            sessionGrouped[sessionKey] = []
+                          // Skip current exam (we add it separately in the report)
+                          if (m.year === selectedSession.year && 
+                              m.term === selectedSession.term && 
+                              m.exam_type_id === selectedSession.exam_type_id) {
+                            return
                           }
-                          sessionGrouped[sessionKey].push(m)
+                          
+                          const learnerId = m.learner_id
+                          const examKey = `${m.year}-T${m.term}-${m.exam_type_id}`
+                          
+                          if (!learnerExams[learnerId]) {
+                            learnerExams[learnerId] = {}
+                          }
+                          if (!learnerExams[learnerId][examKey]) {
+                            learnerExams[learnerId][examKey] = {
+                              total: 0,
+                              count: 0,
+                              year: m.year,
+                              term: m.term,
+                              exam_type: m.exam_types?.name || 'Exam'
+                            }
+                          }
+                          if (m.score !== null && m.score !== undefined) {
+                            learnerExams[learnerId][examKey].total += Number(m.score)
+                            learnerExams[learnerId][examKey].count += 1
+                          }
                         })
                         
-                        // For each session, get each learner's performance
-                        Object.values(sessionGrouped).forEach((sessionMarks: any[]) => {
-                          sessionMarks.forEach((m: any) => {
-                            if (!history[m.learner_id]) history[m.learner_id] = []
-                            // Check if this session already exists for this learner
-                            const existingSession = history[m.learner_id].find(
-                              h => h.year === m.sessions?.year && h.term === m.sessions?.term
-                            )
-                            if (!existingSession) {
-                              history[m.learner_id].push({
-                                term: m.sessions?.term,
-                                year: m.sessions?.year,
-                                total: m.total_marks || 0,
-                                average: m.average_score || 0,
-                                rank: m.position || 0
+                        // Convert to history array per learner
+                        Object.entries(learnerExams).forEach(([learnerId, exams]) => {
+                          if (!history[learnerId]) history[learnerId] = []
+                          
+                          Object.values(exams).forEach((examData) => {
+                            if (examData.count > 0) {
+                              const average = examData.total / examData.count
+                              history[learnerId].push({
+                                term: examData.term,
+                                year: examData.year,
+                                total: examData.total,
+                                average: average,
+                                rank: 0,
+                                exam_type: examData.exam_type
                               })
                             }
                           })
