@@ -294,24 +294,25 @@ function HomePageContent() {
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center space-y-4 pb-6">
           <div className="flex justify-center mb-4">
-            <img 
-              src={currentSchool.logo_url || `/logos/${currentSchool.code}.jpeg`}
-              alt={`${currentSchool.name} logo`}
-              className="w-20 h-20 object-contain"
-              onError={(e) => {
-                // Hide image and show initials fallback
-                const target = e.currentTarget as HTMLImageElement
-                target.style.display = 'none'
-                const fallback = target.nextElementSibling as HTMLElement
-                if (fallback) fallback.style.display = 'flex'
-              }}
-            />
-            <div 
-              className="w-16 h-16 rounded-full items-center justify-center text-white font-bold text-xl hidden"
-              style={{ backgroundColor: currentSchool.primary_color || '#2563eb', display: 'none' }}
-            >
-              {currentSchool.short_name?.substring(0, 2) || currentSchool.name.substring(0, 2).toUpperCase()}
-            </div>
+            {currentSchool.logo_url ? (
+              <img 
+                src={currentSchool.logo_url}
+                alt={`${currentSchool.name} logo`}
+                className="w-20 h-20 object-contain"
+                onError={(e) => {
+                  // If logo fails to load, hide it
+                  const target = e.currentTarget as HTMLImageElement
+                  target.style.display = 'none'
+                }}
+              />
+            ) : (
+              <div 
+                className="w-20 h-20 rounded-full flex items-center justify-center text-white font-bold text-2xl"
+                style={{ backgroundColor: currentSchool.primary_color || '#2563eb' }}
+              >
+                {currentSchool.short_name?.substring(0, 2) || currentSchool.name.substring(0, 2).toUpperCase()}
+              </div>
+            )}
           </div>
           <div>
             <CardTitle className="text-2xl font-bold mb-2">{currentSchool.name}</CardTitle>
