@@ -340,11 +340,11 @@ export function ReportStareheStyle({
               const meanPerf = getCBCPerformanceLevel(meanMark, className)
 
               return (
-                <div key={report.learner.id || idx} className="bg-white page-break" style={{ padding: '20px', minHeight: '100vh', pageBreakInside: 'avoid', fontFamily: 'Times New Roman, serif' }}>
+                <div key={report.learner.id || idx} className="bg-white page-break" style={{ padding: '12px', minHeight: '100vh', pageBreakInside: 'avoid', fontFamily: 'Times New Roman, serif' }}>
                   {/* School Header */}
-                  <div style={{ textAlign: 'center', marginBottom: '20px', paddingBottom: '15px', borderBottom: '2px solid #999' }}>
+                  <div style={{ textAlign: 'center', marginBottom: '10px', paddingBottom: '8px', borderBottom: '2px solid #999' }}>
                     {/* Logo */}
-                    <img src="/logos/amagoro.jpeg" alt="School Logo" style={{ width: '80px', height: '80px', margin: '0 auto 10px', objectFit: 'contain' }} />
+                    <img src="/logos/amagoro.jpeg" alt="School Logo" style={{ width: '60px', height: '60px', margin: '0 auto 5px', objectFit: 'contain' }} />
                     
                     {/* School Name */}
                     <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#003366', marginBottom: '3px', letterSpacing: '1px' }}>
@@ -360,26 +360,26 @@ export function ReportStareheStyle({
                   </div>
 
                   {/* Report Title Box with Exam Type */}
-                  <div style={{ textAlign: 'center', marginBottom: '12px' }}>
-                    <div style={{ border: '2px solid #000', display: 'inline-block', padding: '6px 16px', fontSize: '12px', fontWeight: 'bold' }}>
+                  <div style={{ textAlign: 'center', marginBottom: '8px' }}>
+                    <div style={{ border: '2px solid #000', display: 'inline-block', padding: '4px 12px', fontSize: '11px', fontWeight: 'bold' }}>
                       PROGRESS REPORT - TERM {sessionInfo?.term || 'N/A'}, {sessionInfo?.year || 'N/A'}
                     </div>
                     {sessionInfo?.exam_types?.name && (
-                      <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#003366', marginTop: '4px' }}>
+                      <div style={{ fontSize: '9px', fontWeight: 'bold', color: '#003366', marginTop: '2px' }}>
                         {sessionInfo.exam_types.name.toUpperCase()}
                       </div>
                     )}
                   </div>
 
                   {/* Student Info Row */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom: '10px', fontSize: '10px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '8px', fontSize: '9px' }}>
                     <div><strong>NAME:</strong> {report.learner.name}</div>
                     <div><strong>ASSESSMENT NO:</strong> {report.learner.admission_number || '-'}</div>
                     <div><strong>CLASS:</strong> {className}</div>
                   </div>
 
                   {/* Main Marks Table */}
-                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '10px', fontSize: '10px' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '6px', fontSize: '9px' }}>
                     <thead>
                       <tr style={{ backgroundColor: '#ddd' }}>
                         <th style={{ border: '1px solid #666', padding: '6px', textAlign: 'left', fontWeight: 'bold' }}>SUBJECT</th>
@@ -416,25 +416,25 @@ export function ReportStareheStyle({
                   </table>
 
                   {/* Mean Marks and Summary Row */}
-                  <div style={{ marginBottom: '12px', fontSize: '10px' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                      <div style={{ border: '1px solid #666', padding: '8px' }}>
+                  <div style={{ marginBottom: '6px', fontSize: '9px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      <div style={{ border: '1px solid #666', padding: '5px' }}>
                         <div><strong>MEAN MARKS:</strong> {meanMark.toFixed(1)}</div>
-                        <div style={{ marginTop: '3px' }}><strong>PERFORMANCE LEVEL:</strong> {meanPerf.level}</div>
+                        <div style={{ marginTop: '2px' }}><strong>PERF LEVEL:</strong> {meanPerf.level}</div>
                       </div>
-                      <div style={{ border: '1px solid #666', padding: '8px' }}>
-                        <div><strong>TOTAL POINTS:</strong> {totalPoints}/{maxPoints}</div>
-                        <div style={{ marginTop: '3px' }}><strong>OVERALL POSITION:</strong> {report.rank}/{totalStudents}</div>
+                      <div style={{ border: '1px solid #666', padding: '5px' }}>
+                        <div><strong>TOTAL PTS:</strong> {totalPoints}/{maxPoints}</div>
+                        <div style={{ marginTop: '2px' }}><strong>OVERALL POS:</strong> {report.rank}/{totalStudents}</div>
                       </div>
                     </div>
                   </div>
 
                   {/* Charts Row - Side by Side */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '8px' }}>
                     {/* Pie Chart - Subject Distribution */}
-                    <div style={{ border: '1px solid #666', padding: '10px', textAlign: 'center' }}>
-                      <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '10px' }}>SUBJECT DISTRIBUTION</div>
-                      <svg viewBox="0 0 120 120" style={{ width: '100%', maxWidth: '120px', margin: '0 auto', display: 'block', height: 'auto' }}>
+                    <div style={{ border: '1px solid #666', padding: '6px', textAlign: 'center' }}>
+                      <div style={{ fontWeight: 'bold', marginBottom: '4px', fontSize: '9px' }}>SUBJECT DISTRIBUTION</div>
+                      <svg viewBox="0 0 120 120" style={{ width: '100%', maxWidth: '90px', margin: '0 auto', display: 'block', height: 'auto' }}>
                         {(() => {
                           const scores = subjectData.map(s => s.score || 0)
                           const total = scores.reduce((a, b) => a + b, 0)
@@ -484,10 +484,10 @@ export function ReportStareheStyle({
                     </div>
 
                     {/* Line Chart - Performance Trend */}
-                    <div style={{ border: '1px solid #666', padding: '10px', textAlign: 'center' }}>
-                      <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '10px' }}>PERFORMANCE TREND</div>
+                    <div style={{ border: '1px solid #666', padding: '6px', textAlign: 'center' }}>
+                      <div style={{ fontWeight: 'bold', marginBottom: '4px', fontSize: '9px' }}>PERFORMANCE TREND</div>
                       {studentHistory && studentHistory.length > 0 ? (
-                        <svg viewBox="0 0 140 80" style={{ width: '100%', maxWidth: '120px', margin: '0 auto', display: 'block', height: 'auto' }}>
+                        <svg viewBox="0 0 140 80" style={{ width: '100%', maxWidth: '90px', margin: '0 auto', display: 'block', height: 'auto' }}>
                           <line x1="20" y1="10" x2="20" y2="70" stroke="#999" strokeWidth="0.5" />
                           <line x1="20" y1="70" x2="130" y2="70" stroke="#999" strokeWidth="0.5" />
                           <text x="16" y="15" fontSize="7" textAnchor="end">100</text>
@@ -521,32 +521,32 @@ export function ReportStareheStyle({
                   </div>
 
                   {/* Remarks Sections */}
-                  <div style={{ marginBottom: '10px' }}>
+                  <div style={{ marginBottom: '6px' }}>
                     {/* Class Teacher Remarks */}
-                    <div style={{ border: '1px solid #666', marginBottom: '8px' }}>
-                      <div style={{ backgroundColor: '#ddd', fontWeight: 'bold', padding: '6px', borderBottom: '1px solid #666', fontSize: '10px' }}>CLASS TEACHER'S REMARKS:</div>
-                      <div style={{ padding: '8px', minHeight: '45px' }}></div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px', borderTop: '1px solid #666', fontSize: '9px' }}>
-                        <div>NAME: _________ SIGN: _________</div>
-                        <div>DATE: _________</div>
+                    <div style={{ border: '1px solid #666', marginBottom: '5px' }}>
+                      <div style={{ backgroundColor: '#ddd', fontWeight: 'bold', padding: '4px', borderBottom: '1px solid #666', fontSize: '9px' }}>CLASS TEACHER'S REMARKS:</div>
+                      <div style={{ padding: '5px', minHeight: '30px' }}></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px', borderTop: '1px solid #666', fontSize: '8px' }}>
+                        <div>NAME: ______ SIGN: ______</div>
+                        <div>DATE: ______</div>
                       </div>
                     </div>
 
                     {/* Head Teacher Remarks */}
-                    <div style={{ border: '1px solid #666', marginBottom: '8px' }}>
-                      <div style={{ backgroundColor: '#ddd', fontWeight: 'bold', padding: '6px', borderBottom: '1px solid #666', fontSize: '10px' }}>HEAD TEACHER'S REMARKS:</div>
-                      <div style={{ padding: '8px', minHeight: '45px' }}></div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px', borderTop: '1px solid #666', fontSize: '9px' }}>
-                        <div>SIGN: _________</div>
-                        <div>DATE: _________</div>
+                    <div style={{ border: '1px solid #666', marginBottom: '5px' }}>
+                      <div style={{ backgroundColor: '#ddd', fontWeight: 'bold', padding: '4px', borderBottom: '1px solid #666', fontSize: '9px' }}>HEAD TEACHER'S REMARKS:</div>
+                      <div style={{ padding: '5px', minHeight: '30px' }}></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px', borderTop: '1px solid #666', fontSize: '8px' }}>
+                        <div>SIGN: ______</div>
+                        <div>DATE: ______</div>
                         <div>STAMP:</div>
                       </div>
                     </div>
 
                     {/* Parent/Guardian Remarks */}
                     <div style={{ border: '1px solid #666' }}>
-                      <div style={{ backgroundColor: '#ddd', fontWeight: 'bold', padding: '6px', borderBottom: '1px solid #666', fontSize: '10px' }}>PARENT/GUARDIAN'S REMARKS:</div>
-                      <div style={{ padding: '8px', minHeight: '45px' }}></div>
+                      <div style={{ backgroundColor: '#ddd', fontWeight: 'bold', padding: '4px', borderBottom: '1px solid #666', fontSize: '9px' }}>PARENT/GUARDIAN'S REMARKS:</div>
+                      <div style={{ padding: '5px', minHeight: '30px' }}></div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px', borderTop: '1px solid #666', fontSize: '9px' }}>
                         <div>NAME: _________ SIGN: _________</div>
                         <div>DATE: _________</div>
@@ -555,16 +555,16 @@ export function ReportStareheStyle({
                   </div>
 
                   {/* CBE Performance Levels Legend */}
-                  <div style={{ border: '1px solid #666', padding: '6px', marginBottom: '8px', fontSize: '9px' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '3px' }}>CBE PERFORMANCE LEVELS:</div>
-                    <div style={{ fontSize: '8px', lineHeight: '1.3' }}>
-                      <strong>EE</strong>=Exceeding-4pts | <strong>ME</strong>=Meeting-3pts | <strong>PE</strong>=Partially-2pts | <strong>BE</strong>=Below-1pt
+                  <div style={{ border: '1px solid #666', padding: '4px', marginBottom: '4px', fontSize: '8px' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '1px' }}>CBE LEVELS:</div>
+                    <div style={{ fontSize: '7px', lineHeight: '1.2' }}>
+                      <strong>EE</strong>=Exceeding-4 | <strong>ME</strong>=Meeting-3 | <strong>PE</strong>=Partial-2 | <strong>BE</strong>=Below-1
                     </div>
                   </div>
 
                   {/* Next Term Info */}
-                  <div style={{ border: '1px solid #666', padding: '6px', fontSize: '9px' }}>
-                    <div style={{ fontWeight: 'bold' }}>NEXT TERM BUSES FROM: __________ TO: __________</div>
+                  <div style={{ border: '1px solid #666', padding: '4px', fontSize: '8px' }}>
+                    <div style={{ fontWeight: 'bold' }}>NEXT TERM FROM: ________ TO: ________</div>
                   </div>
                 </div>
               )
