@@ -1458,15 +1458,15 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
             {sessions.filter(s => s.year.toString() === selectedYear).length > 0 && (
               <div className="space-y-1.5">
                 <Label className="text-xs">Filter by Term</Label>
-                <Select value={selectedTerm} onValueChange={(value) => {
-                  setSelectedTerm(value);
+                <Select value={selectedTerm || "all"} onValueChange={(value) => {
+                  setSelectedTerm(value === "all" ? "" : value);
                   setSelectedSessionId("");
                 }}>
                   <SelectTrigger className="h-8 text-sm">
                     <SelectValue placeholder="All terms" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="" className="text-sm">All terms</SelectItem>
+                    <SelectItem value="all" className="text-sm">All terms</SelectItem>
                     {Array.from(new Set(sessions.filter(s => s.year.toString() === selectedYear).map(s => s.term)))
                       .map((term) => (
                         <SelectItem key={term} value={term} className="text-sm">
@@ -1754,7 +1754,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                         `📚 *Class:* ${currentClass?.name || ''}\n` +
                                         `📅 *Term:* ${selectedSession?.term}, ${selectedSession?.year}\n\n` +
                                         `📖 *SUBJECT PERFORMANCE*\n` +
-                                        `━━━━━━━━━━━━━━━━\n` +
+                                        `━━━━━��━━━━━━━━━━\n` +
                                         `${subjectDetails}\n\n` +
                                         `📈 *OVERALL SUMMARY*\n` +
                                         `━━━━━━━━━━━━━���━━\n` +
