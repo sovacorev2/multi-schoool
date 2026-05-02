@@ -444,66 +444,54 @@ export function ReportStareheStyle({
                   {/* Charts Row - Side by Side */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '8px' }}>
                     {/* Pie Chart - Subject Distribution with Legend */}
-                    <div style={{ border: '1px solid #666', padding: '6px', textAlign: 'center' }}>
-                      <div style={{ fontWeight: 'bold', marginBottom: '4px', fontSize: '9px' }}>SUBJECT DISTRIBUTION</div>
-                      <svg viewBox="0 0 120 120" style={{ width: '100%', maxWidth: '90px', margin: '0 auto', display: 'block', height: 'auto' }}>
-                        {(() => {
-                          const scores = subjectData.map(s => s.score || 0)
-                          const total = scores.reduce((a, b) => a + b, 0)
-                          if (total === 0) return <text x="60" y="65" textAnchor="middle" fontSize="8">No Data</text>
-                          
-                          const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#14b8a6']
-                          
-                          let currentAngle = 0
-                          const slices = scores.map((score, i) => {
-                            if (score === 0) return null
-                            const sliceAngle = (score / total) * 360
-                            const percentage = ((score / total) * 100).toFixed(0)
-                            const startAngle = currentAngle
-                            const endAngle = currentAngle + sliceAngle
+                    <div style={{ border: '1px solid #666', padding: '6px' }}>
+                      <div style={{ fontWeight: 'bold', marginBottom: '4px', fontSize: '9px', textAlign: 'center' }}>SUBJECT DISTRIBUTION</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <svg viewBox="0 0 80 80" style={{ width: '50px', height: '50px', flexShrink: 0 }}>
+                          {(() => {
+                            const scores = subjectData.map(s => s.score || 0)
+                            const total = scores.reduce((a, b) => a + b, 0)
+                            if (total === 0) return <text x="40" y="45" textAnchor="middle" fontSize="6">No Data</text>
                             
-                            const startRad = (startAngle * Math.PI) / 180
-                            const endRad = (endAngle * Math.PI) / 180
+                            const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#14b8a6']
                             
-                            const x1 = 60 + 35 * Math.cos(startRad)
-                            const y1 = 60 + 35 * Math.sin(startRad)
-                            const x2 = 60 + 35 * Math.cos(endRad)
-                            const y2 = 60 + 35 * Math.sin(endRad)
-                            
-                            // Label position
-                            const labelAngle = startAngle + sliceAngle / 2
-                            const labelRad = (labelAngle * Math.PI) / 180
-                            const labelX = 60 + 22 * Math.cos(labelRad)
-                            const labelY = 60 + 22 * Math.sin(labelRad)
-                            
-                            const largeArc = sliceAngle > 180 ? 1 : 0
-                            const path = `M 60 60 L ${x1} ${y1} A 35 35 0 ${largeArc} 1 ${x2} ${y2} Z`
-                            
-                            currentAngle = endAngle
-                            
+                            let currentAngle = 0
+                            const slices = scores.map((score, i) => {
+                              if (score === 0) return null
+                              const sliceAngle = (score / total) * 360
+                              const startAngle = currentAngle
+                              const endAngle = currentAngle + sliceAngle
+                              
+                              const startRad = (startAngle * Math.PI) / 180
+                              const endRad = (endAngle * Math.PI) / 180
+                              
+                              const x1 = 40 + 28 * Math.cos(startRad)
+                              const y1 = 40 + 28 * Math.sin(startRad)
+                              const x2 = 40 + 28 * Math.cos(endRad)
+                              const y2 = 40 + 28 * Math.sin(endRad)
+                              
+                              const largeArc = sliceAngle > 180 ? 1 : 0
+                              const path = `M 40 40 L ${x1} ${y1} A 28 28 0 ${largeArc} 1 ${x2} ${y2} Z`
+                              
+                              currentAngle = endAngle
+                              
+                              return <path key={i} d={path} fill={colors[i % colors.length]} stroke="white" strokeWidth="0.5" />
+                            })
+                            return slices
+                          })()}
+                        </svg>
+                        {/* Legend */}
+                        <div style={{ fontSize: '6px', lineHeight: '1.2', flex: 1 }}>
+                          {subjectData.slice(0, 8).map((subject, i) => {
+                            const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#14b8a6']
                             return (
-                              <g key={i}>
-                                <path d={path} fill={colors[i % colors.length]} stroke="white" strokeWidth="1" />
-                                <text x={labelX} y={labelY} textAnchor="middle" dominantBaseline="middle" fontSize="8" fontWeight="bold" fill="white">
-                                  {percentage}%
-                                </text>
-                              </g>
+                              <div key={subject.subject.id} style={{ display: 'flex', alignItems: 'center', marginBottom: '1px' }}>
+                                <span style={{ width: '5px', height: '5px', backgroundColor: colors[i % colors.length], marginRight: '2px', flexShrink: 0 }}></span>
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{subject.subject.name.substring(0, 8)}</span>
+                              </div>
                             )
-                          })
-                          return slices
-                        })()}
-                      </svg>
-                      {/* Legend */}
-                      <div style={{ marginTop: '6px', fontSize: '7px', lineHeight: '1.3' }}>
-                        {subjectData.map((subject, i) => {
-                          const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#14b8a6']
-                          return (
-                            <div key={subject.subject.id} style={{ marginBottom: '2px' }}>
-                              <span style={{ display: 'inline-block', width: '8px', height: '8px', backgroundColor: colors[i % colors.length], marginRight: '3px', verticalAlign: 'middle' }}></span>
-                              {subject.subject.name.substring(0, 12)}
-                            </div>
-                          )
-                        })}
+                          })}
+                        </div>
                       </div>
                     </div>
 
