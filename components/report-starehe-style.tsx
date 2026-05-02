@@ -94,6 +94,12 @@ export function ReportStareheStyle({
   const reportRef = useRef<HTMLDivElement>(null)
 
   if (!isOpen || reports.length === 0) return null
+  
+  // A class is streamed if it has 3+ words (e.g., "Grade 7 EAST")
+  // Single-word grades like "Grade 7" or "Grade 2" are NOT streamed
+  const classWords = (className || '').trim().split(/\s+/)
+  const isStreamedClass = classWords.length > 2
+  const streamName = isStreamedClass ? classWords.slice(2).join(' ') : ''
 
   return (
     <div
@@ -422,19 +428,19 @@ export function ReportStareheStyle({
 
                   {/* Mean Marks and Summary Row */}
                   <div style={{ marginBottom: '6px', fontSize: '9px' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: className.includes(' ') ? '1fr 1fr 1fr' : '1fr 1fr', gap: '8px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isStreamedClass ? '1fr 1fr 1fr' : '1fr 1fr', gap: '8px' }}>
                       <div style={{ border: '1px solid #666', padding: '5px' }}>
                         <div><strong>MEAN MARKS:</strong> {meanMark.toFixed(1)}</div>
                         <div style={{ marginTop: '2px' }}><strong>PERF LEVEL:</strong> {meanPerf.level}</div>
                       </div>
                       <div style={{ border: '1px solid #666', padding: '5px' }}>
                         <div><strong>TOTAL PTS:</strong> {totalPoints}/{maxPoints}</div>
-                        <div style={{ marginTop: '2px' }}><strong>{className.includes(' ') ? 'STREAM POS' : 'POSITION'}:</strong> {report.rank}/{totalStudents}</div>
+                        <div style={{ marginTop: '2px' }}><strong>{isStreamedClass ? 'STREAM POS' : 'POSITION'}:</strong> {report.rank}/{totalStudents}</div>
                       </div>
-                      {className.includes(' ') && (
+                      {isStreamedClass && (
                         <div style={{ border: '1px solid #666', padding: '5px' }}>
                           <div><strong>OVERALL POS:</strong> {report.overall_rank || report.rank}/{report.total_in_grade || totalStudents}</div>
-                          <div style={{ marginTop: '2px' }}><strong>STREAM:</strong> {className.split(' ').slice(1).join(' ')}</div>
+                          <div style={{ marginTop: '2px' }}><strong>STREAM:</strong> {streamName}</div>
                         </div>
                       )}
                     </div>
@@ -528,11 +534,12 @@ export function ReportStareheStyle({
                           // Add historical exams (sorted chronologically)
                           if (learnerHistory && learnerHistory.length > 0) {
                             learnerHistory.forEach((h: any) => {
-                              // Determine exam type label based on term
-                              let examLabel = `Y${h.year}T${h.term}`
-                              if (h.exam_type) {
-                                examLabel = `${h.exam_type.substring(0, 3).toUpperCase()} T${h.term}`
-                              }
+                              // Build short label: e.g., "OPE T1" or "MID T1"
+                              const termStr = String(h.term || '').match(/\d+/)?.[0] || h.term
+                              const examPrefix = h.exam_type 
+                                ? h.exam_type.substring(0, 3).toUpperCase() 
+                                : 'EXM'
+                              const examLabel = `${examPrefix} T${termStr}`
                               allExams.push({
                                 label: examLabel,
                                 average: h.average || 0,
