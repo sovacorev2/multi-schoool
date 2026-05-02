@@ -359,186 +359,155 @@ export function ReportStareheStyle({
                     )}
                   </div>
 
-                  {/* Report Title Box */}
-                  <div style={{ textAlign: 'center', marginBottom: '15px' }}>
-                    <div style={{ border: '2px solid #000', display: 'inline-block', padding: '8px 20px', fontSize: '13px', fontWeight: 'bold' }}>
+                  {/* Report Title Box with Exam Type */}
+                  <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+                    <div style={{ border: '2px solid #000', display: 'inline-block', padding: '6px 16px', fontSize: '12px', fontWeight: 'bold' }}>
                       PROGRESS REPORT - TERM {sessionInfo?.term || 'N/A'}, {sessionInfo?.year || 'N/A'}
                     </div>
+                    {sessionInfo?.exam_types?.name && (
+                      <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#003366', marginTop: '4px' }}>
+                        {sessionInfo.exam_types.name.toUpperCase()}
+                      </div>
+                    )}
                   </div>
 
                   {/* Student Info Row */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '15px', fontSize: '11px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom: '10px', fontSize: '10px' }}>
                     <div><strong>NAME:</strong> {report.learner.name}</div>
                     <div><strong>ASSESSMENT NO:</strong> {report.learner.admission_number || '-'}</div>
                     <div><strong>CLASS:</strong> {className}</div>
                   </div>
 
                   {/* Main Marks Table */}
-                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '15px', fontSize: '11px' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '10px', fontSize: '10px' }}>
                     <thead>
                       <tr style={{ backgroundColor: '#ddd' }}>
-                        <th style={{ border: '1px solid #666', padding: '8px', textAlign: 'left', fontWeight: 'bold' }}>SUBJECT</th>
-                        <th style={{ border: '1px solid #666', padding: '8px', textAlign: 'center', fontWeight: 'bold' }}>SCORE (%)</th>
-                        <th style={{ border: '1px solid #666', padding: '8px', textAlign: 'center', fontWeight: 'bold' }}>LEVEL</th>
-                        <th style={{ border: '1px solid #666', padding: '8px', textAlign: 'center', fontWeight: 'bold' }}>PTS</th>
-                        <th style={{ border: '1px solid #666', padding: '8px', textAlign: 'center', fontWeight: 'bold' }}>CLASS POS</th>
-                        <th style={{ border: '1px solid #666', padding: '8px', textAlign: 'left', fontWeight: 'bold' }}>REMARKS</th>
-                        <th style={{ border: '1px solid #666', padding: '8px', textAlign: 'center', fontWeight: 'bold' }}>INITIALS</th>
+                        <th style={{ border: '1px solid #666', padding: '6px', textAlign: 'left', fontWeight: 'bold' }}>SUBJECT</th>
+                        <th style={{ border: '1px solid #666', padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>SCORE (%)</th>
+                        <th style={{ border: '1px solid #666', padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>LEVEL</th>
+                        <th style={{ border: '1px solid #666', padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>PTS</th>
+                        <th style={{ border: '1px solid #666', padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>CLASS POS</th>
+                        <th style={{ border: '1px solid #666', padding: '6px', textAlign: 'left', fontWeight: 'bold' }}>REMARKS</th>
+                        <th style={{ border: '1px solid #666', padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>INITIALS</th>
                       </tr>
                     </thead>
                     <tbody>
                       {subjectData.map((item, i) => (
                         <tr key={item.subject.id} style={{ backgroundColor: i % 2 === 0 ? '#fff' : '#f9f9f9' }}>
-                          <td style={{ border: '1px solid #666', padding: '8px', textAlign: 'left' }}>{item.subject.name.toUpperCase()}</td>
-                          <td style={{ border: '1px solid #666', padding: '8px', textAlign: 'center' }}>{item.score ?? '-'}</td>
-                          <td style={{ border: '1px solid #666', padding: '8px', textAlign: 'center', fontWeight: 'bold' }}>{item.level}</td>
-                          <td style={{ border: '1px solid #666', padding: '8px', textAlign: 'center' }}>{item.points}</td>
-                          <td style={{ border: '1px solid #666', padding: '8px', textAlign: 'center' }}>{report.subjectPositions?.[item.subject.id] || '-'}/{totalStudents}</td>
-                          <td style={{ border: '1px solid #666', padding: '8px', textAlign: 'left', fontSize: '10px' }}>{item.remarks}</td>
-                          <td style={{ border: '1px solid #666', padding: '8px', textAlign: 'center' }}></td>
+                          <td style={{ border: '1px solid #666', padding: '6px', textAlign: 'left' }}>{item.subject.name.toUpperCase()}</td>
+                          <td style={{ border: '1px solid #666', padding: '6px', textAlign: 'center' }}>{item.score ?? '-'}</td>
+                          <td style={{ border: '1px solid #666', padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>{item.level}</td>
+                          <td style={{ border: '1px solid #666', padding: '6px', textAlign: 'center' }}>{item.points}</td>
+                          <td style={{ border: '1px solid #666', padding: '6px', textAlign: 'center' }}>{report.subjectPositions?.[item.subject.id] || '-'}/{totalStudents}</td>
+                          <td style={{ border: '1px solid #666', padding: '6px', textAlign: 'left', fontSize: '9px' }}>{item.remarks}</td>
+                          <td style={{ border: '1px solid #666', padding: '6px', textAlign: 'center' }}></td>
                         </tr>
                       ))}
                       <tr style={{ backgroundColor: '#ffeb3b', fontWeight: 'bold' }}>
-                        <td style={{ border: '1px solid #666', padding: '8px', textAlign: 'left' }}>TOTAL</td>
-                        <td style={{ border: '1px solid #666', padding: '8px', textAlign: 'center' }}>{report.total}</td>
-                        <td style={{ border: '1px solid #666', padding: '8px' }}></td>
-                        <td style={{ border: '1px solid #666', padding: '8px', textAlign: 'center' }}>{totalPoints}</td>
-                        <td style={{ border: '1px solid #666', padding: '8px' }}></td>
-                        <td style={{ border: '1px solid #666', padding: '8px' }}></td>
-                        <td style={{ border: '1px solid #666', padding: '8px' }}></td>
+                        <td style={{ border: '1px solid #666', padding: '6px', textAlign: 'left' }}>TOTAL</td>
+                        <td style={{ border: '1px solid #666', padding: '6px', textAlign: 'center' }}>{report.total}</td>
+                        <td style={{ border: '1px solid #666', padding: '6px' }}></td>
+                        <td style={{ border: '1px solid #666', padding: '6px', textAlign: 'center' }}>{totalPoints}</td>
+                        <td style={{ border: '1px solid #666', padding: '6px' }}></td>
+                        <td style={{ border: '1px solid #666', padding: '6px' }}></td>
+                        <td style={{ border: '1px solid #666', padding: '6px' }}></td>
                       </tr>
                     </tbody>
                   </table>
 
                   {/* Mean Marks and Summary Row */}
-                  <div style={{ marginBottom: '15px', fontSize: '11px' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
-                      <div style={{ border: '1px solid #666', padding: '10px' }}>
+                  <div style={{ marginBottom: '12px', fontSize: '10px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                      <div style={{ border: '1px solid #666', padding: '8px' }}>
                         <div><strong>MEAN MARKS:</strong> {meanMark.toFixed(1)}</div>
-                        <div style={{ marginTop: '5px' }}><strong>PERFORMANCE LEVEL:</strong> {meanPerf.level} (Meeting Expectation)</div>
+                        <div style={{ marginTop: '3px' }}><strong>PERFORMANCE LEVEL:</strong> {meanPerf.level}</div>
                       </div>
-                      <div style={{ border: '1px solid #666', padding: '10px' }}>
+                      <div style={{ border: '1px solid #666', padding: '8px' }}>
                         <div><strong>TOTAL POINTS:</strong> {totalPoints}/{maxPoints}</div>
-                        <div style={{ marginTop: '5px' }}><strong>OVERALL POSITION:</strong> {report.rank} of {totalStudents}</div>
+                        <div style={{ marginTop: '3px' }}><strong>OVERALL POSITION:</strong> {report.rank}/{totalStudents}</div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Historical Terms Table */}
-                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '15px', fontSize: '10px' }}>
-                    <thead>
-                      <tr style={{ backgroundColor: '#ddd' }}>
-                        <th style={{ border: '1px solid #666', padding: '6px', fontWeight: 'bold' }}>TERM</th>
-                        <th style={{ border: '1px solid #666', padding: '6px', fontWeight: 'bold' }}>TOTAL SCORE</th>
-                        <th style={{ border: '1px solid #666', padding: '6px', fontWeight: 'bold' }}>AVERAGE POINTS</th>
-                        <th style={{ border: '1px solid #666', padding: '6px', fontWeight: 'bold' }}>IMPL (%)</th>
-                        <th style={{ border: '1px solid #666', padding: '6px', fontWeight: 'bold' }}>TOTAL POINTS</th>
-                        <th style={{ border: '1px solid #666', padding: '6px', fontWeight: 'bold' }}>MEAN MARKS</th>
-                        <th style={{ border: '1px solid #666', padding: '6px', fontWeight: 'bold' }}>PERF LEVEL</th>
-                        <th style={{ border: '1px solid #666', padding: '6px', fontWeight: 'bold' }}>STREAM POS</th>
-                        <th style={{ border: '1px solid #666', padding: '6px', fontWeight: 'bold' }}>OVERALL POS</th>
-                        <th style={{ border: '1px solid #666', padding: '6px', fontWeight: 'bold' }}>DAYS ABSENT</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {studentHistory && studentHistory.length > 0 ? (
-                        studentHistory.map((history, i) => (
-                          <tr key={i} style={{ textAlign: 'center' }}>
-                            <td style={{ border: '1px solid #666', padding: '6px' }}>TERM {history.term}</td>
-                            <td style={{ border: '1px solid #666', padding: '6px' }}>-</td>
-                            <td style={{ border: '1px solid #666', padding: '6px' }}>-</td>
-                            <td style={{ border: '1px solid #666', padding: '6px' }}>-</td>
-                            <td style={{ border: '1px solid #666', padding: '6px' }}>-</td>
-                            <td style={{ border: '1px solid #666', padding: '6px' }}>{history.average ? history.average.toFixed(1) : '-'}</td>
-                            <td style={{ border: '1px solid #666', padding: '6px' }}>-</td>
-                            <td style={{ border: '1px solid #666', padding: '6px' }}>-</td>
-                            <td style={{ border: '1px solid #666', padding: '6px' }}>{history.rank || '-'}</td>
-                            <td style={{ border: '1px solid #666', padding: '6px' }}>-</td>
-                          </tr>
-                        ))
-                      ) : (
-                        <>
-                          <tr style={{ textAlign: 'center' }}>
-                            <td style={{ border: '1px solid #666', padding: '6px' }}>TERM 1</td>
-                            <td colSpan={9} style={{ border: '1px solid #666', padding: '6px' }}>-</td>
-                          </tr>
-                          <tr style={{ textAlign: 'center' }}>
-                            <td style={{ border: '1px solid #666', padding: '6px' }}>TERM 2</td>
-                            <td colSpan={9} style={{ border: '1px solid #666', padding: '6px' }}>-</td>
-                          </tr>
-                          <tr style={{ textAlign: 'center' }}>
-                            <td style={{ border: '1px solid #666', padding: '6px' }}>TERM 3</td>
-                            <td colSpan={9} style={{ border: '1px solid #666', padding: '6px' }}>-</td>
-                          </tr>
-                        </>
-                      )}
-                    </tbody>
-                  </table>
-
                   {/* Charts Row - Side by Side */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
                     {/* Pie Chart - Subject Distribution */}
-                    <div style={{ border: '1px solid #666', padding: '12px', textAlign: 'center' }}>
-                      <div style={{ fontWeight: 'bold', marginBottom: '10px', fontSize: '11px' }}>SUBJECT DISTRIBUTION</div>
-                      <svg viewBox="0 0 120 120" style={{ width: '100%', maxWidth: '150px', margin: '0 auto', display: 'block' }}>
+                    <div style={{ border: '1px solid #666', padding: '10px', textAlign: 'center' }}>
+                      <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '10px' }}>SUBJECT DISTRIBUTION</div>
+                      <svg viewBox="0 0 120 120" style={{ width: '100%', maxWidth: '120px', margin: '0 auto', display: 'block', height: 'auto' }}>
                         {(() => {
                           const scores = subjectData.map(s => s.score || 0)
                           const total = scores.reduce((a, b) => a + b, 0)
-                          if (total === 0) return <text x="60" y="65" textAnchor="middle" fontSize="10">No Data</text>
+                          if (total === 0) return <text x="60" y="65" textAnchor="middle" fontSize="8">No Data</text>
                           
                           const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#14b8a6']
                           
                           let currentAngle = 0
-                          return scores.map((score, i) => {
+                          const slices = scores.map((score, i) => {
                             if (score === 0) return null
                             const sliceAngle = (score / total) * 360
+                            const percentage = ((score / total) * 100).toFixed(0)
                             const startAngle = currentAngle
                             const endAngle = currentAngle + sliceAngle
                             
                             const startRad = (startAngle * Math.PI) / 180
                             const endRad = (endAngle * Math.PI) / 180
                             
-                            const x1 = 60 + 40 * Math.cos(startRad)
-                            const y1 = 60 + 40 * Math.sin(startRad)
-                            const x2 = 60 + 40 * Math.cos(endRad)
-                            const y2 = 60 + 40 * Math.sin(endRad)
+                            const x1 = 60 + 35 * Math.cos(startRad)
+                            const y1 = 60 + 35 * Math.sin(startRad)
+                            const x2 = 60 + 35 * Math.cos(endRad)
+                            const y2 = 60 + 35 * Math.sin(endRad)
+                            
+                            // Label position
+                            const labelAngle = startAngle + sliceAngle / 2
+                            const labelRad = (labelAngle * Math.PI) / 180
+                            const labelX = 60 + 22 * Math.cos(labelRad)
+                            const labelY = 60 + 22 * Math.sin(labelRad)
                             
                             const largeArc = sliceAngle > 180 ? 1 : 0
-                            const path = `M 60 60 L ${x1} ${y1} A 40 40 0 ${largeArc} 1 ${x2} ${y2} Z`
+                            const path = `M 60 60 L ${x1} ${y1} A 35 35 0 ${largeArc} 1 ${x2} ${y2} Z`
                             
                             currentAngle = endAngle
                             
-                            return <path key={i} d={path} fill={colors[i % colors.length]} stroke="white" strokeWidth="1.5" />
+                            return (
+                              <g key={i}>
+                                <path d={path} fill={colors[i % colors.length]} stroke="white" strokeWidth="1" />
+                                <text x={labelX} y={labelY} textAnchor="middle" dominantBaseline="middle" fontSize="8" fontWeight="bold" fill="white">
+                                  {percentage}%
+                                </text>
+                              </g>
+                            )
                           })
+                          return slices
                         })()}
                       </svg>
                     </div>
 
                     {/* Line Chart - Performance Trend */}
-                    <div style={{ border: '1px solid #666', padding: '12px', textAlign: 'center' }}>
-                      <div style={{ fontWeight: 'bold', marginBottom: '10px', fontSize: '11px' }}>PERFORMANCE TREND</div>
+                    <div style={{ border: '1px solid #666', padding: '10px', textAlign: 'center' }}>
+                      <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '10px' }}>PERFORMANCE TREND</div>
                       {studentHistory && studentHistory.length > 0 ? (
-                        <svg viewBox="0 0 160 100" style={{ width: '100%', maxWidth: '150px', margin: '0 auto', display: 'block' }}>
-                          <line x1="25" y1="10" x2="25" y2="85" stroke="#999" strokeWidth="1" />
-                          <line x1="25" y1="85" x2="150" y2="85" stroke="#999" strokeWidth="1" />
-                          <text x="20" y="15" fontSize="8" textAnchor="end">100</text>
-                          <text x="20" y="50" fontSize="8" textAnchor="end">50</text>
-                          <text x="20" y="90" fontSize="8" textAnchor="end">0</text>
+                        <svg viewBox="0 0 140 80" style={{ width: '100%', maxWidth: '120px', margin: '0 auto', display: 'block', height: 'auto' }}>
+                          <line x1="20" y1="10" x2="20" y2="70" stroke="#999" strokeWidth="0.5" />
+                          <line x1="20" y1="70" x2="130" y2="70" stroke="#999" strokeWidth="0.5" />
+                          <text x="16" y="15" fontSize="7" textAnchor="end">100</text>
+                          <text x="16" y="45" fontSize="7" textAnchor="end">50</text>
+                          <text x="16" y="75" fontSize="7" textAnchor="end">0</text>
                           {studentHistory.map((history, i) => {
-                            const x = 30 + (i * (115 / Math.max(studentHistory.length - 1, 1)))
-                            const y = 85 - ((history.average / 100) * 75)
+                            const x = 25 + (i * (100 / Math.max(studentHistory.length - 1, 1)))
+                            const y = 70 - ((history.average / 100) * 60)
                             const nextHistory = studentHistory[i + 1]
                             return (
                               <g key={i}>
-                                <circle cx={x} cy={y} r="2" fill="#1e40af" />
+                                <circle cx={x} cy={y} r="1.5" fill="#1e40af" />
                                 {nextHistory && (
                                   <line
                                     x1={x}
                                     y1={y}
-                                    x2={30 + ((i + 1) * (115 / Math.max(studentHistory.length - 1, 1)))}
-                                    y2={85 - ((nextHistory.average / 100) * 75)}
+                                    x2={25 + ((i + 1) * (100 / Math.max(studentHistory.length - 1, 1)))}
+                                    y2={70 - ((nextHistory.average / 100) * 60)}
                                     stroke="#1e40af"
-                                    strokeWidth="2"
+                                    strokeWidth="1.5"
                                   />
                                 )}
                               </g>
@@ -546,56 +515,56 @@ export function ReportStareheStyle({
                           })}
                         </svg>
                       ) : (
-                        <div style={{ minHeight: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>No trend data</div>
+                        <div style={{ minHeight: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999', fontSize: '9px' }}>No trend data</div>
                       )}
                     </div>
                   </div>
 
                   {/* Remarks Sections */}
-                  <div style={{ marginBottom: '15px' }}>
+                  <div style={{ marginBottom: '10px' }}>
                     {/* Class Teacher Remarks */}
-                    <div style={{ border: '1px solid #666', marginBottom: '12px' }}>
-                      <div style={{ backgroundColor: '#ddd', fontWeight: 'bold', padding: '8px', borderBottom: '1px solid #666', fontSize: '11px' }}>CLASS TEACHER'S REMARKS:</div>
-                      <div style={{ padding: '12px', minHeight: '60px' }}></div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px', borderTop: '1px solid #666', fontSize: '10px' }}>
-                        <div>NAME: _____________ SIGN: _____________</div>
-                        <div>DATE: _____________</div>
+                    <div style={{ border: '1px solid #666', marginBottom: '8px' }}>
+                      <div style={{ backgroundColor: '#ddd', fontWeight: 'bold', padding: '6px', borderBottom: '1px solid #666', fontSize: '10px' }}>CLASS TEACHER'S REMARKS:</div>
+                      <div style={{ padding: '8px', minHeight: '45px' }}></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px', borderTop: '1px solid #666', fontSize: '9px' }}>
+                        <div>NAME: _________ SIGN: _________</div>
+                        <div>DATE: _________</div>
                       </div>
                     </div>
 
                     {/* Head Teacher Remarks */}
-                    <div style={{ border: '1px solid #666', marginBottom: '12px' }}>
-                      <div style={{ backgroundColor: '#ddd', fontWeight: 'bold', padding: '8px', borderBottom: '1px solid #666', fontSize: '11px' }}>HEAD TEACHER'S REMARKS:</div>
-                      <div style={{ padding: '12px', minHeight: '60px' }}></div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px', borderTop: '1px solid #666', fontSize: '10px' }}>
-                        <div>SIGN: _____________</div>
-                        <div>DATE: _____________</div>
+                    <div style={{ border: '1px solid #666', marginBottom: '8px' }}>
+                      <div style={{ backgroundColor: '#ddd', fontWeight: 'bold', padding: '6px', borderBottom: '1px solid #666', fontSize: '10px' }}>HEAD TEACHER'S REMARKS:</div>
+                      <div style={{ padding: '8px', minHeight: '45px' }}></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px', borderTop: '1px solid #666', fontSize: '9px' }}>
+                        <div>SIGN: _________</div>
+                        <div>DATE: _________</div>
                         <div>STAMP:</div>
                       </div>
                     </div>
 
                     {/* Parent/Guardian Remarks */}
                     <div style={{ border: '1px solid #666' }}>
-                      <div style={{ backgroundColor: '#ddd', fontWeight: 'bold', padding: '8px', borderBottom: '1px solid #666', fontSize: '11px' }}>PARENT/GUARDIAN'S REMARKS:</div>
-                      <div style={{ padding: '12px', minHeight: '60px' }}></div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px', borderTop: '1px solid #666', fontSize: '10px' }}>
-                        <div>NAME: _____________ SIGN: _____________</div>
-                        <div>DATE: _____________</div>
+                      <div style={{ backgroundColor: '#ddd', fontWeight: 'bold', padding: '6px', borderBottom: '1px solid #666', fontSize: '10px' }}>PARENT/GUARDIAN'S REMARKS:</div>
+                      <div style={{ padding: '8px', minHeight: '45px' }}></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px', borderTop: '1px solid #666', fontSize: '9px' }}>
+                        <div>NAME: _________ SIGN: _________</div>
+                        <div>DATE: _________</div>
                       </div>
                     </div>
                   </div>
 
                   {/* CBE Performance Levels Legend */}
-                  <div style={{ border: '1px solid #666', padding: '8px', marginBottom: '12px', fontSize: '10px' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>CBE PERFORMANCE LEVELS:</div>
-                    <div style={{ fontSize: '9px', lineHeight: '1.4' }}>
-                      <div><strong>EE</strong> = Exceeding Expectation - 4pts | <strong>ME</strong> = Meeting Expectation - 3pts | <strong>PE</strong> = Partially Exp - 2pts | <strong>BE</strong> = Below Exp - 1pt</div>
+                  <div style={{ border: '1px solid #666', padding: '6px', marginBottom: '8px', fontSize: '9px' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '3px' }}>CBE PERFORMANCE LEVELS:</div>
+                    <div style={{ fontSize: '8px', lineHeight: '1.3' }}>
+                      <strong>EE</strong>=Exceeding-4pts | <strong>ME</strong>=Meeting-3pts | <strong>PE</strong>=Partially-2pts | <strong>BE</strong>=Below-1pt
                     </div>
                   </div>
 
                   {/* Next Term Info */}
-                  <div style={{ border: '1px solid #666', padding: '8px', fontSize: '10px' }}>
-                    <div style={{ fontWeight: 'bold' }}>NEXT TERM BUSES FROM: __________________ TO: __________________</div>
+                  <div style={{ border: '1px solid #666', padding: '6px', fontSize: '9px' }}>
+                    <div style={{ fontWeight: 'bold' }}>NEXT TERM BUSES FROM: __________ TO: __________</div>
                   </div>
                 </div>
               )
