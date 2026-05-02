@@ -50,6 +50,7 @@ export default function MarklistPage() {
   const [marks, setMarks] = useState<Mark[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedSessionId, setSelectedSessionId] = useState<string>('')
+  const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString())
   const [teacherName, setTeacherName] = useState<string>('')
   const [selectedSession, setSelectedSession] = useState<SessionWithExamType | null>(null)
   const [schoolPerformance, setSchoolPerformance] = useState<{
@@ -840,7 +841,7 @@ const subjectPerformance = subjects
       gradeD,
       gradeE,
       stdDev: stdDev.toFixed(1),
-      passRate: subjectScores.length > 0 ? ((subjectScores.filter(s => s >= 40).length / subjectScores.length) * 100).toFixed(1) : '0',
+      passRate: subjectScores.length > 0 ? ((subjectScores.filter(s => s >= 50).length / subjectScores.length) * 100).toFixed(1) : '0',
       topPerformer: topPerformer || '-',
       topPerformerScore: highest,
     }
@@ -851,12 +852,12 @@ const subjectPerformance = subjects
 const classAverage = results.length > 0 ? (results.reduce((sum, r) => sum + r.average, 0) / results.length).toFixed(1) : '0'
 const totalScores = results.map(r => r.total)
 const classMedian = totalScores.length > 0 ? totalScores.sort((a, b) => a - b)[Math.floor(totalScores.length / 2)] : 0
-const classPassRate = results.length > 0 ? ((results.filter(r => r.average >= 40).length / results.length) * 100).toFixed(1) : '0'
+const classPassRate = results.length > 0 ? ((results.filter(r => r.average >= 50).length / results.length) * 100).toFixed(1) : '0'
 const topPerformers = results.slice(0, 5)
 const bottomPerformers = [...results].sort((a, b) => a.total - b.total).slice(0, 5)
 const classGradeA = results.filter(r => r.average >= 80).length
 const classGradeB = results.filter(r => r.average >= 60 && r.average < 80).length
-const classGradeC = results.filter(r => r.average >= 40 && r.average < 60).length
+const classGradeC = results.filter(r => r.average >= 50 && r.average < 60).length
 const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).length
   const classGradeE = results.filter(r => r.average < 30).length
   const maleStudents = results.filter(r => r.learner.gender === 'Male' || r.learner.gender === 'male' || r.learner.gender === 'M')
@@ -1430,6 +1431,25 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
             <CardTitle className="text-base">Select Exam Session</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            {Array.from(new Set(sessions.map(s => s.year))).length > 1 && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Filter by Year</Label>
+                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue placeholder="Select year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from(new Set(sessions.map(s => s.year)))
+                      .sort((a, b) => b - a)
+                      .map((year) => (
+                        <SelectItem key={year} value={year.toString()} className="text-sm">
+                          {year}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label className="text-xs">Exam Session</Label>
               <Select value={selectedSessionId} onValueChange={setSelectedSessionId}>
@@ -1437,11 +1457,13 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                   <SelectValue placeholder="Select a session" />
                 </SelectTrigger>
                 <SelectContent>
-                  {sessions.map((session) => (
-                    <SelectItem key={session.id} value={session.id} className="text-sm">
-                      {session.exam_types?.name} • {session.term} • {session.year}
-                    </SelectItem>
-                  ))}
+                  {sessions
+                    .filter(session => session.year.toString() === selectedYear)
+                    .map((session) => (
+                      <SelectItem key={session.id} value={session.id} className="text-sm">
+                        {session.exam_types?.name} • {session.term} • {session.year}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>

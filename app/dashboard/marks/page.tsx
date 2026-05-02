@@ -151,6 +151,7 @@ export default function MarksPage() {
 
   // Session selection
   const [selectedSessionId, setSelectedSessionId] = useState<string>("");
+  const [selectedYear, setSelectedYear] = useState<string>(CURRENT_YEAR.toString());
   const [isCreateSessionOpen, setIsCreateSessionOpen] = useState(false);
 
   // New session form
@@ -420,20 +421,41 @@ export default function MarksPage() {
             </div>
           ) : (
             <div className="flex flex-col sm:flex-row gap-4">
+              {/* Year Filter */}
+              {Array.from(new Set(sessions.map(s => s.year))).length > 1 && (
+                <div className="w-full sm:w-32">
+                  <Select value={selectedYear} onValueChange={setSelectedYear}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Filter by year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from(new Set(sessions.map(s => s.year)))
+                        .sort((a, b) => b - a)
+                        .map((year) => (
+                          <SelectItem key={year} value={year.toString()}>
+                            {year}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="flex-1">
                 <Select value={selectedSessionId} onValueChange={setSelectedSessionId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Choose an exam session" />
                   </SelectTrigger>
                   <SelectContent>
-                    {sessions.map((session) => (
-                      <SelectItem key={session.id} value={session.id}>
-                        <span className="flex items-center">
-                          {session.exam_types?.name} - {session.term} {session.year}
-                          {session.is_locked && <Lock className="w-3 h-3 ml-2 text-destructive" />}
-                        </span>
-                      </SelectItem>
-                    ))}
+                    {sessions
+                      .filter(session => session.year.toString() === selectedYear)
+                      .map((session) => (
+                        <SelectItem key={session.id} value={session.id}>
+                          <span className="flex items-center">
+                            {session.exam_types?.name} - {session.term} {session.year}
+                            {session.is_locked && <Lock className="w-3 h-3 ml-2 text-destructive" />}
+                          </span>
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
