@@ -344,7 +344,13 @@ export function ReportStareheStyle({
                   {/* School Header */}
                   <div style={{ textAlign: 'center', marginBottom: '10px', paddingBottom: '8px', borderBottom: '2px solid #999' }}>
                     {/* Logo */}
-                    <img src="/logos/amagoro.jpeg" alt="School Logo" style={{ width: '60px', height: '60px', margin: '0 auto 5px', objectFit: 'contain' }} />
+                    {currentSchool?.logo_url ? (
+                      <img src={currentSchool.logo_url} alt="School Logo" style={{ width: '60px', height: '60px', margin: '0 auto 5px', objectFit: 'contain' }} />
+                    ) : (
+                      <div style={{ width: '60px', height: '60px', margin: '0 auto 5px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: currentSchool?.primary_color || '#2563eb', color: 'white', fontSize: '24px', fontWeight: 'bold', borderRadius: '50%' }}>
+                        {currentSchool?.short_name?.substring(0, 2) || currentSchool?.name?.substring(0, 2).toUpperCase() || 'SC'}
+                      </div>
+                    )}
                     
                     {/* School Name */}
                     <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#003366', marginBottom: '3px', letterSpacing: '1px' }}>
