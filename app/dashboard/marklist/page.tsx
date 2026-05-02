@@ -39,6 +39,8 @@ interface LearnerResult {
   total: number
   average: number
   rank: number
+  overall_rank?: number
+  total_in_grade?: number
 }
 
 export default function MarklistPage() {
@@ -1325,7 +1327,92 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
             {currentSchool?.feature_report_cards && (
               <Button 
                 onClick={async () => {
-                  setReportModalData(results)
+                  let updatedResults = [...results]
+                  
+                  // Calculate overall_rank for streamed classes
+                  const className = currentClass?.name || ''
+                  const isStreamedClass = className.includes(' ')
+                  
+                  if (isStreamedClass && selectedSessionId) {
+                    try {
+                      const supabase = createClient()
+                      const baseClassName = className.split(' ')[0] // e.g., "Grade" from "Grade 7 East"
+                      const gradeLevel = className.split(' ').slice(0, 2).join(' ') // e.g., "Grade 7" from "Grade 7 East"
+                      
+                      // Find all stream classes in the same grade
+                      const { data: streamClasses } = await supabase
+                        .from('classes')
+                        .select('id, name')
+                        .eq('school_id', currentSchool?.id)
+                        .ilike('name', `${gradeLevel}%`)
+                      
+                      if (streamClasses && streamClasses.length > 1) {
+                        // Fetch all marks from all stream sessions for this exam type
+                        const streamClassIds = streamClasses.map(c => c.id)
+                        
+                        // Get sessions for all streams with same exam type, term, year
+                        const { data: streamSessions } = await supabase
+                          .from('sessions')
+                          .select('id, class_id')
+                          .in('class_id', streamClassIds)
+                          .eq('exam_type_id', selectedSession?.exam_type_id)
+                          .eq('term', selectedSession?.term)
+                          .eq('year', selectedSession?.year)
+                        
+                        if (streamSessions && streamSessions.length > 0) {
+                          const sessionIds = streamSessions.map(s => s.id)
+                          
+                          // Fetch all marks with averages from all streams
+                          const { data: allMarks } = await supabase
+                            .from('marks')
+                            .select('learner_id, average_score, session_id')
+                            .in('session_id', sessionIds)
+                            .not('average_score', 'is', null)
+                          
+                          if (allMarks && allMarks.length > 0) {
+                            // Get unique learners with their best average per session
+                            const learnerAverages: { learner_id: string; average: number }[] = []
+                            const seen = new Set<string>()
+                            
+                            allMarks.forEach(m => {
+                              if (!seen.has(m.learner_id)) {
+                                seen.add(m.learner_id)
+                                learnerAverages.push({ learner_id: m.learner_id, average: m.average_score || 0 })
+                              }
+                            })
+                            
+                            // Sort by average descending
+                            learnerAverages.sort((a, b) => b.average - a.average)
+                            
+                            // Assign overall ranks
+                            const overallRanks: Record<string, number> = {}
+                            learnerAverages.forEach((la, idx) => {
+                              if (idx === 0) {
+                                overallRanks[la.learner_id] = 1
+                              } else if (la.average === learnerAverages[idx - 1].average) {
+                                overallRanks[la.learner_id] = overallRanks[learnerAverages[idx - 1].learner_id]
+                              } else {
+                                overallRanks[la.learner_id] = idx + 1
+                              }
+                            })
+                            
+                            const totalInGrade = learnerAverages.length
+                            
+                            // Update results with overall_rank
+                            updatedResults = results.map(r => ({
+                              ...r,
+                              overall_rank: overallRanks[r.learner.id] || r.rank,
+                              total_in_grade: totalInGrade
+                            }))
+                          }
+                        }
+                      }
+                    } catch (err) {
+                      console.error('[v0] Overall rank calculation error:', err)
+                    }
+                  }
+                  
+                  setReportModalData(updatedResults)
                   
                   // Fetch term history for trend graphs
                   try {
