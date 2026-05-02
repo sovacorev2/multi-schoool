@@ -1493,25 +1493,53 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                     // Fetch historical marks data only if we have learner IDs
                     const learnerIds = results.map(r => r.learner.id).filter(Boolean)
                     if (learnerIds.length > 0 && selectedSessionId) {
+                      // Get ALL marks from other sessions (all exams) for these learners
                       const { data: historicalMarks, error } = await supabase
                         .from('marks')
-                        .select('learner_id, total_marks, average_score, position, sessions(term, year)')
+                        .select(`
+                          learner_id, 
+                          total_marks, 
+                          average_score, 
+                          position, 
+                          session_id,
+                          sessions(term, year, exam_types(name))
+                        `)
                         .in('learner_id', learnerIds)
                         .neq('session_id', selectedSessionId)
+                        .order('session_id', { ascending: false })
                       
                       if (error) {
                         console.error('[v0] Historical marks fetch error:', error)
                       }
                       
-                      if (historicalMarks) {
+                      if (historicalMarks && historicalMarks.length > 0) {
+                        // Group historical marks by session, taking the best score per learner per session
+                        const sessionGrouped: Record<string, any> = {}
                         historicalMarks.forEach((m: any) => {
-                          if (!history[m.learner_id]) history[m.learner_id] = []
-                          history[m.learner_id].push({
-                            term: m.sessions?.term,
-                            year: m.sessions?.year,
-                            total: m.total_marks || 0,
-                            average: m.average_score || 0,
-                            rank: m.position || 0
+                          const sessionKey = `${m.sessions?.year}-T${m.sessions?.term}`
+                          if (!sessionGrouped[sessionKey]) {
+                            sessionGrouped[sessionKey] = []
+                          }
+                          sessionGrouped[sessionKey].push(m)
+                        })
+                        
+                        // For each session, get each learner's performance
+                        Object.values(sessionGrouped).forEach((sessionMarks: any[]) => {
+                          sessionMarks.forEach((m: any) => {
+                            if (!history[m.learner_id]) history[m.learner_id] = []
+                            // Check if this session already exists for this learner
+                            const existingSession = history[m.learner_id].find(
+                              h => h.year === m.sessions?.year && h.term === m.sessions?.term
+                            )
+                            if (!existingSession) {
+                              history[m.learner_id].push({
+                                term: m.sessions?.term,
+                                year: m.sessions?.year,
+                                total: m.total_marks || 0,
+                                average: m.average_score || 0,
+                                rank: m.position || 0
+                              })
+                            }
                           })
                         })
                       }
