@@ -15,6 +15,8 @@ interface StudentReport {
   average: number
   streamRank?: number
   streamTotal?: number
+  overall_rank?: number
+  total_in_grade?: number
 }
 
 interface Subject {
@@ -430,11 +432,11 @@ export function ReportStareheStyle({
                       </div>
                       <div style={{ border: '1px solid #666', padding: '5px' }}>
                         <div><strong>TOTAL PTS:</strong> {totalPoints}/{maxPoints}</div>
-                        <div style={{ marginTop: '2px' }}><strong>OVERALL POS:</strong> {report.rank}/{totalStudents}</div>
+                        <div style={{ marginTop: '2px' }}><strong>{className.includes(' ') ? 'STREAM POS' : 'POSITION'}:</strong> {report.rank}/{totalStudents}</div>
                       </div>
                       {className.includes(' ') && (
                         <div style={{ border: '1px solid #666', padding: '5px' }}>
-                          <div><strong>STREAM POS:</strong> {report.stream_rank || '-'}</div>
+                          <div><strong>OVERALL POS:</strong> {report.overall_rank || report.rank}/{report.total_in_grade || totalStudents}</div>
                           <div style={{ marginTop: '2px' }}><strong>STREAM:</strong> {className.split(' ').slice(1).join(' ')}</div>
                         </div>
                       )}

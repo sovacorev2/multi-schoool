@@ -98,7 +98,7 @@ export default function SchoolSelectionPage() {
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center relative">
                       <Image
-                        src={school.logo_url || `/logos/${school.code}.jpeg`}
+                        src={school.logo_url || `/logos/${school.code}.png`}
                         alt={`${school.name} logo`}
                         fill
                         className="object-contain"

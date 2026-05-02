@@ -203,12 +203,17 @@ export default function DashboardLayout({
               {/* School Logo */}
               {currentSchool && (
                 <img 
-                  src={currentSchool.logo_url || `/logos/${currentSchool.code}.jpeg`}
+                  src={currentSchool.logo_url || `/logos/${currentSchool.code}.png`}
                   alt={`${currentSchool.name} logo`}
                   className="w-12 h-12 object-contain"
                   onError={(e) => {
                     const target = e.currentTarget as HTMLImageElement
-                    target.style.display = 'none'
+                    // Try jpeg if png fails
+                    if (target.src.endsWith('.png')) {
+                      target.src = `/logos/${currentSchool.code}.jpeg`
+                    } else {
+                      target.style.display = 'none'
+                    }
                   }}
                 />
               )}
