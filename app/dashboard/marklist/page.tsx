@@ -802,6 +802,19 @@ export default function MarklistPage() {
       } else {
         result.rank = index + 1
       }
+      
+      // For streamed classes, set overall_rank to current rank (will be updated if stream comparison is done)
+      // For non-streamed classes, overall_rank = rank
+      const className = currentClass?.name || ''
+      if (className.includes(' ')) {
+        // Streamed class - use the combined marklist total if available
+        result.total_in_grade = arr.length
+      } else {
+        // Non-streamed class
+        result.total_in_grade = arr.length
+      }
+      result.overall_rank = result.rank
+      
       return result
     })
 
