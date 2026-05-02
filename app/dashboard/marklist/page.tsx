@@ -1385,10 +1385,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                   const className = currentClass?.name || ''
                   const isStreamedClass = className.includes(' ')
                   
-                  console.log('[v0] Print reports - className:', className, 'isStreamedClass:', isStreamedClass, 'selectedSessionId:', selectedSessionId)
-                  
                   if (isStreamedClass && selectedSessionId) {
-                    console.log('[v0] Calculating overall_rank for streamed class')
                     try {
                       const supabase = createClient()
                       const baseClassName = className.split(' ')[0] // e.g., "Grade" from "Grade 7 East"
@@ -1467,7 +1464,6 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                               overall_rank: overallRanks[r.learner.id] || r.rank,
                               total_in_grade: totalInGrade
                             }))
-                            console.log('[v0] Updated results with overall_rank:', updatedResults.slice(0,2))
                           }
                         }
                       }
@@ -1477,7 +1473,6 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                   }
                   
                   setReportModalData(updatedResults)
-                  console.log('[v0] Report modal data set with:', { count: updatedResults.length, hasOverallRank: updatedResults[0]?.overall_rank, hasStreamRank: updatedResults[0]?.rank })
                   
                   // Fetch term history for trend graphs
                   try {
@@ -1485,7 +1480,8 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                     const history: Record<string, any[]> = {}
                     
                     // Build history for each learner including current session
-                    results.forEach(result => {
+                    // Use updatedResults (which has overall_rank if streamed) instead of results
+                    updatedResults.forEach(result => {
                       const learnerId = result.learner.id
                       history[learnerId] = [] // Start fresh for this learner
                       
@@ -1502,7 +1498,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                     })
                     
                     // Fetch historical marks data only if we have learner IDs
-                    const learnerIds = results.map(r => r.learner.id).filter(Boolean)
+                    const learnerIds = updatedResults.map(r => r.learner.id).filter(Boolean)
                     if (learnerIds.length > 0 && selectedSession) {
                       // Get ALL subject marks from OTHER exam types/terms/years for these learners
                       // We need to fetch all marks and then filter by exam type to get previous exams
@@ -1533,11 +1529,8 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                           if (m.year === selectedSession.year && 
                               m.term === selectedSession.term && 
                               m.exam_type_id === selectedSession.exam_type_id) {
-                            console.log('[v0] Skipping current exam:', m)
                             return // Skip current exam
                           }
-                          
-                          console.log('[v0] Processing historical exam:', { year: m.year, term: m.term, exam_type_id: m.exam_type_id, exam_types: m.exam_types })
                           
                           const learnerId = m.learner_id
                           const examKey = `${m.year}-T${m.term}-${m.exam_type_id}`
@@ -3330,8 +3323,8 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                       acc[subject.id] = 0
                       return acc
                     }
-                    // Calculate position for this subject
-                    const higherScores = results.filter(r => {
+                    // Calculate position for this subject using reportModalData (which has overall ranking for streamed classes)
+                    const higherScores = reportModalData.filter(r => {
                       const score = r.marks[subject.id]
                       return score !== null && score !== undefined && score > studentScore
                     }).length
@@ -3347,7 +3340,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
             subjects={subjects}
             sessionInfo={sessions.find(s => s.id === selectedSessionId) || null}
             className={currentClass?.name || ''}
-            totalStudents={results.length}
+            totalStudents={reportModalData[0]?.total_in_grade || results.length}
             classTeacherName={currentClass?.teacher_name}
             termHistory={termHistory || {}}
           />
