@@ -124,6 +124,8 @@ export default function LearnersPage() {
     setTargetClassId(classId)
     fetchPromotedLearnersInTarget(classId)
   }
+
+  async function handlePromoteStudents() {
     if (selectedLearners.length === 0 || !targetClassId) {
       alert('Please select students and a target class')
       return
