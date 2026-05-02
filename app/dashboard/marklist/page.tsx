@@ -1482,8 +1482,8 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                           term: selectedSession?.term || 0,
                           year: selectedSession?.year || new Date().getFullYear(),
                           total: result.total,
-                          average: result.average_score || 0,
-                          rank: result.position || 0
+                          average: result.average || 0,
+                          rank: result.rank || 0
                         })
                       }
                       
