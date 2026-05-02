@@ -345,13 +345,9 @@ export function ReportStareheStyle({
                 <div key={report.learner.id || idx} className="bg-white page-break" style={{ padding: '12px', minHeight: '100vh', pageBreakInside: 'avoid', fontFamily: 'Times New Roman, serif' }}>
                   {/* School Header */}
                   <div style={{ textAlign: 'center', marginBottom: '10px', paddingBottom: '8px', borderBottom: '2px solid #999' }}>
-                    {/* Logo */}
-                    {currentSchool && currentSchool.logo_url ? (
+                    {/* Logo - only show if logo_url exists */}
+                    {currentSchool && currentSchool.logo_url && (
                       <img src={currentSchool.logo_url} alt="School Logo" style={{ width: '60px', height: '60px', margin: '0 auto 5px', objectFit: 'contain' }} />
-                    ) : (
-                      <div style={{ width: '60px', height: '60px', margin: '0 auto 5px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: (currentSchool && currentSchool.primary_color) || '#2563eb', color: 'white', fontSize: '24px', fontWeight: 'bold', borderRadius: '50%' }}>
-                        {(currentSchool && currentSchool.short_name) ? currentSchool.short_name.substring(0, 2) : (currentSchool && currentSchool.name) ? currentSchool.name.substring(0, 2).toUpperCase() : 'SC'}
-                      </div>
                     )}
                     
                     {/* School Name */}
@@ -482,17 +478,22 @@ export function ReportStareheStyle({
                             return slices
                           })()}
                         </svg>
-                        {/* Legend */}
+                        {/* Legend with percentages */}
                         <div style={{ fontSize: '6px', lineHeight: '1.2', flex: 1 }}>
-                          {subjectData.slice(0, 8).map((subject, i) => {
+                          {(() => {
+                            const scores = subjectData.map(s => s.score || 0)
+                            const total = scores.reduce((a, b) => a + b, 0)
                             const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#14b8a6']
-                            return (
-                              <div key={subject.subject.id} style={{ display: 'flex', alignItems: 'center', marginBottom: '1px' }}>
-                                <span style={{ width: '5px', height: '5px', backgroundColor: colors[i % colors.length], marginRight: '2px', flexShrink: 0 }}></span>
-                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{subject.subject.name.substring(0, 8)}</span>
-                              </div>
-                            )
-                          })}
+                            return subjectData.slice(0, 8).map((subject, i) => {
+                              const percentage = total > 0 ? ((scores[i] / total) * 100).toFixed(0) : 0
+                              return (
+                                <div key={subject.subject.id} style={{ display: 'flex', alignItems: 'center', marginBottom: '1px' }}>
+                                  <span style={{ width: '5px', height: '5px', backgroundColor: colors[i % colors.length], marginRight: '2px', flexShrink: 0 }}></span>
+                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{subject.subject.name.substring(0, 6)} {percentage}%</span>
+                                </div>
+                              )
+                            })
+                          })()}
                         </div>
                       </div>
                     </div>
