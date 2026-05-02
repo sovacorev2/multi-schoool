@@ -1379,20 +1379,17 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
             {currentSchool?.feature_report_cards && (
               <Button 
                 onClick={async () => {
+                  // First, calculate overall_rank for streamed classes
                   let updatedResults = [...results]
-                  
-                  // Calculate overall_rank for streamed classes
                   const className = currentClass?.name || ''
                   const isStreamedClass = className.includes(' ')
                   
                   if (isStreamedClass && selectedSessionId) {
                     try {
                       const supabase = createClient()
-                      const baseClassName = className.split(' ')[0] // e.g., "Grade" from "Grade 7 East"
-                      const gradeLevel = className.split(' ').slice(0, 2).join(' ') // e.g., "Grade 7" from "Grade 7 East"
+                      const gradeLevel = className.split(' ').slice(0, 2).join(' ') // e.g., "Grade 7"
                       
                       // Find all stream classes in the same grade
-                      // Find all classes in same grade level (e.g., "Grade 7 East", "Grade 7 West", etc.)
                       const { data: streamClasses } = await supabase
                         .from('classes')
                         .select('id, name')
@@ -1472,15 +1469,12 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                     }
                   }
                   
-                  setReportModalData(updatedResults)
-                  
-                  // Fetch term history for trend graphs
+                  // Now fetch term history for trend graphs
                   try {
                     const supabase = createClient()
                     const history: Record<string, any[]> = {}
                     
                     // Build history for each learner including current session
-                    // Use updatedResults (which has overall_rank if streamed) instead of results
                     updatedResults.forEach(result => {
                       const learnerId = result.learner.id
                       history[learnerId] = [] // Start fresh for this learner
@@ -1501,7 +1495,6 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                     const learnerIds = updatedResults.map(r => r.learner.id).filter(Boolean)
                     if (learnerIds.length > 0 && selectedSession) {
                       // Get ALL subject marks from OTHER exam types/terms/years for these learners
-                      // We need to fetch all marks and then filter by exam type to get previous exams
                       const { data: historicalMarks, error } = await supabase
                         .from('marks')
                         .select(`
@@ -1582,10 +1575,13 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                       })
                     })
                     
+                    // Set both report data and term history together
+                    setReportModalData(updatedResults)
                     setTermHistory(history)
                   } catch (err) {
                     console.error('[v0] Term history fetch error:', err)
-                    // Still open the report even if history fetch fails
+                    // Still set report data even if history fetch fails
+                    setReportModalData(updatedResults)
                   }
                   
                   setReportModalOpen(true)
