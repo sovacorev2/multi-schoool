@@ -486,37 +486,38 @@ export function ReportStareheStyle({
                     {/* Line Chart - Performance Trend */}
                     <div style={{ border: '1px solid #666', padding: '6px', textAlign: 'center' }}>
                       <div style={{ fontWeight: 'bold', marginBottom: '4px', fontSize: '9px' }}>PERFORMANCE TREND</div>
-                      {studentHistory && studentHistory.length > 0 ? (
-                        <svg viewBox="0 0 140 80" style={{ width: '100%', maxWidth: '90px', margin: '0 auto', display: 'block', height: 'auto' }}>
-                          <line x1="20" y1="10" x2="20" y2="70" stroke="#999" strokeWidth="0.5" />
-                          <line x1="20" y1="70" x2="130" y2="70" stroke="#999" strokeWidth="0.5" />
-                          <text x="16" y="15" fontSize="7" textAnchor="end">100</text>
-                          <text x="16" y="45" fontSize="7" textAnchor="end">50</text>
-                          <text x="16" y="75" fontSize="7" textAnchor="end">0</text>
-                          {studentHistory.map((history, i) => {
-                            const x = 25 + (i * (100 / Math.max(studentHistory.length - 1, 1)))
-                            const y = 70 - ((history.average / 100) * 60)
-                            const nextHistory = studentHistory[i + 1]
+                      <svg viewBox="0 0 140 80" style={{ width: '100%', maxWidth: '90px', margin: '0 auto', display: 'block', height: 'auto' }}>
+                        <line x1="20" y1="10" x2="20" y2="70" stroke="#999" strokeWidth="0.5" />
+                        <line x1="20" y1="70" x2="130" y2="70" stroke="#999" strokeWidth="0.5" />
+                        <text x="16" y="15" fontSize="7" textAnchor="end">100</text>
+                        <text x="16" y="45" fontSize="7" textAnchor="end">50</text>
+                        <text x="16" y="75" fontSize="7" textAnchor="end">0</text>
+                        {(() => {
+                          const allData = studentHistory && studentHistory.length > 0 ? [...studentHistory, { average: meanMark }] : [{ average: meanMark }]
+                          const totalPoints = allData.length
+                          
+                          return allData.map((data, i) => {
+                            const x = 25 + (i * (100 / Math.max(totalPoints - 1, 1)))
+                            const y = 70 - ((data.average / 100) * 60)
+                            const nextData = allData[i + 1]
                             return (
                               <g key={i}>
-                                <circle cx={x} cy={y} r="1.5" fill="#1e40af" />
-                                {nextHistory && (
+                                <circle cx={x} cy={y} r="1.5" fill={i === allData.length - 1 ? '#ef4444' : '#1e40af'} />
+                                {nextData && (
                                   <line
                                     x1={x}
                                     y1={y}
-                                    x2={25 + ((i + 1) * (100 / Math.max(studentHistory.length - 1, 1)))}
-                                    y2={70 - ((nextHistory.average / 100) * 60)}
-                                    stroke="#1e40af"
+                                    x2={25 + ((i + 1) * (100 / Math.max(totalPoints - 1, 1)))}
+                                    y2={70 - ((nextData.average / 100) * 60)}
+                                    stroke={i === allData.length - 2 ? '#ef4444' : '#1e40af'}
                                     strokeWidth="1.5"
                                   />
                                 )}
                               </g>
                             )
-                          })}
-                        </svg>
-                      ) : (
-                        <div style={{ minHeight: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999', fontSize: '9px' }}>No trend data</div>
-                      )}
+                          })
+                        })()}
+                      </svg>
                     </div>
                   </div>
 
@@ -526,19 +527,20 @@ export function ReportStareheStyle({
                     <div style={{ border: '1px solid #666', marginBottom: '5px' }}>
                       <div style={{ backgroundColor: '#ddd', fontWeight: 'bold', padding: '4px', borderBottom: '1px solid #666', fontSize: '9px' }}>CLASS TEACHER'S REMARKS:</div>
                       <div style={{ padding: '5px', minHeight: '30px' }}></div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px', borderTop: '1px solid #666', fontSize: '8px' }}>
-                        <div>NAME: ______ SIGN: ______</div>
-                        <div>DATE: ______</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', padding: '4px', borderTop: '1px solid #666', fontSize: '8px' }}>
+                        <div>NAME: ________________</div>
+                        <div>SIGN: ________________</div>
                       </div>
+                      <div style={{ padding: '4px', fontSize: '8px' }}>DATE: ________________</div>
                     </div>
 
                     {/* Head Teacher Remarks */}
                     <div style={{ border: '1px solid #666', marginBottom: '5px' }}>
                       <div style={{ backgroundColor: '#ddd', fontWeight: 'bold', padding: '4px', borderBottom: '1px solid #666', fontSize: '9px' }}>HEAD TEACHER'S REMARKS:</div>
                       <div style={{ padding: '5px', minHeight: '30px' }}></div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px', borderTop: '1px solid #666', fontSize: '8px' }}>
-                        <div>SIGN: ______</div>
-                        <div>DATE: ______</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', padding: '4px', borderTop: '1px solid #666', fontSize: '8px' }}>
+                        <div>SIGN: __________</div>
+                        <div>DATE: __________</div>
                         <div>STAMP:</div>
                       </div>
                     </div>
@@ -547,10 +549,11 @@ export function ReportStareheStyle({
                     <div style={{ border: '1px solid #666' }}>
                       <div style={{ backgroundColor: '#ddd', fontWeight: 'bold', padding: '4px', borderBottom: '1px solid #666', fontSize: '9px' }}>PARENT/GUARDIAN'S REMARKS:</div>
                       <div style={{ padding: '5px', minHeight: '30px' }}></div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px', borderTop: '1px solid #666', fontSize: '9px' }}>
-                        <div>NAME: _________ SIGN: _________</div>
-                        <div>DATE: _________</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', padding: '4px', borderTop: '1px solid #666', fontSize: '8px' }}>
+                        <div>NAME: ________________</div>
+                        <div>SIGN: ________________</div>
                       </div>
+                      <div style={{ padding: '4px', fontSize: '8px' }}>DATE: ________________</div>
                     </div>
                   </div>
 
