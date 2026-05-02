@@ -259,7 +259,7 @@ export default function PrintCombinedMarklistPage() {
         </div>
         <div className="border p-2 rounded">
           <div className="text-lg font-bold text-emerald-600">
-            {learners.length > 0 ? Math.round((learners.filter(l => l.average >= 40).length / learners.length) * 100) : 0}%
+            {learners.length > 0 ? Math.round((learners.filter(l => l.average >= 50).length / learners.length) * 100) : 0}%
           </div>
           <div className="text-xs text-gray-500">Pass Rate</div>
         </div>

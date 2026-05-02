@@ -109,7 +109,7 @@ export default function PrintStreamComparisonPage() {
           ? Math.round((learnersWithMarks.reduce((a, l) => a + l.average, 0) / learnersWithMarks.length) * 10) / 10
           : 0
         const passRate = learnersWithMarks.length > 0
-          ? Math.round((learnersWithMarks.filter(l => l.average >= 40).length / learnersWithMarks.length) * 100)
+          ? Math.round((learnersWithMarks.filter(l => l.average >= 50).length / learnersWithMarks.length) * 100)
           : 0
 
         // Rubric distribution

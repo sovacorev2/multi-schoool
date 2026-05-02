@@ -840,7 +840,7 @@ const subjectPerformance = subjects
       gradeD,
       gradeE,
       stdDev: stdDev.toFixed(1),
-      passRate: subjectScores.length > 0 ? ((subjectScores.filter(s => s >= 40).length / subjectScores.length) * 100).toFixed(1) : '0',
+      passRate: subjectScores.length > 0 ? ((subjectScores.filter(s => s >= 50).length / subjectScores.length) * 100).toFixed(1) : '0',
       topPerformer: topPerformer || '-',
       topPerformerScore: highest,
     }
@@ -851,12 +851,12 @@ const subjectPerformance = subjects
 const classAverage = results.length > 0 ? (results.reduce((sum, r) => sum + r.average, 0) / results.length).toFixed(1) : '0'
 const totalScores = results.map(r => r.total)
 const classMedian = totalScores.length > 0 ? totalScores.sort((a, b) => a - b)[Math.floor(totalScores.length / 2)] : 0
-const classPassRate = results.length > 0 ? ((results.filter(r => r.average >= 40).length / results.length) * 100).toFixed(1) : '0'
+const classPassRate = results.length > 0 ? ((results.filter(r => r.average >= 50).length / results.length) * 100).toFixed(1) : '0'
 const topPerformers = results.slice(0, 5)
 const bottomPerformers = [...results].sort((a, b) => a.total - b.total).slice(0, 5)
 const classGradeA = results.filter(r => r.average >= 80).length
 const classGradeB = results.filter(r => r.average >= 60 && r.average < 80).length
-const classGradeC = results.filter(r => r.average >= 40 && r.average < 60).length
+const classGradeC = results.filter(r => r.average >= 50 && r.average < 60).length
 const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).length
   const classGradeE = results.filter(r => r.average < 30).length
   const maleStudents = results.filter(r => r.learner.gender === 'Male' || r.learner.gender === 'male' || r.learner.gender === 'M')
