@@ -1432,7 +1432,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
             <CardTitle className="text-base">Select Exam Session</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {Array.from(new Set(sessions.map(s => s.year))).length > 1 && (
+            {sessions.length > 0 && (
               <div className="space-y-1.5">
                 <Label className="text-xs">Filter by Year</Label>
                 <Select value={selectedYear} onValueChange={(value) => {
@@ -1455,7 +1455,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                 </Select>
               </div>
             )}
-            {Array.from(new Set(sessions.filter(s => s.year.toString() === selectedYear).map(s => s.term))).length > 1 && (
+            {sessions.filter(s => s.year.toString() === selectedYear).length > 0 && (
               <div className="space-y-1.5">
                 <Label className="text-xs">Filter by Term</Label>
                 <Select value={selectedTerm} onValueChange={(value) => {
@@ -1463,9 +1463,10 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                   setSelectedSessionId("");
                 }}>
                   <SelectTrigger className="h-8 text-sm">
-                    <SelectValue placeholder="Select term" />
+                    <SelectValue placeholder="All terms" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="" className="text-sm">All terms</SelectItem>
                     {Array.from(new Set(sessions.filter(s => s.year.toString() === selectedYear).map(s => s.term)))
                       .map((term) => (
                         <SelectItem key={term} value={term} className="text-sm">
