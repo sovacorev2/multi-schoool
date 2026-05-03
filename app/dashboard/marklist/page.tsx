@@ -1470,6 +1470,15 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                     } catch (err) {
                       console.error('[v0] Overall rank error:', err)
                     }
+                  } else {
+                    // For non-streamed classes, also set overall_rank and total_in_grade
+                    // (these will use the local class ranking)
+                    finalResults = results.map(r => ({
+                      ...r,
+                      overall_rank: r.overall_rank || r.rank,
+                      total_in_grade: r.total_in_grade || results.length
+                    }))
+                    console.log('[v0] Non-streamed class, using local ranking for all students')
                   }
                   
                   // STEP 2: Fetch term history for trend graph
