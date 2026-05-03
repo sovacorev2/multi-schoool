@@ -1393,6 +1393,8 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                       // Grade level is everything except the last word (the stream identifier)
                       const gradeLevel = classWords.slice(0, -1).join(' ') // e.g., "Grade 7" from "Grade 7 EAST"
                       
+                      console.log('[v0] STREAMED CLASS DETECTED:', { className, gradeLevel, isStreamedClass })
+                      
                       // Find all stream classes in the same grade (must also have 3+ words)
                       const { data: streamClasses } = await supabase
                         .from('classes')
@@ -1400,8 +1402,12 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                         .eq('school_id', currentSchool?.id)
                         .ilike('name', `${gradeLevel} %`)
                       
+                      console.log('[v0] ALL CLASSES matching grade:', streamClasses?.map(c => c.name))
+                      
                       // Filter to only actual streams (3+ words to exclude the parent grade class if any)
                       const actualStreams = (streamClasses || []).filter(c => c.name.trim().split(/\s+/).length > 2)
+                      
+                      console.log('[v0] ACTUAL STREAMS (3+ words):', actualStreams.map(c => c.name))
                       
                       if (actualStreams.length >= 1) {
                         const streamClassIds = actualStreams.map(c => c.id)
@@ -1411,6 +1417,8 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                           .from('learners')
                           .select('id, class_id')
                           .in('class_id', streamClassIds)
+                        
+                        console.log('[v0] TOTAL LEARNERS IN GRADE:', allGradeLearners?.length, 'from', streamClassIds.length, 'streams')
                         
                         if (allGradeLearners && allGradeLearners.length > 0) {
                           const learnerIds = allGradeLearners.map(l => l.id)
@@ -1423,6 +1431,8 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                             .eq('year', selectedSession?.year)
                             .eq('term', selectedSession?.term)
                             .eq('exam_type_id', selectedSession?.exam_type_id)
+                          
+                          console.log('[v0] MARKS FOUND:', allMarks?.length, 'for', learnerIds.length, 'learners')
                           
                           if (allMarks && allMarks.length > 0) {
                             // Calculate average per learner from their subject scores
@@ -1463,12 +1473,16 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                             // Total should be ALL learners in the grade, not just those with marks
                             const totalInGrade = allGradeLearners.length
                             
+                            console.log('[v0] SETTING TOTALS:', { streamCount: learnerAverages.length, totalInGrade, sampleOverallRanks: Object.entries(overallRanks).slice(0, 3) })
+                            
                             // Update results with overall_rank and total_in_grade
                             updatedResults = results.map(r => ({
                               ...r,
                               overall_rank: overallRanks[r.learner.id] || r.rank,
                               total_in_grade: totalInGrade
                             }))
+                            
+                            console.log('[v0] FIRST 3 UPDATED RESULTS:', updatedResults.slice(0, 3).map(r => ({ name: r.learner.name, rank: r.rank, overall_rank: r.overall_rank, total_in_grade: r.total_in_grade })))
                           }
                         }
                       }
