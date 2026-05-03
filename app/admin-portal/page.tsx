@@ -73,28 +73,45 @@ function getBaseClassName(className: string): string {
   return match ? match[1] : className
 }
 
-// Helper to get all unique base classes (only the base names, not streams)
-function getBaseClasses(classes: Class[]): Class[] {
-  const baseClassMap = new Map<string, Class>()
+// Get all UNIQUE base class names and their stream counts
+interface BaseClassInfo {
+  name: string
+  streamCount: number
+}
+
+function getUniqueBaseClasses(classes: Class[]): BaseClassInfo[] {
+  const baseClassMap = new Map<string, Set<string>>()
   
-  // First pass: collect actual base classes (those matching the base pattern exactly)
+  // For each class, extract base name and all stream variants
   classes.forEach(cls => {
-    const isActualBaseClass = cls.name.match(/^(PP\d+|Grade\s*\d+|Form\s*\d+)$/i)
-    if (isActualBaseClass) {
-      baseClassMap.set(cls.name, cls)
-    }
-  })
-  
-  // Second pass: for base names that don't have actual base class, use first stream as reference
-  classes.forEach(cls => {
-    const baseName = getBaseClassName(cls.name)
+    const baseName = getBaseClassName(cls.name).trim()
     if (!baseClassMap.has(baseName)) {
-      baseClassMap.set(baseName, cls)
+      baseClassMap.set(baseName, new Set())
     }
+    baseClassMap.get(baseName)!.add(cls.id)
   })
   
-  const baseClasses = Array.from(baseClassMap.values())
-  return sortClasses(baseClasses)
+  // Convert to sorted array
+  const baseClasses: BaseClassInfo[] = Array.from(baseClassMap.entries()).map(([name, ids]) => ({
+    name,
+    streamCount: ids.size
+  }))
+  
+  // Sort by grade level
+  return baseClasses.sort((a, b) => {
+    const aMatch = a.name.match(/\d+/)
+    const bMatch = b.name.match(/\d+/)
+    const aNum = aMatch ? parseInt(aMatch[0]) : 999
+    const bNum = bMatch ? parseInt(bMatch[0]) : 999
+    return aNum - bNum
+  })
+}
+
+// Get all streams for a specific base class
+function getStreamsForBaseClass(classes: Class[], baseName: string): Class[] {
+  return classes
+    .filter(cls => getBaseClassName(cls.name) === baseName)
+    .sort((a, b) => a.name.localeCompare(b.name))
 }
 
 interface School {
@@ -487,55 +504,61 @@ export default function AdminPortalPage() {
     }
   }
 
-  // Add stream class (e.g., "Grade 5 East" from base class "Grade 5")
+  // Add new stream to base class
   const addStreamClass = async () => {
-    if (!streamBaseClass || !newStreamName.trim() || !currentSchool) return
-    
-    const streamClassName = `${streamBaseClass} ${newStreamName.trim()}`
-    
-    // Check if class already exists
-    if (classes.some(c => c.name === streamClassName)) {
-      setStreamError(`Stream "${streamClassName}" already exists!`)
+    if (!streamBaseClass || !newStreamName.trim() || !currentSchool) {
+      setStreamError('Please select a grade level and enter a stream name')
       return
     }
     
-    const supabase = createClient()
-    const { data, error } = await supabase
-      .from('classes')
-      .insert({ 
-        name: streamClassName, 
-        school_id: currentSchool.id,
-        password: 'welcome',
-        display_order: classes.length + 1
-      })
-      .select()
-      .single()
+    const streamClassName = `${streamBaseClass} ${newStreamName.trim().toUpperCase()}`
+    
+    // Check if this exact stream already exists
+    if (classes.some(c => c.name.toUpperCase() === streamClassName.toUpperCase())) {
+      setStreamError(`Stream "${streamClassName}" already exists`)
+      return
+    }
+    
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('classes')
+        .insert({ 
+          name: streamClassName, 
+          school_id: currentSchool.id,
+          password: 'welcome',
+          display_order: classes.length + 1
+        })
+        .select()
+        .single()
 
-    if (!error && data) {
-      // Also create base sessions for the new stream class
-      const currentYear = new Date().getFullYear()
-      const terms = ['Term 1', 'Term 2', 'Term 3']
-      const sessionsToInsert = terms.map(term => ({
-        class_id: data.id,
-        year: currentYear,
-        term: term,
-        is_active: true,
-        school_id: currentSchool.id,
-      }))
-      await supabase.from('sessions').insert(sessionsToInsert)
+      if (error) throw error
       
-      const updatedClasses = [...classes, data]
-      setClasses(updatedClasses)
-      
-      // Update existing streams list
-      const newExistingStreams = updatedClasses.filter(c => getBaseClassName(c.name) === streamBaseClass)
-      setExistingStreams(newExistingStreams)
-      
-      setStreamBaseClass('')
-      setNewStreamName('')
-      setStreamError('')
-    } else if (error) {
-      setStreamError(`Failed to create stream: ${error.message}`)
+      if (data) {
+        // Create sessions for the new stream
+        const currentYear = new Date().getFullYear()
+        const sessionsToInsert = TERMS.map(term => ({
+          class_id: data.id,
+          year: currentYear,
+          term: term,
+          is_active: true,
+          school_id: currentSchool.id,
+        }))
+        await supabase.from('sessions').insert(sessionsToInsert)
+        
+        // Update local state
+        const updatedClasses = [...classes, data]
+        setClasses(updatedClasses)
+        
+        // Refresh existing streams
+        const newStreams = getStreamsForBaseClass(updatedClasses, streamBaseClass)
+        setExistingStreams(newStreams)
+        
+        setNewStreamName('')
+        setStreamError('')
+      }
+    } catch (err: any) {
+      setStreamError(err.message || 'Failed to create stream')
     }
   }
 
@@ -1006,84 +1029,100 @@ export default function AdminPortalPage() {
                   </div>
 
                   {/* Add stream to existing class */}
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-3">
-                    <h3 className="font-medium text-blue-800 text-sm">Add Stream to Class</h3>
-                    <p className="text-xs text-blue-600">Create stream variants like "Grade 5 East", "Grade 5 West"</p>
-                    <div className="flex gap-2">
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-4">
+                    <div>
+                      <h3 className="font-medium text-blue-900">Manage Streams</h3>
+                      <p className="text-xs text-blue-700 mt-1">Add or remove streams for grade levels</p>
+                    </div>
+                    
+                    {/* Step 1: Select base class */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Select Grade Level</label>
                       <Select value={streamBaseClass} onValueChange={(value) => {
                         setStreamBaseClass(value)
                         setStreamError('')
                         setNewStreamName('')
                         // Get all streams for this base class
-                        const baseStreams = classes.filter(c => getBaseClassName(c.name) === value)
+                        const baseStreams = getStreamsForBaseClass(classes, value)
                         setExistingStreams(baseStreams)
                       }}>
-                        <SelectTrigger className="flex-1">
-                          <SelectValue placeholder="Select base class" />
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choose a grade level..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {getBaseClasses(classes).map(c => {
-                            const baseName = getBaseClassName(c.name)
-                            const streamCount = classes.filter(cls => getBaseClassName(cls.name) === baseName).length
-                            return (
-                              <SelectItem key={c.id} value={baseName}>
-                                {baseName} {streamCount > 1 ? `(${streamCount} streams)` : '(no streams yet)'}
-                              </SelectItem>
-                            )
-                          })}
+                          {getUniqueBaseClasses(classes).map(baseClass => (
+                            <SelectItem key={baseClass.name} value={baseClass.name}>
+                              {baseClass.name} {baseClass.streamCount > 1 ? `(${baseClass.streamCount} streams)` : '(no streams)'}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
-                      <Input
-                        placeholder="Stream name (e.g., East, A)"
-                        value={newStreamName}
-                        onChange={(e) => {
-                          setNewStreamName(e.target.value)
-                          setStreamError('')
-                        }}
-                        className="flex-1"
-                      />
-                      <Button 
-                        onClick={addStreamClass} 
-                        disabled={!streamBaseClass || !newStreamName.trim()}
-                        variant="secondary"
-                      >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Stream
-                      </Button>
                     </div>
-                    
-                    {/* Show existing streams for selected base class */}
-                    {streamBaseClass && existingStreams.length > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-xs font-medium text-gray-700">Existing streams for {streamBaseClass}:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {existingStreams.map(stream => (
-                            <div key={stream.id} className="flex items-center gap-2 px-3 py-1 bg-white border border-gray-300 rounded-full text-sm">
-                              <span>{stream.name}</span>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={async () => {
-                                  if (confirm(`Delete stream "${stream.name}"? This will remove the stream and all associated data.`)) {
-                                    const supabase = createClient()
-                                    await supabase.from('classes').delete().eq('id', stream.id)
-                                    setClasses(classes.filter(c => c.id !== stream.id))
-                                    setExistingStreams(existingStreams.filter(s => s.id !== stream.id))
-                                  }
-                                }}
-                                className="h-5 w-5 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                              >
-                                <X className="w-3 h-3" />
-                              </Button>
+
+                    {/* Step 2: Show existing streams and add new one */}
+                    {streamBaseClass && (
+                      <div className="space-y-3 p-3 bg-white rounded border">
+                        {/* Existing streams list */}
+                        {existingStreams.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-xs font-semibold text-gray-600 uppercase">Existing Streams</p>
+                            <div className="flex flex-wrap gap-2">
+                              {existingStreams.map(stream => {
+                                const streamName = stream.name.replace(streamBaseClass, '').trim()
+                                return (
+                                  <div key={stream.id} className="flex items-center gap-2 px-3 py-2 bg-blue-100 border border-blue-300 rounded-lg text-sm">
+                                    <span className="font-medium">{streamBaseClass} {streamName}</span>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={async () => {
+                                        if (confirm(`Delete "${stream.name}"?\n\nThis will permanently remove this stream and all associated class data.`)) {
+                                          const supabase = createClient()
+                                          await supabase.from('classes').delete().eq('id', stream.id)
+                                          const updated = classes.filter(c => c.id !== stream.id)
+                                          setClasses(updated)
+                                          setExistingStreams(updated.filter(c => getBaseClassName(c.name) === streamBaseClass))
+                                        }
+                                      }}
+                                      className="h-4 w-4 p-0 text-red-600 hover:text-red-800"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                )
+                              })}
                             </div>
-                          ))}
+                          </div>
+                        )}
+                        
+                        {/* Add new stream */}
+                        <div className="pt-2 border-t space-y-2">
+                          <p className="text-xs font-semibold text-gray-600 uppercase">Add New Stream</p>
+                          <div className="flex gap-2">
+                            <Input
+                              placeholder="Stream name (e.g., EAST, WEST, A, B)"
+                              value={newStreamName}
+                              onChange={(e) => {
+                                setNewStreamName(e.target.value)
+                                setStreamError('')
+                              }}
+                            />
+                            <Button 
+                              onClick={addStreamClass} 
+                              disabled={!newStreamName.trim()}
+                              size="sm"
+                            >
+                              <Plus className="w-4 h-4 mr-1" />
+                              Add
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     )}
                     
                     {streamError && (
-                      <div className="text-red-600 text-sm p-3 bg-red-50 rounded border border-red-200">
-                        {streamError}
+                      <div className="text-red-700 text-sm p-3 bg-red-100 rounded border border-red-300">
+                        ⚠️ {streamError}
                       </div>
                     )}
                   </div>
