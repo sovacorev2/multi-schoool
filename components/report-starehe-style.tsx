@@ -206,9 +206,9 @@ export function ReportStareheStyle({
                       .space-y-2 > * + * { margin-top: 8px; }
                       .space-y-0\.5 > * + * { margin-top: 2px; }
                       @media print {
-                        body { margin: 0; padding: 0; font-size: 12px; min-height: 100vh; }
+                        body { margin: 0; padding: 0; font-size: 12px; min-height: 100vh; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                         * { orphans: 3; widows: 3; }
-                        img { page-break-inside: avoid; }
+                        img { page-break-inside: avoid; display: block !important; visibility: visible !important; }
                         table { page-break-inside: avoid; }
                       }
                     </style>
@@ -353,10 +353,18 @@ export function ReportStareheStyle({
                 <div key={report.learner.id || idx} className="bg-white page-break" style={{ padding: '12px', minHeight: '100vh', pageBreakInside: 'avoid', fontFamily: 'Times New Roman, serif' }}>
                   {/* School Header */}
                   <div style={{ textAlign: 'center', marginBottom: '10px', paddingBottom: '8px', borderBottom: '2px solid #999' }}>
-                    {/* Logo - only show if logo_url exists */}
-                    {currentSchool && currentSchool.logo_url && (
-                      <img src={currentSchool.logo_url} alt="School Logo" style={{ width: '60px', height: '60px', margin: '0 auto 5px', objectFit: 'contain' }} />
-                    )}
+                    {/* Logo - show if logo_url exists */}
+                    {currentSchool?.logo_url ? (
+                      <img 
+                        src={currentSchool.logo_url} 
+                        alt="School Logo" 
+                        style={{ width: '60px', height: '60px', margin: '0 auto 5px', objectFit: 'contain', display: 'block' }}
+                        onError={(e) => {
+                          const img = e.target as HTMLImageElement
+                          img.style.display = 'none'
+                        }}
+                      />
+                    ) : null}
                     
                     {/* School Name */}
                     <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#003366', marginBottom: '3px', letterSpacing: '1px' }}>
