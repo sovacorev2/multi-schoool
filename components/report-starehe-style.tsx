@@ -106,7 +106,7 @@ export function ReportStareheStyle({
       rank: reports[0].rank,
       total_in_grade: reports[0].total_in_grade,
       hasOverallRankProperty: 'overall_rank' in reports[0],
-      hasTotal InGradeProperty: 'total_in_grade' in reports[0]
+      hasTotalInGradeProperty: 'total_in_grade' in reports[0]
     } : null
   })
   
