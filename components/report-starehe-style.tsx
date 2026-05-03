@@ -651,7 +651,7 @@ export function ReportStareheStyle({
                   <div style={{ marginBottom: '8px', padding: '6px', border: '1px solid #999', backgroundColor: '#fff' }}>
                     <div style={{ fontWeight: 'bold', marginBottom: '3px', fontSize: '9px' }}>CBE LEVELS:</div>
                     <div style={{ fontSize: '8px', lineHeight: '1.4' }}>
-                      EE=Exceeding-4 | ME=Meeting-3 | PE=Partial-2 | BE=Below-1
+                      EE=Exceeding-4 | ME=Meeting-3 | AE=Approaching-2 | BE=Below-1
                     </div>
                   </div>
 
