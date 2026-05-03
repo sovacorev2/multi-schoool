@@ -369,17 +369,21 @@ export function ReportStareheStyle({
                   {/* School Header */}
                   <div style={{ textAlign: 'center', marginBottom: '10px', paddingBottom: '8px', borderBottom: '2px solid #999' }}>
                     {/* Logo - show if logo_url exists */}
+                    {console.log('[v0] Logo URL:', currentSchool?.logo_url, 'School:', currentSchool?.name)}
                     {currentSchool?.logo_url ? (
                       <img 
                         src={currentSchool.logo_url} 
                         alt="School Logo" 
                         style={{ width: '60px', height: '60px', margin: '0 auto 5px', objectFit: 'contain', display: 'block' }}
                         onError={(e) => {
+                          console.log('[v0] Logo image failed to load:', currentSchool?.logo_url)
                           const img = e.target as HTMLImageElement
                           img.style.display = 'none'
                         }}
                       />
-                    ) : null}
+                    ) : (
+                      <div style={{ fontSize: '12px', color: '#999', marginBottom: '5px' }}>[Logo URL is null]</div>
+                    )}
                     
                     {/* School Name */}
                     <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#003366', marginBottom: '3px', letterSpacing: '1px' }}>
