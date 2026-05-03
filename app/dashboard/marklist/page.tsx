@@ -1782,6 +1782,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
               const isStreamedClass = classWords.length > 2
               
               return (
+                <table className="w-full text-sm border-collapse border-2 border-gray-800">
               <thead>
                 <tr className="bg-gray-200">
                   <th className="border border-gray-600 p-2 text-left font-bold">No.</th>
