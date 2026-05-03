@@ -1879,6 +1879,14 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
           <Tabs defaultValue="marklist" className="space-y-4">
             <TabsList className="flex flex-wrap h-auto gap-1 p-1 w-full max-w-4xl">
               <TabsTrigger value="marklist" className="flex-1 min-w-[80px] text-xs sm:text-sm">Marklist</TabsTrigger>
+              {(() => {
+                const className = currentClass?.name || ''
+                const classWords = className.trim().split(/\s+/)
+                const isStreamedClass = classWords.length > 2
+                return isStreamedClass ? (
+                  <TabsTrigger value="stream-transfers" className="flex-1 min-w-[80px] text-xs sm:text-sm">Stream Transfers</TabsTrigger>
+                ) : null
+              })()}
               <TabsTrigger value="class-performance" className="flex-1 min-w-[80px] text-xs sm:text-sm">Class Analysis</TabsTrigger>
               <TabsTrigger value="subject-performance" className="flex-1 min-w-[80px] text-xs sm:text-sm">Subject Analysis</TabsTrigger>
               <TabsTrigger value="exam-comparison" className="flex-1 min-w-[80px] text-xs sm:text-sm">Comparison</TabsTrigger>
@@ -2055,6 +2063,32 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                 </CardContent>
               </Card>
             </TabsContent>
+
+            {/* Stream Transfers Tab - Only for streamed classes */}
+            {(() => {
+              const className = currentClass?.name || ''
+              const classWords = className.trim().split(/\s+/)
+              const isStreamedClass = classWords.length > 2
+              return isStreamedClass ? (
+                <TabsContent value="stream-transfers">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <GitCompareArrows className="w-5 h-5" />
+                        Stream Transfers
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <StreamTransfersContent 
+                        currentClass={currentClass} 
+                        allClasses={allClasses}
+                        subjects={subjects}
+                      />
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              ) : null
+            })()}
 
             {/* Class Performance Tab */}
             <TabsContent value="class-performance">
@@ -3678,6 +3712,143 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
               </div>
             </div>
           </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Stream Transfers Component
+function StreamTransfersContent({ currentClass, allClasses, subjects }: any) {
+  const [streamLearners, setStreamLearners] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [transferringId, setTransferringId] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string>('')
+
+  // Get available streams for current grade
+  const getAvailableStreams = () => {
+    const className = currentClass?.name || ''
+    const classWords = className.trim().split(/\s+/)
+    const gradeLevel = classWords.slice(0, -1).join(' ')
+    
+    return allClasses.filter(c => 
+      c.name.toLowerCase().startsWith(gradeLevel.toLowerCase()) && 
+      c.name.trim().split(/\s+/).length > 2 &&
+      c.id !== currentClass?.id
+    )
+  }
+
+  // Load learners when component mounts or class changes
+  useEffect(() => {
+    const loadLearners = async () => {
+      if (!currentClass?.id) return
+      
+      setIsLoading(true)
+      try {
+        const supabase = createClient()
+        const { data, error } = await supabase
+          .from('learners')
+          .select('id, name, class_id')
+          .eq('class_id', currentClass.id)
+          .order('name')
+        
+        if (error) throw error
+        setStreamLearners(data || [])
+      } catch (error) {
+        console.error('[v0] Error loading learners:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadLearners()
+  }, [currentClass?.id])
+
+  const handleTransfer = async (learnerId: string, destinationStreamId: string) => {
+    if (destinationStreamId === 'select') return
+
+    setTransferringId(learnerId)
+    try {
+      const response = await fetch('/api/learners/promote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          learnerId,
+          newClassId: destinationStreamId,
+          newStreamId: destinationStreamId,
+          fromStream: currentClass?.name,
+          toStream: allClasses.find(c => c.id === destinationStreamId)?.name
+        })
+      })
+
+      if (response.ok) {
+        const destinationName = allClasses.find(c => c.id === destinationStreamId)?.name
+        const learnerName = streamLearners.find(l => l.id === learnerId)?.name
+        setSuccessMessage(`${learnerName} transferred to ${destinationName}`)
+        
+        // Remove from list
+        setStreamLearners(streamLearners.filter(l => l.id !== learnerId))
+        
+        setTimeout(() => setSuccessMessage(''), 3000)
+      } else {
+        alert('Failed to transfer student')
+      }
+    } catch (error) {
+      console.error('[v0] Transfer error:', error)
+      alert('Error transferring student')
+    } finally {
+      setTransferringId(null)
+    }
+  }
+
+  const availableStreams = getAvailableStreams()
+
+  return (
+    <div className="space-y-4">
+      {successMessage && (
+        <div className="p-3 bg-green-100 border border-green-400 text-green-700 rounded">
+          {successMessage}
+        </div>
+      )}
+
+      {availableStreams.length === 0 ? (
+        <div className="p-4 text-center text-gray-500">
+          No other streams available for this grade level
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <p className="text-sm text-gray-600">Transfer learners to another stream in {currentClass?.name.split(' ').slice(0, -1).join(' ')}</p>
+          
+          {isLoading ? (
+            <div className="text-center text-gray-500">Loading learners...</div>
+          ) : streamLearners.length === 0 ? (
+            <div className="text-center text-gray-500">No learners in this class</div>
+          ) : (
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {streamLearners.map((learner) => (
+                <div key={learner.id} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded">
+                  <span className="font-medium text-sm">{learner.name}</span>
+                  <Select 
+                    value="select"
+                    onValueChange={(streamId) => handleTransfer(learner.id, streamId)}
+                    disabled={transferringId === learner.id}
+                  >
+                    <SelectTrigger className="w-40 h-8 text-xs">
+                      <SelectValue placeholder="Move to..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="select" disabled>Move to stream...</SelectItem>
+                      {availableStreams.map(stream => (
+                        <SelectItem key={stream.id} value={stream.id}>
+                          {stream.name.split(' ').slice(2).join(' ')}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
