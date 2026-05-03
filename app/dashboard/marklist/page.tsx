@@ -1502,6 +1502,9 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                         } catch (innerErr) {
                           console.error('[v0] ✗ Inner streamed class error:', innerErr)
                         }
+                      } else {
+                        console.log('[v0] ⚠ No stream classes found (all classes have ≤2 words)')
+                      }
                     } catch (err) {
                       console.error('[v0] ✗ Overall rank error:', err)
                     }
