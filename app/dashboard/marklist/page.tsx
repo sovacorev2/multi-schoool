@@ -85,7 +85,6 @@ export default function MarklistPage() {
   const [isLoadingComparison, setIsLoadingComparison] = useState(false)
   const [comparisonClassId, setComparisonClassId] = useState<string>('')
   const [allClasses, setAllClasses] = useState<{ id: string; name: string }[]>([])
-  const [streamOptions, setStreamOptions] = useState<{ id: string; name: string; class_id: string }[]>([])
   const [streamComparisonData, setStreamComparisonData] = useState<{
     baseClassName: string
     streams: {
@@ -851,26 +850,6 @@ export default function MarklistPage() {
           })
 
         setResults(results)
-        
-        // Populate stream options for promotion if this is a streamed class
-        const className = currentClass?.name || ''
-        const classWords = className.trim().split(/\s+/)
-        const isStreamed = classWords.length > 2
-        
-        if (isStreamed && currentSchool?.id) {
-          const gradeLevel = classWords.slice(0, -1).join(' ')
-          const allStreams = allClasses.filter(c => 
-            c.name.toLowerCase().startsWith(gradeLevel.toLowerCase()) && 
-            c.name.trim().split(/\s+/).length > 2
-          )
-          setStreamOptions(allStreams.map(s => ({ 
-            id: s.id, 
-            name: s.name,
-            class_id: s.id 
-          })))
-        } else {
-          setStreamOptions([])
-        }
       })
       .catch((err) => {
         console.error('[v0] Unexpected error fetching learners:', err)
@@ -1828,56 +1807,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                   <tr key={result.learner.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                     <td className="border border-gray-500 p-2 text-left">{idx + 1}</td>
                     <td className="border border-gray-500 p-2 text-left font-medium">
-                      <div className="flex items-center justify-between gap-2">
-                        <span>{result.learner.name}</span>
-                        {isStreamedClass && (
-                          <Select 
-                            value="promote"
-                            onValueChange={async (streamId) => {
-                              if (streamId === 'promote') return
-                              
-                              try {
-                                const response = await fetch('/api/learners/promote', {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({
-                                    learnerId: result.learner.id,
-                                    newClassId: streamOptions.find(s => s.id === streamId)?.class_id,
-                                    newStreamId: streamId,
-                                    fromStream: currentClass?.name,
-                                    toStream: streamOptions.find(s => s.id === streamId)?.name
-                                  })
-                                })
-                                
-                                if (response.ok) {
-                                  const data = await response.json()
-                                  console.log('[v0] Promotion successful:', data)
-                                  window.location.reload()
-                                } else {
-                                  alert('Failed to promote student')
-                                }
-                              } catch (error) {
-                                console.error('[v0] Promotion error:', error)
-                                alert('Error promoting student')
-                              }
-                            }}
-                          >
-                            <SelectTrigger className="w-32 h-8 text-xs">
-                              <SelectValue placeholder="Promote" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="promote" disabled>Move to Stream...</SelectItem>
-                              {streamOptions
-                                .filter(s => s.id !== currentClass?.id)
-                                .map(stream => (
-                                  <SelectItem key={stream.id} value={stream.id}>
-                                    {stream.name.split(' ').slice(2).join(' ')}
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
-                        )}
-                      </div>
+                      {result.learner.name}
                     </td>
                     {subjects.map((subject) => {
                       const score = result.marks[subject.id]
