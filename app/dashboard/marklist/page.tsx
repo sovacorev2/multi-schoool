@@ -1606,29 +1606,6 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                           
                           console.log('[v0] History built for', Object.keys(termHistory).length, 'learners')
                         }
-                                const exam = exams.get(key)!
-                                exam.total += m.score || 0
-                              })
-                            
-                            // Sort by term order (1, 2, 3) then by exam type
-                            const examOrder: Record<string, number> = { 'Opener': 0, 'Mid-Term': 1, 'End-Term': 2 }
-                            const sorted = Array.from(exams.values())
-                              .sort((a, b) => {
-                                const termA = parseInt(a.term) || 0
-                                const termB = parseInt(b.term) || 0
-                                if (termA !== termB) return termA - termB
-                                return (examOrder[a.examType] || 999) - (examOrder[b.examType] || 999)
-                              })
-                            
-                            termHistory[lid] = sorted.map(e => ({
-                              term: e.term,
-                              exam_type: e.examType,
-                              total: e.total
-                            }))
-                          })
-                          
-                          console.log('[v0] History built for', Object.keys(termHistory).length, 'learners')
-                        }
                       } catch (historyFetchErr) {
                         console.error('[v0] ✗ History marks fetch error:', historyFetchErr)
                       }
