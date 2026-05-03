@@ -95,6 +95,21 @@ export function ReportStareheStyle({
 
   if (!isOpen || reports.length === 0) return null
   
+  console.log('[v0] ReportStareheStyle rendering:', {
+    schoolName: currentSchool?.name,
+    schoolLogoUrl: currentSchool?.logo_url,
+    reportsCount: reports.length,
+    className,
+    firstReportData: reports[0] ? {
+      name: reports[0].learner?.name,
+      overall_rank: reports[0].overall_rank,
+      rank: reports[0].rank,
+      total_in_grade: reports[0].total_in_grade,
+      hasOverallRankProperty: 'overall_rank' in reports[0],
+      hasTotal InGradeProperty: 'total_in_grade' in reports[0]
+    } : null
+  })
+  
   // A class is streamed if it has 3+ words (e.g., "Grade 7 EAST")
   // Single-word grades like "Grade 7" or "Grade 2" are NOT streamed
   const classWords = (className || '').trim().split(/\s+/)
