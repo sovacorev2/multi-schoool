@@ -1460,7 +1460,8 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                               }
                             })
                             
-                            const totalInGrade = learnerAverages.length
+                            // Total should be ALL learners in the grade, not just those with marks
+                            const totalInGrade = allGradeLearners.length
                             
                             // Update results with overall_rank and total_in_grade
                             updatedResults = results.map(r => ({
