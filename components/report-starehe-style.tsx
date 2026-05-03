@@ -396,6 +396,14 @@ export function ReportStareheStyle({
                         {currentSchool.tagline}
                       </div>
                     )}
+                    
+                    {/* School Contacts - only show if set */}
+                    {(currentSchool?.email || currentSchool?.phone) && (
+                      <div style={{ fontSize: '10px', color: '#555', marginTop: '6px', paddingTop: '6px', borderTop: '1px solid #ddd' }}>
+                        {currentSchool.email && <div>Email: {currentSchool.email}</div>}
+                        {currentSchool.phone && <div>Phone: {currentSchool.phone}</div>}
+                      </div>
+                    )}
                   </div>
 
                   {/* Report Title Box with Exam Type */}
