@@ -73,14 +73,21 @@ function getBaseClassName(className: string): string {
   return match ? match[1] : className
 }
 
-// Helper to get all unique base classes (including those with streams)
+// Helper to get all unique base classes (only the base names, not streams)
 function getBaseClasses(classes: Class[]): Class[] {
   const baseClassMap = new Map<string, Class>()
   
+  // First pass: collect actual base classes (those matching the base pattern exactly)
+  classes.forEach(cls => {
+    const isActualBaseClass = cls.name.match(/^(PP\d+|Grade\s*\d+|Form\s*\d+)$/i)
+    if (isActualBaseClass) {
+      baseClassMap.set(cls.name, cls)
+    }
+  })
+  
+  // Second pass: for base names that don't have actual base class, use first stream as reference
   classes.forEach(cls => {
     const baseName = getBaseClassName(cls.name)
-    // Keep the first occurrence of each base class
-    // This will be the actual base class if it exists, or the first stream of that base
     if (!baseClassMap.has(baseName)) {
       baseClassMap.set(baseName, cls)
     }
@@ -1016,10 +1023,11 @@ export default function AdminPortalPage() {
                         </SelectTrigger>
                         <SelectContent>
                           {getBaseClasses(classes).map(c => {
-                            const streamCount = classes.filter(cls => getBaseClassName(cls.name) === c.name).length
+                            const baseName = getBaseClassName(c.name)
+                            const streamCount = classes.filter(cls => getBaseClassName(cls.name) === baseName).length
                             return (
-                              <SelectItem key={c.id} value={c.name}>
-                                {c.name} {streamCount > 1 ? `(${streamCount} streams)` : '(no streams yet)'}
+                              <SelectItem key={c.id} value={baseName}>
+                                {baseName} {streamCount > 1 ? `(${streamCount} streams)` : '(no streams yet)'}
                               </SelectItem>
                             )
                           })}
