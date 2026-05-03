@@ -1452,20 +1452,33 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                             
                             if (marksError) throw marksError
                             
-                            console.log('[v0] Marks fetched:', allMarks?.length, 'First 5:', allMarks?.slice(0, 5))
+                            console.log('[v0] Marks fetched:', allMarks?.length, 'Type:', typeof allMarks, 'IsArray:', Array.isArray(allMarks), 'First 5:', allMarks?.slice(0, 5))
+                            
+                            if (!Array.isArray(allMarks)) {
+                              console.log('[v0] ✗ allMarks is not an array:', allMarks)
+                              throw new Error('allMarks is not an array')
+                            }
                             
                             // Calculate totals per learner
                             const learnerTotals: Record<string, number> = {}
-                            (allMarks || []).forEach(m => {
-                              if (!learnerTotals[m.learner_id]) learnerTotals[m.learner_id] = 0
-                              if (m.score !== null) learnerTotals[m.learner_id] += m.score
-                            })
+                            
+                            for (let i = 0; i < allMarks.length; i++) {
+                              const m = allMarks[i]
+                              try {
+                                if (m && m.learner_id && m.score !== undefined) {
+                                  if (!learnerTotals[m.learner_id]) learnerTotals[m.learner_id] = 0
+                                  if (m.score !== null) learnerTotals[m.learner_id] += Number(m.score) || 0
+                                }
+                              } catch (markErr) {
+                                console.error('[v0] Error processing mark at index', i, ':', m, 'Error:', markErr)
+                              }
+                            }
                             
                             console.log('[v0] Learner totals calculated:', Object.keys(learnerTotals).length, 'Sample:', Object.entries(learnerTotals).slice(0, 5))
                             
                             // Create ranked list
                             const rankedLearners = Object.entries(learnerTotals)
-                              .sort(([, a], [, b]) => b - a)
+                              .sort(([, a], [, b]) => (b as any) - (a as any))
                               .map(([id, total], index) => ({ id, total, rank: index + 1 }))
                             
                             console.log('[v0] Top 5 ranked learners:', rankedLearners.slice(0, 5))
@@ -1534,28 +1547,62 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                         
                         if (historyError) throw historyError
                         
-                        console.log('[v0] History marks fetched:', historyMarks?.length)
+                        console.log('[v0] History marks fetched:', historyMarks?.length, 'Type:', typeof historyMarks, 'IsArray:', Array.isArray(historyMarks))
                         
-                        if (historyMarks && historyMarks.length > 0) {
+                        if (!Array.isArray(historyMarks)) {
+                          console.log('[v0] ✗ historyMarks is not an array:', historyMarks)
+                          throw new Error('historyMarks is not an array')
+                        }
+                        
+                        if (historyMarks.length > 0) {
                           // Build history for each learner
                           finalResults.forEach(result => {
                             const lid = result.learner.id
                             termHistory[lid] = []
                             
-                            // Collect all unique exams for this learner
-                            const exams = new Map<string, {term: string, examType: string, total: number}>()
-                            
-                            (historyMarks || [])
-                              .filter(m => m.learner_id === lid)
-                              .forEach(m => {
-                                const key = `${m.term}|${m.exam_type_id}`
-                                if (!exams.has(key)) {
-                                  exams.set(key, {
-                                    term: m.term,
-                                    examType: m.exam_types?.name || 'Unknown',
-                                    total: 0
-                                  })
-                                }
+                            try {
+                              // Collect all unique exams for this learner
+                              const exams = new Map<string, {term: string, examType: string, total: number}>()
+                              
+                              historyMarks
+                                .filter(m => m && m.learner_id === lid)
+                                .forEach(m => {
+                                  if (!m || !m.term || !m.exam_type_id) return
+                                  const key = `${m.term}|${m.exam_type_id}`
+                                  if (!exams.has(key)) {
+                                    exams.set(key, {
+                                      term: m.term,
+                                      examType: m.exam_types?.name || 'Unknown',
+                                      total: 0
+                                    })
+                                  }
+                                  const exam = exams.get(key)!
+                                  exam.total += Number(m.score) || 0
+                                })
+                              
+                              // Sort by term order (1, 2, 3) then by exam type
+                              const examOrder: Record<string, number> = { 'Opener': 0, 'Mid-Term': 1, 'End-Term': 2 }
+                              const sorted = Array.from(exams.values())
+                                .sort((a, b) => {
+                                  const termA = parseInt(a.term) || 0
+                                  const termB = parseInt(b.term) || 0
+                                  if (termA !== termB) return termA - termB
+                                  return (examOrder[a.examType] || 999) - (examOrder[b.examType] || 999)
+                                })
+                              
+                              termHistory[lid] = sorted.map(e => ({
+                                term: e.term,
+                                exam_type: e.examType,
+                                total: e.total
+                              }))
+                            } catch (historyErr) {
+                              console.error('[v0] Error building history for learner', lid, ':', historyErr)
+                              termHistory[lid] = []
+                            }
+                          })
+                          
+                          console.log('[v0] History built for', Object.keys(termHistory).length, 'learners')
+                        }
                                 const exam = exams.get(key)!
                                 exam.total += m.score || 0
                               })
