@@ -67,6 +67,31 @@ function sortClasses(classes: Class[]): Class[] {
   })
 }
 
+// Helper to extract base class name (e.g., "Grade 7" from "Grade 7 EAST")
+function getBaseClassName(className: string): string {
+  const match = className.match(/^(PP\d+|Grade\s*\d+|Form\s*\d+)(?:\s+(.+))?$/i)
+  return match ? match[1] : className
+}
+
+// Helper to get only base classes (classes without streams)
+function getBaseClasses(classes: Class[]): Class[] {
+  const baseClassNames = new Set<string>()
+  const baseClasses: Class[] = []
+  
+  classes.forEach(cls => {
+    const baseName = getBaseClassName(cls.name)
+    // Check if this class has a stream (has something after the base class name)
+    const hasStream = !cls.name.match(/^(PP\d+|Grade\s*\d+|Form\s*\d+)$/i)
+    
+    if (!hasStream && !baseClassNames.has(baseName)) {
+      baseClassNames.add(baseName)
+      baseClasses.push(cls)
+    }
+  })
+  
+  return sortClasses(baseClasses)
+}
+
 interface School {
   id: string
   name: string
@@ -974,7 +999,7 @@ export default function AdminPortalPage() {
                           <SelectValue placeholder="Select base class" />
                         </SelectTrigger>
                         <SelectContent>
-                          {sortClasses(classes).map(c => (
+                          {getBaseClasses(classes).map(c => (
                             <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
                           ))}
                         </SelectContent>
