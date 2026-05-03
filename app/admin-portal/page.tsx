@@ -26,7 +26,7 @@ import {
 import { 
   Shield, Eye, EyeOff, Settings, BookOpen, Calendar, 
   Clock, FileText, Plus, Trash2, Save, ArrowLeft, Lock, Unlock,
-  GraduationCap, ClipboardList, History, Edit, Users
+  GraduationCap, ClipboardList, History, Edit, Users, X
 } from 'lucide-react'
 import type { Class, ExamType } from '@/lib/types'
 
@@ -150,6 +150,8 @@ export default function AdminPortalPage() {
   // Stream management
   const [streamBaseClass, setStreamBaseClass] = useState('')
   const [newStreamName, setNewStreamName] = useState('')
+  const [streamError, setStreamError] = useState('')
+  const [existingStreams, setExistingStreams] = useState<Class[]>([])
 
   // Deadline form
   const [deadlineClass, setDeadlineClass] = useState('')
@@ -481,11 +483,17 @@ export default function AdminPortalPage() {
   const addStreamClass = async () => {
     if (!streamBaseClass || !newStreamName.trim() || !currentSchool) return
     
+    // Check if already at 4 streams limit
+    if (existingStreams.length >= 4) {
+      setStreamError(`Cannot add more streams to ${streamBaseClass}. Maximum 4 streams per class.`)
+      return
+    }
+    
     const streamClassName = `${streamBaseClass} ${newStreamName.trim()}`
     
     // Check if class already exists
     if (classes.some(c => c.name === streamClassName)) {
-      alert('This stream class already exists!')
+      setStreamError(`Stream "${streamClassName}" already exists!`)
       return
     }
     
@@ -514,9 +522,18 @@ export default function AdminPortalPage() {
       }))
       await supabase.from('sessions').insert(sessionsToInsert)
       
-      setClasses([...classes, data])
+      const updatedClasses = [...classes, data]
+      setClasses(updatedClasses)
+      
+      // Update existing streams list
+      const newExistingStreams = updatedClasses.filter(c => getBaseClassName(c.name) === streamBaseClass)
+      setExistingStreams(newExistingStreams)
+      
       setStreamBaseClass('')
       setNewStreamName('')
+      setStreamError('')
+    } else if (error) {
+      setStreamError(`Failed to create stream: ${error.message}`)
     }
   }
 
@@ -991,31 +1008,86 @@ export default function AdminPortalPage() {
                     <h3 className="font-medium text-blue-800 text-sm">Add Stream to Class</h3>
                     <p className="text-xs text-blue-600">Create stream variants like "Grade 5 East", "Grade 5 West"</p>
                     <div className="flex gap-2">
-                      <Select value={streamBaseClass} onValueChange={setStreamBaseClass}>
+                      <Select value={streamBaseClass} onValueChange={(value) => {
+                        setStreamBaseClass(value)
+                        setStreamError('')
+                        setNewStreamName('')
+                        // Get all streams for this base class
+                        const baseStreams = classes.filter(c => getBaseClassName(c.name) === value)
+                        setExistingStreams(baseStreams)
+                      }}>
                         <SelectTrigger className="flex-1">
                           <SelectValue placeholder="Select base class" />
                         </SelectTrigger>
                         <SelectContent>
-                          {getBaseClasses(classes).map(c => (
-                            <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
-                          ))}
+                          {getBaseClasses(classes).map(c => {
+                            const streamCount = classes.filter(cls => getBaseClassName(cls.name) === c.name).length
+                            return (
+                              <SelectItem key={c.id} value={c.name}>
+                                {c.name} {streamCount > 1 ? `(${streamCount} streams)` : '(no streams yet)'}
+                              </SelectItem>
+                            )
+                          })}
                         </SelectContent>
                       </Select>
                       <Input
                         placeholder="Stream name (e.g., East, A)"
                         value={newStreamName}
-                        onChange={(e) => setNewStreamName(e.target.value)}
+                        onChange={(e) => {
+                          setNewStreamName(e.target.value)
+                          setStreamError('')
+                        }}
                         className="flex-1"
                       />
                       <Button 
                         onClick={addStreamClass} 
-                        disabled={!streamBaseClass || !newStreamName.trim()}
+                        disabled={!streamBaseClass || !newStreamName.trim() || existingStreams.length >= 4}
                         variant="secondary"
                       >
                         <Plus className="w-4 h-4 mr-2" />
                         Add Stream
                       </Button>
                     </div>
+                    
+                    {/* Show existing streams for selected base class */}
+                    {streamBaseClass && existingStreams.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-gray-700">Existing streams for {streamBaseClass}:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {existingStreams.map(stream => (
+                            <div key={stream.id} className="flex items-center gap-2 px-3 py-1 bg-white border border-gray-300 rounded-full text-sm">
+                              <span>{stream.name}</span>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={async () => {
+                                  if (confirm(`Delete stream "${stream.name}"? This will remove the stream and all associated data.`)) {
+                                    const supabase = createClient()
+                                    await supabase.from('classes').delete().eq('id', stream.id)
+                                    setClasses(classes.filter(c => c.id !== stream.id))
+                                    setExistingStreams(existingStreams.filter(s => s.id !== stream.id))
+                                  }
+                                }}
+                                className="h-5 w-5 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <X className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                        {existingStreams.length >= 4 && (
+                          <div className="text-xs text-orange-600 bg-orange-50 p-2 rounded border border-orange-200">
+                            ⚠️ Maximum 4 streams per class. Cannot add more streams to {streamBaseClass}.
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {streamError && (
+                      <div className="text-red-600 text-sm p-3 bg-red-50 rounded border border-red-200">
+                        {streamError}
+                      </div>
+                    )}
                   </div>
 
                   {/* Class list */}
