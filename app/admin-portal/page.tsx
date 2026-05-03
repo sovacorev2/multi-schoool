@@ -73,19 +73,22 @@ function getBaseClassName(className: string): string {
   return match ? match[1] : className
 }
 
-// Helper to get all unique base classes (shows base class once even if it has streams)
+// Helper to get only the actual base classes (classes without streams)
 function getBaseClasses(classes: Class[]): Class[] {
-  const baseClassMap = new Map<string, Class>()
+  const baseClasses: Class[] = []
+  const seenBaseNames = new Set<string>()
   
   classes.forEach(cls => {
-    const baseName = getBaseClassName(cls.name)
-    // Only add the base class once - keep the first occurrence (the actual base class without stream)
-    if (!baseClassMap.has(baseName)) {
-      baseClassMap.set(baseName, cls)
+    // Check if this class is a base class (no stream)
+    // A base class matches exactly: "PP1", "Grade 7", "Form 1" etc. (no extra words after)
+    const isBaseClass = cls.name.match(/^(PP\d+|Grade\s*\d+|Form\s*\d+)$/i)
+    
+    if (isBaseClass && !seenBaseNames.has(cls.name)) {
+      seenBaseNames.add(cls.name)
+      baseClasses.push(cls)
     }
   })
   
-  const baseClasses = Array.from(baseClassMap.values())
   return sortClasses(baseClasses)
 }
 
