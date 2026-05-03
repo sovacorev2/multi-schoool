@@ -1558,7 +1558,6 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                   
                   setReportModalOpen(true)
                 }}
-                }} 
                 disabled={results.length === 0 || !selectedSessionId || !currentClass?.id} 
                 className="bg-green-600 text-white hover:bg-green-700 h-9 text-xs sm:text-sm"
                 id="bulk-print-btn"
@@ -1919,7 +1918,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                         `📚 *Class:* ${currentClass?.name || ''}\n` +
                                         `📅 *Term:* ${selectedSession?.term}, ${selectedSession?.year}\n\n` +
                                         `📖 *SUBJECT PERFORMANCE*\n` +
-                                        `━━━━━��━━━━━━━━━━\n` +
+                                        `━━━━━��━━━━━━━━���━\n` +
                                         `${subjectDetails}\n\n` +
                                         `📈 *OVERALL SUMMARY*\n` +
                                         `━━━━━━━━━━━━━���━━\n` +
