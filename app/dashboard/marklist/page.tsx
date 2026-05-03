@@ -1585,7 +1585,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                             
                             try {
                               // Collect all unique exams for this learner
-                              const exams = new Map<string, {term: string, examType: string, total: number}>()
+                              const exams = new Map<string, {term: string, examType: string, total: number, count: number}>()
                               
                               historyMarks
                                 .filter(m => m && m.learner_id === lid)
@@ -1596,11 +1596,15 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                     exams.set(key, {
                                       term: m.term,
                                       examType: m.exam_types?.name || 'Unknown',
-                                      total: 0
+                                      total: 0,
+                                      count: 0
                                     })
                                   }
                                   const exam = exams.get(key)!
-                                  exam.total += Number(m.score) || 0
+                                  if (m.score !== null) {
+                                    exam.total += Number(m.score) || 0
+                                    exam.count += 1
+                                  }
                                 })
                               
                               // Sort by term order (1, 2, 3) then by exam type
@@ -1616,7 +1620,9 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                               termHistory[lid] = sorted.map(e => ({
                                 term: e.term,
                                 exam_type: e.examType,
-                                total: e.total
+                                total: e.total,
+                                count: e.count,
+                                average: e.count > 0 ? e.total / e.count : 0
                               }))
                             } catch (historyErr) {
                               console.error('[v0] Error building history for learner', lid, ':', historyErr)

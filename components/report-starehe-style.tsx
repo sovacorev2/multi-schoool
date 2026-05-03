@@ -578,7 +578,7 @@ export function ReportStareheStyle({
                               const examLabel = `${examPrefix} T${termStr}`
                               allExams.push({
                                 label: examLabel,
-                                average: h.average || 0,
+                                average: h.average || h.total || 0,
                                 isHistory: true
                               })
                             })
