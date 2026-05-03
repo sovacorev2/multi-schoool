@@ -483,12 +483,6 @@ export default function AdminPortalPage() {
   const addStreamClass = async () => {
     if (!streamBaseClass || !newStreamName.trim() || !currentSchool) return
     
-    // Check if already at 4 streams limit
-    if (existingStreams.length >= 4) {
-      setStreamError(`Cannot add more streams to ${streamBaseClass}. Maximum 4 streams per class.`)
-      return
-    }
-    
     const streamClassName = `${streamBaseClass} ${newStreamName.trim()}`
     
     // Check if class already exists
@@ -1041,7 +1035,7 @@ export default function AdminPortalPage() {
                       />
                       <Button 
                         onClick={addStreamClass} 
-                        disabled={!streamBaseClass || !newStreamName.trim() || existingStreams.length >= 4}
+                        disabled={!streamBaseClass || !newStreamName.trim()}
                         variant="secondary"
                       >
                         <Plus className="w-4 h-4 mr-2" />
@@ -1075,11 +1069,6 @@ export default function AdminPortalPage() {
                             </div>
                           ))}
                         </div>
-                        {existingStreams.length >= 4 && (
-                          <div className="text-xs text-orange-600 bg-orange-50 p-2 rounded border border-orange-200">
-                            ⚠️ Maximum 4 streams per class. Cannot add more streams to {streamBaseClass}.
-                          </div>
-                        )}
                       </div>
                     )}
                     
