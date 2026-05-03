@@ -647,6 +647,43 @@ export function ReportStareheStyle({
                     </div>
                   </div>
 
+                  {/* Grading Legend */}
+                  <div style={{ marginBottom: '8px', padding: '6px', border: '1px solid #999', backgroundColor: '#f9f9f9' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '4px', fontSize: '9px' }}>GRADING SCALE & LEGEND:</div>
+                    {(() => {
+                      // Determine if JSS (Grades 7-9) or other
+                      const gradeMatch = className?.match(/Grade\s*(\d+)/i)
+                      const gradeLevel = gradeMatch ? parseInt(gradeMatch[1]) : 0
+                      const isJSS = gradeLevel >= 7 && gradeLevel <= 9
+                      
+                      return (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '8px' }}>
+                          <div>
+                            <strong>Grade Levels:</strong>
+                            <div>BE = Below Expectations</div>
+                            <div>AE = Approaching Expectations</div>
+                            <div>ME = Meeting Expectations</div>
+                            <div>EE = Exceeding Expectations</div>
+                          </div>
+                          <div>
+                            <strong>Points Scale:</strong>
+                            {isJSS ? (
+                              <div>
+                                Grade {gradeLevel} (JSS)<br/>
+                                Points: 1 - 8
+                              </div>
+                            ) : (
+                              <div>
+                                Grade {gradeLevel}<br/>
+                                Points: 1 - 4
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })()}
+                  </div>
+
                   {/* Remarks Sections */}
                   <div style={{ marginBottom: '6px' }}>
                     {/* Class Teacher Remarks */}
