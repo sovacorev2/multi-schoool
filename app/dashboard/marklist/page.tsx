@@ -1380,20 +1380,28 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
               <Button 
                 onClick={async () => {
                   console.log('[v0] === PRINT REPORTS STARTED ===')
-                  console.log('[v0] Class:', currentClass?.name, 'Session:', selectedSession?.term, selectedSession?.year)
+                  console.log('[v0] School:', currentSchool?.name, 'ID:', currentSchool?.id)
+                  console.log('[v0] Class:', currentClass?.name, 'ID:', currentClass?.id)
+                  console.log('[v0] Session:', selectedSession?.term, selectedSession?.year, 'Exam Type ID:', selectedSession?.exam_type_id)
+                  console.log('[v0] Current results count:', results.length)
+                  console.log('[v0] School Logo URL:', currentSchool?.logo_url)
                   
                   let finalResults = [...results]
                   const className = currentClass?.name || ''
                   const classWords = className.trim().split(/\s+/)
                   const isStreamedClass = classWords.length > 2
                   
+                  console.log('[v0] Class analysis - Words:', classWords, 'IsStreamed:', isStreamedClass)
+                  
                   // STEP 1: For streamed classes, calculate overall rank across all streams
                   if (isStreamedClass && selectedSessionId && currentSchool) {
-                    console.log('[v0] This is a STREAMED class:', className)
+                    console.log('[v0] ✓ Processing STREAMED class')
                     
                     try {
                       const supabase = createClient()
                       const gradeLevel = classWords.slice(0, -1).join(' ') // e.g., "Grade 7"
+                      
+                      console.log('[v0] Grade level extracted:', gradeLevel)
                       
                       // Get all stream classes for this grade
                       const { data: allStreamClasses, error: streamError } = await supabase
@@ -1404,24 +1412,32 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                       
                       if (streamError) throw streamError
                       
+                      console.log('[v0] All matching classes for grade:', allStreamClasses?.map(c => ({ name: c.name, id: c.id })))
+                      
                       // Filter to only actual streams (3+ words)
                       const streamClassIds = (allStreamClasses || [])
-                        .filter(c => c.name.trim().split(/\s+/).length > 2)
+                        .filter(c => {
+                          const words = c.name.trim().split(/\s+/)
+                          const isStream = words.length > 2
+                          console.log('[v0]   - Class:', c.name, 'Words:', words.length, 'IsStream:', isStream)
+                          return isStream
+                        })
                         .map(c => c.id)
                       
-                      console.log('[v0] Grade level:', gradeLevel, 'Stream count:', streamClassIds.length)
+                      console.log('[v0] Stream class IDs to use:', streamClassIds)
                       
                       if (streamClassIds.length > 0) {
                         // Get ALL learners across all streams
                         const { data: allLearners, error: learnersError } = await supabase
                           .from('learners')
-                          .select('id')
+                          .select('id, name, class_id')
                           .in('class_id', streamClassIds)
                         
                         if (learnersError) throw learnersError
                         
+                        console.log('[v0] All learners in streams:', allLearners?.length, 'Sample:', allLearners?.slice(0, 3).map(l => ({ name: l.name, class_id: l.class_id })))
+                        
                         const allLearnerIds = (allLearners || []).map(l => l.id)
-                        console.log('[v0] Total learners in grade:', allLearnerIds.length)
                         
                         if (allLearnerIds.length > 0) {
                           // Get marks for all learners for this exam
@@ -1435,6 +1451,8 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                           
                           if (marksError) throw marksError
                           
+                          console.log('[v0] Marks fetched:', allMarks?.length, 'First 5:', allMarks?.slice(0, 5))
+                          
                           // Calculate totals per learner
                           const learnerTotals: Record<string, number> = {}
                           (allMarks || []).forEach(m => {
@@ -1442,44 +1460,53 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                             if (m.score !== null) learnerTotals[m.learner_id] += m.score
                           })
                           
+                          console.log('[v0] Learner totals calculated:', Object.keys(learnerTotals).length, 'Sample:', Object.entries(learnerTotals).slice(0, 5))
+                          
                           // Create ranked list
                           const rankedLearners = Object.entries(learnerTotals)
                             .sort(([, a], [, b]) => b - a)
                             .map(([id, total], index) => ({ id, total, rank: index + 1 }))
                           
-                          console.log('[v0] Ranked learners:', rankedLearners.length, 'Total in grade:', allLearnerIds.length)
+                          console.log('[v0] Top 5 ranked learners:', rankedLearners.slice(0, 5))
                           
                           // Update results with overall rank and total
-                          finalResults = results.map(r => {
+                          finalResults = results.map((r, idx) => {
                             const ranked = rankedLearners.find(rl => rl.id === r.learner.id)
-                            return {
+                            const updated = {
                               ...r,
                               overall_rank: ranked?.rank || r.rank,
                               total_in_grade: allLearnerIds.length
                             }
+                            if (idx < 3) {
+                              console.log('[v0] Result', idx, ':', r.learner.name, '-> StreamRank:', r.rank, 'OverallRank:', updated.overall_rank, 'TotalInGrade:', updated.total_in_grade, 'Found:', !!ranked)
+                            }
+                            return updated
                           })
-                          
-                          console.log('[v0] Sample result:', {
-                            name: finalResults[0]?.learner.name,
-                            streamRank: finalResults[0]?.rank,
-                            overallRank: finalResults[0]?.overall_rank,
-                            totalInGrade: finalResults[0]?.total_in_grade
-                          })
+                        } else {
+                          console.log('[v0] ⚠ No learners found in streams')
                         }
+                      } else {
+                        console.log('[v0] ⚠ No stream classes found (all classes have ≤2 words)')
                       }
                     } catch (err) {
-                      console.error('[v0] Overall rank error:', err)
+                      console.error('[v0] ✗ Overall rank error:', err)
                     }
                   } else {
+                    console.log('[v0] ✓ Processing NON-STREAMED class')
                     // For non-streamed classes, also set overall_rank and total_in_grade
-                    // (these will use the local class ranking)
                     finalResults = results.map(r => ({
                       ...r,
                       overall_rank: r.overall_rank || r.rank,
                       total_in_grade: r.total_in_grade || results.length
                     }))
-                    console.log('[v0] Non-streamed class, using local ranking for all students')
                   }
+                  
+                  console.log('[v0] Final results - Count:', finalResults.length, 'Sample:', finalResults.slice(0, 2).map(r => ({
+                    name: r.learner.name,
+                    streamRank: r.rank,
+                    overallRank: r.overall_rank,
+                    totalInGrade: r.total_in_grade
+                  })))
                   
                   // STEP 2: Fetch term history for trend graph
                   const termHistory: Record<string, any[]> = {}
@@ -1502,6 +1529,8 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                         `)
                         .in('learner_id', learnerIds)
                         .eq('year', selectedSession?.year)
+                      
+                      console.log('[v0] History marks fetched:', historyMarks?.length)
                       
                       // Group marks by learner and term
                       const marksByLearnerAndTerm: Record<string, Record<string, number>> = {}
@@ -1555,16 +1584,14 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                       })
                       
                       console.log('[v0] History built for', Object.keys(termHistory).length, 'learners')
-                      console.log('[v0] Sample history:', termHistory[learnerIds[0]]?.slice(0, 3))
                     }
                   } catch (err) {
                     console.error('[v0] History fetch error:', err)
                   }
                   
-                  console.log('[v0] === PRINT REPORTS COMPLETE ===')
+                  console.log('[v0] === SETTING REPORT DATA AND OPENING MODAL ===')
                   setReportModalData(finalResults)
                   setTermHistory(termHistory)
-                  
                   setReportModalOpen(true)
                 }}
                 disabled={results.length === 0 || !selectedSessionId || !currentClass?.id} 
