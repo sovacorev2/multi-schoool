@@ -1379,244 +1379,185 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
             {currentSchool?.feature_report_cards && (
               <Button 
                 onClick={async () => {
-                  // First, calculate overall_rank for streamed classes
-                  let updatedResults = [...results]
+                  console.log('[v0] === PRINT REPORTS STARTED ===')
+                  console.log('[v0] Class:', currentClass?.name, 'Session:', selectedSession?.term, selectedSession?.year)
+                  
+                  let finalResults = [...results]
                   const className = currentClass?.name || ''
-                  // A class is streamed if it has 3+ words (e.g., "Grade 7 EAST")
-                  // Single-word grades like "Grade 7" or "Grade 2" are NOT streamed
                   const classWords = className.trim().split(/\s+/)
                   const isStreamedClass = classWords.length > 2
                   
-                  if (isStreamedClass && selectedSessionId) {
+                  // STEP 1: For streamed classes, calculate overall rank across all streams
+                  if (isStreamedClass && selectedSessionId && currentSchool) {
+                    console.log('[v0] This is a STREAMED class:', className)
+                    
                     try {
                       const supabase = createClient()
-                      // Grade level is everything except the last word (the stream identifier)
-                      const gradeLevel = classWords.slice(0, -1).join(' ') // e.g., "Grade 7" from "Grade 7 EAST"
+                      const gradeLevel = classWords.slice(0, -1).join(' ') // e.g., "Grade 7"
                       
-                      console.log('[v0] STREAMED CLASS DETECTED:', { className, gradeLevel, isStreamedClass })
-                      
-                      // Find all stream classes in the same grade (must also have 3+ words)
-                      const { data: streamClasses } = await supabase
+                      // Get all stream classes for this grade
+                      const { data: allStreamClasses, error: streamError } = await supabase
                         .from('classes')
                         .select('id, name')
-                        .eq('school_id', currentSchool?.id)
+                        .eq('school_id', currentSchool.id)
                         .ilike('name', `${gradeLevel} %`)
                       
-                      console.log('[v0] ALL CLASSES matching grade:', streamClasses?.map(c => c.name))
+                      if (streamError) throw streamError
                       
-                      // Filter to only actual streams (3+ words to exclude the parent grade class if any)
-                      const actualStreams = (streamClasses || []).filter(c => c.name.trim().split(/\s+/).length > 2)
+                      // Filter to only actual streams (3+ words)
+                      const streamClassIds = (allStreamClasses || [])
+                        .filter(c => c.name.trim().split(/\s+/).length > 2)
+                        .map(c => c.id)
                       
-                      console.log('[v0] ACTUAL STREAMS (3+ words):', actualStreams.map(c => c.name))
+                      console.log('[v0] Grade level:', gradeLevel, 'Stream count:', streamClassIds.length)
                       
-                      if (actualStreams.length >= 1) {
-                        const streamClassIds = actualStreams.map(c => c.id)
-                        
-                        // Get all learners in these stream classes
-                        const { data: allGradeLearners } = await supabase
+                      if (streamClassIds.length > 0) {
+                        // Get ALL learners across all streams
+                        const { data: allLearners, error: learnersError } = await supabase
                           .from('learners')
-                          .select('id, class_id')
+                          .select('id')
                           .in('class_id', streamClassIds)
                         
-                        console.log('[v0] TOTAL LEARNERS IN GRADE:', allGradeLearners?.length, 'from', streamClassIds.length, 'streams')
+                        if (learnersError) throw learnersError
                         
-                        if (allGradeLearners && allGradeLearners.length > 0) {
-                          const learnerIds = allGradeLearners.map(l => l.id)
-                          
-                          // Fetch all subject marks for these learners for the same year/term/exam_type
-                          const { data: allMarks } = await supabase
+                        const allLearnerIds = (allLearners || []).map(l => l.id)
+                        console.log('[v0] Total learners in grade:', allLearnerIds.length)
+                        
+                        if (allLearnerIds.length > 0) {
+                          // Get marks for all learners for this exam
+                          const { data: allMarks, error: marksError } = await supabase
                             .from('marks')
-                            .select('learner_id, score, subject_id')
-                            .in('learner_id', learnerIds)
+                            .select('learner_id, score')
+                            .in('learner_id', allLearnerIds)
                             .eq('year', selectedSession?.year)
                             .eq('term', selectedSession?.term)
                             .eq('exam_type_id', selectedSession?.exam_type_id)
                           
-                          console.log('[v0] MARKS FOUND:', allMarks?.length, 'for', learnerIds.length, 'learners')
+                          if (marksError) throw marksError
                           
-                          if (allMarks && allMarks.length > 0) {
-                            // Calculate average per learner from their subject scores
-                            const learnerScores: Record<string, { total: number; count: number }> = {}
-                            
-                            allMarks.forEach(m => {
-                              if (!learnerScores[m.learner_id]) {
-                                learnerScores[m.learner_id] = { total: 0, count: 0 }
-                              }
-                              if (m.score !== null && m.score !== undefined) {
-                                learnerScores[m.learner_id].total += Number(m.score)
-                                learnerScores[m.learner_id].count += 1
-                              }
-                            })
-                            
-                            // Build sorted list of learner averages
-                            const learnerAverages = Object.entries(learnerScores)
-                              .filter(([_, data]) => data.count > 0)
-                              .map(([learner_id, data]) => ({
-                                learner_id,
-                                average: data.total / data.count,
-                                total: data.total,
-                              }))
-                              .sort((a, b) => b.total - a.total)
-                            
-                            // Assign overall ranks (handling ties)
-                            const overallRanks: Record<string, number> = {}
-                            learnerAverages.forEach((la, idx) => {
-                              if (idx === 0) {
-                                overallRanks[la.learner_id] = 1
-                              } else if (la.total === learnerAverages[idx - 1].total) {
-                                overallRanks[la.learner_id] = overallRanks[learnerAverages[idx - 1].learner_id]
-                              } else {
-                                overallRanks[la.learner_id] = idx + 1
-                              }
-                            })
-                            
-                            // Total should be ALL learners in the grade, not just those with marks
-                            const totalInGrade = allGradeLearners.length
-                            
-                            console.log('[v0] SETTING TOTALS:', { streamCount: learnerAverages.length, totalInGrade, sampleOverallRanks: Object.entries(overallRanks).slice(0, 3) })
-                            
-                            // Update results with overall_rank and total_in_grade
-                            updatedResults = results.map(r => ({
+                          // Calculate totals per learner
+                          const learnerTotals: Record<string, number> = {}
+                          (allMarks || []).forEach(m => {
+                            if (!learnerTotals[m.learner_id]) learnerTotals[m.learner_id] = 0
+                            if (m.score !== null) learnerTotals[m.learner_id] += m.score
+                          })
+                          
+                          // Create ranked list
+                          const rankedLearners = Object.entries(learnerTotals)
+                            .sort(([, a], [, b]) => b - a)
+                            .map(([id, total], index) => ({ id, total, rank: index + 1 }))
+                          
+                          console.log('[v0] Ranked learners:', rankedLearners.length, 'Total in grade:', allLearnerIds.length)
+                          
+                          // Update results with overall rank and total
+                          finalResults = results.map(r => {
+                            const ranked = rankedLearners.find(rl => rl.id === r.learner.id)
+                            return {
                               ...r,
-                              overall_rank: overallRanks[r.learner.id] || r.rank,
-                              total_in_grade: totalInGrade
-                            }))
-                            
-                            console.log('[v0] FIRST 3 UPDATED RESULTS:', updatedResults.slice(0, 3).map(r => ({ name: r.learner.name, rank: r.rank, overall_rank: r.overall_rank, total_in_grade: r.total_in_grade })))
-                          }
+                              overall_rank: ranked?.rank || r.rank,
+                              total_in_grade: allLearnerIds.length
+                            }
+                          })
+                          
+                          console.log('[v0] Sample result:', {
+                            name: finalResults[0]?.learner.name,
+                            streamRank: finalResults[0]?.rank,
+                            overallRank: finalResults[0]?.overall_rank,
+                            totalInGrade: finalResults[0]?.total_in_grade
+                          })
                         }
                       }
                     } catch (err) {
+                      console.error('[v0] Overall rank error:', err)
                     }
                   }
                   
-                  // Now fetch term history for trend graphs
+                  // STEP 2: Fetch term history for trend graph
+                  const termHistory: Record<string, any[]> = {}
+                  
                   try {
                     const supabase = createClient()
-                    const history: Record<string, any[]> = {}
+                    const learnerIds = finalResults.map(r => r.learner.id)
                     
-                    // Build history for each learner including current session
-                    updatedResults.forEach(result => {
-                      const learnerId = result.learner.id
-                      history[learnerId] = [] // Start fresh for this learner
-                      
-                      // Add current exam data
-                      if (result.total !== null && result.total !== undefined) {
-                        history[learnerId].push({
-                          term: selectedSession?.term || 0,
-                          year: selectedSession?.year || new Date().getFullYear(),
-                          total: result.total,
-                          average: result.average || 0,
-                          rank: result.rank || 0
-                        })
-                      }
-                    })
-                    
-                    // Fetch historical marks data only if we have learner IDs
-                    const learnerIds = updatedResults.map(r => r.learner.id).filter(Boolean)
-                    if (learnerIds.length > 0 && selectedSession) {
-                      // Get ALL subject marks for these learners across all exams
-                      const { data: historicalMarks } = await supabase
+                    if (learnerIds.length > 0) {
+                      // Get ALL marks across all terms and exams for these learners
+                      const { data: historyMarks } = await supabase
                         .from('marks')
                         .select(`
                           learner_id,
                           score,
-                          subject_id,
                           year,
                           term,
                           exam_type_id,
                           exam_types(name)
                         `)
                         .in('learner_id', learnerIds)
+                        .eq('year', selectedSession?.year)
                       
-                      if (historicalMarks && historicalMarks.length > 0) {
-                        // Group marks by learner, then by exam (year + term + exam_type)
-                        const learnerExams: Record<string, Record<string, { total: number; count: number; year: number; term: number; exam_type: string }>> = {}
+                      // Group marks by learner and term
+                      const marksByLearnerAndTerm: Record<string, Record<string, number>> = {}
+                      
+                      (historyMarks || []).forEach(m => {
+                        const key = `${m.learner_id}|${m.year}|${m.term}|${m.exam_type_id}`
+                        if (!marksByLearnerAndTerm[key]) {
+                          marksByLearnerAndTerm[key] = {}
+                        }
+                        marksByLearnerAndTerm[key][m.learner_id] = (marksByLearnerAndTerm[key][m.learner_id] || 0) + (m.score || 0)
+                      })
+                      
+                      // Build history for each learner
+                      finalResults.forEach(result => {
+                        const lid = result.learner.id
+                        termHistory[lid] = []
                         
-                        historicalMarks.forEach((m: any) => {
-                          // Skip current exam ONLY (we add it separately in the report)
-                          // Keep all other exams (different term, year, or exam_type)
-                          if (m.year === selectedSession.year && 
-                              m.term === selectedSession.term && 
-                              m.exam_type_id === selectedSession.exam_type_id) {
-                            return // Skip current exam
-                          }
-                          
-                          const learnerId = m.learner_id
-                          const examKey = `${m.year}-T${m.term}-${m.exam_type_id}`
-                          
-                          if (!learnerExams[learnerId]) {
-                            learnerExams[learnerId] = {}
-                          }
-                          if (!learnerExams[learnerId][examKey]) {
-                            learnerExams[learnerId][examKey] = {
-                              total: 0,
-                              count: 0,
-                              year: m.year,
-                              term: m.term,
-                              exam_type: m.exam_types?.name || `Exam T${m.term}Y${m.year}`
-                            }
-                          }
-                          if (m.score !== null && m.score !== undefined) {
-                            learnerExams[learnerId][examKey].total += Number(m.score)
-                            learnerExams[learnerId][examKey].count += 1
-                          }
-                        })
+                        // Collect all unique exams for this learner
+                        const exams = new Map<string, {term: string, examType: string, total: number}>()
                         
-                        // Convert to history array per learner
-                        Object.entries(learnerExams).forEach(([learnerId, exams]) => {
-                          if (!history[learnerId]) history[learnerId] = []
-                          
-                          Object.values(exams).forEach((examData) => {
-                            if (examData.count > 0) {
-                              const average = examData.total / examData.count
-                              history[learnerId].push({
-                                term: examData.term,
-                                year: examData.year,
-                                total: examData.total,
-                                average: average,
-                                rank: 0,
-                                exam_type: examData.exam_type
+                        (historyMarks || [])
+                          .filter(m => m.learner_id === lid)
+                          .forEach(m => {
+                            const key = `${m.term}|${m.exam_type_id}`
+                            if (!exams.has(key)) {
+                              exams.set(key, {
+                                term: m.term,
+                                examType: m.exam_types?.name || 'Unknown',
+                                total: 0
                               })
                             }
+                            const exam = exams.get(key)!
+                            exam.total += m.score || 0
                           })
-                        })
-                      }
-                    }
-                    
-                    // Sort each learner's history chronologically
-                    // Term values are TEXT like "Term 1", "Term 2", "Term 3"
-                    // Exam types should be ordered: Opener < Mid-Term < End-Term
-                    const examTypeOrder = (name: string): number => {
-                      const lower = (name || '').toLowerCase()
-                      if (lower.includes('opener')) return 1
-                      if (lower.includes('mid')) return 2
-                      if (lower.includes('end')) return 3
-                      return 4
-                    }
-                    const termOrder = (term: string | number): number => {
-                      const str = String(term || '')
-                      const match = str.match(/\d+/)
-                      return match ? parseInt(match[0]) : 0
-                    }
-                    Object.keys(history).forEach(learnerId => {
-                      history[learnerId].sort((a, b) => {
-                        if (a.year !== b.year) return a.year - b.year
-                        const termDiff = termOrder(a.term) - termOrder(b.term)
-                        if (termDiff !== 0) return termDiff
-                        return examTypeOrder(a.exam_type || '') - examTypeOrder(b.exam_type || '')
+                        
+                        // Sort by term order (1, 2, 3) then by exam type
+                        const examOrder: Record<string, number> = { 'Opener': 0, 'Mid-Term': 1, 'End-Term': 2 }
+                        const sorted = Array.from(exams.values())
+                          .sort((a, b) => {
+                            const termA = parseInt(a.term) || 0
+                            const termB = parseInt(b.term) || 0
+                            if (termA !== termB) return termA - termB
+                            return (examOrder[a.examType] || 999) - (examOrder[b.examType] || 999)
+                          })
+                        
+                        termHistory[lid] = sorted.map(e => ({
+                          term: e.term,
+                          exam_type: e.examType,
+                          total: e.total
+                        }))
                       })
-                    })
-                    
-                    // Set both report data and term history together
-                    setReportModalData(updatedResults)
-                    setTermHistory(history)
-                    } catch (err) {
-                      // Still set report data even if history fetch fails
-                      setReportModalData(updatedResults)
+                      
+                      console.log('[v0] History built for', Object.keys(termHistory).length, 'learners')
+                      console.log('[v0] Sample history:', termHistory[learnerIds[0]]?.slice(0, 3))
+                    }
+                  } catch (err) {
+                    console.error('[v0] History fetch error:', err)
                   }
                   
+                  console.log('[v0] === PRINT REPORTS COMPLETE ===')
+                  setReportModalData(finalResults)
+                  setTermHistory(termHistory)
+                  
                   setReportModalOpen(true)
+                }}
                 }} 
                 disabled={results.length === 0 || !selectedSessionId || !currentClass?.id} 
                 className="bg-green-600 text-white hover:bg-green-700 h-9 text-xs sm:text-sm"
