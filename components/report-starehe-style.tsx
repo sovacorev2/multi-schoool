@@ -368,8 +368,8 @@ export function ReportStareheStyle({
                 <div key={report.learner.id || idx} className="bg-white page-break" style={{ padding: '12px', minHeight: '100vh', pageBreakInside: 'avoid', fontFamily: 'Times New Roman, serif' }}>
                   {/* School Header */}
                   <div style={{ textAlign: 'center', marginBottom: '10px', paddingBottom: '8px', borderBottom: '2px solid #999' }}>
-                    {/* Logo - show if logo_url exists, otherwise show school initials */}
-                    {currentSchool?.logo_url ? (
+                    {/* Logo - only show if logo_url exists */}
+                    {currentSchool?.logo_url && (
                       <img 
                         src={currentSchool.logo_url} 
                         alt="School Logo" 
@@ -379,23 +379,6 @@ export function ReportStareheStyle({
                           img.style.display = 'none'
                         }}
                       />
-                    ) : (
-                      <div style={{ 
-                        width: '60px', 
-                        height: '60px', 
-                        margin: '0 auto 5px',
-                        backgroundColor: '#003366',
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'white',
-                        fontSize: '24px',
-                        fontWeight: 'bold',
-                        letterSpacing: '1px'
-                      }}>
-                        {currentSchool?.name?.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase()}
-                      </div>
                     )}
                     
                     {/* School Name */}
