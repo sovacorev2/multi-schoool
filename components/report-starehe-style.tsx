@@ -368,21 +368,34 @@ export function ReportStareheStyle({
                 <div key={report.learner.id || idx} className="bg-white page-break" style={{ padding: '12px', minHeight: '100vh', pageBreakInside: 'avoid', fontFamily: 'Times New Roman, serif' }}>
                   {/* School Header */}
                   <div style={{ textAlign: 'center', marginBottom: '10px', paddingBottom: '8px', borderBottom: '2px solid #999' }}>
-                    {/* Logo - show if logo_url exists */}
-                    {console.log('[v0] Logo URL:', currentSchool?.logo_url, 'School:', currentSchool?.name)}
+                    {/* Logo - show if logo_url exists, otherwise show school initials */}
                     {currentSchool?.logo_url ? (
                       <img 
                         src={currentSchool.logo_url} 
                         alt="School Logo" 
                         style={{ width: '60px', height: '60px', margin: '0 auto 5px', objectFit: 'contain', display: 'block' }}
                         onError={(e) => {
-                          console.log('[v0] Logo image failed to load:', currentSchool?.logo_url)
                           const img = e.target as HTMLImageElement
                           img.style.display = 'none'
                         }}
                       />
                     ) : (
-                      <div style={{ fontSize: '12px', color: '#999', marginBottom: '5px' }}>[Logo URL is null]</div>
+                      <div style={{ 
+                        width: '60px', 
+                        height: '60px', 
+                        margin: '0 auto 5px',
+                        backgroundColor: '#003366',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontSize: '24px',
+                        fontWeight: 'bold',
+                        letterSpacing: '1px'
+                      }}>
+                        {currentSchool?.name?.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase()}
+                      </div>
                     )}
                     
                     {/* School Name */}
