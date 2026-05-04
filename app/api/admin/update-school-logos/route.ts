@@ -16,6 +16,14 @@ export async function POST(request: NextRequest) {
 
     if (amagoroError) throw amagoroError
 
+    // Update ShuleTech logo
+    const { error: shuletechError } = await supabase
+      .from('schools')
+      .update({ logo_url: '/logos/shuletech-logo.png' })
+      .ilike('name', '%shule%')
+
+    if (shuletechError) throw shuletechError
+
     // Get all schools to check their logos
     const { data: schools, error: fetchError } = await supabase
       .from('schools')
