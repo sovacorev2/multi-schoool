@@ -51,107 +51,21 @@ export function ReportModal({
   if (!isOpen) return null
 
   const handlePrint = () => {
-    const printContent = printRef.current
-    if (!printContent) return
-
-    const printWindow = window.open('', '_blank', 'width=800,height=600')
-    if (!printWindow) {
-      alert('Please allow pop-ups to print reports')
-      return
+    // Store report data in sessionStorage (temporary storage)
+    const reportData = {
+      school: currentSchool,
+      className: className,
+      examType: examType,
+      results: reportModalData,
+      termHistory: termHistory,
+      subjects: subjects,
+      term: term
     }
-
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Student Report Cards - ${currentSchool?.name || 'School'}</title>
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: Arial, sans-serif; background: #fff; }
-          .report-card {
-            width: 210mm;
-            min-height: 297mm;
-            margin: 0 auto;
-            padding: 15mm;
-            page-break-after: always;
-            position: relative;
-            overflow: hidden;
-          }
-          .report-card:last-child { page-break-after: auto; }
-          .watermark {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            opacity: 0.08;
-            width: 280px;
-            height: 280px;
-            z-index: 0;
-          }
-          .watermark img { width: 100%; height: 100%; object-fit: contain; }
-          .content { position: relative; z-index: 1; }
-          .header {
-            border: 2px solid #000;
-            background-color: #fffacd;
-            padding: 10px;
-            margin-bottom: 10px;
-            text-align: center;
-          }
-          .header h1 { font-size: 20px; font-weight: bold; margin-bottom: 5px; }
-          .header .info { font-size: 12px; font-weight: 600; }
-          .student-info { margin-bottom: 15px; font-size: 13px; }
-          .student-info .label { font-weight: bold; color: #1e40af; }
-          .student-info .name { font-weight: 600; text-transform: uppercase; text-decoration: underline; margin-left: 10px; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 12px; }
-          th, td { border: 1px solid #000; padding: 8px; }
-          th { background: #d4d4d4; font-weight: bold; }
-          .subject-col { color: #1e40af; text-align: left; }
-          .marks-col { color: #9400d3; text-align: center; width: 50px; }
-          .rubric-col { text-align: center; width: 30px; }
-          .total-row { background: #fffacd; border-top: 2px solid #000; border-bottom: 2px solid #000; }
-          .total-row td:first-child { color: #dc2626; font-weight: bold; font-size: 11px; }
-          .position-rubric { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 10px; }
-          .position p { margin-bottom: 5px; font-weight: bold; }
-          .rubric-legend { text-align: right; font-size: 9px; color: #666; }
-          .rubric-legend p { margin-bottom: 2px; }
-          .comments { margin-bottom: 10px; }
-          .comments p { font-weight: bold; font-size: 10px; margin-bottom: 5px; }
-          .comments .line { border-bottom: 1px dotted #000; height: 40px; }
-          .dates { display: flex; gap: 15px; margin-bottom: 10px; font-size: 9px; }
-          .dates div { flex: 1; }
-          .dates p { font-weight: bold; }
-          .signature { display: flex; justify-content: space-between; border-top: 1px solid #000; padding-top: 10px; font-size: 9px; }
-          .signature p { margin-bottom: 10px; font-weight: bold; }
-          .stamp { width: 60px; height: 40px; border: 1px solid #999; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #999; }
-          @page { size: A4; margin: 10mm; }
-          @media print {
-            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .report-card { page-break-after: always; }
-            .report-card:last-child { page-break-after: auto; }
-          }
-        </style>
-      </head>
-      <body>
-        ${printContent.innerHTML}
-      </body>
-      </html>
-    `)
     
-    printWindow.document.close()
+    sessionStorage.setItem('printReportData', JSON.stringify(reportData))
     
-    // Wait for images to load then print
-    const printTimeout = setTimeout(() => {
-      // Don't focus on printWindow - it blocks the main window
-      // Just call print() and let the browser handle it
-      printWindow.print()
-      // Close print window after print dialog opens
-      setTimeout(() => {
-        printWindow.close()
-      }, 1000)
-    }, 500)
-    
-    // Clean up timeout on unmount or if window closes early
-    return () => clearTimeout(printTimeout)
+    // Open print page in new tab without blocking main window
+    window.open('/print-report', '_blank')
   }
 
   const handleDownloadPDF = () => {
