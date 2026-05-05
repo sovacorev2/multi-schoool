@@ -203,17 +203,16 @@ export default function DashboardLayout({
               {/* School Logo */}
               {currentSchool && (
                 <img 
-                  src={currentSchool.logo_url || `/logos/${currentSchool.code}.png`}
+                  src={currentSchool.logo_url || ''}
                   alt={`${currentSchool.name} logo`}
                   className="w-12 h-12 object-contain"
                   onError={(e) => {
                     const target = e.currentTarget as HTMLImageElement
-                    // Try jpeg if png fails
-                    if (target.src.endsWith('.png')) {
-                      target.src = `/logos/${currentSchool.code}.jpeg`
-                    } else {
+                    // If logo_url from Blob fails to load, hide it
+                    if (currentSchool.logo_url) {
                       target.style.display = 'none'
                     }
+                    // Don't try fallback paths - only use uploaded logo or hide
                   }}
                 />
               )}
