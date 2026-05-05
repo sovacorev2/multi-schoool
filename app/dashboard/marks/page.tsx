@@ -402,6 +402,11 @@ export default function MarksPage() {
         </div>
       </div>
 
+      {/* Deadline Timer Notification */}
+      {selectedSession && selectedSession.deadline_datetime && (
+        <DeadlineTimer deadline={new Date(selectedSession.deadline_datetime)} sessionName={selectedSession.exam_types?.name || 'Exam'} />
+      )}
+
       {/* Session Selection */}
       <Card>
         <CardHeader className="pb-3">
@@ -746,4 +751,50 @@ export default function MarksPage() {
       </Dialog>
     </div>
   );
+}
+
+// Deadline Timer Component
+function DeadlineTimer({ deadline, sessionName }: { deadline: Date; sessionName: string }) {
+  const [timeLeft, setTimeLeft] = useState('')
+  const [isOverdue, setIsOverdue] = useState(false)
+
+  useEffect(() => {
+    const updateTimer = () => {
+      const now = new Date()
+      const diff = deadline.getTime() - now.getTime()
+
+      if (diff <= 0) {
+        setIsOverdue(true)
+        setTimeLeft('OVERDUE')
+        return
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24)
+      const minutes = Math.floor((diff / 1000 / 60) % 60)
+      const seconds = Math.floor((diff / 1000) % 60)
+
+      setIsOverdue(false)
+      setTimeLeft(`${days}d ${hours}h ${minutes}m ${seconds}s`)
+    }
+
+    updateTimer()
+    const interval = setInterval(updateTimer, 1000)
+    return () => clearInterval(interval)
+  }, [deadline])
+
+  return (
+    <Alert className={isOverdue ? 'border-red-500 bg-red-50' : 'border-orange-500 bg-orange-50'}>
+      <Clock className={`w-4 h-4 ${isOverdue ? 'text-red-600' : 'text-orange-600'}`} />
+      <AlertTitle className={isOverdue ? 'text-red-800' : 'text-orange-800'}>
+        Marks Entry Deadline {isOverdue ? 'OVERDUE' : 'Countdown'}
+      </AlertTitle>
+      <AlertDescription className={isOverdue ? 'text-red-700' : 'text-orange-700'}>
+        <div className="space-y-1">
+          <div className="font-bold text-lg">{timeLeft}</div>
+          <div className="text-sm">{sessionName} deadline: {deadline.toLocaleString()}</div>
+        </div>
+      </AlertDescription>
+    </Alert>
+  )
 }

@@ -622,7 +622,7 @@ export default function AdminPortalPage() {
     const supabase = createClient()
     await supabase
       .from('sessions')
-      .update({ deadline_datetime: editingDeadlineValue })
+      .update({ deadline_datetime: editingDeadlineValue ? new Date(editingDeadlineValue).toISOString() : null })
       .eq('id', sessionId)
     
     setEditingDeadlineId(null)
@@ -976,7 +976,7 @@ export default function AdminPortalPage() {
                                       <Button
                                         size="sm"
                                         variant="outline"
-                                        onClick={() => { setEditingDeadlineId(d.id); setEditingDeadlineValue(d.deadline_date || ''); }}
+                                        onClick={() => { setEditingDeadlineId(d.id); setEditingDeadlineValue(d.deadline_date ? new Date(d.deadline_date).toISOString().slice(0, 16) : ''); }}
                                         className="whitespace-nowrap text-xs md:text-sm px-2 md:px-3"
                                         title="Set deadline"
                                       >
