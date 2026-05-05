@@ -1994,7 +1994,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                       
                                       const message = encodeURIComponent(
                                         `*${currentSchool?.name?.toUpperCase() || 'SCHOOL'}*\n` +
-                                        `━━━━━━━━━━━━━━━━\n` +
+                                        `-------------------\n` +
                                         `*EXAM RESULTS NOTIFICATION*\n\n` +
                                         `Dear Parent/Guardian,\n\n` +
                                         `We are pleased to share the ${selectedSession?.exam_types?.name || 'Exam'} results for:\n\n` +
@@ -2002,10 +2002,10 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                         `*Class:* ${currentClass?.name || ''}\n` +
                                         `*Term:* ${selectedSession?.term}, ${selectedSession?.year}\n\n` +
                                         `*SUBJECT PERFORMANCE*\n` +
-                                        `━━━━━━━━━━━━━━━━━━━\n` +
+                                        `-------------------\n` +
                                         `${subjectDetails}\n\n` +
                                         `*OVERALL SUMMARY*\n` +
-                                        `━━━━━━━━━━━━━━━━━━━\n` +
+                                        `-------------------\n` +
                                         `• Total Marks: *${result.total}*\n` +
                                         `• Mean Score: *${result.average.toFixed(1)}%*\n` +
                                         `• Performance Level: *${performanceLevel}*\n` +
@@ -3474,7 +3474,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                         
                         const message = encodeURIComponent(
                           `*${currentSchool?.name?.toUpperCase() || 'SCHOOL'}*\n` +
-                          `━━━━━━━━━━━━━━━━\n` +
+                          `-------------------\n` +
                           `*EXAM RESULTS NOTIFICATION*\n\n` +
                           `Dear Parent/Guardian,\n\n` +
                           `We are pleased to share the ${selectedSession?.exam_types?.name || 'Exam'} results for:\n\n` +
@@ -3482,10 +3482,10 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                           `*Class:* ${currentClass?.name || ''}\n` +
                           `*Term:* ${selectedSession?.term}, ${selectedSession?.year}\n\n` +
                           `*SUBJECT PERFORMANCE*\n` +
-                          `━━━━━━━━━━━━━━━━━━━\n` +
+                          `-------------------\n` +
                           `${subjectDetails}\n\n` +
                           `*OVERALL SUMMARY*\n` +
-                          `━━━━━━━━━━━━━━━━\n` +
+                          `-------------------\n` +
                           `• Total Marks: *${result.total}*\n` +
                           `• Mean Score: *${result.average.toFixed(1)}%*\n` +
                           `• Performance Level: *${performanceLevel}*\n` +
