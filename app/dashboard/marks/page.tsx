@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ClipboardList, Plus, Save, AlertCircle, Lock, Unlock, Clock } from "lucide-react";
 import type { ExamType, Subject, Learner, Mark } from "@/lib/types";
 
