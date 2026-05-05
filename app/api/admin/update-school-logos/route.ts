@@ -24,6 +24,14 @@ export async function POST(request: NextRequest) {
 
     if (shuletechError) throw shuletechError
 
+    // Update St Michael logo with Blob URL
+    const { error: stmichaelError } = await supabase
+      .from('schools')
+      .update({ logo_url: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/stmichaellogo-uFafBc9amB4gT3cJroyU531usCnSy8.jpeg' })
+      .ilike('name', '%st michael%')
+
+    if (stmichaelError) throw stmichaelError
+
     // Get all schools to check their logos
     const { data: schools, error: fetchError } = await supabase
       .from('schools')
