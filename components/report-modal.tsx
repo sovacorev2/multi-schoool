@@ -141,7 +141,8 @@ export function ReportModal({
     
     // Wait for images to load then print
     const printTimeout = setTimeout(() => {
-      printWindow.focus()
+      // Don't focus on printWindow - it blocks the main window
+      // Just call print() and let the browser handle it
       printWindow.print()
       // Close print window after print dialog opens
       setTimeout(() => {
