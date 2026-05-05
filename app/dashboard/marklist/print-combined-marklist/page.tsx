@@ -285,7 +285,7 @@ export default function PrintCombinedMarklistPage() {
             <th className="border p-1 text-center w-16">Stream</th>
             {subjects.map(subj => (
               <th key={subj.id} className="border p-1 text-center" style={{ minWidth: '40px' }} title={subj.name}>
-                {subj.name.length > 6 ? subj.name.substring(0, 6) + '..' : subj.name}
+                {subj.name}
               </th>
             ))}
             <th className="border p-1 text-center w-12">Total</th>
