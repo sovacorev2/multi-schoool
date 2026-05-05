@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import ReportStarehStyle from '@/components/report-starehe-style'
+import { ReportStareheStyle } from '@/components/report-starehe-style'
 
 export default function PrintReportPage() {
   const [reportData, setReportData] = useState<any>(null)
@@ -42,7 +42,7 @@ export default function PrintReportPage() {
 
   return (
     <div className="bg-white">
-      <ReportStarehStyle
+      <ReportStareheStyle
         reportModalData={reportData.results}
         termHistory={reportData.termHistory}
         className={reportData.className}
