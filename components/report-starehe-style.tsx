@@ -528,7 +528,7 @@ export function ReportStareheStyle({
                               return (
                                 <div key={subject.subject.id} style={{ display: 'flex', alignItems: 'center', marginBottom: '1px' }}>
                                   <span style={{ width: '5px', height: '5px', backgroundColor: colors[i % colors.length], marginRight: '2px', flexShrink: 0 }}></span>
-                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{subject.subject.name.substring(0, 6)} {percentage}%</span>
+                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{subject.subject.name} {percentage}%</span>
                                 </div>
                               )
                             })

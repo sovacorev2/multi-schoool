@@ -965,7 +965,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
     
     // Build subject headers (two rows: subject name spanning 3 columns, then MKS/LVL/PTS)
     const subjectHeadersRow1 = subjects.map(s => 
-      `<th colSpan="3" style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9px; background: #e5e7eb;">${s.name.substring(0, 3).toUpperCase()}</th>`
+      `<th colSpan="3" style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9px; background: #e5e7eb;">${s.name.toUpperCase()}</th>`
     ).join('')
     
     const subjectHeadersRow2 = subjects.map(s => 
