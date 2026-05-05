@@ -140,10 +140,17 @@ export function ReportModal({
     printWindow.document.close()
     
     // Wait for images to load then print
-    setTimeout(() => {
+    const printTimeout = setTimeout(() => {
       printWindow.focus()
       printWindow.print()
+      // Close print window after print dialog opens
+      setTimeout(() => {
+        printWindow.close()
+      }, 1000)
     }, 500)
+    
+    // Clean up timeout on unmount or if window closes early
+    return () => clearTimeout(printTimeout)
   }
 
   const handleDownloadPDF = () => {
