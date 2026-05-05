@@ -581,12 +581,15 @@ export function ReportStareheStyle({
                             })
                           }
                           
-                          // Add current exam at the end
-                          allExams.push({
-                            label: 'CURRENT',
-                            average: meanMark,
-                            isHistory: false
-                          })
+                          // Only add current exam if there's no history (i.e., first time entering marks)
+                          // If there's history, the most recent should already be in the data
+                          if (allExams.length === 0) {
+                            allExams.push({
+                              label: 'CURRENT',
+                              average: meanMark,
+                              isHistory: false
+                            })
+                          }
                           
                           const totalBars = allExams.length
                           const chartWidth = 110 // 135 - 25 (start position)
