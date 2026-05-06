@@ -600,7 +600,9 @@ export function ReportStareheStyle({
                             const x = 25 + (i * barSpacing) + (barSpacing - barWidth) / 2
                             const barHeight = (exam.average / 100) * 60
                             const y = 70 - barHeight
-                            const fill = exam.isHistory ? '#1e40af' : '#ef4444'
+                            // Last exam is current (orange), others are previous (blue)
+                            const isCurrentExam = i === allExams.length - 1
+                            const fill = isCurrentExam ? '#f97316' : '#1e40af'
                             
                             return (
                               <g key={i}>
@@ -641,7 +643,7 @@ export function ReportStareheStyle({
                         {/* Legend */}
                         <rect x="30" y="86" width="3" height="3" fill="#1e40af" />
                         <text x="35" y="89" fontSize="5">Previous</text>
-                        <rect x="75" y="86" width="3" height="3" fill="#ef4444" />
+                        <rect x="75" y="86" width="3" height="3" fill="#f97316" />
                         <text x="80" y="89" fontSize="5">Current</text>
                       </svg>
                     </div>
