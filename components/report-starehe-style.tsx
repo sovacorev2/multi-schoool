@@ -416,10 +416,10 @@ export function ReportStareheStyle({
                   </div>
 
                   {/* Student Info Row */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '8px', fontSize: '9px' }}>
-                    <div><strong>NAME:</strong> {report.learner.name}</div>
-                    <div><strong>ASSESSMENT NO:</strong> {report.learner.admission_number || '-'}</div>
-                    <div><strong>CLASS:</strong> {className}</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '8px', fontSize: '11px', fontWeight: 'bold' }}>
+                    <div><strong>NAME:</strong> <span style={{ fontWeight: 'bold', fontSize: '12px' }}>{report.learner.name}</span></div>
+                    <div><strong>ASSESSMENT NO:</strong> <span style={{ fontSize: '11px' }}>{report.learner.admission_number || '-'}</span></div>
+                    <div><strong>CLASS:</strong> <span style={{ fontSize: '11px' }}>{className}</span></div>
                   </div>
 
                   {/* Main Marks Table */}
@@ -438,7 +438,7 @@ export function ReportStareheStyle({
                     <tbody>
                       {subjectData.map((item, i) => (
                         <tr key={item.subject.id} style={{ backgroundColor: i % 2 === 0 ? '#fff' : '#f9f9f9' }}>
-                          <td style={{ border: '1px solid #666', padding: '6px', textAlign: 'left' }}>{item.subject.name.toUpperCase()}</td>
+                          <td style={{ border: '1px solid #666', padding: '6px', textAlign: 'left', fontWeight: 'bold' }}>{item.subject.name.toUpperCase()}</td>
                           <td style={{ border: '1px solid #666', padding: '6px', textAlign: 'center' }}>{item.score ?? '-'}</td>
                           <td style={{ border: '1px solid #666', padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>{item.level}</td>
                           <td style={{ border: '1px solid #666', padding: '6px', textAlign: 'center' }}>{item.points}</td>
