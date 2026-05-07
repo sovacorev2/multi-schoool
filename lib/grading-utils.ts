@@ -54,15 +54,17 @@ export function getPerformanceLevelWithPoints(marks: number | null | undefined):
 
 // Helper to determine if a class uses extended grading (upper classes)
 export function isUpperClass(className: string): boolean {
-  return ['Grade 7', 'Grade 8', 'Grade 9', 'GRD7', 'GRD8', 'GRD9'].some(grade => 
-    className.includes(grade)
-  )
+  if (!className) return false
+  const upperClassPatterns = ['Grade 7', 'Grade 8', 'Grade 9', 'GRD7', 'GRD8', 'GRD9', 'Form 1', 'Form 2', 'Form 3', 'Form 4', 'JSS', 'Class 7', 'Class 8', 'Class 9']
+  return upperClassPatterns.some(grade => className.includes(grade))
 }
 
 // Get the appropriate grading scale based on class
 export function getGradingScale(className?: string): GradeLevel[] {
   if (!className) return GRADING_SCALE_EXTENDED
-  return isUpperClass(className) ? GRADING_SCALE_EXTENDED : GRADING_SCALE_SIMPLE
+  const isUpper = isUpperClass(className)
+  console.log('[v0] Class:', className, 'isUpperClass:', isUpper, 'Scale:', isUpper ? 'EXTENDED (1-8)' : 'SIMPLE (0.5 increments)')
+  return isUpper ? GRADING_SCALE_EXTENDED : GRADING_SCALE_SIMPLE
 }
 
 // Get grade level with class context
