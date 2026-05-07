@@ -2146,37 +2146,6 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                     </div>
                   </div>
 
-                  {/* Grade Distribution */}
-                  <div>
-                    <h3 className="font-semibold text-gray-800 mb-3">Grade Distribution</h3>
-                    <div className="grid grid-cols-5 gap-2">
-                      <div className="bg-emerald-100 p-3 rounded-lg text-center border border-emerald-300">
-                        <p className="text-xs text-gray-600">Grade A (80-100%)</p>
-                        <p className="text-xl font-bold text-emerald-700">{classGradeA}</p>
-                        <p className="text-xs text-gray-500">{results.length > 0 ? ((classGradeA/results.length)*100).toFixed(1) : 0}%</p>
-                      </div>
-                      <div className="bg-blue-100 p-3 rounded-lg text-center border border-blue-300">
-                        <p className="text-xs text-gray-600">Grade B (60-79%)</p>
-                        <p className="text-xl font-bold text-blue-700">{classGradeB}</p>
-                        <p className="text-xs text-gray-500">{results.length > 0 ? ((classGradeB/results.length)*100).toFixed(1) : 0}%</p>
-                      </div>
-                      <div className="bg-yellow-100 p-3 rounded-lg text-center border border-yellow-300">
-                        <p className="text-xs text-gray-600">Grade C (40-59%)</p>
-                        <p className="text-xl font-bold text-yellow-700">{classGradeC}</p>
-                        <p className="text-xs text-gray-500">{results.length > 0 ? ((classGradeC/results.length)*100).toFixed(1) : 0}%</p>
-                      </div>
-                      <div className="bg-orange-100 p-3 rounded-lg text-center border border-orange-300">
-                        <p className="text-xs text-gray-600">Grade D (30-39%)</p>
-                        <p className="text-xl font-bold text-orange-700">{classGradeD}</p>
-                        <p className="text-xs text-gray-500">{results.length > 0 ? ((classGradeD/results.length)*100).toFixed(1) : 0}%</p>
-                      </div>
-                      <div className="bg-red-100 p-3 rounded-lg text-center border border-red-300">
-                        <p className="text-xs text-gray-600">Grade E (Below 30%)</p>
-                        <p className="text-xl font-bold text-red-700">{classGradeE}</p>
-                        <p className="text-xs text-gray-500">{results.length > 0 ? ((classGradeE/results.length)*100).toFixed(1) : 0}%</p>
-                      </div>
-                    </div>
-                  </div>
 
                   {/* Gender Analysis */}
                   <div>
