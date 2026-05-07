@@ -223,11 +223,6 @@ export function ReportModal({
                       <p style={{ fontWeight: 'bold' }}>AVERAGE: {report.average.toFixed(1)}%</p>
                     </div>
                     <div className="rubric-legend" style={{ textAlign: 'right', fontSize: '9px', color: '#666' }}>
-                      <p style={{ marginBottom: '3px', fontWeight: 'bold' }}>RUBRIC:</p>
-                      <p style={{ marginBottom: '2px' }}>EE=Exceeds (80-100)</p>
-                      <p style={{ marginBottom: '2px' }}>ME=Meets (60-79)</p>
-                      <p style={{ marginBottom: '2px' }}>AE=Approaching (40-59)</p>
-                      <p>BE=Below (0-39)</p>
                     </div>
                   </div>
 

@@ -1058,9 +1058,6 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
           </tbody>
         </table>
         
-        <div style="margin-top: 2px; font-size: 7px; color: #666;">
-          <p style="margin: 0; padding: 0;"><strong>Rubric Key:</strong> EE = Exceeds Expectations (80-100) | ME = Meets Expectations (60-79) | AE = Approaching Expectations (40-59) | BE = Below Expectations (0-39)</p>
-        </div>
       </body>
       </html>
     `
@@ -2146,37 +2143,6 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                     </div>
                   </div>
 
-                  {/* Grade Distribution */}
-                  <div>
-                    <h3 className="font-semibold text-gray-800 mb-3">Grade Distribution</h3>
-                    <div className="grid grid-cols-5 gap-2">
-                      <div className="bg-emerald-100 p-3 rounded-lg text-center border border-emerald-300">
-                        <p className="text-xs text-gray-600">Grade A (80-100%)</p>
-                        <p className="text-xl font-bold text-emerald-700">{classGradeA}</p>
-                        <p className="text-xs text-gray-500">{results.length > 0 ? ((classGradeA/results.length)*100).toFixed(1) : 0}%</p>
-                      </div>
-                      <div className="bg-blue-100 p-3 rounded-lg text-center border border-blue-300">
-                        <p className="text-xs text-gray-600">Grade B (60-79%)</p>
-                        <p className="text-xl font-bold text-blue-700">{classGradeB}</p>
-                        <p className="text-xs text-gray-500">{results.length > 0 ? ((classGradeB/results.length)*100).toFixed(1) : 0}%</p>
-                      </div>
-                      <div className="bg-yellow-100 p-3 rounded-lg text-center border border-yellow-300">
-                        <p className="text-xs text-gray-600">Grade C (40-59%)</p>
-                        <p className="text-xl font-bold text-yellow-700">{classGradeC}</p>
-                        <p className="text-xs text-gray-500">{results.length > 0 ? ((classGradeC/results.length)*100).toFixed(1) : 0}%</p>
-                      </div>
-                      <div className="bg-orange-100 p-3 rounded-lg text-center border border-orange-300">
-                        <p className="text-xs text-gray-600">Grade D (30-39%)</p>
-                        <p className="text-xl font-bold text-orange-700">{classGradeD}</p>
-                        <p className="text-xs text-gray-500">{results.length > 0 ? ((classGradeD/results.length)*100).toFixed(1) : 0}%</p>
-                      </div>
-                      <div className="bg-red-100 p-3 rounded-lg text-center border border-red-300">
-                        <p className="text-xs text-gray-600">Grade E (Below 30%)</p>
-                        <p className="text-xl font-bold text-red-700">{classGradeE}</p>
-                        <p className="text-xs text-gray-500">{results.length > 0 ? ((classGradeE/results.length)*100).toFixed(1) : 0}%</p>
-                      </div>
-                    </div>
-                  </div>
 
                   {/* Gender Analysis */}
                   <div>
@@ -3161,28 +3127,6 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                     </p>
                   </div>
 
-                  {/* Rubric Legend */}
-                  <div className="bg-gray-50 p-4 rounded-lg border">
-                    <h4 className="font-semibold text-sm mb-2 text-gray-700">Rubric Key (CBC Assessment Levels)</h4>
-                    <div className="grid grid-cols-4 gap-3 text-xs">
-                      <div className="flex items-center gap-2 bg-emerald-100 p-2 rounded">
-                        <span className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold">4</span>
-                        <div><span className="font-semibold">Exceeding Expectations</span><br /><span className="text-gray-500">80-100%</span></div>
-                      </div>
-                      <div className="flex items-center gap-2 bg-blue-100 p-2 rounded">
-                        <span className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">3</span>
-                        <div><span className="font-semibold">Meeting Expectations</span><br /><span className="text-gray-500">50-79%</span></div>
-                      </div>
-                      <div className="flex items-center gap-2 bg-amber-100 p-2 rounded">
-                        <span className="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center font-bold">2</span>
-                        <div><span className="font-semibold">Approaching Expectations</span><br /><span className="text-gray-500">30-49%</span></div>
-                      </div>
-                      <div className="flex items-center gap-2 bg-red-100 p-2 rounded">
-                        <span className="w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center font-bold">1</span>
-                        <div><span className="font-semibold">Below Expectations</span><br /><span className="text-gray-500">Below 30%</span></div>
-                      </div>
-                    </div>
-                  </div>
 
                   {schoolPerformance.length === 0 && !isLoadingSchool && (
                     <div className="text-center py-8 text-gray-500">

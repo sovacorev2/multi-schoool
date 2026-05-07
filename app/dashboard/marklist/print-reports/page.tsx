@@ -246,11 +246,6 @@ export default function PrintReportsPage() {
                 <p style={{ margin: 0, fontWeight: 'bold' }}>AVERAGE: {report.average.toFixed(1)}%</p>
               </div>
               <div style={{ textAlign: 'right', fontSize: '9px', color: '#666' }}>
-                <p style={{ margin: '0 0 3px 0', fontWeight: 'bold' }}>RUBRIC:</p>
-                <p style={{ margin: '0 0 2px 0' }}>EE=Exceeds (80-100)</p>
-                <p style={{ margin: '0 0 2px 0' }}>ME=Meets (60-79)</p>
-                <p style={{ margin: '0 0 2px 0' }}>AE=Approaching (40-59)</p>
-                <p style={{ margin: 0 }}>BE=Below (0-39)</p>
               </div>
             </div>
 
