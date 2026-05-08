@@ -923,6 +923,50 @@ export default function SetupSchoolPage() {
                           {c.name}
                         </span>
                       </button>
+                      
+                      {/* Stream input - only show when class is selected */}
+                      {selectedClasses.includes(c.name) && (
+                        <div className="px-3 pb-3 space-y-2">
+                          <div className="flex gap-1">
+                            <Input
+                              placeholder="Add stream (e.g., East, A)"
+                              value={newStreamInput[c.name] || ''}
+                              onChange={(e) => setNewStreamInput(prev => ({ ...prev, [c.name]: e.target.value }))}
+                              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addStreamToClass(c.name))}
+                              className="h-8 text-xs"
+                            />
+                            <Button 
+                              type="button"
+                              onClick={() => addStreamToClass(c.name)} 
+                              variant="outline" 
+                              size="sm"
+                              className="h-8 px-2"
+                              disabled={!newStreamInput[c.name]?.trim()}
+                            >
+                              <Plus className="w-3 h-3" />
+                            </Button>
+                          </div>
+                          {classStreams[c.name]?.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {classStreams[c.name].map(stream => (
+                                <span
+                                  key={stream}
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-200 text-blue-800 rounded text-xs"
+                                >
+                                  {stream}
+                                  <button
+                                    type="button"
+                                    onClick={() => removeStreamFromClass(c.name, stream)}
+                                    className="hover:text-blue-900"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -981,7 +1025,50 @@ export default function SetupSchoolPage() {
                           {c.name}
                         </span>
                       </button>
-                    </div>
+                      
+                      {/* Stream input - only show when class is selected */}
+                      {selectedClasses.includes(c.name) && (
+                        <div className="px-3 pb-3 space-y-2">
+                          <div className="flex gap-1">
+                            <Input
+                              placeholder="Add stream (e.g., East, A)"
+                              value={newStreamInput[c.name] || ''}
+                              onChange={(e) => setNewStreamInput(prev => ({ ...prev, [c.name]: e.target.value }))}
+                              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addStreamToClass(c.name))}
+                              className="h-8 text-xs"
+                            />
+                            <Button 
+                              type="button"
+                              onClick={() => addStreamToClass(c.name)} 
+                              variant="outline" 
+                              size="sm"
+                              className="h-8 px-2"
+                              disabled={!newStreamInput[c.name]?.trim()}
+                            >
+                              <Plus className="w-3 h-3" />
+                            </Button>
+                          </div>
+                          {classStreams[c.name]?.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {classStreams[c.name].map(stream => (
+                                <span
+                                  key={stream}
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-200 text-amber-800 rounded text-xs"
+                                >
+                                  {stream}
+                                  <button
+                                    type="button"
+                                    onClick={() => removeStreamFromClass(c.name, stream)}
+                                    className="hover:text-amber-900"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                   ))}
                 </div>
               </div>
