@@ -449,18 +449,6 @@ export default function AdminPortalPage() {
       .single()
 
     if (!error && data) {
-      // Also create base sessions for the new class
-      const currentYear = new Date().getFullYear()
-      const terms = ['Term 1', 'Term 2', 'Term 3']
-      const sessionsToInsert = terms.map(term => ({
-        class_id: data.id,
-        year: currentYear,
-        term: term,
-        is_active: true,
-        school_id: activeSchoolTab || currentSchool?.id,
-      }))
-      await supabase.from('sessions').insert(sessionsToInsert)
-      
       // Update display
       setClasses([...classes, data])
       setNewClassName('')
@@ -610,17 +598,6 @@ export default function AdminPortalPage() {
       if (error) throw error
       
       if (data) {
-        // Create sessions for the new stream
-        const currentYear = new Date().getFullYear()
-        const sessionsToInsert = TERMS.map(term => ({
-          class_id: data.id,
-          year: currentYear,
-          term: term,
-          is_active: true,
-          school_id: activeSchoolTab || currentSchool?.id,
-        }))
-        await supabase.from('sessions').insert(sessionsToInsert)
-        
         // Update local state
         const updatedClasses = [...classes, data]
         setClasses(updatedClasses)
@@ -735,20 +712,20 @@ export default function AdminPortalPage() {
     }
   }
 
-  // Quick setup - seed all Kenyan CBC subjects for selected grade level
-  const quickSetupSubjects = async (gradeLevel: 'grade-1-3' | 'grade-4-6' | 'jss') => {
+  // Quick setup - seed all Kenyan CBC subjects (all grades PP1-Grade 9)
+  const quickSetupAllSubjects = async () => {
     const schoolId = activeSchoolTab || currentSchool?.id
     if (!schoolId) return
 
     try {
       const supabase = createClient()
-      const subjectsForLevel = getTemplatesForLevel(gradeLevel)
+      const allSubjects = getTemplatesForLevel('all')
 
       // Insert all subjects for this school
       const { data, error } = await supabase
         .from('subjects')
         .insert(
-          subjectsForLevel.map(subject => ({
+          allSubjects.map(subject => ({
             name: subject.name,
             code: subject.code,
             school_id: schoolId,
@@ -762,7 +739,7 @@ export default function AdminPortalPage() {
 
       // Update local state
       setSubjects([...subjects, ...(data || [])])
-      alert(`Successfully added ${data?.length || 0} subjects for ${gradeLevel}`)
+      alert(`Successfully added ${data?.length || 0} subjects for your school`)
     } catch (error) {
       console.error('[v0] Error seeding subjects:', error)
       alert('Failed to add subjects')
@@ -1773,31 +1750,22 @@ export default function AdminPortalPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {/* Quick Setup for Subjects */}
+                  {/* Quick Setup for All Subjects */}
                   {subjects.length === 0 && (
                     <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-lg space-y-3">
                       <div>
-                        <h3 className="font-semibold text-blue-900 mb-2">Quick Setup - Add All Kenyan CBC Subjects</h3>
+                        <h3 className="font-semibold text-blue-900 mb-2">Quick Setup - Add All Kenyan CBC Subjects (PP1-Grade 9)</h3>
                         <p className="text-sm text-blue-800 mb-4">
-                          Select your school level to automatically add all Kenyan CBC curriculum subjects. You can disable specific subjects after.
+                          Add all available subjects for your school. Then disable the ones you don't offer. Teachers will only see enabled subjects when selecting for their classes.
                         </p>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                        {[
-                          { value: 'grade-1-3', label: 'Grade 1-3', icon: '📚' },
-                          { value: 'grade-4-6', label: 'Grade 4-6', icon: '📖' },
-                          { value: 'jss', label: 'Form 1-3 (JSS)', icon: '🎓' }
-                        ].map(level => (
-                          <Button
-                            key={level.value}
-                            onClick={() => quickSetupSubjects(level.value as any)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white"
-                          >
-                            <span className="mr-2">{level.icon}</span>
-                            {level.label}
-                          </Button>
-                        ))}
-                      </div>
+                      <Button
+                        onClick={() => quickSetupAllSubjects()}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add All Available Subjects
+                      </Button>
                     </div>
                   )}
 
