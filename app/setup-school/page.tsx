@@ -258,9 +258,6 @@ export default function SetupSchoolPage() {
         const validSchools = data.filter(s => s.id && s.name)
         const uniqueSchools = Array.from(new Map(validSchools.map(s => [s.id, s])).values())
         setExistingSchools(uniqueSchools)
-      }
-    }
-  }
       } else {
         setExistingSchools([])
       }
@@ -275,14 +272,15 @@ export default function SetupSchoolPage() {
       const supabase = createClient()
       const { data } = await supabase
         .from('schools')
-        .select('id, name, section_name')
+        .select('id, name, section_name, code')
         .eq('school_type', 'primary')
         .eq('is_active', true)
         .order('name')
       
       if (data) {
         const validSchools = data.filter(s => s.id && s.name)
-        setExistingSchools(validSchools)
+        const uniqueSchools = Array.from(new Map(validSchools.map(s => [s.id, s])).values())
+        setExistingSchools(uniqueSchools)
       }
     }
   }
