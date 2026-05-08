@@ -1094,6 +1094,22 @@ export default function AdminPortalPage() {
         ) : (
           <Tabs defaultValue="classes" className="space-y-6">
             <TabsList className="grid grid-cols-7 w-full max-w-6xl">
+              <TabsTrigger value="classes" className="flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                Classes
+              </TabsTrigger>
+              <TabsTrigger value="passwords" className="flex items-center gap-2">
+                <Lock className="w-4 h-4" />
+                Passwords
+              </TabsTrigger>
+              <TabsTrigger value="teachers" className="flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                Teachers
+              </TabsTrigger>
+              <TabsTrigger value="exams" className="flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                Exams
+              </TabsTrigger>
               <TabsTrigger value="settings" className="flex items-center gap-2">
                 <Settings className="w-4 h-4" />
                 Settings
@@ -1101,6 +1117,10 @@ export default function AdminPortalPage() {
               <TabsTrigger value="curriculum" className="flex items-center gap-2">
                 <BookOpen className="w-4 h-4" />
                 Curriculum
+              </TabsTrigger>
+              <TabsTrigger value="audit" className="flex items-center gap-2">
+                <History className="w-4 h-4" />
+                Audit
               </TabsTrigger>
               <TabsTrigger value="audit" className="flex items-center gap-2">
                 <History className="w-4 h-4" />
