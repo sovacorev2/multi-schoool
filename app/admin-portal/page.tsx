@@ -222,6 +222,9 @@ export default function AdminPortalPage() {
   const [customSubjects, setCustomSubjects] = useState<Array<{name: string; code: string}>>([])
   const [customSubjectName, setCustomSubjectName] = useState('')
   const [customSubjectCode, setCustomSubjectCode] = useState('')
+  
+  // Session management
+  const [showArchivedSessions, setShowArchivedSessions] = useState(false)
 
   // Load school from URL or context - redirect if no school
   useEffect(() => {
@@ -336,7 +339,7 @@ export default function AdminPortalPage() {
           supabase.from('classes').select('*').eq('school_id', schoolData.id).order('display_order'),
           supabase.from('exam_types').select('*').eq('school_id', schoolData.id).order('name'),
           supabase.from('subjects').select('*').eq('school_id', schoolData.id).order('name'),
-          supabase.from('sessions').select('*').eq('school_id', schoolData.id).order('created_at', { ascending: false }),
+          supabase.from('sessions').select('*').eq('school_id', schoolData.id).eq('is_active', true).order('created_at', { ascending: false }),
         ])
         
         dataMap[schoolData.id] = {
@@ -700,6 +703,20 @@ export default function AdminPortalPage() {
     setEditingDeadlineId(null)
     setEditingDeadlineValue('')
     loadAdminData()
+  }
+
+  // Archive/Unarchive session
+  const toggleSessionArchive = async (sessionId: string, currentState: boolean) => {
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('sessions')
+      .update({ is_active: !currentState })
+      .eq('id', sessionId)
+    
+    if (!error) {
+      loadAdminData()
+      setShowArchivedSessions(false)
+    }
   }
 
   // Update school settings
@@ -1242,6 +1259,16 @@ export default function AdminPortalPage() {
                                         title="Set deadline"
                                       >
                                         <Calendar className="w-3 h-3 md:w-4 md:h-4 md:mr-1" /><span className="hidden md:inline">Deadline</span>
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => toggleSessionArchive(d.id, d.is_active)}
+                                        className="whitespace-nowrap text-xs md:text-sm px-2 md:px-3 text-amber-600 hover:text-amber-700"
+                                        title="Archive session"
+                                      >
+                                        <span className="hidden md:inline">Archive</span>
+                                        <span className="md:hidden text-lg">📦</span>
                                       </Button>
                                     </>
                                   )}
