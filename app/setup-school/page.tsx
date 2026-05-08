@@ -221,6 +221,7 @@ export default function SetupSchoolPage() {
   useEffect(() => {
     const loadPrimarySchools = async () => {
       if (schoolType === 'jss') {
+        const supabase = createClient()
         const { data } = await supabase
           .from('schools')
           .select('id, name, section_name')
@@ -235,7 +236,7 @@ export default function SetupSchoolPage() {
     }
     
     loadPrimarySchools()
-  }, [schoolType, supabase])
+  }, [schoolType])
 
   const validateStep1 = () => {
     if (!formData.name.trim()) return 'School name is required'
