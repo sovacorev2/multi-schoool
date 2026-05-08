@@ -363,23 +363,6 @@ export default function AdminPortalPage() {
       setSubjects(activeData.subjects)
     }
   }
-        setDeadlines(sessionsData.map((s: any) => ({
-          id: s.id,
-          class_id: s.class_id,
-          term: s.term,
-          year: s.year,
-          deadline_date: s.deadline_datetime || '',
-          is_locked: s.is_locked,
-          class_name: s.classes?.name,
-          exam_type: s.exam_types?.name
-        })))
-      }
-    } catch (err) {
-      console.error('[v0] Error loading all schools data:', err)
-    } finally {
-      setIsLoading(false)
-    }
-  }
 
   // Add exam type
   const addExamType = async () => {
