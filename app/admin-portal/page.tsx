@@ -236,8 +236,7 @@ export default function AdminPortalPage() {
     setExamTypes([])
     setSubjects([])
     setSchool(null)
-    setIsAuthenticated(false)
-    setPassword('')
+    // Don't reset authentication - user already authenticated with the password
     
     const supabase = createClient()
     const { data } = await supabase
