@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { useSchool } from '@/lib/school-context'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { SUBJECT_TEMPLATES } from '@/lib/subject-templates'
@@ -10,15 +12,44 @@ interface CurriculumSelectorProps {
   schoolId?: string
 }
 
-export function CurriculumSelector({ schoolId }: CurriculumSelectorProps) {
+export function CurriculumSelector({ schoolId: propSchoolId }: CurriculumSelectorProps) {
+  const { currentSchool } = useSchool()
+  const schoolId = propSchoolId || currentSchool?.id
+  
   const [enabledSubjects, setEnabledSubjects] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(false)
   const [saved, setSaved] = useState(false)
+
+  const supabase = createClient()
 
   // Group subjects by grade level for display
   const primaryLower = SUBJECT_TEMPLATES.slice(0, 8)
   const primaryUpper = SUBJECT_TEMPLATES.slice(8, 14)
   const secondary = SUBJECT_TEMPLATES.slice(14)
+
+  // Load existing enabled subjects from database
+  useEffect(() => {
+    if (!schoolId) return
+    
+    const loadEnabledSubjects = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('subjects')
+          .select('code')
+          .eq('school_id', schoolId)
+          .eq('is_disabled', false)
+
+        if (error) throw error
+        
+        const codes = new Set(data?.map(s => s.code) || [])
+        setEnabledSubjects(codes)
+      } catch (error) {
+        console.error('[v0] Error loading subjects:', error)
+      }
+    }
+
+    loadEnabledSubjects()
+  }, [schoolId])
 
   const toggleSubject = (code: string) => {
     const newSet = new Set(enabledSubjects)
@@ -46,14 +77,38 @@ export function CurriculumSelector({ schoolId }: CurriculumSelectorProps) {
   }
 
   const saveSelection = async () => {
+    if (!schoolId) return
+    
     setLoading(true)
     try {
-      // Store in localStorage for now since we don't have global_subjects table yet
-      localStorage.setItem('enabledSubjects', JSON.stringify(Array.from(enabledSubjects)))
+      // Delete all existing subjects for this school
+      const { error: deleteError } = await supabase
+        .from('subjects')
+        .delete()
+        .eq('school_id', schoolId)
+
+      if (deleteError) throw deleteError
+
+      // Insert new subjects based on selection
+      const subjectsToInsert = SUBJECT_TEMPLATES.map(template => ({
+        name: template.name,
+        code: template.code,
+        school_id: schoolId,
+        is_disabled: !enabledSubjects.has(template.code),
+        is_custom: false
+      }))
+
+      const { error: insertError } = await supabase
+        .from('subjects')
+        .insert(subjectsToInsert)
+
+      if (insertError) throw insertError
+
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch (error) {
       console.error('[v0] Error saving subjects:', error)
+      alert('Error saving subjects: ' + (error as any)?.message)
     } finally {
       setLoading(false)
     }
@@ -132,7 +187,7 @@ export function CurriculumSelector({ schoolId }: CurriculumSelectorProps) {
               {enabledSubjects.size} subject{enabledSubjects.size !== 1 ? 's' : ''} selected
             </p>
             <p className="text-sm text-blue-800 mt-1">
-              Teachers will see only enabled subjects in their portal. They can select which ones they teach for each class.
+              Teachers will see only enabled subjects in their portal. Changes appear immediately.
             </p>
           </div>
           <Button
@@ -147,7 +202,7 @@ export function CurriculumSelector({ schoolId }: CurriculumSelectorProps) {
             {saved ? (
               <>
                 <Check className="w-4 h-4 mr-2" />
-                Saved
+                Saved!
               </>
             ) : (
               'Save Selection'
@@ -158,7 +213,7 @@ export function CurriculumSelector({ schoolId }: CurriculumSelectorProps) {
 
       {/* Info */}
       <div className="p-3 bg-amber-50 border border-amber-200 rounded text-sm text-amber-900">
-        <strong>Note:</strong> Subject configuration will be stored and used to populate the teacher portal. Teachers can then select which of these enabled subjects they teach in each class.
+        <strong>Real-time Sync:</strong> When you save, teachers&apos; portals update immediately with the enabled subjects.
       </div>
     </div>
   )
