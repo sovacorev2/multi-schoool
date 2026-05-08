@@ -201,6 +201,7 @@ export default function AdminPortalPage() {
   // Edit class name
   const [editingClassId, setEditingClassId] = useState<string | null>(null)
   const [editingClassName, setEditingClassName] = useState('')
+  const [classPasswords, setClassPasswords] = useState<{[key: string]: string}>({})
   const [isSavingEdit, setIsSavingEdit] = useState(false)
   const [editError, setEditError] = useState('')
 
@@ -324,7 +325,8 @@ export default function AdminPortalPage() {
       setSchool(selected)
       setSelectedSchoolForAccess(schoolId)
       setShowSchoolSelection(false)
-      loadAdminData()
+      // Load data immediately without showing password again
+      setTimeout(() => loadAdminData(), 0)
     }
   }
 
