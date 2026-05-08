@@ -207,8 +207,8 @@ export default function AdminPortalPage() {
 
   // School selection state for linked schools
   const [linkedSchools, setLinkedSchools] = useState<School[]>([])
-  const [showSchoolSelection, setShowSchoolSelection] = useState(false)
-  const [selectedSchoolForAccess, setSelectedSchoolForAccess] = useState<string | null>(null)
+  const [activeSchoolTab, setActiveSchoolTab] = useState<string | null>(null)
+  const [allSchoolsData, setAllSchoolsData] = useState<{[schoolId: string]: {classes: Class[], examTypes: ExamType[], subjects: any[]}}>({})
 
   // Class teacher management
   const [classTeachers, setClassTeachers] = useState<{[key: string]: string}>({})
@@ -292,20 +292,18 @@ export default function AdminPortalPage() {
           linkedSchoolsList = [schoolData, ...jssLinked]
         } else if (parentSchool) {
           linkedSchoolsList = [parentSchool, schoolData]
+        } else {
+          linkedSchoolsList = [schoolData]
         }
         
-        // If multiple linked schools, show selection dialog
-        if (linkedSchoolsList.length > 1) {
-          setLinkedSchools(linkedSchoolsList)
-          setShowSchoolSelection(true)
-          setSchool(schoolData)
-          setIsAuthenticated(true)
-        } else {
-          // Single school, proceed normally
-          setSchool(schoolData)
-          setIsAuthenticated(true)
-          loadAdminData()
-        }
+        // Set authenticated and load all schools' data
+        setSchool(schoolData)
+        setIsAuthenticated(true)
+        setLinkedSchools(linkedSchoolsList)
+        setActiveSchoolTab(schoolData.id) // Start with current school
+        
+        // Load data for all linked schools
+        await loadAllLinkedSchoolsData(linkedSchoolsList)
       } else {
         setPasswordError('Incorrect admin password')
       }
@@ -316,45 +314,55 @@ export default function AdminPortalPage() {
     }
   }
 
-  // Handle school selection from dialog
-  const handleSelectSchool = (schoolId: string) => {
-    const selected = linkedSchools.find(s => s.id === schoolId)
-    if (selected) {
-      console.log('[v0] Switching to school:', selected.name, selected.id)
-      // Switch to selected school and load its data - stay authenticated
-      setCurrentSchool(selected)
-      setSchool(selected)
-      setSelectedSchoolForAccess(schoolId)
-      setShowSchoolSelection(false)
-      // isAuthenticated stays true, so password form won't show again
-      // Call loadAdminData with the selected school
-      loadAdminData(selected)
+  // Load data for all linked schools at once
+  const loadAllLinkedSchoolsData = async (schools: School[]) => {
+    setIsLoading(true)
+    try {
+      const supabase = createClient()
+      const dataMap: {[schoolId: string]: {classes: Class[], examTypes: ExamType[], subjects: any[]}} = {}
+      
+      // Load data for each linked school in parallel
+      const promises = schools.map(async (schoolData) => {
+        const [classesRes, examTypesRes, subjectsRes] = await Promise.all([
+          supabase.from('classes').select('*').eq('school_id', schoolData.id).order('display_order'),
+          supabase.from('exam_types').select('*').eq('school_id', schoolData.id).order('name'),
+          supabase.from('subjects').select('*').eq('school_id', schoolData.id).order('name'),
+        ])
+        
+        dataMap[schoolData.id] = {
+          classes: classesRes.data || [],
+          examTypes: examTypesRes.data || [],
+          subjects: subjectsRes.data || [],
+        }
+      })
+      
+      await Promise.all(promises)
+      setAllSchoolsData(dataMap)
+      
+      // Set active tab data to first school
+      if (activeSchoolTab && dataMap[activeSchoolTab]) {
+        const activeData = dataMap[activeSchoolTab]
+        setClasses(activeData.classes)
+        setExamTypes(activeData.examTypes)
+        setSubjects(activeData.subjects)
+      }
+    } catch (err) {
+      console.error('[v0] Error loading all schools data:', err)
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  // Load all admin data
-  const loadAdminData = async (schoolToLoad?: School) => {
-    const schoolData = schoolToLoad || currentSchool
-    if (!schoolData) return
-    
-    console.log('[v0] Loading admin data for school:', schoolData.name, schoolData.id)
-    
-    // Clear old data first when switching schools
-    setClasses([])
-    setExamTypes([])
-    setSubjects([])
-    setDeadlines([])
-    setAuditLogs([])
-    setIsLoading(true)
-
-    try {
-      const supabase = createClient()
-
-      const [classesRes, examTypesRes, subjectsRes] = await Promise.all([
-        supabase.from('classes').select('*').eq('school_id', schoolData.id).order('display_order'),
-        supabase.from('exam_types').select('*').eq('school_id', schoolData.id).order('name'),
-        supabase.from('subjects').select('*').eq('school_id', schoolData.id).order('name'),
-      ])
+  // Switch tab to different school
+  const handleSwitchSchoolTab = (schoolId: string) => {
+    setActiveSchoolTab(schoolId)
+    const activeData = allSchoolsData[schoolId]
+    if (activeData) {
+      setClasses(activeData.classes)
+      setExamTypes(activeData.examTypes)
+      setSubjects(activeData.subjects)
+    }
+  }
 
       if (classesRes.data) {
         console.log('[v0] Loaded classes:', classesRes.data.length, 'for school:', schoolData.id)
@@ -874,19 +882,23 @@ export default function AdminPortalPage() {
               <p className="text-sm opacity-90">Admin Portal</p>
             </div>
             
-            {/* School Toggle Button - Show if there are linked schools */}
+            {/* School Tabs - Show if there are linked schools */}
             {linkedSchools.length > 1 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowSchoolSelection(true)}
-                className="bg-white/10 border-white/20 text-white hover:bg-white/20 ml-4"
-                title="Switch between Primary and JSS"
-              >
-                <span className="text-xs">
-                  {currentSchool.section_name ? currentSchool.section_name : 'Combined'} →
-                </span>
-              </Button>
+              <div className="flex items-center gap-2 ml-6 border-l border-white/30 pl-6">
+                {linkedSchools.map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => handleSwitchSchoolTab(s.id)}
+                    className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                      activeSchoolTab === s.id
+                        ? 'bg-white text-blue-600'
+                        : 'bg-white/20 text-white hover:bg-white/30'
+                    }`}
+                  >
+                    {s.section_name || 'School'}
+                  </button>
+                ))}
+              </div>
             )}
           </div>
           <div className="flex items-center gap-3">
@@ -1678,52 +1690,6 @@ export default function AdminPortalPage() {
                 {isDeleting ? 'Deleting...' : 'Delete Class'}
               </Button>
             </div>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        {/* School Selection Dialog for Linked Schools */}
-        <AlertDialog open={showSchoolSelection} onOpenChange={setShowSchoolSelection}>
-          <AlertDialogContent className="max-w-md">
-            <AlertDialogHeader>
-              <AlertDialogTitle className="text-lg">Select Admin Access</AlertDialogTitle>
-              <AlertDialogDescription>
-                This school has multiple sections. Which section would you like to manage?
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            
-            <div className="space-y-3 py-4">
-              {linkedSchools.map(linkedSchool => (
-                <button
-                  key={linkedSchool.id}
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    handleSelectSchool(linkedSchool.id)
-                  }}
-                  className={`w-full p-4 rounded-lg border-2 transition-all text-left cursor-pointer ${
-                    currentSchool?.id === linkedSchool.id
-                      ? 'border-blue-500 bg-blue-50 shadow-md'
-                      : 'border-gray-200 hover:border-blue-500 hover:bg-blue-50'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-semibold text-gray-900">{linkedSchool.name}</div>
-                      {linkedSchool.section_name && (
-                        <div className="text-sm text-gray-600 mt-1">Section: {linkedSchool.section_name}</div>
-                      )}
-                      <div className="text-xs text-gray-500 mt-2">Code: {linkedSchool.code}</div>
-                    </div>
-                    {currentSchool?.id === linkedSchool.id && (
-                      <div className="ml-4 text-green-600 font-semibold text-sm">✓ Active</div>
-                    )}
-                  </div>
-                </button>
-              ))}
-            </div>
-            
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
           </AlertDialogContent>
         </AlertDialog>
       </main>
