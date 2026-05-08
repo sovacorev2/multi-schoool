@@ -264,6 +264,33 @@ export default function SuperAdminPage() {
     const school = schools.find(s => s.id === schoolId)
     
     try {
+      // Delete in order of dependencies (children first, then parents)
+      
+      // 1. Delete marks (depends on learners and sessions)
+      await supabase.from('marks').delete().eq('school_id', schoolId)
+      
+      // 2. Delete learners
+      await supabase.from('learners').delete().eq('school_id', schoolId)
+      
+      // 3. Delete sessions (depends on classes and exam_types)
+      await supabase.from('sessions').delete().eq('school_id', schoolId)
+      
+      // 4. Delete classes
+      await supabase.from('classes').delete().eq('school_id', schoolId)
+      
+      // 5. Delete exam_types
+      await supabase.from('exam_types').delete().eq('school_id', schoolId)
+      
+      // 6. Delete subjects
+      await supabase.from('subjects').delete().eq('school_id', schoolId)
+      
+      // 7. Delete activity_logs
+      await supabase.from('activity_logs').delete().eq('school_id', schoolId)
+      
+      // 8. Clear parent_school_id from any linked schools (JSS schools linked to this Primary school)
+      await supabase.from('schools').update({ parent_school_id: null }).eq('parent_school_id', schoolId)
+      
+      // 9. Finally delete the school itself
       const { error } = await supabase
         .from('schools')
         .delete()
@@ -272,14 +299,7 @@ export default function SuperAdminPage() {
       if (!error) {
         setSchools(schools.filter(s => s.id !== schoolId))
         setDeleteConfirm(null)
-        
-        // Log deletion action
-        await supabase.from('activity_logs').insert({
-          school_id: schoolId,
-          action: 'school_deleted',
-          details: `Deleted school: ${school?.name}`,
-          performed_by: 'Super Admin'
-        })
+        console.log('[v0] School deleted successfully with all related data:', school?.name)
       } else {
         console.error('[v0] Error deleting school:', error)
       }
