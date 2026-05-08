@@ -697,11 +697,6 @@ export default function AdminPortalPage() {
     }
   }
 
-
-    }
-  }
-  }
-
   // Update school settings
 
   // Update class password
