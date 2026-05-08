@@ -319,17 +319,20 @@ export default function AdminPortalPage() {
 
   // Handle school selection from dialog
   const handleSelectSchool = (schoolId: string) => {
-    console.log('[v0] Selecting school:', schoolId)
+    console.log('[v0] Clicked school button for:', schoolId)
     const selected = linkedSchools.find(s => s.id === schoolId)
-    console.log('[v0] Selected school:', selected)
+    console.log('[v0] Found school:', selected?.name)
     if (selected) {
+      console.log('[v0] Setting school and closing dialog')
       setCurrentSchool(selected)
       setSchool(selected)
       setSelectedSchoolForAccess(schoolId)
       setShowSchoolSelection(false)
       // Load data immediately with the selected school
-      console.log('[v0] Loading admin data for school:', selected.id)
-      loadAdminData(selected)
+      console.log('[v0] Calling loadAdminData for:', selected.id)
+      setTimeout(() => {
+        loadAdminData(selected)
+      }, 100)
     }
   }
 
