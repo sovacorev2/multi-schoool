@@ -58,6 +58,12 @@ export default function SetupSchoolPage() {
   const [isUploadingLogo, setIsUploadingLogo] = useState(false)
   const [logoError, setLogoError] = useState('')
 
+  // School type selection
+  const [schoolType, setSchoolType] = useState<'primary' | 'jss' | 'combined'>('combined')
+  const [parentSchoolId, setParentSchoolId] = useState<string>('')
+  const [sectionName, setSectionName] = useState<string>('')
+  const [existingSchools, setExistingSchools] = useState<any[]>([])
+  
   // School form data
   const [formData, setFormData] = useState({
     name: '',
@@ -72,10 +78,12 @@ export default function SetupSchoolPage() {
     confirm_password: '',
   })
 
-  // Classes selection (toggle on/off)
-  const [selectedClasses, setSelectedClasses] = useState<string[]>(
-    ALL_CLASSES.map(c => c.name) // All selected by default
-  )
+  // Classes selection (toggle on/off) - filtered by school type
+  const [selectedClasses, setSelectedClasses] = useState<string[]>(() => {
+    if (schoolType === 'primary') return PRIMARY_CLASSES.map(c => c.name)
+    if (schoolType === 'jss') return JSS_CLASSES.map(c => c.name)
+    return ALL_CLASSES.map(c => c.name)
+  })
   const [customClassName, setCustomClassName] = useState('')
   
   // Streams for classes (e.g., "Grade 5" -> ["East", "West"])
@@ -295,6 +303,9 @@ export default function SetupSchoolPage() {
           admin_password: formData.admin_password,
           logo_url: uploadedLogoUrl,
           is_active: true,
+          school_type: schoolType,
+          section_name: sectionName || null,
+          parent_school_id: parentSchoolId || null,
         })
         .select()
         .single()
@@ -560,16 +571,88 @@ export default function SetupSchoolPage() {
 
           {/* Step 1: School Details */}
           {step === 1 && (
-            <div className="space-y-4">
+            <div className="space-y-6">
+              {/* School Type Selection */}
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
+                <Label className="text-base font-semibold mb-3 block">School Type *</Label>
+                <p className="text-sm text-gray-600 mb-3">Choose whether this is a Primary School, Junior Secondary, or both:</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSchoolType('primary')
+                      setSectionName('Primary')
+                      setSelectedClasses(PRIMARY_CLASSES.map(c => c.name))
+                    }}
+                    className={`p-4 rounded-lg border-2 transition-all ${
+                      schoolType === 'primary'
+                        ? 'border-blue-600 bg-white shadow-md'
+                        : 'border-gray-200 bg-gray-50 hover:border-blue-300'
+                    }`}
+                  >
+                    <div className="font-semibold text-sm mb-1">Primary School</div>
+                    <div className="text-xs text-gray-600">PP1 - Grade 6</div>
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSchoolType('jss')
+                      setSectionName('Junior Secondary')
+                      setSelectedClasses(JSS_CLASSES.map(c => c.name))
+                    }}
+                    className={`p-4 rounded-lg border-2 transition-all ${
+                      schoolType === 'jss'
+                        ? 'border-amber-600 bg-white shadow-md'
+                        : 'border-gray-200 bg-gray-50 hover:border-amber-300'
+                    }`}
+                  >
+                    <div className="font-semibold text-sm mb-1">Junior Secondary</div>
+                    <div className="text-xs text-gray-600">Grade 7 - 9</div>
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSchoolType('combined')
+                      setSectionName('')
+                      setSelectedClasses(ALL_CLASSES.map(c => c.name))
+                    }}
+                    className={`p-4 rounded-lg border-2 transition-all ${
+                      schoolType === 'combined'
+                        ? 'border-green-600 bg-white shadow-md'
+                        : 'border-gray-200 bg-gray-50 hover:border-green-300'
+                    }`}
+                  >
+                    <div className="font-semibold text-sm mb-1">Combined School</div>
+                    <div className="text-xs text-gray-600">All levels</div>
+                  </button>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="name">School Name *</Label>
                 <Input
                   id="name"
-                  placeholder="e.g., ABC Primary School"
+                  placeholder="e.g., St Marys School"
                   value={formData.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
                 />
               </div>
+
+              {/* Section Name for Primary/JSS schools */}
+              {schoolType !== 'combined' && (
+                <div className="space-y-2">
+                  <Label htmlFor="sectionName">Section Name *</Label>
+                  <Input
+                    id="sectionName"
+                    placeholder={schoolType === 'primary' ? 'e.g., Primary' : 'e.g., Junior Secondary'}
+                    value={sectionName}
+                    onChange={(e) => setSectionName(e.target.value)}
+                  />
+                  <p className="text-xs text-gray-500">This will appear in reports and dashboards (e.g., "St Marys Primary" or "St Marys JSS")</p>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
