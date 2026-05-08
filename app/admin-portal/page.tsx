@@ -363,23 +363,6 @@ export default function AdminPortalPage() {
       setSubjects(activeData.subjects)
     }
   }
-
-      if (classesRes.data) {
-        console.log('[v0] Loaded classes:', classesRes.data.length, 'for school:', schoolData.id)
-        setClasses(classesRes.data)
-      }
-      if (examTypesRes.data) setExamTypes(examTypesRes.data)
-      if (subjectsRes.data) setSubjects(subjectsRes.data)
-
-      // Load deadlines from sessions - only show sessions with exam_type_id (actual exam sessions)
-      const { data: sessionsData } = await supabase
-        .from('sessions')
-        .select('*, classes(name), exam_types(name)')
-        .eq('school_id', schoolData.id)
-        .not('exam_type_id', 'is', null)
-        .order('created_at', { ascending: false })
-
-      if (sessionsData) {
         setDeadlines(sessionsData.map((s: any) => ({
           id: s.id,
           class_id: s.class_id,
@@ -391,29 +374,8 @@ export default function AdminPortalPage() {
           exam_type: s.exam_types?.name
         })))
       }
-
-      // Load audit logs
-      const { data: logsData } = await supabase
-        .from('activity_logs')
-        .select('*')
-        .eq('school_id', schoolData.id)
-        .order('created_at', { ascending: false })
-        .limit(100)
-
-      if (logsData) {
-        setAuditLogs(logsData.map((log: any) => ({
-          id: log.id,
-          action: log.action,
-          details: log.details,
-          performed_by: log.performed_by,
-          class_name: '',
-          session_info: '',
-          created_at: log.created_at
-        })))
-      }
-
     } catch (err) {
-      console.error('[v0] Error loading admin data:', err)
+      console.error('[v0] Error loading all schools data:', err)
     } finally {
       setIsLoading(false)
     }
