@@ -1064,11 +1064,12 @@ export default function SetupSchoolPage() {
                                     <X className="w-3 h-3" />
                                   </button>
                                 </span>
-                              ))}
+                                  ))}
                             </div>
                           )}
                         </div>
                       )}
+                    </div>
                   ))}
                 </div>
               </div>
