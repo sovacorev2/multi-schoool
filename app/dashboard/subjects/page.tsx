@@ -18,7 +18,29 @@ export default function SubjectsPage() {
 
   useEffect(() => {
     fetchData()
-  }, [currentClass?.id])
+
+    // Subscribe to real-time changes in subjects table
+    const channel = supabase
+      .channel(`subjects:school:${currentClass?.school_id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'subjects',
+          filter: `school_id=eq.${currentClass?.school_id}`
+        },
+        (payload) => {
+          console.log('[v0] Subjects updated in real-time:', payload)
+          fetchData()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [currentClass?.id, currentClass?.school_id])
 
   async function fetchData() {
     if (!currentClass) return
