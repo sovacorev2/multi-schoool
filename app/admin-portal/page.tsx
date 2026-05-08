@@ -897,40 +897,60 @@ export default function AdminPortalPage() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header 
-        className="text-white py-4 px-6 shadow-lg"
-        style={{ backgroundColor: currentSchool.primary_color || '#2563eb' }}
+        className="text-white py-4 px-6 shadow-lg border-b-4"
+        style={{ 
+          backgroundColor: currentSchool.primary_color || '#2563eb',
+          borderBottomColor: activeSchoolTab === currentSchool.id ? 
+            (currentSchool.school_type === 'primary' ? '#3b82f6' : '#10b981') : 
+            (currentSchool.school_type === 'primary' ? '#1e40af' : '#047857')
+        }}
       >
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4 flex-1">
             {/* School Logo */}
             <img 
               src={currentSchool.logo_url || `/logos/${currentSchool.code}.png`}
               alt={`${currentSchool.name} logo`}
-              className="w-12 h-12 object-contain bg-white rounded-lg p-1"
+              className="w-14 h-14 object-contain bg-white rounded-lg p-1 shadow"
               onError={(e) => {
                 const target = e.currentTarget as HTMLImageElement
                 target.style.display = 'none'
                 target.nextElementSibling?.classList.remove('hidden')
               }}
             />
-            <Shield className="w-8 h-8 hidden" />
-            <div>
-              <h1 className="text-xl font-bold">{currentSchool.name}</h1>
-              <p className="text-sm opacity-90">Admin Portal</p>
+            <Shield className="w-10 h-10 hidden text-white/80" />
+            
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-1">
+                <h1 className="text-2xl font-bold">{currentSchool.name}</h1>
+                {/* School Section Badge */}
+                <span className={`px-3 py-1 rounded-full text-xs font-semibold text-white ${
+                  activeSchoolTab === currentSchool.id ? 
+                    (currentSchool.school_type === 'primary' ? 'bg-blue-500' : 'bg-green-500') :
+                    (currentSchool.school_type === 'primary' ? 'bg-blue-400' : 'bg-green-400')
+                }`}>
+                  {currentSchool.section_name || (currentSchool.school_type === 'primary' ? 'Primary' : 'Junior Secondary')}
+                </span>
+                {/* School Code */}
+                <span className="text-xs text-white/70 font-mono">{currentSchool.code}</span>
+              </div>
+              <p className="text-sm opacity-90">Admin Portal - {activeSchoolTab === currentSchool.id ? 'Currently Viewing' : 'Archived'}</p>
             </div>
             
             {/* School Tabs - Show if there are linked schools */}
             {linkedSchools.length > 1 && (
-              <div className="flex items-center gap-2 ml-6 border-l border-white/30 pl-6">
+              <div className="flex items-center gap-2 ml-4 border-l border-white/30 pl-4">
+                <span className="text-xs opacity-75 font-medium">SWITCH SECTION:</span>
                 {linkedSchools.map((s) => (
                   <button
                     key={s.id}
                     onClick={() => handleSwitchSchoolTab(s.id)}
-                    className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                    className={`px-3 py-1 rounded-lg text-sm font-medium transition-all transform ${
                       activeSchoolTab === s.id
-                        ? 'bg-white text-blue-600'
-                        : 'bg-white/20 text-white hover:bg-white/30'
+                        ? 'bg-white text-blue-600 shadow-lg scale-105'
+                        : 'bg-white/20 text-white hover:bg-white/30 hover:scale-102'
                     }`}
+                    title={`Switch to ${s.section_name}`}
                   >
                     {s.section_name || 'School'}
                   </button>
@@ -938,14 +958,16 @@ export default function AdminPortalPage() {
               </div>
             )}
           </div>
-          <div className="flex items-center gap-3">
+          
+          <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => router.push(`/?school=${currentSchool.code}`)}
               className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+              title="Go to student portal"
             >
-              Main Portal
+              Student Portal
             </Button>
             <Button
               variant="outline"
@@ -953,10 +975,7 @@ export default function AdminPortalPage() {
               onClick={() => {
                 setIsAuthenticated(false)
                 setPassword('')
-                // Redirect to school's home page
-                if (currentSchool) {
-                  window.location.href = `/?school=${currentSchool.code}`
-                }
+                window.location.href = `/?school=${currentSchool.code}`
               }}
               className="bg-white/10 border-white/20 text-white hover:bg-white/20"
             >
