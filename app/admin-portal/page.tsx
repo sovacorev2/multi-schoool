@@ -697,8 +697,6 @@ export default function AdminPortalPage() {
     }
   }
 
-  // Update school settings
-
   // Update class password
   const updateClassPassword = async (classId: string) => {
     const newPassword = classPasswords[classId]
