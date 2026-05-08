@@ -180,10 +180,10 @@ export default function MarksPage() {
       supabase.from("exam_types").select("*").eq("school_id", currentSchool.id).order("display_order", { ascending: true }),
       sessionsQuery,
       supabase
-        .from("subjects")
-        .select("*")
+        .from("class_subjects")
+        .select("subject_id, subjects(*)")
         .eq("class_id", currentClass.id)
-        .order("name"),
+        .order("subjects(name)"),
       supabase
         .from("learners")
         .select("*")
@@ -203,7 +203,11 @@ export default function MarksPage() {
 
     setExamTypes(examTypesRes.data || []);
     setSessions(fetchedSessions);
-    setSubjects(subjectsRes.data || []);
+    // Extract subjects from class_subjects junction table
+    const classSubjects = (subjectsRes.data || [])
+      .map((cs: any) => cs.subjects)
+      .filter(Boolean);
+    setSubjects(classSubjects);
     setLearners(learnersRes.data || []);
     setIsLoading(false);
   }, [currentClass, currentSchool]);
