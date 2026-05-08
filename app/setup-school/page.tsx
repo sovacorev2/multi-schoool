@@ -230,13 +230,35 @@ export default function SetupSchoolPage() {
           .order('name')
         
         if (data) {
-          setExistingSchools(data)
+          // Filter out any deleted schools by checking if they have valid data
+          const validSchools = data.filter(s => s.id && s.name)
+          setExistingSchools(validSchools)
         }
+      } else {
+        setExistingSchools([])
       }
     }
     
     loadPrimarySchools()
   }, [schoolType])
+
+  // Refresh the list of available primary schools
+  const refreshPrimarySchools = async () => {
+    if (schoolType === 'jss') {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('schools')
+        .select('id, name, section_name')
+        .eq('school_type', 'primary')
+        .eq('is_active', true)
+        .order('name')
+      
+      if (data) {
+        const validSchools = data.filter(s => s.id && s.name)
+        setExistingSchools(validSchools)
+      }
+    }
+  }
 
   const validateStep1 = () => {
     if (!formData.name.trim()) return 'School name is required'
@@ -444,6 +466,9 @@ export default function SetupSchoolPage() {
       }
 
       console.log('[v0] School setup complete!')
+
+      // Refresh the schools list so new school appears in dropdowns
+      await refreshPrimarySchools()
 
       // Generate the school link
       const baseUrl = window.location.origin
