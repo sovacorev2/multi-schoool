@@ -371,7 +371,7 @@ export default function AdminPortalPage() {
     const supabase = createClient()
     const { data, error } = await supabase
       .from('exam_types')
-      .insert({ name: newExamType.trim(), school_id: currentSchool.id })
+      .insert({ name: newExamType.trim(), school_id: activeSchoolTab || currentSchool?.id })
       .select()
       .single()
 
@@ -399,7 +399,7 @@ export default function AdminPortalPage() {
       .from('classes')
       .insert({ 
         name: newClassName.trim(), 
-        school_id: currentSchool.id,
+        school_id: activeSchoolTab || currentSchool?.id,
         password: 'welcome',
         display_order: classes.length + 1
       })
@@ -415,7 +415,7 @@ export default function AdminPortalPage() {
         year: currentYear,
         term: term,
         is_active: true,
-        school_id: currentSchool.id,
+        school_id: activeSchoolTab || currentSchool?.id,
       }))
       await supabase.from('sessions').insert(sessionsToInsert)
       
@@ -545,7 +545,7 @@ export default function AdminPortalPage() {
         .from('classes')
         .insert({ 
           name: streamClassName, 
-          school_id: currentSchool.id,
+          school_id: activeSchoolTab || currentSchool?.id,
           password: 'welcome',
           display_order: classes.length + 1
         })
@@ -562,7 +562,7 @@ export default function AdminPortalPage() {
           year: currentYear,
           term: term,
           is_active: true,
-          school_id: currentSchool.id,
+          school_id: activeSchoolTab || currentSchool?.id,
         }))
         await supabase.from('sessions').insert(sessionsToInsert)
         
@@ -613,7 +613,7 @@ export default function AdminPortalPage() {
         term: deadlineTerm,
         year: deadlineYear,
         is_locked: false,
-        school_id: currentSchool.id
+        school_id: activeSchoolTab || currentSchool?.id
       })
 
     loadAdminData()
