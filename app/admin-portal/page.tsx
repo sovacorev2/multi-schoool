@@ -328,20 +328,22 @@ export default function AdminPortalPage() {
     setIsLoading(true)
     try {
       const supabase = createClient()
-      const dataMap: {[schoolId: string]: {classes: Class[], examTypes: ExamType[], subjects: any[]}} = {}
+      const dataMap: {[schoolId: string]: {classes: Class[], examTypes: ExamType[], subjects: any[], sessions: any[]}} = {}
       
       // Load data for each linked school in parallel
       const promises = schools.map(async (schoolData) => {
-        const [classesRes, examTypesRes, subjectsRes] = await Promise.all([
+        const [classesRes, examTypesRes, subjectsRes, sessionsRes] = await Promise.all([
           supabase.from('classes').select('*').eq('school_id', schoolData.id).order('display_order'),
           supabase.from('exam_types').select('*').eq('school_id', schoolData.id).order('name'),
           supabase.from('subjects').select('*').eq('school_id', schoolData.id).order('name'),
+          supabase.from('sessions').select('*').eq('school_id', schoolData.id).order('created_at', { ascending: false }),
         ])
         
         dataMap[schoolData.id] = {
           classes: classesRes.data || [],
           examTypes: examTypesRes.data || [],
           subjects: subjectsRes.data || [],
+          sessions: sessionsRes.data || [],
         }
       })
       
@@ -354,6 +356,7 @@ export default function AdminPortalPage() {
         setClasses(activeData.classes)
         setExamTypes(activeData.examTypes)
         setSubjects(activeData.subjects)
+        setDeadlines(activeData.sessions)
       }
     } catch (err) {
       console.error('[v0] Error loading all schools data:', err)
@@ -370,6 +373,7 @@ export default function AdminPortalPage() {
       setClasses(activeData.classes)
       setExamTypes(activeData.examTypes)
       setSubjects(activeData.subjects)
+      setDeadlines(activeData.sessions)
     }
   }
 
@@ -1700,7 +1704,7 @@ export default function AdminPortalPage() {
                       {[
                         { value: 'grade-1-3', label: 'Grade 1-3 (Primary Lower)', icon: '📚' },
                         { value: 'grade-4-6', label: 'Grade 4-6 (Primary Upper)', icon: '📖' },
-                        { value: 'jss', label: 'JSS (Form 1-3)', icon: '🎓' }
+                        { value: 'jss', label: 'JSS', icon: '🎓' }
                       ].map(level => (
                         <button
                           key={level.value}
