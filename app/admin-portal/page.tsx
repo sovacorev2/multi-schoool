@@ -1093,7 +1093,7 @@ export default function AdminPortalPage() {
           </div>
         ) : (
           <Tabs defaultValue="classes" className="space-y-6">
-            <TabsList className="grid grid-cols-7 w-full max-w-6xl">
+            <TabsList className="grid grid-cols-4 md:grid-cols-7 w-full gap-1 h-auto p-1 bg-gray-100 rounded-lg border">
               <TabsTrigger value="classes" className="flex items-center gap-2">
                 <Users className="w-4 h-4" />
                 Classes
