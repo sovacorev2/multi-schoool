@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useSchool } from '@/lib/school-context'
 import { getTemplatesForLevel, type SubjectLevel } from '@/lib/subject-templates'
+import { CurriculumSelector } from './curriculum-selector'
 import {
   Select,
   SelectContent,
@@ -1097,6 +1098,10 @@ export default function AdminPortalPage() {
                 <Settings className="w-4 h-4" />
                 Settings
               </TabsTrigger>
+              <TabsTrigger value="curriculum" className="flex items-center gap-2">
+                <BookOpen className="w-4 h-4" />
+                Curriculum
+              </TabsTrigger>
               <TabsTrigger value="audit" className="flex items-center gap-2">
                 <History className="w-4 h-4" />
                 Audit Logs
@@ -1668,6 +1673,24 @@ export default function AdminPortalPage() {
                       </Button>
                     </>
                   )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Curriculum Tab - Admin Selects Which Subjects to Enable */}
+            <TabsContent value="curriculum">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BookOpen className="w-5 h-5" />
+                    Curriculum Setup
+                  </CardTitle>
+                  <CardDescription>
+                    Select which Kenyan CBC subjects are available at your school. Teachers will see only enabled subjects in their portal.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <CurriculumSelector />
                 </CardContent>
               </Card>
             </TabsContent>
