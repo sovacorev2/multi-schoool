@@ -859,6 +859,21 @@ export default function AdminPortalPage() {
               <h1 className="text-xl font-bold">{currentSchool.name}</h1>
               <p className="text-sm opacity-90">Admin Portal</p>
             </div>
+            
+            {/* School Toggle Button - Show if there are linked schools */}
+            {linkedSchools.length > 1 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowSchoolSelection(true)}
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20 ml-4"
+                title="Switch between Primary and JSS"
+              >
+                <span className="text-xs">
+                  {currentSchool.section_name ? currentSchool.section_name : 'Combined'} →
+                </span>
+              </Button>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <Button
@@ -1672,13 +1687,24 @@ export default function AdminPortalPage() {
                     e.stopPropagation()
                     handleSelectSchool(linkedSchool.id)
                   }}
-                  className="w-full p-4 rounded-lg border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-all text-left cursor-pointer"
+                  className={`w-full p-4 rounded-lg border-2 transition-all text-left cursor-pointer ${
+                    currentSchool?.id === linkedSchool.id
+                      ? 'border-blue-500 bg-blue-50 shadow-md'
+                      : 'border-gray-200 hover:border-blue-500 hover:bg-blue-50'
+                  }`}
                 >
-                  <div className="font-semibold text-gray-900">{linkedSchool.name}</div>
-                  {linkedSchool.section_name && (
-                    <div className="text-sm text-gray-600 mt-1">Section: {linkedSchool.section_name}</div>
-                  )}
-                  <div className="text-xs text-gray-500 mt-2">Code: {linkedSchool.code}</div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold text-gray-900">{linkedSchool.name}</div>
+                      {linkedSchool.section_name && (
+                        <div className="text-sm text-gray-600 mt-1">Section: {linkedSchool.section_name}</div>
+                      )}
+                      <div className="text-xs text-gray-500 mt-2">Code: {linkedSchool.code}</div>
+                    </div>
+                    {currentSchool?.id === linkedSchool.id && (
+                      <div className="ml-4 text-green-600 font-semibold text-sm">✓ Active</div>
+                    )}
+                  </div>
                 </button>
               ))}
             </div>
