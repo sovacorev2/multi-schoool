@@ -320,12 +320,14 @@ export default function AdminPortalPage() {
   const handleSelectSchool = (schoolId: string) => {
     const selected = linkedSchools.find(s => s.id === schoolId)
     if (selected) {
+      console.log('[v0] Switching to school:', selected.name, selected.id)
       // Switch to selected school and load its data - stay authenticated
       setCurrentSchool(selected)
       setSchool(selected)
       setSelectedSchoolForAccess(schoolId)
       setShowSchoolSelection(false)
       // isAuthenticated stays true, so password form won't show again
+      // Call loadAdminData with the selected school
       loadAdminData(selected)
     }
   }
@@ -334,6 +336,15 @@ export default function AdminPortalPage() {
   const loadAdminData = async (schoolToLoad?: School) => {
     const schoolData = schoolToLoad || currentSchool
     if (!schoolData) return
+    
+    console.log('[v0] Loading admin data for school:', schoolData.name, schoolData.id)
+    
+    // Clear old data first when switching schools
+    setClasses([])
+    setExamTypes([])
+    setSubjects([])
+    setDeadlines([])
+    setAuditLogs([])
     setIsLoading(true)
 
     try {
@@ -345,7 +356,10 @@ export default function AdminPortalPage() {
         supabase.from('subjects').select('*').eq('school_id', schoolData.id).order('name'),
       ])
 
-      if (classesRes.data) setClasses(classesRes.data)
+      if (classesRes.data) {
+        console.log('[v0] Loaded classes:', classesRes.data.length, 'for school:', schoolData.id)
+        setClasses(classesRes.data)
+      }
       if (examTypesRes.data) setExamTypes(examTypesRes.data)
       if (subjectsRes.data) setSubjects(subjectsRes.data)
 
