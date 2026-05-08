@@ -302,8 +302,8 @@ export default function AdminPortalPage() {
         setLinkedSchools(linkedSchoolsList)
         setActiveSchoolTab(schoolData.id) // Start with current school
         
-        // Load data for all linked schools
-        await loadAllLinkedSchoolsData(linkedSchoolsList)
+        // Load data for all linked schools with the initial school ID
+        await loadAllLinkedSchoolsData(linkedSchoolsList, schoolData.id)
       } else {
         setPasswordError('Incorrect admin password')
       }
@@ -315,7 +315,7 @@ export default function AdminPortalPage() {
   }
 
   // Load data for all linked schools at once
-  const loadAllLinkedSchoolsData = async (schools: School[]) => {
+  const loadAllLinkedSchoolsData = async (schools: School[], initialSchoolId: string) => {
     setIsLoading(true)
     try {
       const supabase = createClient()
@@ -339,9 +339,9 @@ export default function AdminPortalPage() {
       await Promise.all(promises)
       setAllSchoolsData(dataMap)
       
-      // Set active tab data to first school
-      if (activeSchoolTab && dataMap[activeSchoolTab]) {
-        const activeData = dataMap[activeSchoolTab]
+      // Set initial tab data immediately after loading
+      if (initialSchoolId && dataMap[initialSchoolId]) {
+        const activeData = dataMap[initialSchoolId]
         setClasses(activeData.classes)
         setExamTypes(activeData.examTypes)
         setSubjects(activeData.subjects)
