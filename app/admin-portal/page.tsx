@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useSchool } from '@/lib/school-context'
+import { getTemplatesForLevel, type SubjectLevel } from '@/lib/subject-templates'
 import {
   Select,
   SelectContent,
@@ -213,6 +214,14 @@ export default function AdminPortalPage() {
   // Class teacher management
   const [classTeachers, setClassTeachers] = useState<{[key: string]: string}>({})
   const [teacherUpdateSuccess, setTeacherUpdateSuccess] = useState('')
+
+  // Curriculum configuration
+  const [schoolLevel, setSchoolLevel] = useState<'grade-1-3' | 'grade-4-6' | 'jss'>('grade-1-3')
+  const [useSsre, setUseSsre] = useState(false)
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([])
+  const [customSubjects, setCustomSubjects] = useState<Array<{name: string; code: string}>>([])
+  const [customSubjectName, setCustomSubjectName] = useState('')
+  const [customSubjectCode, setCustomSubjectCode] = useState('')
 
   // Load school from URL or context - redirect if no school
   useEffect(() => {
@@ -755,6 +764,100 @@ export default function AdminPortalPage() {
     }
   }
 
+  // Get available subjects for current level
+  const getAvailableSubjects = () => {
+    const templates = getTemplatesForLevel(schoolLevel as SubjectLevel)
+    
+    // Filter based on SSRE preference
+    if (!useSsre) {
+      // Remove SSRE, keep SST
+      return templates.filter(t => t.code !== 'SSRE')
+    } else {
+      // Remove SST, keep SSRE
+      return templates.filter(t => t.code !== 'SST' || t.isVariant)
+    }
+  }
+
+  // Add custom subject with validation
+  const addCustomSubject = () => {
+    if (!customSubjectName || !customSubjectCode) {
+      alert('Please enter both subject name and code')
+      return
+    }
+
+    // Check for duplicates
+    if (customSubjects.some(s => s.code === customSubjectCode)) {
+      alert('This code is already in use')
+      return
+    }
+
+    if (selectedSubjects.includes(customSubjectCode)) {
+      alert('This code conflicts with a preset subject')
+      return
+    }
+
+    // Confirm before adding
+    if (window.confirm(`Add "${customSubjectName}" (${customSubjectCode}) to your custom subjects?`)) {
+      setCustomSubjects([...customSubjects, {name: customSubjectName, code: customSubjectCode}])
+      setCustomSubjectName('')
+      setCustomSubjectCode('')
+    }
+  }
+
+  // Save curriculum configuration
+  const saveCurriculumConfiguration = async () => {
+    if (selectedSubjects.length === 0 && customSubjects.length === 0) {
+      alert('Please select at least one subject')
+      return
+    }
+
+    const schoolId = activeSchoolTab || currentSchool?.id
+    if (!schoolId) return
+
+    try {
+      const supabase = createClient()
+      
+      // Prepare subjects for database insertion
+      const allSelectedSubjects = [
+        ...getAvailableSubjects()
+          .filter(s => selectedSubjects.includes(s.code))
+          .map(s => ({ name: s.name, code: s.code, is_custom: false })),
+        ...customSubjects.map(s => ({ name: s.name, code: s.code, is_custom: true }))
+      ]
+
+      // Delete existing subjects for this school
+      await supabase.from('subjects').delete().eq('school_id', schoolId)
+
+      // Insert new subjects
+      const { error } = await supabase.from('subjects').insert(
+        allSelectedSubjects.map(s => ({
+          name: s.name,
+          code: s.code,
+          is_custom: s.is_custom,
+          school_id: schoolId
+        }))
+      )
+
+      if (error) throw error
+
+      // Update curriculum configuration flag
+      await supabase
+        .from('schools')
+        .update({ curriculum_configured: true, school_level: schoolLevel })
+        .eq('id', schoolId)
+
+      alert('Curriculum configuration saved successfully!')
+      // Reload the subjects in the main subjects list
+      const activeData = allSchoolsData[schoolId]
+      if (activeData) {
+        setSubjects(allSelectedSubjects.map((s, i) => ({ id: `subject-${i}`, ...s })))
+      }
+    } catch (error) {
+      console.error('[v0] Error saving curriculum:', error)
+      alert('Failed to save curriculum configuration')
+    }
+  }
+
   // Handle logo upload
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -992,7 +1095,7 @@ export default function AdminPortalPage() {
           </div>
         ) : (
           <Tabs defaultValue="deadlines" className="space-y-6">
-            <TabsList className="grid grid-cols-8 w-full max-w-5xl">
+            <TabsList className="grid grid-cols-9 w-full max-w-6xl">
               <TabsTrigger value="deadlines" className="flex items-center gap-2">
                 <Clock className="w-4 h-4" />
                 Deadlines
@@ -1012,6 +1115,10 @@ export default function AdminPortalPage() {
               <TabsTrigger value="exams" className="flex items-center gap-2">
                 <ClipboardList className="w-4 h-4" />
                 Exam Types
+              </TabsTrigger>
+              <TabsTrigger value="curriculum" className="flex items-center gap-2">
+                <BookOpen className="w-4 h-4" />
+                Curriculum
               </TabsTrigger>
               <TabsTrigger value="settings" className="flex items-center gap-2">
                 <Settings className="w-4 h-4" />
@@ -1573,6 +1680,182 @@ export default function AdminPortalPage() {
             </TabsContent>
 
             {/* Settings Tab */}
+            {/* Curriculum Setup Tab */}
+            <TabsContent value="curriculum">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BookOpen className="w-5 h-5" />
+                    Curriculum Setup
+                  </CardTitle>
+                  <CardDescription>
+                    Configure subjects for your school based on the curriculum level. Select from preset subjects or add custom subjects with unique codes.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Grade Level Selection */}
+                  <div className="space-y-3">
+                    <label className="text-sm font-semibold">School Level</label>
+                    <div className="grid grid-cols-3 gap-3">
+                      {[
+                        { value: 'grade-1-3', label: 'Grade 1-3 (Primary Lower)', icon: '📚' },
+                        { value: 'grade-4-6', label: 'Grade 4-6 (Primary Upper)', icon: '📖' },
+                        { value: 'jss', label: 'JSS (Form 1-3)', icon: '🎓' }
+                      ].map(level => (
+                        <button
+                          key={level.value}
+                          className={`p-3 rounded-lg border-2 transition-all text-left ${
+                            schoolLevel === level.value
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-200 hover:border-blue-300'
+                          }`}
+                          onClick={() => setSchoolLevel(level.value as any)}
+                        >
+                          <div className="text-xl mb-1">{level.icon}</div>
+                          <div className="font-medium text-sm">{level.label}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* SST/SSRE Toggle for Grade 4-6 and JSS */}
+                  {(schoolLevel === 'grade-4-6' || schoolLevel === 'jss') && (
+                    <div className="space-y-3 p-4 bg-amber-50 rounded-lg border border-amber-200">
+                      <label className="text-sm font-semibold flex items-center gap-2">
+                        <span>Religious Education Combination</span>
+                      </label>
+                      <p className="text-xs text-gray-600">Does your school combine Social Studies with Religious Education (SSRE) or teach them separately?</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { value: false, label: 'Separate (SST & RE)', description: 'Social Studies and Religious Education as separate subjects' },
+                          { value: true, label: 'Combined (SSRE)', description: 'Social Studies + Religious Education as one subject' }
+                        ].map(option => (
+                          <button
+                            key={String(option.value)}
+                            className={`p-3 rounded-lg border-2 transition-all text-left ${
+                              useSsre === option.value
+                                ? 'border-amber-500 bg-amber-100'
+                                : 'border-amber-200 hover:border-amber-400'
+                            }`}
+                            onClick={() => setUseSsre(option.value)}
+                          >
+                            <div className="font-medium text-sm">{option.label}</div>
+                            <div className="text-xs text-gray-600 mt-1">{option.description}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Preset Subjects Checklist */}
+                  <div className="space-y-3">
+                    <label className="text-sm font-semibold">Select Subjects</label>
+                    <div className="space-y-2 max-h-80 overflow-y-auto">
+                      {getAvailableSubjects().map(subject => (
+                        <label
+                          key={subject.code}
+                          className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 hover:bg-blue-50 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedSubjects.includes(subject.code)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedSubjects([...selectedSubjects, subject.code])
+                              } else {
+                                setSelectedSubjects(selectedSubjects.filter(s => s !== subject.code))
+                              }
+                            }}
+                            className="mt-1"
+                          />
+                          <div>
+                            <div className="font-medium text-sm">{subject.name}</div>
+                            <div className="text-xs text-gray-500 font-mono">Code: {subject.code}</div>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Custom Subject Addition */}
+                  <div className="space-y-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <label className="text-sm font-semibold">Add Custom Subject (Optional)</label>
+                    <div className="space-y-2">
+                      <div>
+                        <label className="text-xs font-medium">Subject Name</label>
+                        <Input
+                          placeholder="e.g., Computer Studies, Debate"
+                          value={customSubjectName}
+                          onChange={(e) => setCustomSubjectName(e.target.value)}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium">Subject Code (used in marksheets)</label>
+                        <Input
+                          placeholder="e.g., COMP (max 10 chars)"
+                          value={customSubjectCode}
+                          onChange={(e) => setCustomSubjectCode(e.target.value.toUpperCase())}
+                          maxLength={10}
+                          className="mt-1 font-mono"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Code must be unique within your school</p>
+                      </div>
+                      <Button
+                        onClick={addCustomSubject}
+                        variant="outline"
+                        className="w-full"
+                        disabled={!customSubjectName || !customSubjectCode}
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Custom Subject
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Custom Subjects List */}
+                  {customSubjects.length > 0 && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold">Your Custom Subjects</label>
+                      {customSubjects.map(subject => (
+                        <div
+                          key={subject.code}
+                          className="flex items-center justify-between p-3 rounded-lg bg-green-50 border border-green-200"
+                        >
+                          <div>
+                            <div className="font-medium text-sm">{subject.name}</div>
+                            <div className="text-xs text-gray-600 font-mono">Code: {subject.code}</div>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setCustomSubjects(customSubjects.filter(s => s.code !== subject.code))}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Summary and Save */}
+                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <p className="text-sm font-medium text-blue-900">
+                      Total Subjects Selected: {selectedSubjects.length + customSubjects.length}
+                    </p>
+                    <Button
+                      onClick={saveCurriculumConfiguration}
+                      className="w-full mt-3"
+                    >
+                      <Save className="w-4 h-4 mr-2" />
+                      Save Curriculum Configuration
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
             <TabsContent value="settings">
               <Card>
                 <CardHeader>
