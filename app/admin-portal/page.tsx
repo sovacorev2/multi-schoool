@@ -377,6 +377,9 @@ export default function AdminPortalPage() {
       setExamTypes(activeData.examTypes)
       setSubjects(activeData.subjects)
       setDeadlines(activeData.sessions)
+    } else {
+      // Load global subjects for this school if not cached
+      loadGlobalSubjects()
     }
   }
 
@@ -712,7 +715,24 @@ export default function AdminPortalPage() {
     }
   }
 
-  // Quick setup - seed all Kenyan CBC subjects (all grades PP1-Grade 9)
+  // Load global subjects for the school
+  const loadGlobalSubjects = async () => {
+    const schoolId = activeSchoolTab || currentSchool?.id
+    if (!schoolId) return
+
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('global_subjects')
+      .select('*')
+      .eq('school_id', schoolId)
+      .order('name')
+
+    if (!error && data) {
+      setSubjects(data)
+    }
+  }
+
+  // Add all Kenyan CBC subjects to school
   const quickSetupAllSubjects = async () => {
     const schoolId = activeSchoolTab || currentSchool?.id
     if (!schoolId) return
@@ -721,9 +741,9 @@ export default function AdminPortalPage() {
       const supabase = createClient()
       const allSubjects = getTemplatesForLevel('all')
 
-      // Insert all subjects for this school
+      // Insert all subjects for this school in global_subjects
       const { data, error } = await supabase
-        .from('subjects')
+        .from('global_subjects')
         .insert(
           allSubjects.map(subject => ({
             name: subject.name,
@@ -742,8 +762,25 @@ export default function AdminPortalPage() {
       alert(`Successfully added ${data?.length || 0} subjects for your school`)
     } catch (error) {
       console.error('[v0] Error seeding subjects:', error)
-      alert('Failed to add subjects')
+      alert('Failed to add subjects: ' + (error as any)?.message)
     }
+  }
+
+  // Toggle subject enabled/disabled status
+  const toggleSubjectStatus = async (subjectId: string, isCurrentlyDisabled: boolean) => {
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('global_subjects')
+      .update({ is_disabled: !isCurrentlyDisabled })
+      .eq('id', subjectId)
+    
+    if (!error) {
+      // Update local state
+      setSubjects(subjects.map(s => 
+        s.id === subjectId ? { ...s, is_disabled: !isCurrentlyDisabled } : s
+      ))
+    }
+  }
   }
 
   // Update school settings
@@ -1142,28 +1179,8 @@ export default function AdminPortalPage() {
             <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full"></div>
           </div>
         ) : (
-          <Tabs defaultValue="deadlines" className="space-y-6">
-            <TabsList className="grid grid-cols-9 w-full max-w-6xl">
-              <TabsTrigger value="deadlines" className="flex items-center gap-2">
-                <Clock className="w-4 h-4" />
-                Deadlines
-              </TabsTrigger>
-              <TabsTrigger value="classes" className="flex items-center gap-2">
-                <GraduationCap className="w-4 h-4" />
-                Classes
-              </TabsTrigger>
-              <TabsTrigger value="teachers" className="flex items-center gap-2">
-                <Users className="w-4 h-4" />
-                Teachers
-              </TabsTrigger>
-              <TabsTrigger value="passwords" className="flex items-center gap-2">
-                <Lock className="w-4 h-4" />
-                Passwords
-              </TabsTrigger>
-              <TabsTrigger value="exams" className="flex items-center gap-2">
-                <ClipboardList className="w-4 h-4" />
-                Exam Types
-              </TabsTrigger>
+          <Tabs defaultValue="curriculum" className="space-y-6">
+            <TabsList className="grid grid-cols-8 w-full max-w-6xl">
               <TabsTrigger value="curriculum" className="flex items-center gap-2">
                 <BookOpen className="w-4 h-4" />
                 Curriculum
@@ -1179,145 +1196,6 @@ export default function AdminPortalPage() {
             </TabsList>
 
             {/* Deadlines Tab */}
-            <TabsContent value="deadlines">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Clock className="w-5 h-5" />
-                    Exam Sessions & Deadlines
-                  </CardTitle>
-                  <CardDescription>
-                    Set deadlines and lock/unlock exam sessions created by teachers
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Exam sessions list - shows sessions created by teachers */}
-                  <div className="space-y-2">
-                    <h3 className="font-medium text-gray-700">All Exam Sessions</h3>
-                    <p className="text-sm text-gray-500">These are exam sessions created by teachers. Set deadlines and lock/unlock as needed.</p>
-                    <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-sm">
-                        <thead className="bg-gray-100">
-                          <tr>
-                            <th className="p-3 text-left font-medium text-gray-600">Class</th>
-                            <th className="p-3 text-left font-medium text-gray-600">Exam</th>
-                            <th className="p-3 text-left font-medium text-gray-600">Term/Year</th>
-                            <th className="p-3 text-left font-medium text-gray-600">Status</th>
-                            <th className="p-3 text-left font-medium text-gray-600">Deadline</th>
-                            <th className="p-3 text-right font-medium text-gray-600">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {deadlines.map((d: any) => (
-                            <tr key={d.id} className="border-t hover:bg-gray-50">
-                              <td className="p-3 font-medium">{d.class_name || 'Unknown'}</td>
-                              <td className="p-3">{d.exam_type || '-'}</td>
-                              <td className="p-3">{d.term} {d.year}</td>
-                              <td className="p-3">
-                                {d.is_locked ? (
-                                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-red-100 text-red-700">
-                                    <Lock className="w-3 h-3" /> Locked
-                                  </span>
-                                ) : d.deadline_date ? (
-                                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-amber-100 text-amber-700">
-                                    <Clock className="w-3 h-3" /> Deadline Set
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-green-100 text-green-700">
-                                    <Unlock className="w-3 h-3" /> Open
-                                  </span>
-                                )}
-                              </td>
-                              <td className="p-3">
-                                {editingDeadlineId === d.id ? (
-                                  <div className="flex items-center gap-2">
-                                    <Input
-                                      type="datetime-local"
-                                      value={editingDeadlineValue}
-                                      onChange={(e) => setEditingDeadlineValue(e.target.value)}
-                                      className="w-48 h-8 text-xs"
-                                    />
-                                    <Button
-                                      size="sm"
-                                      onClick={() => saveSessionDeadline(d.id)}
-                                      className="h-8 bg-green-600 hover:bg-green-700"
-                                    >
-                                      Save
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => { setEditingDeadlineId(null); setEditingDeadlineValue(''); }}
-                                      className="h-8"
-                                    >
-                                      Cancel
-                                    </Button>
-                                  </div>
-                                ) : (
-                                  d.deadline_date ? (
-                                    <span className="text-sm">{new Date(d.deadline_date).toLocaleString()}</span>
-                                  ) : (
-                                    <span className="text-gray-400 text-sm">Not set</span>
-                                  )
-                                )}
-                              </td>
-                              <td className="p-3">
-                                <div className="flex gap-1 justify-end flex-wrap md:flex-nowrap">
-                                  {editingDeadlineId !== d.id && (
-                                    <>
-                                      <Button
-                                        size="sm"
-                                        variant={d.is_locked ? 'outline' : 'default'}
-                                        onClick={() => toggleSessionLock(d.id, d.is_locked)}
-                                        className={`${d.is_locked ? '' : 'bg-red-500 hover:bg-red-600'} whitespace-nowrap text-xs md:text-sm px-2 md:px-3`}
-                                        title={d.is_locked ? 'Unlock session' : 'Lock session'}
-                                      >
-                                        {d.is_locked ? (
-                                          <><Unlock className="w-3 h-3 md:w-4 md:h-4 md:mr-1" /><span className="hidden md:inline">Unlock</span></>
-                                        ) : (
-                                          <><Lock className="w-3 h-3 md:w-4 md:h-4 md:mr-1" /><span className="hidden md:inline">Lock</span></>
-                                        )}
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => { setEditingDeadlineId(d.id); setEditingDeadlineValue(d.deadline_date ? new Date(d.deadline_date).toISOString().slice(0, 16) : ''); }}
-                                        className="whitespace-nowrap text-xs md:text-sm px-2 md:px-3"
-                                        title="Set deadline"
-                                      >
-                                        <Calendar className="w-3 h-3 md:w-4 md:h-4 md:mr-1" /><span className="hidden md:inline">Deadline</span>
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => toggleSessionArchive(d.id, d.is_active)}
-                                        className="whitespace-nowrap text-xs md:text-sm px-2 md:px-3 text-amber-600 hover:text-amber-700"
-                                        title="Archive session"
-                                      >
-                                        <span className="hidden md:inline">Archive</span>
-                                        <span className="md:hidden text-lg">📦</span>
-                                      </Button>
-                                    </>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                          {deadlines.length === 0 && (
-                            <tr>
-                              <td colSpan={6} className="p-8 text-center text-gray-500">
-                                No exam sessions created yet. Teachers create sessions when entering marks, or use the form above to create them.
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
             {/* Classes Tab */}
             <TabsContent value="classes">
               <Card>

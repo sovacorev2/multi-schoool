@@ -449,22 +449,8 @@ export default function SetupSchoolPage() {
         .eq('school_id', school.id)
       
       if (newClasses && newClasses.length > 0) {
-        const currentYear = new Date().getFullYear()
-        const terms = ['Term 1', 'Term 2', 'Term 3']
-        // Create base sessions for login (no exam_type_id - those are created by admin/teachers)
-        const sessionsToInsert = newClasses.flatMap(cls => 
-          terms.map(term => ({
-            class_id: cls.id,
-            year: currentYear,
-            term: term,
-            is_active: true,
-            school_id: school.id,
-          }))
-        )
-        const { error: sessionsError } = await supabase.from('sessions').insert(sessionsToInsert)
-        if (sessionsError) console.error('[v0] Sessions error:', sessionsError)
-        console.log('[v0] Created base sessions:', sessionsToInsert.length)
-        // NOTE: Exam sessions (with exam_type_id) are created by admin when setting up exams
+        // NOTE: Sessions are created manually by admins in the admin portal when setting up exams
+        // No auto-created sessions - keeps the system clean
       }
 
       console.log('[v0] School setup complete!')
