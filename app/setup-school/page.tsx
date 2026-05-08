@@ -985,64 +985,6 @@ export default function SetupSchoolPage() {
                   ))}
                 </div>
               </div>
-
-              {/* JSS SECTION */}
-              <div className="border-2 border-amber-200 rounded-lg p-4 bg-amber-50">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-semibold text-amber-900">JUNIOR SECONDARY SCHOOL (Grade 7-9)</h3>
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => {
-                        const jssNames = JSS_CLASSES.map(c => c.name)
-                        setSelectedClasses([...new Set([...selectedClasses, ...jssNames])])
-                      }}
-                      className="text-amber-600 border-amber-300"
-                    >
-                      Select All
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => {
-                        const jssNames = JSS_CLASSES.map(c => c.name)
-                        setSelectedClasses(selectedClasses.filter(c => !jssNames.includes(c)))
-                      }}
-                      className="text-amber-600 border-amber-300"
-                    >
-                      Clear
-                    </Button>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-3">
-                  {JSS_CLASSES.map(c => (
-                    <div key={c.name} className={`rounded-lg border-2 transition-all ${
-                      selectedClasses.includes(c.name)
-                        ? 'border-amber-600 bg-white'
-                        : 'border-gray-200 bg-gray-50'
-                    }`}>
-                      <button
-                        type="button"
-                        onClick={() => toggleClass(c.name)}
-                        className={`w-full p-3 text-sm font-medium text-left flex items-center justify-between ${
-                          selectedClasses.includes(c.name)
-                            ? 'text-amber-700'
-                            : 'text-gray-600 hover:text-gray-800'
-                        }`}
-                      >
-                        <span>
-                          {selectedClasses.includes(c.name) && (
-                            <Check className="w-4 h-4 inline mr-1" />
-                          )}
-                          {c.name}
-                        </span>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
               
               <hr className="my-4" />
 
