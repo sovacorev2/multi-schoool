@@ -735,6 +735,40 @@ export default function AdminPortalPage() {
     }
   }
 
+  // Quick setup - seed all Kenyan CBC subjects for selected grade level
+  const quickSetupSubjects = async (gradeLevel: 'grade-1-3' | 'grade-4-6' | 'jss') => {
+    const schoolId = activeSchoolTab || currentSchool?.id
+    if (!schoolId) return
+
+    try {
+      const supabase = createClient()
+      const subjectsForLevel = getTemplatesForLevel(gradeLevel)
+
+      // Insert all subjects for this school
+      const { data, error } = await supabase
+        .from('subjects')
+        .insert(
+          subjectsForLevel.map(subject => ({
+            name: subject.name,
+            code: subject.code,
+            school_id: schoolId,
+            is_disabled: false,
+            is_custom: false,
+          }))
+        )
+        .select()
+
+      if (error) throw error
+
+      // Update local state
+      setSubjects([...subjects, ...(data || [])])
+      alert(`Successfully added ${data?.length || 0} subjects for ${gradeLevel}`)
+    } catch (error) {
+      console.error('[v0] Error seeding subjects:', error)
+      alert('Failed to add subjects')
+    }
+  }
+
   // Update school settings
 
   // Update class password
@@ -1739,6 +1773,34 @@ export default function AdminPortalPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                  {/* Quick Setup for Subjects */}
+                  {subjects.length === 0 && (
+                    <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-lg space-y-3">
+                      <div>
+                        <h3 className="font-semibold text-blue-900 mb-2">Quick Setup - Add All Kenyan CBC Subjects</h3>
+                        <p className="text-sm text-blue-800 mb-4">
+                          Select your school level to automatically add all Kenyan CBC curriculum subjects. You can disable specific subjects after.
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                        {[
+                          { value: 'grade-1-3', label: 'Grade 1-3', icon: '📚' },
+                          { value: 'grade-4-6', label: 'Grade 4-6', icon: '📖' },
+                          { value: 'jss', label: 'Form 1-3 (JSS)', icon: '🎓' }
+                        ].map(level => (
+                          <Button
+                            key={level.value}
+                            onClick={() => quickSetupSubjects(level.value as any)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                          >
+                            <span className="mr-2">{level.icon}</span>
+                            {level.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Active Subjects */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
