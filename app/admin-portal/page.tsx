@@ -755,6 +755,59 @@ export default function AdminPortalPage() {
     }
   }
 
+  // Handle logo upload
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Check file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      alert('File size must be less than 2MB')
+      return
+    }
+
+    try {
+      // Use Vercel Blob for storage
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('schoolCode', currentSchool?.code || '')
+      
+      const response = await fetch('/api/upload-logo', {
+        method: 'POST',
+        body: formData,
+      })
+      
+      if (!response.ok) throw new Error('Upload failed')
+      const { url } = await response.json()
+      
+      // Update school with logo URL
+      setSchool({ ...school, logo_url: url })
+      await updateSchoolLogo(url)
+    } catch (error) {
+      console.error('Error uploading logo:', error)
+      alert('Failed to upload logo. Please try again.')
+    }
+  }
+
+  // Update school logo in database
+  const updateSchoolLogo = async (logoUrl: string) => {
+    const supabase = createClient()
+    const schoolId = activeSchoolTab || currentSchool?.id
+    if (!schoolId) return
+
+    try {
+      const { error } = await supabase
+        .from('schools')
+        .update({ logo_url: logoUrl })
+        .eq('id', schoolId)
+
+      if (error) throw error
+      console.log('[v0] Logo updated successfully')
+    } catch (error) {
+      console.error('Error updating logo:', error)
+    }
+  }
+
   if (!currentSchool) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -1536,6 +1589,65 @@ export default function AdminPortalPage() {
                           value={school.tagline || ''}
                           onChange={(e) => setSchool({ ...school, tagline: e.target.value })}
                         />
+                      </div>
+
+                      {/* Logo Upload Section */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">School Logo</label>
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                          {school.logo_url ? (
+                            <div className="space-y-4">
+                              <img
+                                src={school.logo_url}
+                                alt="School logo"
+                                className="w-24 h-24 object-contain mx-auto"
+                              />
+                              <div className="flex gap-2 justify-center">
+                                <label className="cursor-pointer">
+                                  <span className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                    <Upload className="w-4 h-4" />
+                                    Change Logo
+                                  </span>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(e) => handleLogoUpload(e)}
+                                    className="hidden"
+                                  />
+                                </label>
+                                <Button
+                                  variant="outline"
+                                  onClick={() => {
+                                    setSchool({ ...school, logo_url: '' })
+                                    updateSchoolLogo('')
+                                  }}
+                                >
+                                  Remove Logo
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="py-8 space-y-4">
+                              <ImageIcon className="w-12 h-12 text-gray-400 mx-auto" />
+                              <div>
+                                <p className="font-medium text-gray-700">Upload School Logo</p>
+                                <p className="text-sm text-gray-500">PNG, JPG or GIF (Max 2MB)</p>
+                              </div>
+                              <label className="cursor-pointer">
+                                <span className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                  <Upload className="w-4 h-4" />
+                                  Choose File
+                                </span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => handleLogoUpload(e)}
+                                  className="hidden"
+                                />
+                              </label>
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-4">
