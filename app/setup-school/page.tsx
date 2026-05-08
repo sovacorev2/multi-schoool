@@ -217,6 +217,26 @@ export default function SetupSchoolPage() {
     setSelectedClasses(prev => prev.filter(c => c !== className))
   }
 
+  // Load existing primary schools when JSS type is selected
+  useEffect(() => {
+    const loadPrimarySchools = async () => {
+      if (schoolType === 'jss') {
+        const { data } = await supabase
+          .from('schools')
+          .select('id, name, section_name')
+          .eq('school_type', 'primary')
+          .eq('is_active', true)
+          .order('name')
+        
+        if (data) {
+          setExistingSchools(data)
+        }
+      }
+    }
+    
+    loadPrimarySchools()
+  }, [schoolType, supabase])
+
   const validateStep1 = () => {
     if (!formData.name.trim()) return 'School name is required'
     if (!formData.code.trim()) return 'School code is required'
@@ -651,6 +671,29 @@ export default function SetupSchoolPage() {
                     onChange={(e) => setSectionName(e.target.value)}
                   />
                   <p className="text-xs text-gray-500">This will appear in reports and dashboards (e.g., "St Marys Primary" or "St Marys JSS")</p>
+                </div>
+              )}
+
+              {/* Parent School Selection for JSS */}
+              {schoolType === 'jss' && (
+                <div className="space-y-2 bg-blue-50 border-2 border-blue-200 rounded-lg p-3">
+                  <Label htmlFor="parentSchool">Link to Primary School (Optional)</Label>
+                  <select
+                    id="parentSchool"
+                    value={parentSchoolId}
+                    onChange={(e) => setParentSchoolId(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">-- Not linked to Primary School --</option>
+                    {existingSchools.map(school => (
+                      <option key={school.id} value={school.id}>
+                        {school.name} {school.section_name ? `(${school.section_name})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500">
+                    Link this JSS to an existing Primary school to have unified admin access for both sections
+                  </p>
                 </div>
               )}
 
