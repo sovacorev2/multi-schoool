@@ -376,8 +376,21 @@ export default function AdminPortalPage() {
       .single()
 
     if (!error && data) {
+      // Update the current display
       setExamTypes([...examTypes, data])
       setNewExamType('')
+      
+      // Also update the cached data for this school
+      const schoolId = activeSchoolTab || currentSchool?.id
+      if (schoolId) {
+        setAllSchoolsData(prev => ({
+          ...prev,
+          [schoolId]: {
+            ...prev[schoolId],
+            examTypes: [...(prev[schoolId]?.examTypes || []), data]
+          }
+        }))
+      }
     }
   }
 
@@ -386,7 +399,20 @@ export default function AdminPortalPage() {
     const supabase = createClient()
     const { error } = await supabase.from('exam_types').delete().eq('id', id)
     if (!error) {
+      // Update display
       setExamTypes(examTypes.filter(e => e.id !== id))
+      
+      // Update cache
+      const schoolId = activeSchoolTab || currentSchool?.id
+      if (schoolId) {
+        setAllSchoolsData(prev => ({
+          ...prev,
+          [schoolId]: {
+            ...prev[schoolId],
+            examTypes: prev[schoolId]?.examTypes?.filter(e => e.id !== id) || []
+          }
+        }))
+      }
     }
   }
 
@@ -419,8 +445,21 @@ export default function AdminPortalPage() {
       }))
       await supabase.from('sessions').insert(sessionsToInsert)
       
+      // Update display
       setClasses([...classes, data])
       setNewClassName('')
+      
+      // Update cache
+      const schoolId = activeSchoolTab || currentSchool?.id
+      if (schoolId) {
+        setAllSchoolsData(prev => ({
+          ...prev,
+          [schoolId]: {
+            ...prev[schoolId],
+            classes: [...(prev[schoolId]?.classes || []), data]
+          }
+        }))
+      }
     }
   }
 
