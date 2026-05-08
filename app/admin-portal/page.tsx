@@ -325,23 +325,24 @@ export default function AdminPortalPage() {
       setSchool(selected)
       setSelectedSchoolForAccess(schoolId)
       setShowSchoolSelection(false)
-      // Load data immediately without showing password again
-      setTimeout(() => loadAdminData(), 0)
+      // Load data immediately with the selected school
+      loadAdminData(selected)
     }
   }
 
   // Load all admin data
-  const loadAdminData = async () => {
-    if (!currentSchool) return
+  const loadAdminData = async (schoolToLoad?: School) => {
+    const schoolData = schoolToLoad || currentSchool
+    if (!schoolData) return
     setIsLoading(true)
 
     try {
       const supabase = createClient()
 
       const [classesRes, examTypesRes, subjectsRes] = await Promise.all([
-        supabase.from('classes').select('*').eq('school_id', currentSchool.id).order('display_order'),
-        supabase.from('exam_types').select('*').eq('school_id', currentSchool.id).order('name'),
-        supabase.from('subjects').select('*').eq('school_id', currentSchool.id).order('name'),
+        supabase.from('classes').select('*').eq('school_id', schoolData.id).order('display_order'),
+        supabase.from('exam_types').select('*').eq('school_id', schoolData.id).order('name'),
+        supabase.from('subjects').select('*').eq('school_id', schoolData.id).order('name'),
       ])
 
       if (classesRes.data) setClasses(classesRes.data)
@@ -352,7 +353,7 @@ export default function AdminPortalPage() {
       const { data: sessionsData } = await supabase
         .from('sessions')
         .select('*, classes(name), exam_types(name)')
-        .eq('school_id', currentSchool.id)
+        .eq('school_id', schoolData.id)
         .not('exam_type_id', 'is', null)
         .order('created_at', { ascending: false })
 
@@ -373,7 +374,7 @@ export default function AdminPortalPage() {
       const { data: logsData } = await supabase
         .from('activity_logs')
         .select('*')
-        .eq('school_id', currentSchool.id)
+        .eq('school_id', schoolData.id)
         .order('created_at', { ascending: false })
         .limit(100)
 
