@@ -11,7 +11,7 @@ export interface SubjectTemplate {
 }
 
 export const SUBJECT_TEMPLATES: SubjectTemplate[] = [
-  // Grade 1-3 (Primary Lower)
+  // Grade 1-3 (Primary Lower) - Kenyan CBC Curriculum
   {
     name: 'English Language Activities',
     code: 'ENG',
@@ -20,6 +20,11 @@ export const SUBJECT_TEMPLATES: SubjectTemplate[] = [
   {
     name: 'Kiswahili Language Activities',
     code: 'KIS',
+    level: 'grade-1-3',
+  },
+  {
+    name: 'Mathematics Activities',
+    code: 'MAT',
     level: 'grade-1-3',
   },
   {
@@ -38,12 +43,17 @@ export const SUBJECT_TEMPLATES: SubjectTemplate[] = [
     level: 'grade-1-3',
   },
   {
-    name: 'Mathematics Activities',
-    code: 'MAT',
+    name: 'Islamic Religious Education Activities',
+    code: 'IRE',
+    level: 'grade-1-3',
+  },
+  {
+    name: 'Hindu Religious Education Activities',
+    code: 'HRE',
     level: 'grade-1-3',
   },
 
-  // Grade 4-6 (Primary Upper)
+  // Grade 4-6 (Primary Upper) - Kenyan CBC Curriculum
   {
     name: 'English',
     code: 'ENG',
@@ -60,13 +70,8 @@ export const SUBJECT_TEMPLATES: SubjectTemplate[] = [
     level: 'grade-4-6',
   },
   {
-    name: 'Creative Arts',
-    code: 'CAS',
-    level: 'grade-4-6',
-  },
-  {
-    name: 'Agriculture & Nutrition',
-    code: 'AGRI/NUT',
+    name: 'Science and Technology',
+    code: 'SCI/TECH',
     level: 'grade-4-6',
   },
   {
@@ -75,23 +80,43 @@ export const SUBJECT_TEMPLATES: SubjectTemplate[] = [
     level: 'grade-4-6',
   },
   {
-    name: 'Social Studies + Religious Education',
+    name: 'Social Studies + Religious Education (Combined)',
     code: 'SSRE',
     level: 'grade-4-6',
     isVariant: true, // Schools choose between SST or SSRE
   },
   {
-    name: 'Religious Education',
-    code: 'RE',
+    name: 'Christian Religious Education',
+    code: 'CRE',
     level: 'grade-4-6',
   },
   {
-    name: 'Science & Technology',
-    code: 'SCI/TECH',
+    name: 'Islamic Religious Education',
+    code: 'IRE',
+    level: 'grade-4-6',
+  },
+  {
+    name: 'Hindu Religious Education',
+    code: 'HRE',
+    level: 'grade-4-6',
+  },
+  {
+    name: 'Creative Arts',
+    code: 'CAS',
+    level: 'grade-4-6',
+  },
+  {
+    name: 'Agriculture and Nutrition',
+    code: 'AGRI/NUT',
+    level: 'grade-4-6',
+  },
+  {
+    name: 'Life Skills',
+    code: 'LIFE',
     level: 'grade-4-6',
   },
 
-  // JSS (Form 1-3)
+  // JSS (Form 1-3) - Kenyan CBC/KCSE Curriculum
   {
     name: 'English',
     code: 'ENG',
@@ -105,6 +130,37 @@ export const SUBJECT_TEMPLATES: SubjectTemplate[] = [
   {
     name: 'Mathematics',
     code: 'MAT',
+    level: 'jss',
+  },
+  {
+    name: 'Integrated Science',
+    code: 'INT/SCIENCE',
+    level: 'jss',
+  },
+  {
+    name: 'Social Studies',
+    code: 'SST',
+    level: 'jss',
+  },
+  {
+    name: 'Social Studies + Religious Education (Combined)',
+    code: 'SSRE',
+    level: 'jss',
+    isVariant: true, // Schools choose between SST or SSRE
+  },
+  {
+    name: 'Christian Religious Education',
+    code: 'CRE',
+    level: 'jss',
+  },
+  {
+    name: 'Islamic Religious Education',
+    code: 'IRE',
+    level: 'jss',
+  },
+  {
+    name: 'Hindu Religious Education',
+    code: 'HRE',
     level: 'jss',
   },
   {
@@ -118,29 +174,23 @@ export const SUBJECT_TEMPLATES: SubjectTemplate[] = [
     level: 'jss',
   },
   {
-    name: 'Social Studies',
-    code: 'SST',
-    level: 'jss',
-  },
-  {
-    name: 'Social Studies + Religious Education',
-    code: 'SSRE',
-    level: 'jss',
-    isVariant: true, // Schools choose between SST or SSRE
-  },
-  {
-    name: 'Religious Education',
-    code: 'RE',
-    level: 'jss',
-  },
-  {
-    name: 'Integrated Science',
-    code: 'INT/SCIENCE',
-    level: 'jss',
-  },
-  {
     name: 'Pre-Technical Studies',
     code: 'PRE-TECH',
+    level: 'jss',
+  },
+  {
+    name: 'Home Science',
+    code: 'HOME',
+    level: 'jss',
+  },
+  {
+    name: 'Business Studies',
+    code: 'BUS',
+    level: 'jss',
+  },
+  {
+    name: 'Computer Studies',
+    code: 'COMP',
     level: 'jss',
   },
 ]

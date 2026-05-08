@@ -222,6 +222,9 @@ export default function AdminPortalPage() {
   const [customSubjects, setCustomSubjects] = useState<Array<{name: string; code: string}>>([])
   const [customSubjectName, setCustomSubjectName] = useState('')
   const [customSubjectCode, setCustomSubjectCode] = useState('')
+  
+  // Session management
+  const [showArchivedSessions, setShowArchivedSessions] = useState(false)
 
   // Load school from URL or context - redirect if no school
   useEffect(() => {
@@ -336,7 +339,7 @@ export default function AdminPortalPage() {
           supabase.from('classes').select('*').eq('school_id', schoolData.id).order('display_order'),
           supabase.from('exam_types').select('*').eq('school_id', schoolData.id).order('name'),
           supabase.from('subjects').select('*').eq('school_id', schoolData.id).order('name'),
-          supabase.from('sessions').select('*').eq('school_id', schoolData.id).order('created_at', { ascending: false }),
+          supabase.from('sessions').select('*').eq('school_id', schoolData.id).eq('is_active', true).order('created_at', { ascending: false }),
         ])
         
         dataMap[schoolData.id] = {
@@ -700,6 +703,70 @@ export default function AdminPortalPage() {
     setEditingDeadlineId(null)
     setEditingDeadlineValue('')
     loadAdminData()
+  }
+
+  // Archive/Unarchive session
+  const toggleSessionArchive = async (sessionId: string, currentState: boolean) => {
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('sessions')
+      .update({ is_active: !currentState })
+      .eq('id', sessionId)
+    
+    if (!error) {
+      loadAdminData()
+      setShowArchivedSessions(false)
+    }
+  }
+
+  // Toggle subject enabled/disabled status
+  const toggleSubjectStatus = async (subjectId: string, isCurrentlyDisabled: boolean) => {
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('subjects')
+      .update({ is_disabled: !isCurrentlyDisabled })
+      .eq('id', subjectId)
+    
+    if (!error) {
+      // Update local state
+      setSubjects(subjects.map(s => 
+        s.id === subjectId ? { ...s, is_disabled: !isCurrentlyDisabled } : s
+      ))
+    }
+  }
+
+  // Quick setup - seed all Kenyan CBC subjects for selected grade level
+  const quickSetupSubjects = async (gradeLevel: 'grade-1-3' | 'grade-4-6' | 'jss') => {
+    const schoolId = activeSchoolTab || currentSchool?.id
+    if (!schoolId) return
+
+    try {
+      const supabase = createClient()
+      const subjectsForLevel = getTemplatesForLevel(gradeLevel)
+
+      // Insert all subjects for this school
+      const { data, error } = await supabase
+        .from('subjects')
+        .insert(
+          subjectsForLevel.map(subject => ({
+            name: subject.name,
+            code: subject.code,
+            school_id: schoolId,
+            is_disabled: false,
+            is_custom: false,
+          }))
+        )
+        .select()
+
+      if (error) throw error
+
+      // Update local state
+      setSubjects([...subjects, ...(data || [])])
+      alert(`Successfully added ${data?.length || 0} subjects for ${gradeLevel}`)
+    } catch (error) {
+      console.error('[v0] Error seeding subjects:', error)
+      alert('Failed to add subjects')
+    }
   }
 
   // Update school settings
@@ -1243,6 +1310,16 @@ export default function AdminPortalPage() {
                                       >
                                         <Calendar className="w-3 h-3 md:w-4 md:h-4 md:mr-1" /><span className="hidden md:inline">Deadline</span>
                                       </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => toggleSessionArchive(d.id, d.is_active)}
+                                        className="whitespace-nowrap text-xs md:text-sm px-2 md:px-3 text-amber-600 hover:text-amber-700"
+                                        title="Archive session"
+                                      >
+                                        <span className="hidden md:inline">Archive</span>
+                                        <span className="md:hidden text-lg">📦</span>
+                                      </Button>
                                     </>
                                   )}
                                 </div>
@@ -1683,178 +1760,122 @@ export default function AdminPortalPage() {
               </Card>
             </TabsContent>
 
-            {/* Settings Tab */}
-            {/* Curriculum Setup Tab */}
+            {/* Curriculum Setup Tab - Admin Enables Subjects */}
             <TabsContent value="curriculum">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <BookOpen className="w-5 h-5" />
-                    Curriculum Setup
+                    Curriculum Management
                   </CardTitle>
                   <CardDescription>
-                    Configure subjects for your school based on the curriculum level. Select from preset subjects or add custom subjects with unique codes.
+                    Enable or disable subjects that teachers can assign to their classes. Teachers will only see enabled subjects when entering marks.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {/* Grade Level Selection */}
-                  <div className="space-y-3">
-                    <label className="text-sm font-semibold">School Level</label>
-                    <div className="grid grid-cols-3 gap-3">
-                      {[
-                        { value: 'grade-1-3', label: 'Grade 1-3 (Primary Lower)', icon: '📚' },
-                        { value: 'grade-4-6', label: 'Grade 4-6 (Primary Upper)', icon: '📖' },
-                        { value: 'jss', label: 'JSS', icon: '🎓' }
-                      ].map(level => (
-                        <button
-                          key={level.value}
-                          className={`p-3 rounded-lg border-2 transition-all text-left ${
-                            schoolLevel === level.value
-                              ? 'border-blue-500 bg-blue-50'
-                              : 'border-gray-200 hover:border-blue-300'
-                          }`}
-                          onClick={() => setSchoolLevel(level.value as any)}
-                        >
-                          <div className="text-xl mb-1">{level.icon}</div>
-                          <div className="font-medium text-sm">{level.label}</div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* SST/SSRE Toggle for Grade 4-6 and JSS */}
-                  {(schoolLevel === 'grade-4-6' || schoolLevel === 'jss') && (
-                    <div className="space-y-3 p-4 bg-amber-50 rounded-lg border border-amber-200">
-                      <label className="text-sm font-semibold flex items-center gap-2">
-                        <span>Religious Education Combination</span>
-                      </label>
-                      <p className="text-xs text-gray-600">Does your school combine Social Studies with Religious Education (SSRE) or teach them separately?</p>
-                      <div className="grid grid-cols-2 gap-2">
+                  {/* Quick Setup for Subjects */}
+                  {subjects.length === 0 && (
+                    <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-lg space-y-3">
+                      <div>
+                        <h3 className="font-semibold text-blue-900 mb-2">Quick Setup - Add All Kenyan CBC Subjects</h3>
+                        <p className="text-sm text-blue-800 mb-4">
+                          Select your school level to automatically add all Kenyan CBC curriculum subjects. You can disable specific subjects after.
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                         {[
-                          { value: false, label: 'Separate (SST & RE)', description: 'Social Studies and Religious Education as separate subjects' },
-                          { value: true, label: 'Combined (SSRE)', description: 'Social Studies + Religious Education as one subject' }
-                        ].map(option => (
-                          <button
-                            key={String(option.value)}
-                            className={`p-3 rounded-lg border-2 transition-all text-left ${
-                              useSsre === option.value
-                                ? 'border-amber-500 bg-amber-100'
-                                : 'border-amber-200 hover:border-amber-400'
-                            }`}
-                            onClick={() => setUseSsre(option.value)}
+                          { value: 'grade-1-3', label: 'Grade 1-3', icon: '📚' },
+                          { value: 'grade-4-6', label: 'Grade 4-6', icon: '📖' },
+                          { value: 'jss', label: 'Form 1-3 (JSS)', icon: '🎓' }
+                        ].map(level => (
+                          <Button
+                            key={level.value}
+                            onClick={() => quickSetupSubjects(level.value as any)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
                           >
-                            <div className="font-medium text-sm">{option.label}</div>
-                            <div className="text-xs text-gray-600 mt-1">{option.description}</div>
-                          </button>
+                            <span className="mr-2">{level.icon}</span>
+                            {level.label}
+                          </Button>
                         ))}
                       </div>
                     </div>
                   )}
 
-                  {/* Preset Subjects Checklist */}
+                  {/* Active Subjects */}
                   <div className="space-y-3">
-                    <label className="text-sm font-semibold">Select Subjects</label>
-                    <div className="space-y-2 max-h-80 overflow-y-auto">
-                      {getAvailableSubjects().map(subject => (
-                        <label
-                          key={subject.code}
-                          className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 hover:bg-blue-50 cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedSubjects.includes(subject.code)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedSubjects([...selectedSubjects, subject.code])
-                              } else {
-                                setSelectedSubjects(selectedSubjects.filter(s => s !== subject.code))
-                              }
-                            }}
-                            className="mt-1"
-                          />
-                          <div>
-                            <div className="font-medium text-sm">{subject.name}</div>
-                            <div className="text-xs text-gray-500 font-mono">Code: {subject.code}</div>
-                          </div>
-                        </label>
-                      ))}
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-semibold">Enabled Subjects</label>
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">{subjects.filter(s => !s.is_disabled).length} active</span>
                     </div>
-                  </div>
-
-                  {/* Custom Subject Addition */}
-                  <div className="space-y-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    <label className="text-sm font-semibold">Add Custom Subject (Optional)</label>
-                    <div className="space-y-2">
-                      <div>
-                        <label className="text-xs font-medium">Subject Name</label>
-                        <Input
-                          placeholder="e.g., Computer Studies, Debate"
-                          value={customSubjectName}
-                          onChange={(e) => setCustomSubjectName(e.target.value)}
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium">Subject Code (used in marksheets)</label>
-                        <Input
-                          placeholder="e.g., COMP (max 10 chars)"
-                          value={customSubjectCode}
-                          onChange={(e) => setCustomSubjectCode(e.target.value.toUpperCase())}
-                          maxLength={10}
-                          className="mt-1 font-mono"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">Code must be unique within your school</p>
-                      </div>
-                      <Button
-                        onClick={addCustomSubject}
-                        variant="outline"
-                        className="w-full"
-                        disabled={!customSubjectName || !customSubjectCode}
-                      >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Custom Subject
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Custom Subjects List */}
-                  {customSubjects.length > 0 && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-semibold">Your Custom Subjects</label>
-                      {customSubjects.map(subject => (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                      {subjects.filter(s => !s.is_disabled).map(subject => (
                         <div
-                          key={subject.code}
-                          className="flex items-center justify-between p-3 rounded-lg bg-green-50 border border-green-200"
+                          key={subject.id}
+                          className="p-3 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between group hover:shadow-md transition-all"
                         >
-                          <div>
-                            <div className="font-medium text-sm">{subject.name}</div>
-                            <div className="text-xs text-gray-600 font-mono">Code: {subject.code}</div>
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium text-sm truncate">{subject.name}</div>
+                            <div className="text-xs text-gray-600 font-mono">{subject.code}</div>
                           </div>
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => setCustomSubjects(customSubjects.filter(s => s.code !== subject.code))}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => toggleSubjectStatus(subject.id, true)}
+                            className="opacity-0 group-hover:opacity-100 text-amber-600 hover:text-amber-700 hover:bg-amber-50 ml-2"
+                            title="Disable subject"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <X className="w-4 h-4" />
                           </Button>
                         </div>
                       ))}
+                      {subjects.filter(s => !s.is_disabled).length === 0 && (
+                        <div className="col-span-full p-8 text-center text-gray-400">
+                          No active subjects. Enable subjects below.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Divider */}
+                  <div className="border-t"></div>
+
+                  {/* Disabled Subjects - Can Re-enable */}
+                  {subjects.filter(s => s.is_disabled).length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-semibold text-gray-600">Disabled Subjects</label>
+                        <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">{subjects.filter(s => s.is_disabled).length} disabled</span>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                        {subjects.filter(s => s.is_disabled).map(subject => (
+                          <div
+                            key={subject.id}
+                            className="p-3 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-between group hover:shadow-md transition-all opacity-60"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="font-medium text-sm truncate line-through">{subject.name}</div>
+                              <div className="text-xs text-gray-500 font-mono">{subject.code}</div>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => toggleSubjectStatus(subject.id, false)}
+                              className="opacity-0 group-hover:opacity-100 text-green-600 hover:text-green-700 hover:bg-green-50 ml-2"
+                              title="Enable subject"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
 
-                  {/* Summary and Save */}
-                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <p className="text-sm font-medium text-blue-900">
-                      Total Subjects Selected: {selectedSubjects.length + customSubjects.length}
+                  {/* Info Box */}
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-900">
+                      <strong>How it works:</strong> Enabled subjects appear in the teacher portal. Teachers select which of these enabled subjects they teach in each class. The enabled subjects become available in the mark entry interface.
                     </p>
-                    <Button
-                      onClick={saveCurriculumConfiguration}
-                      className="w-full mt-3"
-                    >
-                      <Save className="w-4 h-4 mr-2" />
-                      Save Curriculum Configuration
-                    </Button>
                   </div>
                 </CardContent>
               </Card>
