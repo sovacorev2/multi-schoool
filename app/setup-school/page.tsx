@@ -12,18 +12,21 @@ import Image from 'next/image'
 
 // Default classes
 const ALL_CLASSES = [
-  { name: 'PP1', display_order: 1 },
-  { name: 'PP2', display_order: 2 },
-  { name: 'Grade 1', display_order: 3 },
-  { name: 'Grade 2', display_order: 4 },
-  { name: 'Grade 3', display_order: 5 },
-  { name: 'Grade 4', display_order: 6 },
-  { name: 'Grade 5', display_order: 7 },
-  { name: 'Grade 6', display_order: 8 },
-  { name: 'Grade 7', display_order: 9 },
-  { name: 'Grade 8', display_order: 10 },
-  { name: 'Grade 9', display_order: 11 },
+  { name: 'PP1', display_order: 1, section: 'primary' },
+  { name: 'PP2', display_order: 2, section: 'primary' },
+  { name: 'Grade 1', display_order: 3, section: 'primary' },
+  { name: 'Grade 2', display_order: 4, section: 'primary' },
+  { name: 'Grade 3', display_order: 5, section: 'primary' },
+  { name: 'Grade 4', display_order: 6, section: 'primary' },
+  { name: 'Grade 5', display_order: 7, section: 'primary' },
+  { name: 'Grade 6', display_order: 8, section: 'primary' },
+  { name: 'Grade 7', display_order: 9, section: 'jss' },
+  { name: 'Grade 8', display_order: 10, section: 'jss' },
+  { name: 'Grade 9', display_order: 11, section: 'jss' },
 ]
+
+const PRIMARY_CLASSES = ALL_CLASSES.filter(c => c.section === 'primary')
+const JSS_CLASSES = ALL_CLASSES.filter(c => c.section === 'jss')
 
 // Default subjects (will be copied from St James or use these)
 const DEFAULT_SUBJECTS = [
@@ -737,46 +740,124 @@ export default function SetupSchoolPage() {
 
           {/* Step 2: Select Classes */}
           {step === 2 && (
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <p className="text-sm text-gray-600">Select the classes for this school:</p>
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setSelectedClasses(ALL_CLASSES.map(c => c.name))}
-                  >
-                    Select All
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setSelectedClasses([])}
-                  >
-                    Clear All
-                  </Button>
+            <div className="space-y-6">
+              <p className="text-sm text-gray-600">Select classes for this school. You can set up just Primary, just JSS, or both:</p>
+              
+              {/* PRIMARY SCHOOL SECTION */}
+              <div className="border-2 border-blue-200 rounded-lg p-4 bg-blue-50">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-semibold text-blue-900">PRIMARY SCHOOL (PP1 - Grade 6)</h3>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        const primaryNames = PRIMARY_CLASSES.map(c => c.name)
+                        setSelectedClasses([...new Set([...selectedClasses, ...primaryNames])])
+                      }}
+                      className="text-blue-600 border-blue-300"
+                    >
+                      Select All
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        const primaryNames = PRIMARY_CLASSES.map(c => c.name)
+                        setSelectedClasses(selectedClasses.filter(c => !primaryNames.includes(c)))
+                      }}
+                      className="text-blue-600 border-blue-300"
+                    >
+                      Clear
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  {PRIMARY_CLASSES.map(c => (
+                    <div key={c.name} className={`rounded-lg border-2 transition-all ${
+                      selectedClasses.includes(c.name)
+                        ? 'border-blue-600 bg-white'
+                        : 'border-gray-200 bg-gray-50'
+                    }`}>
+                      <button
+                        type="button"
+                        onClick={() => toggleClass(c.name)}
+                        className={`w-full p-3 text-sm font-medium text-left flex items-center justify-between ${
+                          selectedClasses.includes(c.name)
+                            ? 'text-blue-700'
+                            : 'text-gray-600 hover:text-gray-800'
+                        }`}
+                      >
+                        <span>
+                          {selectedClasses.includes(c.name) && (
+                            <Check className="w-4 h-4 inline mr-1" />
+                          )}
+                          {c.name}
+                        </span>
+                      </button>
+                    </div>
+                  ))}
                 </div>
               </div>
-              
-              <div className="grid grid-cols-2 gap-3">
-                {ALL_CLASSES.map(c => (
-                  <div key={c.name} className={`rounded-lg border-2 transition-all ${
-                    selectedClasses.includes(c.name)
-                      ? 'border-blue-600 bg-blue-50'
-                      : 'border-gray-200 bg-white'
-                  }`}>
-                    <button
-                      type="button"
-                      onClick={() => toggleClass(c.name)}
-                      className={`w-full p-3 text-sm font-medium text-left flex items-center justify-between ${
-                        selectedClasses.includes(c.name)
-                          ? 'text-blue-700'
-                          : 'text-gray-600 hover:text-gray-800'
-                      }`}
+
+              {/* JSS SECTION */}
+              <div className="border-2 border-amber-200 rounded-lg p-4 bg-amber-50">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-semibold text-amber-900">JUNIOR SECONDARY SCHOOL (Grade 7-9)</h3>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        const jssNames = JSS_CLASSES.map(c => c.name)
+                        setSelectedClasses([...new Set([...selectedClasses, ...jssNames])])
+                      }}
+                      className="text-amber-600 border-amber-300"
                     >
-                      <span>
-                        {selectedClasses.includes(c.name) && (
-                          <Check className="w-4 h-4 inline mr-1" />
+                      Select All
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        const jssNames = JSS_CLASSES.map(c => c.name)
+                        setSelectedClasses(selectedClasses.filter(c => !jssNames.includes(c)))
+                      }}
+                      className="text-amber-600 border-amber-300"
+                    >
+                      Clear
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  {JSS_CLASSES.map(c => (
+                    <div key={c.name} className={`rounded-lg border-2 transition-all ${
+                      selectedClasses.includes(c.name)
+                        ? 'border-amber-600 bg-white'
+                        : 'border-gray-200 bg-gray-50'
+                    }`}>
+                      <button
+                        type="button"
+                        onClick={() => toggleClass(c.name)}
+                        className={`w-full p-3 text-sm font-medium text-left flex items-center justify-between ${
+                          selectedClasses.includes(c.name)
+                            ? 'text-amber-700'
+                            : 'text-gray-600 hover:text-gray-800'
+                        }`}
+                      >
+                        <span>
+                          {selectedClasses.includes(c.name) && (
+                            <Check className="w-4 h-4 inline mr-1" />
+                          )}
+                          {c.name}
+                        </span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
                         )}
                         {c.name}
                       </span>
