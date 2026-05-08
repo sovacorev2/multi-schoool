@@ -201,11 +201,10 @@ export default function AdminPortalPage() {
   const [isSavingEdit, setIsSavingEdit] = useState(false)
   const [editError, setEditError] = useState('')
 
-  // Password management
-  const [classPasswords, setClassPasswords] = useState<{[key: string]: string}>({})
-  const [newAdminPassword, setNewAdminPassword] = useState('')
-  const [confirmAdminPassword, setConfirmAdminPassword] = useState('')
-  const [passwordUpdateSuccess, setPasswordUpdateSuccess] = useState('')
+  // School selection state for linked schools
+  const [linkedSchools, setLinkedSchools] = useState<School[]>([])
+  const [showSchoolSelection, setShowSchoolSelection] = useState(false)
+  const [selectedSchoolForAccess, setSelectedSchoolForAccess] = useState<string | null>(null)
 
   // Class teacher management
   const [classTeachers, setClassTeachers] = useState<{[key: string]: string}>({})
@@ -265,9 +264,45 @@ export default function AdminPortalPage() {
         .single()
 
       if (schoolData && schoolData.admin_password === password) {
-        setSchool(schoolData)
-        setIsAuthenticated(true)
-        loadAdminData()
+        // Check for linked schools (both parent and child)
+        let linkedSchoolsList: School[] = []
+        
+        // If this is a Primary school, find linked JSS schools
+        const { data: jssLinked } = await supabase
+          .from('schools')
+          .select('*')
+          .eq('parent_school_id', schoolData.id)
+        
+        // If this is a JSS school, find the parent Primary school
+        let parentSchool: School | null = null
+        if (schoolData.parent_school_id) {
+          const { data: parent } = await supabase
+            .from('schools')
+            .select('*')
+            .eq('id', schoolData.parent_school_id)
+            .single()
+          parentSchool = parent
+        }
+        
+        // Compile linked schools
+        if (jssLinked && jssLinked.length > 0) {
+          linkedSchoolsList = [schoolData, ...jssLinked]
+        } else if (parentSchool) {
+          linkedSchoolsList = [parentSchool, schoolData]
+        }
+        
+        // If multiple linked schools, show selection dialog
+        if (linkedSchoolsList.length > 1) {
+          setLinkedSchools(linkedSchoolsList)
+          setShowSchoolSelection(true)
+          setSchool(schoolData)
+          setIsAuthenticated(true)
+        } else {
+          // Single school, proceed normally
+          setSchool(schoolData)
+          setIsAuthenticated(true)
+          loadAdminData()
+        }
       } else {
         setPasswordError('Incorrect admin password')
       }
@@ -275,6 +310,18 @@ export default function AdminPortalPage() {
       setPasswordError('An error occurred. Please try again.')
     } finally {
       setIsAuthenticating(false)
+    }
+  }
+
+  // Handle school selection from dialog
+  const handleSelectSchool = (schoolId: string) => {
+    const selected = linkedSchools.find(s => s.id === schoolId)
+    if (selected) {
+      setCurrentSchool(selected)
+      setSchool(selected)
+      setSelectedSchoolForAccess(schoolId)
+      setShowSchoolSelection(false)
+      loadAdminData()
     }
   }
 
@@ -1596,6 +1643,36 @@ export default function AdminPortalPage() {
                 {isDeleting ? 'Deleting...' : 'Delete Class'}
               </Button>
             </div>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* School Selection Dialog for Linked Schools */}
+        <AlertDialog open={showSchoolSelection} onOpenChange={setShowSchoolSelection}>
+          <AlertDialogContent className="max-w-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-lg">Select Admin Access</AlertDialogTitle>
+              <AlertDialogDescription>
+                This school has multiple sections. Which section would you like to manage?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            
+            <div className="space-y-3 py-4">
+              {linkedSchools.map(linkedSchool => (
+                <button
+                  key={linkedSchool.id}
+                  onClick={() => handleSelectSchool(linkedSchool.id)}
+                  className="w-full p-4 rounded-lg border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-all text-left"
+                >
+                  <div className="font-semibold text-gray-900">{linkedSchool.name}</div>
+                  {linkedSchool.section_name && (
+                    <div className="text-sm text-gray-600 mt-1">Section: {linkedSchool.section_name}</div>
+                  )}
+                  <div className="text-xs text-gray-500 mt-2">Code: {linkedSchool.code}</div>
+                </button>
+              ))}
+            </div>
+            
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
           </AlertDialogContent>
         </AlertDialog>
       </main>
