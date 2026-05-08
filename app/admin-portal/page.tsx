@@ -1093,7 +1093,7 @@ export default function AdminPortalPage() {
           </div>
         ) : (
           <Tabs defaultValue="classes" className="space-y-6">
-            <TabsList className="grid grid-cols-4 md:grid-cols-7 w-full gap-1 h-auto p-1 bg-gray-100 rounded-lg border">
+            <TabsList className="grid grid-cols-4 md:grid-cols-8 w-full gap-1 h-auto p-1 bg-gray-100 rounded-lg border">
               <TabsTrigger value="classes" className="flex items-center gap-2">
                 <Users className="w-4 h-4" />
                 Classes
@@ -1110,6 +1110,10 @@ export default function AdminPortalPage() {
                 <FileText className="w-4 h-4" />
                 Exams
               </TabsTrigger>
+              <TabsTrigger value="sessions" className="flex items-center gap-2">
+                <Clock className="w-4 h-4" />
+                Sessions
+              </TabsTrigger>
               <TabsTrigger value="settings" className="flex items-center gap-2">
                 <Settings className="w-4 h-4" />
                 Settings
@@ -1122,13 +1126,9 @@ export default function AdminPortalPage() {
                 <History className="w-4 h-4" />
                 Audit
               </TabsTrigger>
-              <TabsTrigger value="audit" className="flex items-center gap-2">
-                <History className="w-4 h-4" />
-                Audit Logs
-              </TabsTrigger>
             </TabsList>
 
-            {/* Deadlines Tab */}
+            {/* Sessions Tab */}
             {/* Classes Tab */}
             <TabsContent value="classes">
               <Card>
@@ -1543,6 +1543,61 @@ export default function AdminPortalPage() {
                         </Button>
                       </div>
                     ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Sessions Tab - Show manually created exam sessions */}
+            <TabsContent value="sessions">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Clock className="w-5 h-5" />
+                    Exam Sessions
+                  </CardTitle>
+                  <CardDescription>
+                    View exam sessions created by teachers. Sessions are created manually when teachers enter exam marks.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="p-3 text-left font-medium text-gray-600">Class</th>
+                          <th className="p-3 text-left font-medium text-gray-600">Year</th>
+                          <th className="p-3 text-left font-medium text-gray-600">Term</th>
+                          <th className="p-3 text-left font-medium text-gray-600">Created</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Array.isArray(allSchoolsData[activeSchoolTab || currentSchool?.id]?.sessions) && 
+                         allSchoolsData[activeSchoolTab || currentSchool?.id]?.sessions.length > 0 ? (
+                          allSchoolsData[activeSchoolTab || currentSchool?.id].sessions.map((session: any) => (
+                            <tr key={session.id} className="border-t hover:bg-gray-50">
+                              <td className="p-3 font-medium">{session.class?.name || 'N/A'}</td>
+                              <td className="p-3">{session.year}</td>
+                              <td className="p-3">Term {session.term}</td>
+                              <td className="p-3 text-gray-600 text-xs">
+                                {new Date(session.created_at).toLocaleDateString()}
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={4} className="p-8 text-center text-gray-500">
+                              No exam sessions created yet. Teachers create sessions when entering marks.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-900">
+                      <strong>Note:</strong> Sessions are created automatically when teachers enter exam marks. No manual session creation needed here.
+                    </p>
                   </div>
                 </CardContent>
               </Card>
