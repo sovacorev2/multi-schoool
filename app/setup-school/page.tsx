@@ -240,6 +240,9 @@ export default function SetupSchoolPage() {
       }
     }
 
+    loadPrimarySchools()
+  }, [schoolType])
+
   // Refresh the list of available primary schools
   const refreshPrimarySchools = async () => {
     if (schoolType === 'jss') {
