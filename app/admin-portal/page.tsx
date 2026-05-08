@@ -335,18 +335,16 @@ export default function AdminPortalPage() {
       
       // Load data for each linked school in parallel
       const promises = schools.map(async (schoolData) => {
-        const [classesRes, examTypesRes, subjectsRes, sessionsRes] = await Promise.all([
+        const [classesRes, examTypesRes] = await Promise.all([
           supabase.from('classes').select('*').eq('school_id', schoolData.id).order('display_order'),
           supabase.from('exam_types').select('*').eq('school_id', schoolData.id).order('name'),
-          supabase.from('subjects').select('*').eq('school_id', schoolData.id).order('name'),
-          supabase.from('sessions').select('*').eq('school_id', schoolData.id).eq('is_active', true).order('created_at', { ascending: false }),
         ])
         
         dataMap[schoolData.id] = {
           classes: classesRes.data || [],
           examTypes: examTypesRes.data || [],
-          subjects: subjectsRes.data || [],
-          sessions: sessionsRes.data || [],
+          subjects: [], // Subjects are per-class, not per-school
+          sessions: [], // Sessions are managed per-class, not per-school
         }
       })
       
@@ -699,86 +697,7 @@ export default function AdminPortalPage() {
     }
   }
 
-  // Toggle subject enabled/disabled status
-  const toggleSubjectStatus = async (subjectId: string, isCurrentlyDisabled: boolean) => {
-    const supabase = createClient()
-    const { error } = await supabase
-      .from('subjects')
-      .update({ is_disabled: !isCurrentlyDisabled })
-      .eq('id', subjectId)
-    
-    if (!error) {
-      // Update local state
-      setSubjects(subjects.map(s => 
-        s.id === subjectId ? { ...s, is_disabled: !isCurrentlyDisabled } : s
-      ))
-    }
-  }
 
-  // Load global subjects for the school
-  const loadGlobalSubjects = async () => {
-    const schoolId = activeSchoolTab || currentSchool?.id
-    if (!schoolId) return
-
-    const supabase = createClient()
-    const { data, error } = await supabase
-      .from('global_subjects')
-      .select('*')
-      .eq('school_id', schoolId)
-      .order('name')
-
-    if (!error && data) {
-      setSubjects(data)
-    }
-  }
-
-  // Add all Kenyan CBC subjects to school
-  const quickSetupAllSubjects = async () => {
-    const schoolId = activeSchoolTab || currentSchool?.id
-    if (!schoolId) return
-
-    try {
-      const supabase = createClient()
-      const allSubjects = getTemplatesForLevel('all')
-
-      // Insert all subjects for this school in global_subjects
-      const { data, error } = await supabase
-        .from('global_subjects')
-        .insert(
-          allSubjects.map(subject => ({
-            name: subject.name,
-            code: subject.code,
-            school_id: schoolId,
-            is_disabled: false,
-            is_custom: false,
-          }))
-        )
-        .select()
-
-      if (error) throw error
-
-      // Update local state
-      setSubjects([...subjects, ...(data || [])])
-      alert(`Successfully added ${data?.length || 0} subjects for your school`)
-    } catch (error) {
-      console.error('[v0] Error seeding subjects:', error)
-      alert('Failed to add subjects: ' + (error as any)?.message)
-    }
-  }
-
-  // Toggle subject enabled/disabled status
-  const toggleSubjectStatus = async (subjectId: string, isCurrentlyDisabled: boolean) => {
-    const supabase = createClient()
-    const { error } = await supabase
-      .from('global_subjects')
-      .update({ is_disabled: !isCurrentlyDisabled })
-      .eq('id', subjectId)
-    
-    if (!error) {
-      // Update local state
-      setSubjects(subjects.map(s => 
-        s.id === subjectId ? { ...s, is_disabled: !isCurrentlyDisabled } : s
-      ))
     }
   }
   }
@@ -1179,12 +1098,8 @@ export default function AdminPortalPage() {
             <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full"></div>
           </div>
         ) : (
-          <Tabs defaultValue="curriculum" className="space-y-6">
-            <TabsList className="grid grid-cols-8 w-full max-w-6xl">
-              <TabsTrigger value="curriculum" className="flex items-center gap-2">
-                <BookOpen className="w-4 h-4" />
-                Curriculum
-              </TabsTrigger>
+          <Tabs defaultValue="classes" className="space-y-6">
+            <TabsList className="grid grid-cols-7 w-full max-w-6xl">
               <TabsTrigger value="settings" className="flex items-center gap-2">
                 <Settings className="w-4 h-4" />
                 Settings
@@ -1610,118 +1525,6 @@ export default function AdminPortalPage() {
                         </Button>
                       </div>
                     ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Curriculum Setup Tab - Admin Enables Subjects */}
-            <TabsContent value="curriculum">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BookOpen className="w-5 h-5" />
-                    Curriculum Management
-                  </CardTitle>
-                  <CardDescription>
-                    Enable or disable subjects that teachers can assign to their classes. Teachers will only see enabled subjects when entering marks.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Quick Setup for All Subjects */}
-                  {subjects.length === 0 && (
-                    <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-lg space-y-3">
-                      <div>
-                        <h3 className="font-semibold text-blue-900 mb-2">Quick Setup - Add All Kenyan CBC Subjects (PP1-Grade 9)</h3>
-                        <p className="text-sm text-blue-800 mb-4">
-                          Add all available subjects for your school. Then disable the ones you don't offer. Teachers will only see enabled subjects when selecting for their classes.
-                        </p>
-                      </div>
-                      <Button
-                        onClick={() => quickSetupAllSubjects()}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                      >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add All Available Subjects
-                      </Button>
-                    </div>
-                  )}
-
-                  {/* Active Subjects */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm font-semibold">Enabled Subjects</label>
-                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">{subjects.filter(s => !s.is_disabled).length} active</span>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                      {subjects.filter(s => !s.is_disabled).map(subject => (
-                        <div
-                          key={subject.id}
-                          className="p-3 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between group hover:shadow-md transition-all"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <div className="font-medium text-sm truncate">{subject.name}</div>
-                            <div className="text-xs text-gray-600 font-mono">{subject.code}</div>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => toggleSubjectStatus(subject.id, true)}
-                            className="opacity-0 group-hover:opacity-100 text-amber-600 hover:text-amber-700 hover:bg-amber-50 ml-2"
-                            title="Disable subject"
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      ))}
-                      {subjects.filter(s => !s.is_disabled).length === 0 && (
-                        <div className="col-span-full p-8 text-center text-gray-400">
-                          No active subjects. Enable subjects below.
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Divider */}
-                  <div className="border-t"></div>
-
-                  {/* Disabled Subjects - Can Re-enable */}
-                  {subjects.filter(s => s.is_disabled).length > 0 && (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <label className="text-sm font-semibold text-gray-600">Disabled Subjects</label>
-                        <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">{subjects.filter(s => s.is_disabled).length} disabled</span>
-                      </div>
-                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                        {subjects.filter(s => s.is_disabled).map(subject => (
-                          <div
-                            key={subject.id}
-                            className="p-3 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-between group hover:shadow-md transition-all opacity-60"
-                          >
-                            <div className="min-w-0 flex-1">
-                              <div className="font-medium text-sm truncate line-through">{subject.name}</div>
-                              <div className="text-xs text-gray-500 font-mono">{subject.code}</div>
-                            </div>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => toggleSubjectStatus(subject.id, false)}
-                              className="opacity-0 group-hover:opacity-100 text-green-600 hover:text-green-700 hover:bg-green-50 ml-2"
-                              title="Enable subject"
-                            >
-                              <Plus className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Info Box */}
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-sm text-blue-900">
-                      <strong>How it works:</strong> Enabled subjects appear in the teacher portal. Teachers select which of these enabled subjects they teach in each class. The enabled subjects become available in the mark entry interface.
-                    </p>
                   </div>
                 </CardContent>
               </Card>
