@@ -319,13 +319,16 @@ export default function AdminPortalPage() {
 
   // Handle school selection from dialog
   const handleSelectSchool = (schoolId: string) => {
+    console.log('[v0] Selecting school:', schoolId)
     const selected = linkedSchools.find(s => s.id === schoolId)
+    console.log('[v0] Selected school:', selected)
     if (selected) {
       setCurrentSchool(selected)
       setSchool(selected)
       setSelectedSchoolForAccess(schoolId)
       setShowSchoolSelection(false)
       // Load data immediately with the selected school
+      console.log('[v0] Loading admin data for school:', selected.id)
       loadAdminData(selected)
     }
   }
@@ -1666,8 +1669,13 @@ export default function AdminPortalPage() {
               {linkedSchools.map(linkedSchool => (
                 <button
                   key={linkedSchool.id}
-                  onClick={() => handleSelectSchool(linkedSchool.id)}
-                  className="w-full p-4 rounded-lg border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-all text-left"
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    handleSelectSchool(linkedSchool.id)
+                  }}
+                  className="w-full p-4 rounded-lg border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-all text-left cursor-pointer"
                 >
                   <div className="font-semibold text-gray-900">{linkedSchool.name}</div>
                   {linkedSchool.section_name && (

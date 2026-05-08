@@ -5,7 +5,7 @@ import React from "react"
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useClass } from '@/lib/class-context'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, Edit2, Check, X } from 'lucide-react'
 import type { Subject } from '@/lib/types'
 
 export default function SubjectsPage() {
@@ -14,6 +14,8 @@ export default function SubjectsPage() {
   const [subjectName, setSubjectName] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingName, setEditingName] = useState('')
 
   const supabase = createClient()
 
@@ -81,6 +83,40 @@ export default function SubjectsPage() {
     }
   }
 
+  async function handleEditStart(subject: Subject) {
+    setEditingId(subject.id)
+    setEditingName(subject.name)
+  }
+
+  async function handleSaveEdit(subjectId: string) {
+    if (!editingName.trim()) {
+      setEditingId(null)
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('subjects')
+        .update({ name: editingName.trim().toUpperCase() })
+        .eq('id', subjectId)
+
+      if (error) throw error
+      
+      setSubjects(subjects.map(s => 
+        s.id === subjectId ? { ...s, name: editingName.trim().toUpperCase() } : s
+      ))
+      setEditingId(null)
+      setEditingName('')
+    } catch (error) {
+      console.error('Error updating subject:', error)
+    }
+  }
+
+  function handleCancelEdit() {
+    setEditingId(null)
+    setEditingName('')
+  }
+
   if (isLoading) {
     return <div className="text-center py-12">Loading...</div>
   }
@@ -146,16 +182,63 @@ export default function SubjectsPage() {
                 key={subject.id}
                 className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
               >
-                <div>
-                  <h3 className="font-semibold text-gray-900">{subject.name}</h3>
-                  <p className="text-xs text-gray-500 mt-1">Custom</p>
+                {editingId === subject.id ? (
+                  <div className="flex items-center gap-2 flex-1">
+                    <input
+                      type="text"
+                      value={editingName}
+                      onChange={(e) => setEditingName(e.target.value)}
+                      className="flex-1 px-3 py-2 border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSaveEdit(subject.id)
+                        if (e.key === 'Escape') handleCancelEdit()
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <h3 className="font-semibold text-gray-900">{subject.name}</h3>
+                    <p className="text-xs text-gray-500 mt-1">Custom</p>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 ml-2">
+                  {editingId === subject.id ? (
+                    <>
+                      <button
+                        onClick={() => handleSaveEdit(subject.id)}
+                        className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                        title="Save"
+                      >
+                        <Check className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={handleCancelEdit}
+                        className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                        title="Cancel"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => handleEditStart(subject)}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Edit subject"
+                      >
+                        <Edit2 className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteSubject(subject.id)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Delete subject"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </>
+                  )}
                 </div>
-                <button
-                  onClick={() => handleDeleteSubject(subject.id)}
-                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
               </div>
             ))}
           </div>
