@@ -321,9 +321,13 @@ export default function AdminPortalPage() {
   const handleSelectSchool = (schoolId: string) => {
     const selected = linkedSchools.find(s => s.id === schoolId)
     if (selected) {
-      // Redirect to the selected school's admin portal
-      const schoolCode = selected.code.toLowerCase().replace(/\s+/g, '-')
-      window.location.href = `/admin-portal?school=${schoolCode}`
+      // Switch to selected school and load its data - stay authenticated
+      setCurrentSchool(selected)
+      setSchool(selected)
+      setSelectedSchoolForAccess(schoolId)
+      setShowSchoolSelection(false)
+      // isAuthenticated stays true, so password form won't show again
+      loadAdminData(selected)
     }
   }
 
