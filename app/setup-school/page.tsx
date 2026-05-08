@@ -258,10 +258,9 @@ export default function SetupSchoolPage() {
         const validSchools = data.filter(s => s.id && s.name)
         const uniqueSchools = Array.from(new Map(validSchools.map(s => [s.id, s])).values())
         setExistingSchools(uniqueSchools)
-      } else {
-        setExistingSchools([])
       }
     }
+  }
     
     loadPrimarySchools()
   }, [schoolType])
