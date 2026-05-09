@@ -153,6 +153,7 @@ export default function AdminPortalPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { currentSchool, setCurrentSchool } = useSchool()
+  const supabase = createClient()
 
   // Auth state
   const [password, setPassword] = useState('')
@@ -248,7 +249,6 @@ export default function AdminPortalPage() {
     const schoolId = activeSchoolTab || currentSchool?.id
     if (!schoolId) return
 
-    const supabase = createClient()
     console.log('[v0] Subscribing to sessions for school:', schoolId)
     
     const channel = supabase
