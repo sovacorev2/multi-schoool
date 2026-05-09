@@ -244,38 +244,6 @@ export default function AdminPortalPage() {
     }
   }, [searchParams, currentSchool, router])
 
-  // Real-time subscription for sessions - updates when teachers create new sessions
-  useEffect(() => {
-    const schoolId = activeSchoolTab || currentSchool?.id
-    if (!schoolId) return
-
-    console.log('[v0] Subscribing to sessions for school:', schoolId)
-    
-    const channel = supabase
-      .channel(`sessions:school:${schoolId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'sessions',
-          filter: `school_id=eq.${schoolId}`
-        },
-        (payload) => {
-          console.log('[v0] Session update received (real-time):', payload.eventType, payload.new)
-          // Refetch sessions for the active school
-          loadAdminData()
-        }
-      )
-      .subscribe((status) => {
-        console.log('[v0] Subscription status:', status)
-      })
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [activeSchoolTab, currentSchool?.id])
-
   const loadSchoolFromCode = async (code: string) => {
     // Clear all data when switching schools
     setClasses([])
@@ -283,8 +251,6 @@ export default function AdminPortalPage() {
     setSubjects([])
     setSchool(null)
     // Don't reset authentication - user already authenticated with the password
-    
-    const supabase = createClient()
     const { data } = await supabase
       .from('schools')
       .select('*')
