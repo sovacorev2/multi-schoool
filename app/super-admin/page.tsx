@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { 
   Shield, Building2, Search, Settings, ToggleLeft, ToggleRight,
   FileText, MessageSquare, Award, Send, Calendar, ChevronDown, ChevronUp,
-  Plus, Edit2, Save, X, Eye, EyeOff, LogOut, Users, Check, Trash2
+  Plus, Edit2, Save, X, Eye, EyeOff, LogOut, Users, Check
 } from 'lucide-react'
 
 interface School {
@@ -41,8 +41,6 @@ export default function SuperAdminPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [expandedSchool, setExpandedSchool] = useState<string | null>(null)
   const [savingSchool, setSavingSchool] = useState<string | null>(null)
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
-  const [isDeleting, setIsDeleting] = useState<string | null>(null)
   
   // New school form
   const [showNewSchoolForm, setShowNewSchoolForm] = useState(false)
@@ -257,56 +255,6 @@ export default function SuperAdminPage() {
       ))
     }
     setSavingSchool(null)
-  }
-
-  async function deleteSchool(schoolId: string) {
-    setIsDeleting(schoolId)
-    const school = schools.find(s => s.id === schoolId)
-    
-    try {
-      // Delete in order of dependencies (children first, then parents)
-      
-      // 1. Delete marks (depends on learners and sessions)
-      await supabase.from('marks').delete().eq('school_id', schoolId)
-      
-      // 2. Delete learners
-      await supabase.from('learners').delete().eq('school_id', schoolId)
-      
-      // 3. Delete sessions (depends on classes and exam_types)
-      await supabase.from('sessions').delete().eq('school_id', schoolId)
-      
-      // 4. Delete classes
-      await supabase.from('classes').delete().eq('school_id', schoolId)
-      
-      // 5. Delete exam_types
-      await supabase.from('exam_types').delete().eq('school_id', schoolId)
-      
-      // 6. Delete subjects
-      await supabase.from('subjects').delete().eq('school_id', schoolId)
-      
-      // 7. Delete activity_logs
-      await supabase.from('activity_logs').delete().eq('school_id', schoolId)
-      
-      // 8. Clear parent_school_id from any linked schools (JSS schools linked to this Primary school)
-      await supabase.from('schools').update({ parent_school_id: null }).eq('parent_school_id', schoolId)
-      
-      // 9. Finally delete the school itself
-      const { error } = await supabase
-        .from('schools')
-        .delete()
-        .eq('id', schoolId)
-      
-      if (!error) {
-        setSchools(schools.filter(s => s.id !== schoolId))
-        setDeleteConfirm(null)
-        console.log('[v0] School deleted successfully with all related data:', school?.name)
-      } else {
-        console.error('[v0] Error deleting school:', error)
-      }
-    } catch (err) {
-      console.error('[v0] Delete school error:', err)
-    }
-    setIsDeleting(null)
   }
 
   const filteredSchools = schools.filter(school => 
@@ -619,16 +567,6 @@ export default function SuperAdminPage() {
                         <X className="w-4 h-4 mr-1" />
                         Disable All
                       </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => setDeleteConfirm(school.id)}
-                        className="text-red-600 border-red-300 hover:bg-red-50"
-                        disabled={isDeleting === school.id}
-                      >
-                        <Trash2 className="w-4 h-4 mr-1" />
-                        {isDeleting === school.id ? 'Deleting...' : 'Delete School'}
-                      </Button>
                     </div>
 
                     {/* Features Grid */}
@@ -816,50 +754,6 @@ export default function SuperAdminPage() {
                 <p className="text-gray-500">No schools found</p>
               </div>
             )}
-          </div>
-        )}
-
-        {/* Delete Confirmation Modal */}
-        {deleteConfirm && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="font-semibold text-lg text-gray-900">Delete School</h3>
-              </div>
-              <div className="px-6 py-6">
-                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mx-auto mb-4">
-                  <Trash2 className="w-6 h-6 text-red-600" />
-                </div>
-                <p className="text-center text-gray-900 font-medium mb-2">
-                  Are you sure you want to delete this school?
-                </p>
-                <p className="text-center text-gray-500 text-sm mb-6">
-                  School: <span className="font-semibold">{schools.find(s => s.id === deleteConfirm)?.name}</span>
-                </p>
-                <p className="text-center text-red-600 text-sm bg-red-50 rounded-lg p-3">
-                  This action cannot be undone. All data associated with this school will be permanently deleted.
-                </p>
-              </div>
-              <div className="px-6 py-4 border-t border-gray-200 flex gap-3">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => setDeleteConfirm(null)}
-                  className="flex-1"
-                  disabled={isDeleting !== null}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  type="button" 
-                  onClick={() => deleteSchool(deleteConfirm)}
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-                  disabled={isDeleting !== null}
-                >
-                  {isDeleting === deleteConfirm ? 'Deleting...' : 'Delete'}
-                </Button>
-              </div>
-            </div>
           </div>
         )}
       </main>
