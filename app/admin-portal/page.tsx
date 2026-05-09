@@ -248,6 +248,7 @@ export default function AdminPortalPage() {
     const schoolId = activeSchoolTab || currentSchool?.id
     if (!schoolId) return
 
+    const supabase = createClient()
     console.log('[v0] Subscribing to sessions for school:', schoolId)
     
     const channel = supabase
