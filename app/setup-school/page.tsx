@@ -12,21 +12,18 @@ import Image from 'next/image'
 
 // Default classes
 const ALL_CLASSES = [
-  { name: 'PP1', display_order: 1, section: 'primary' },
-  { name: 'PP2', display_order: 2, section: 'primary' },
-  { name: 'Grade 1', display_order: 3, section: 'primary' },
-  { name: 'Grade 2', display_order: 4, section: 'primary' },
-  { name: 'Grade 3', display_order: 5, section: 'primary' },
-  { name: 'Grade 4', display_order: 6, section: 'primary' },
-  { name: 'Grade 5', display_order: 7, section: 'primary' },
-  { name: 'Grade 6', display_order: 8, section: 'primary' },
-  { name: 'Grade 7', display_order: 9, section: 'jss' },
-  { name: 'Grade 8', display_order: 10, section: 'jss' },
-  { name: 'Grade 9', display_order: 11, section: 'jss' },
+  { name: 'PP1', display_order: 1 },
+  { name: 'PP2', display_order: 2 },
+  { name: 'Grade 1', display_order: 3 },
+  { name: 'Grade 2', display_order: 4 },
+  { name: 'Grade 3', display_order: 5 },
+  { name: 'Grade 4', display_order: 6 },
+  { name: 'Grade 5', display_order: 7 },
+  { name: 'Grade 6', display_order: 8 },
+  { name: 'Grade 7', display_order: 9 },
+  { name: 'Grade 8', display_order: 10 },
+  { name: 'Grade 9', display_order: 11 },
 ]
-
-const PRIMARY_CLASSES = ALL_CLASSES.filter(c => c.section === 'primary')
-const JSS_CLASSES = ALL_CLASSES.filter(c => c.section === 'jss')
 
 // Default subjects (will be copied from St James or use these)
 const DEFAULT_SUBJECTS = [
@@ -58,12 +55,6 @@ export default function SetupSchoolPage() {
   const [isUploadingLogo, setIsUploadingLogo] = useState(false)
   const [logoError, setLogoError] = useState('')
 
-  // School type selection
-  const [schoolType, setSchoolType] = useState<'primary' | 'jss' | 'combined'>('combined')
-  const [parentSchoolId, setParentSchoolId] = useState<string>('')
-  const [sectionName, setSectionName] = useState<string>('')
-  const [existingSchools, setExistingSchools] = useState<any[]>([])
-  
   // School form data
   const [formData, setFormData] = useState({
     name: '',
@@ -78,12 +69,10 @@ export default function SetupSchoolPage() {
     confirm_password: '',
   })
 
-  // Classes selection (toggle on/off) - filtered by school type
-  const [selectedClasses, setSelectedClasses] = useState<string[]>(() => {
-    if (schoolType === 'primary') return PRIMARY_CLASSES.map(c => c.name)
-    if (schoolType === 'jss') return JSS_CLASSES.map(c => c.name)
-    return ALL_CLASSES.map(c => c.name)
-  })
+  // Classes selection (toggle on/off)
+  const [selectedClasses, setSelectedClasses] = useState<string[]>(
+    ALL_CLASSES.map(c => c.name) // All selected by default
+  )
   const [customClassName, setCustomClassName] = useState('')
   
   // Streams for classes (e.g., "Grade 5" -> ["East", "West"])
@@ -217,51 +206,6 @@ export default function SetupSchoolPage() {
     setSelectedClasses(prev => prev.filter(c => c !== className))
   }
 
-  // Load existing primary schools when JSS type is selected
-  useEffect(() => {
-    const loadPrimarySchools = async () => {
-      if (schoolType === 'jss') {
-        const supabase = createClient()
-        const { data } = await supabase
-          .from('schools')
-          .select('id, name, section_name, code')
-          .eq('school_type', 'primary')
-          .eq('is_active', true)
-          .order('name')
-        
-        if (data) {
-          // Filter out invalid schools and remove duplicates by ID
-          const validSchools = data.filter(s => s.id && s.name)
-          const uniqueSchools = Array.from(new Map(validSchools.map(s => [s.id, s])).values())
-          setExistingSchools(uniqueSchools)
-        }
-      } else {
-        setExistingSchools([])
-      }
-    }
-
-    loadPrimarySchools()
-  }, [schoolType])
-
-  // Refresh the list of available primary schools
-  const refreshPrimarySchools = async () => {
-    if (schoolType === 'jss') {
-      const supabase = createClient()
-      const { data } = await supabase
-        .from('schools')
-        .select('id, name, section_name, code')
-        .eq('school_type', 'primary')
-        .eq('is_active', true)
-        .order('name')
-      
-      if (data) {
-        const validSchools = data.filter(s => s.id && s.name)
-        const uniqueSchools = Array.from(new Map(validSchools.map(s => [s.id, s])).values())
-        setExistingSchools(uniqueSchools)
-      }
-    }
-  }
-
   const validateStep1 = () => {
     if (!formData.name.trim()) return 'School name is required'
     if (!formData.code.trim()) return 'School code is required'
@@ -348,9 +292,6 @@ export default function SetupSchoolPage() {
           admin_password: formData.admin_password,
           logo_url: uploadedLogoUrl,
           is_active: true,
-          school_type: schoolType,
-          section_name: sectionName || null,
-          parent_school_id: parentSchoolId || null,
         })
         .select()
         .single()
@@ -449,14 +390,25 @@ export default function SetupSchoolPage() {
         .eq('school_id', school.id)
       
       if (newClasses && newClasses.length > 0) {
-        // NOTE: Sessions are created manually by admins in the admin portal when setting up exams
-        // No auto-created sessions - keeps the system clean
+        const currentYear = new Date().getFullYear()
+        const terms = ['Term 1', 'Term 2', 'Term 3']
+        // Create base sessions for login (no exam_type_id - those are created by admin/teachers)
+        const sessionsToInsert = newClasses.flatMap(cls => 
+          terms.map(term => ({
+            class_id: cls.id,
+            year: currentYear,
+            term: term,
+            is_active: true,
+            school_id: school.id,
+          }))
+        )
+        const { error: sessionsError } = await supabase.from('sessions').insert(sessionsToInsert)
+        if (sessionsError) console.error('[v0] Sessions error:', sessionsError)
+        console.log('[v0] Created base sessions:', sessionsToInsert.length)
+        // NOTE: Exam sessions (with exam_type_id) are created by admin when setting up exams
       }
 
       console.log('[v0] School setup complete!')
-
-      // Refresh the schools list so new school appears in dropdowns
-      await refreshPrimarySchools()
 
       // Generate the school link
       const baseUrl = window.location.origin
@@ -605,111 +557,16 @@ export default function SetupSchoolPage() {
 
           {/* Step 1: School Details */}
           {step === 1 && (
-            <div className="space-y-6">
-              {/* School Type Selection */}
-              <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
-                <Label className="text-base font-semibold mb-3 block">School Type *</Label>
-                <p className="text-sm text-gray-600 mb-3">Choose whether this is a Primary School, Junior Secondary, or both:</p>
-                <div className="grid grid-cols-3 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSchoolType('primary')
-                      setSectionName('Primary')
-                      setSelectedClasses(PRIMARY_CLASSES.map(c => c.name))
-                    }}
-                    className={`p-4 rounded-lg border-2 transition-all ${
-                      schoolType === 'primary'
-                        ? 'border-blue-600 bg-white shadow-md'
-                        : 'border-gray-200 bg-gray-50 hover:border-blue-300'
-                    }`}
-                  >
-                    <div className="font-semibold text-sm mb-1">Primary School</div>
-                    <div className="text-xs text-gray-600">PP1 - Grade 6</div>
-                  </button>
-                  
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSchoolType('jss')
-                      setSectionName('Junior Secondary')
-                      setSelectedClasses(JSS_CLASSES.map(c => c.name))
-                    }}
-                    className={`p-4 rounded-lg border-2 transition-all ${
-                      schoolType === 'jss'
-                        ? 'border-amber-600 bg-white shadow-md'
-                        : 'border-gray-200 bg-gray-50 hover:border-amber-300'
-                    }`}
-                  >
-                    <div className="font-semibold text-sm mb-1">Junior Secondary</div>
-                    <div className="text-xs text-gray-600">Grade 7 - 9</div>
-                  </button>
-                  
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSchoolType('combined')
-                      setSectionName('')
-                      setSelectedClasses(ALL_CLASSES.map(c => c.name))
-                    }}
-                    className={`p-4 rounded-lg border-2 transition-all ${
-                      schoolType === 'combined'
-                        ? 'border-green-600 bg-white shadow-md'
-                        : 'border-gray-200 bg-gray-50 hover:border-green-300'
-                    }`}
-                  >
-                    <div className="font-semibold text-sm mb-1">Combined School</div>
-                    <div className="text-xs text-gray-600">All levels</div>
-                  </button>
-                </div>
-              </div>
-
+            <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">School Name *</Label>
                 <Input
                   id="name"
-                  placeholder="e.g., St Marys School"
+                  placeholder="e.g., ABC Primary School"
                   value={formData.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
                 />
               </div>
-
-              {/* Section Name for Primary/JSS schools */}
-              {schoolType !== 'combined' && (
-                <div className="space-y-2">
-                  <Label htmlFor="sectionName">Section Name *</Label>
-                  <Input
-                    id="sectionName"
-                    placeholder={schoolType === 'primary' ? 'e.g., Primary' : 'e.g., Junior Secondary'}
-                    value={sectionName}
-                    onChange={(e) => setSectionName(e.target.value)}
-                  />
-                  <p className="text-xs text-gray-500">This will appear in reports and dashboards (e.g., "St Marys Primary" or "St Marys JSS")</p>
-                </div>
-              )}
-
-              {/* Parent School Selection for JSS */}
-              {schoolType === 'jss' && (
-                <div className="space-y-2 bg-blue-50 border-2 border-blue-200 rounded-lg p-3">
-                  <Label htmlFor="parentSchool">Link to Primary School (Optional)</Label>
-                  <select
-                    id="parentSchool"
-                    value={parentSchoolId}
-                    onChange={(e) => setParentSchoolId(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">-- Not linked to Primary School --</option>
-                    {existingSchools.map(school => (
-                      <option key={school.id} value={school.id}>
-                        {school.name} {school.section_name ? `(${school.section_name})` : ''}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-gray-500">
-                    Link this JSS to an existing Primary school to have unified admin access for both sections
-                  </p>
-                </div>
-              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -880,211 +737,101 @@ export default function SetupSchoolPage() {
 
           {/* Step 2: Select Classes */}
           {step === 2 && (
-            <div className="space-y-6">
-              <p className="text-sm text-gray-600">Select classes for this school. You can set up just Primary, just JSS, or both:</p>
-              
-              {/* PRIMARY SCHOOL SECTION */}
-              <div className="border-2 border-blue-200 rounded-lg p-4 bg-blue-50">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-semibold text-blue-900">PRIMARY SCHOOL (PP1 - Grade 6)</h3>
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => {
-                        const primaryNames = PRIMARY_CLASSES.map(c => c.name)
-                        setSelectedClasses([...new Set([...selectedClasses, ...primaryNames])])
-                      }}
-                      className="text-blue-600 border-blue-300"
-                    >
-                      Select All
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => {
-                        const primaryNames = PRIMARY_CLASSES.map(c => c.name)
-                        setSelectedClasses(selectedClasses.filter(c => !primaryNames.includes(c)))
-                      }}
-                      className="text-blue-600 border-blue-300"
-                    >
-                      Clear
-                    </Button>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-3">
-                  {PRIMARY_CLASSES.map(c => (
-                    <div key={c.name} className={`rounded-lg border-2 transition-all ${
-                      selectedClasses.includes(c.name)
-                        ? 'border-blue-600 bg-white'
-                        : 'border-gray-200 bg-gray-50'
-                    }`}>
-                      <button
-                        type="button"
-                        onClick={() => toggleClass(c.name)}
-                        className={`w-full p-3 text-sm font-medium text-left flex items-center justify-between ${
-                          selectedClasses.includes(c.name)
-                            ? 'text-blue-700'
-                            : 'text-gray-600 hover:text-gray-800'
-                        }`}
-                      >
-                        <span>
-                          {selectedClasses.includes(c.name) && (
-                            <Check className="w-4 h-4 inline mr-1" />
-                          )}
-                          {c.name}
-                        </span>
-                      </button>
-                      
-                      {/* Stream input - only show when class is selected */}
-                      {selectedClasses.includes(c.name) && (
-                        <div className="px-3 pb-3 space-y-2">
-                          <div className="flex gap-1">
-                            <Input
-                              placeholder="Add stream (e.g., East, A)"
-                              value={newStreamInput[c.name] || ''}
-                              onChange={(e) => setNewStreamInput(prev => ({ ...prev, [c.name]: e.target.value }))}
-                              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addStreamToClass(c.name))}
-                              className="h-8 text-xs"
-                            />
-                            <Button 
-                              type="button"
-                              onClick={() => addStreamToClass(c.name)} 
-                              variant="outline" 
-                              size="sm"
-                              className="h-8 px-2"
-                              disabled={!newStreamInput[c.name]?.trim()}
-                            >
-                              <Plus className="w-3 h-3" />
-                            </Button>
-                          </div>
-                          {classStreams[c.name]?.length > 0 && (
-                            <div className="flex flex-wrap gap-1">
-                              {classStreams[c.name].map(stream => (
-                                <span
-                                  key={stream}
-                                  className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-200 text-blue-800 rounded text-xs"
-                                >
-                                  {stream}
-                                  <button
-                                    type="button"
-                                    onClick={() => removeStreamFromClass(c.name, stream)}
-                                    className="hover:text-blue-900"
-                                  >
-                                    <X className="w-3 h-3" />
-                                  </button>
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <p className="text-sm text-gray-600">Select the classes for this school:</p>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setSelectedClasses(ALL_CLASSES.map(c => c.name))}
+                  >
+                    Select All
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setSelectedClasses([])}
+                  >
+                    Clear All
+                  </Button>
                 </div>
               </div>
-
-              {/* JSS SECTION */}
-              <div className="border-2 border-amber-200 rounded-lg p-4 bg-amber-50">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-semibold text-amber-900">JUNIOR SECONDARY SCHOOL (Grade 7-9)</h3>
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => {
-                        const jssNames = JSS_CLASSES.map(c => c.name)
-                        setSelectedClasses([...new Set([...selectedClasses, ...jssNames])])
-                      }}
-                      className="text-amber-600 border-amber-300"
+              
+              <div className="grid grid-cols-2 gap-3">
+                {ALL_CLASSES.map(c => (
+                  <div key={c.name} className={`rounded-lg border-2 transition-all ${
+                    selectedClasses.includes(c.name)
+                      ? 'border-blue-600 bg-blue-50'
+                      : 'border-gray-200 bg-white'
+                  }`}>
+                    <button
+                      type="button"
+                      onClick={() => toggleClass(c.name)}
+                      className={`w-full p-3 text-sm font-medium text-left flex items-center justify-between ${
+                        selectedClasses.includes(c.name)
+                          ? 'text-blue-700'
+                          : 'text-gray-600 hover:text-gray-800'
+                      }`}
                     >
-                      Select All
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => {
-                        const jssNames = JSS_CLASSES.map(c => c.name)
-                        setSelectedClasses(selectedClasses.filter(c => !jssNames.includes(c)))
-                      }}
-                      className="text-amber-600 border-amber-300"
-                    >
-                      Clear
-                    </Button>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-3">
-                  {JSS_CLASSES.map(c => (
-                    <div key={c.name} className={`rounded-lg border-2 transition-all ${
-                      selectedClasses.includes(c.name)
-                        ? 'border-amber-600 bg-white'
-                        : 'border-gray-200 bg-gray-50'
-                    }`}>
-                      <button
-                        type="button"
-                        onClick={() => toggleClass(c.name)}
-                        className={`w-full p-3 text-sm font-medium text-left flex items-center justify-between ${
-                          selectedClasses.includes(c.name)
-                            ? 'text-amber-700'
-                            : 'text-gray-600 hover:text-gray-800'
-                        }`}
-                      >
-                        <span>
-                          {selectedClasses.includes(c.name) && (
-                            <Check className="w-4 h-4 inline mr-1" />
-                          )}
-                          {c.name}
+                      <span>
+                        {selectedClasses.includes(c.name) && (
+                          <Check className="w-4 h-4 inline mr-1" />
+                        )}
+                        {c.name}
+                      </span>
+                      {classStreams[c.name]?.length > 0 && (
+                        <span className="text-xs bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full">
+                          {classStreams[c.name].length} streams
                         </span>
-                      </button>
-                      
-                      {/* Stream input - only show when class is selected */}
-                      {selectedClasses.includes(c.name) && (
-                        <div className="px-3 pb-3 space-y-2">
-                          <div className="flex gap-1">
-                            <Input
-                              placeholder="Add stream (e.g., East, A)"
-                              value={newStreamInput[c.name] || ''}
-                              onChange={(e) => setNewStreamInput(prev => ({ ...prev, [c.name]: e.target.value }))}
-                              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addStreamToClass(c.name))}
-                              className="h-8 text-xs"
-                            />
-                            <Button 
-                              type="button"
-                              onClick={() => addStreamToClass(c.name)} 
-                              variant="outline" 
-                              size="sm"
-                              className="h-8 px-2"
-                              disabled={!newStreamInput[c.name]?.trim()}
-                            >
-                              <Plus className="w-3 h-3" />
-                            </Button>
-                          </div>
-                          {classStreams[c.name]?.length > 0 && (
-                            <div className="flex flex-wrap gap-1">
-                              {classStreams[c.name].map(stream => (
-                                <span
-                                  key={stream}
-                                  className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-200 text-amber-800 rounded text-xs"
-                                >
-                                  {stream}
-                                  <button
-                                    type="button"
-                                    onClick={() => removeStreamFromClass(c.name, stream)}
-                                    className="hover:text-amber-900"
-                                  >
-                                    <X className="w-3 h-3" />
-                                  </button>
-                                </span>
-                                  ))}
-                            </div>
-                          )}
-                        </div>
                       )}
-                    </div>
-                  ))}
-                </div>
+                    </button>
+                    
+                    {/* Stream input - only show when class is selected */}
+                    {selectedClasses.includes(c.name) && (
+                      <div className="px-3 pb-3 space-y-2">
+                        <div className="flex gap-1">
+                          <Input
+                            placeholder="Add stream (e.g., East, A)"
+                            value={newStreamInput[c.name] || ''}
+                            onChange={(e) => setNewStreamInput(prev => ({ ...prev, [c.name]: e.target.value }))}
+                            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addStreamToClass(c.name))}
+                            className="h-8 text-xs"
+                          />
+                          <Button 
+                            type="button"
+                            onClick={() => addStreamToClass(c.name)} 
+                            variant="outline" 
+                            size="sm"
+                            className="h-8 px-2"
+                            disabled={!newStreamInput[c.name]?.trim()}
+                          >
+                            <Plus className="w-3 h-3" />
+                          </Button>
+                        </div>
+                        {classStreams[c.name]?.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {classStreams[c.name].map(stream => (
+                              <span
+                                key={stream}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-200 text-blue-800 rounded text-xs"
+                              >
+                                {stream}
+                                <button
+                                  type="button"
+                                  onClick={() => removeStreamFromClass(c.name, stream)}
+                                  className="hover:text-blue-900"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
               
               <hr className="my-4" />

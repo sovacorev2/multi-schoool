@@ -1,72 +1,38 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React from "react"
+
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useClass } from '@/lib/class-context'
-import { Check, X } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import type { Subject } from '@/lib/types'
 
 export default function SubjectsPage() {
   const { currentClass } = useClass()
-  const [availableSubjects, setAvailableSubjects] = useState<Subject[]>([])
-  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([])
+  const [subjects, setSubjects] = useState<Subject[]>([])
+  const [subjectName, setSubjectName] = useState('')
   const [isLoading, setIsLoading] = useState(true)
-  const [isSaving, setIsSaving] = useState(false)
-  const [saveMessage, setSaveMessage] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const supabase = createClient()
 
   useEffect(() => {
-    fetchData()
+    fetchSubjects()
+  }, [currentClass?.id])
 
-    // Subscribe to real-time changes in school_subjects table
-    const channel = supabase
-      .channel(`school_subjects:school:${currentClass?.school_id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'school_subjects',
-          filter: `school_id=eq.${currentClass?.school_id}`
-        },
-        (payload) => {
-          console.log('[v0] School subjects updated in real-time:', payload)
-          fetchData()
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [currentClass?.id, currentClass?.school_id])
-
-  const fetchData = async () => {
-    if (!currentClass?.school_id) return
+  async function fetchSubjects() {
+    if (!currentClass) return
 
     try {
-      setIsLoading(true)
-      
-      // Get all enabled subjects for the school from school_subjects table
-      const { data: schoolSubjects, error: subjectsError } = await supabase
-        .from('school_subjects')
+      const { data, error } = await supabase
+        .from('subjects')
         .select('*')
-        .eq('school_id', currentClass.school_id)
-        .eq('is_enabled', true)
+        .eq('class_id', currentClass.id)
         .order('name', { ascending: true })
 
-      if (subjectsError) throw subjectsError
-      setAvailableSubjects(schoolSubjects || [])
-
-      // Get currently selected subjects for this class
-      const { data: classSubjects, error: classError } = await supabase
-        .from('class_enabled_subjects')
-        .select('subject_code')
-        .eq('class_id', currentClass.id)
-
-      if (classError) throw classError
-      setSelectedSubjects((classSubjects || []).map(cs => cs.subject_code))
+      if (error) throw error
+      setSubjects(data || [])
     } catch (error) {
       console.error('Error fetching subjects:', error)
     } finally {
@@ -74,47 +40,45 @@ export default function SubjectsPage() {
     }
   }
 
-  async function handleSaveSelection() {
-    if (!currentClass) return
+  async function handleAddSubject(e: React.FormEvent) {
+    e.preventDefault()
+    if (!subjectName.trim() || !currentClass) return
 
-    setIsSaving(true)
+    setIsSubmitting(true)
     try {
-      // Delete existing class subject mappings
-      await supabase
-        .from('class_enabled_subjects')
-        .delete()
-        .eq('class_id', currentClass.id)
+      const { data, error } = await supabase
+        .from('subjects')
+        .insert([
+          {
+            name: subjectName.trim().toUpperCase(),
+            class_id: currentClass.id,
+            is_custom: true,
+          },
+        ])
+        .select()
 
-      // Insert new selections
-      if (selectedSubjects.length > 0) {
-        const { error } = await supabase
-          .from('class_enabled_subjects')
-          .insert(
-            selectedSubjects.map(subjectCode => ({
-              class_id: currentClass.id,
-              subject_code: subjectCode
-            }))
-          )
-
-        if (error) throw error
+      if (error) throw error
+      if (data) {
+        setSubjects([...subjects, data[0]])
+        setSubjectName('')
       }
-
-      setSaveMessage('Subjects saved successfully!')
-      setTimeout(() => setSaveMessage(''), 3000)
     } catch (error) {
-      console.error('Error saving subjects:', error)
-      setSaveMessage('Error saving subjects')
+      console.error('Error adding subject:', error)
     } finally {
-      setIsSaving(false)
+      setIsSubmitting(false)
     }
   }
 
-  const toggleSubject = (subjectCode: string) => {
-    setSelectedSubjects(prev => 
-      prev.includes(subjectCode)
-        ? prev.filter(code => code !== subjectCode)
-        : [...prev, subjectCode]
-    )
+  async function handleDeleteSubject(subjectId: string) {
+    if (!confirm('Are you sure you want to delete this subject?')) return
+
+    try {
+      const { error } = await supabase.from('subjects').delete().eq('id', subjectId)
+      if (error) throw error
+      setSubjects(subjects.filter((s) => s.id !== subjectId))
+    } catch (error) {
+      console.error('Error deleting subject:', error)
+    }
   }
 
   if (isLoading) {
@@ -125,75 +89,76 @@ export default function SubjectsPage() {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Manage Class Subjects</h1>
-        <p className="text-gray-600 mt-2">Select which enabled subjects your class is studying - {currentClass?.name}</p>
+        <h1 className="text-3xl font-bold text-gray-900">Manage Subjects</h1>
+        <p className="text-gray-600 mt-2">Add and manage subjects for {currentClass?.name}</p>
       </div>
 
-      {/* Info Box */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <p className="text-sm text-blue-900">
-          These are the subjects enabled by your school admin. Select the ones your class is actually studying. Your selection determines which subjects appear in the mark entry interface.
-        </p>
-      </div>
-
-      {/* Subjects Selection Grid */}
+      {/* Add Subject Form */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-        <h2 className="text-xl font-bold text-gray-900 mb-6">Available Subjects</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-6">Add New Subject</h2>
         
-        {availableSubjects.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
-            No subjects enabled by admin yet. Contact your school administrator to enable subjects.
+        <form onSubmit={handleAddSubject} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Subject Name */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Subject Name</label>
+              <input
+                type="text"
+                value={subjectName}
+                onChange={(e) => setSubjectName(e.target.value)}
+                placeholder="e.g., Mathematics, English, Science"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+              />
+            </div>
+
+            {/* Add Button */}
+            <div className="flex items-end">
+              <button
+                type="submit"
+                disabled={isSubmitting || !subjectName.trim()}
+                className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:bg-gray-400"
+              >
+                <Plus className="w-5 h-5 inline-block mr-2" />
+                Add Subject
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      {/* Subjects List */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="px-8 py-6 border-b border-gray-200">
+          <h2 className="text-xl font-bold text-gray-900">
+            Class Subjects ({subjects.length})
+          </h2>
+        </div>
+
+        {subjects.length === 0 ? (
+          <div className="p-8 text-center text-gray-500">
+            No subjects added yet. Add your first subject above.
           </div>
         ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-              {availableSubjects.map(subject => (
-                <label
-                  key={subject.code}
-                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                    selectedSubjects.includes(subject.code)
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 bg-white hover:border-blue-300'
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      checked={selectedSubjects.includes(subject.code)}
-                      onChange={() => toggleSubject(subject.code)}
-                      className="mt-1 w-5 h-5"
-                    />
-                    <div className="flex-1">
-                      <div className="font-semibold text-gray-900">{subject.name}</div>
-                      <div className="text-sm text-gray-600 font-mono mt-1">Code: {subject.code}</div>
-                    </div>
-                  </div>
-                </label>
-              ))}
-            </div>
-
-            {/* Summary and Save */}
-            <div className="border-t pt-6 flex items-center justify-between">
-              <div className="text-sm text-gray-600">
-                <strong>{selectedSubjects.length}</strong> of <strong>{availableSubjects.length}</strong> subjects selected
-              </div>
-              <div className="flex items-center gap-3">
-                {saveMessage && (
-                  <span className={`text-sm ${saveMessage.includes('Error') ? 'text-red-600' : 'text-green-600'}`}>
-                    {saveMessage}
-                  </span>
-                )}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-8">
+            {subjects.map((subject) => (
+              <div
+                key={subject.id}
+                className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+              >
+                <div>
+                  <h3 className="font-semibold text-gray-900">{subject.name}</h3>
+                  <p className="text-xs text-gray-500 mt-1">Custom</p>
+                </div>
                 <button
-                  onClick={handleSaveSelection}
-                  disabled={isSaving}
-                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:bg-gray-400 flex items-center gap-2"
+                  onClick={() => handleDeleteSubject(subject.id)}
+                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                 >
-                  <Check className="w-5 h-5" />
-                  Save Selection
+                  <Trash2 className="w-5 h-5" />
                 </button>
               </div>
-            </div>
-          </>
+            ))}
+          </div>
         )}
       </div>
     </div>
