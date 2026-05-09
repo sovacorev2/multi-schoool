@@ -1,179 +1,193 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { CurriculumSelector } from './curriculum-selector'
-import { LogOut, Lock, Unlock } from 'lucide-react'
+import { LogOut, Lock, Unlock, RefreshCw } from 'lucide-react'
+
+interface AdminSession {
+  id: string
+  school_id: string
+  class_id: string
+  year: number
+  term: number
+  is_locked: boolean
+  created_at: string
+  class?: { name: string }
+}
+
+interface SchoolData {
+  id: string
+  name: string
+  code: string
+  admin_password: string
+}
+
+interface ClassData {
+  id: string
+  name: string
+  grade: string
+  capacity: number
+}
 
 export default function AdminPortalPage() {
-  const router = useRouter()
   const [authenticated, setAuthenticated] = useState(false)
   const [password, setPassword] = useState('')
   const [schoolCode, setSchoolCode] = useState('')
-  const [schoolData, setSchoolData] = useState<any>(null)
-  const [classes, setClasses] = useState<any[]>([])
-  const [sessions, setSessions] = useState<any[]>([])
+  const [schoolData, setSchoolData] = useState<SchoolData | null>(null)
+  const [classes, setClasses] = useState<ClassData[]>([])
+  const [sessions, setSessions] = useState<AdminSession[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [refreshing, setRefreshing] = useState(false)
 
   const supabase = createClient()
 
-  // Check authentication on mount
-  useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session?.user?.user_metadata?.school_code) {
-        setAuthenticated(true)
-        setSchoolCode(session.user.user_metadata.school_code)
-        await loadSchoolData(session.user.user_metadata.school_code)
-      }
-    }
-    checkAuth()
-  }, [])
-
-  // Load school data (classes and sessions)
-  const loadSchoolData = async (code: string) => {
-    if (!code) return
-    
-    setLoading(true)
-    setError('')
+  const loadData = async (code: string) => {
     try {
-      // Get school by code
-      const { data: schools, error: schoolError } = await supabase
+      // Fetch school
+      const { data: school, error: schoolErr } = await supabase
         .from('schools')
         .select('*')
         .eq('code', code)
-        .single()
+        .maybeSingle()
 
-      if (schoolError) throw schoolError
+      if (schoolErr || !school) {
+        setError('School not found')
+        return
+      }
 
-      setSchoolData(schools)
+      setSchoolData(school)
 
-      // Get classes
-      const { data: classesData, error: classError } = await supabase
+      // Fetch classes
+      const { data: classesData } = await supabase
         .from('classes')
         .select('*')
-        .eq('school_id', schools.id)
-        .order('name')
+        .eq('school_id', school.id)
 
-      if (classError) throw classError
       setClasses(classesData || [])
 
-      // Get sessions
-      const { data: sessionsData, error: sessionsError } = await supabase
+      // Fetch sessions
+      const { data: sessionsData } = await supabase
         .from('sessions')
-        .select('*, class:class_id(name)')
-        .eq('school_id', schools.id)
-        .order('created_at', { ascending: false })
+        .select('*')
+        .eq('school_id', school.id)
 
-      if (sessionsError) throw sessionsError
       setSessions(sessionsData || [])
     } catch (err) {
-      console.error('[v0] Error loading school data:', err)
-      setError('Failed to load school data: ' + (err as any)?.message)
-    } finally {
-      setLoading(false)
+      setError('Error loading data: ' + (err as any).message)
     }
   }
 
-  // Handle authentication
-  const handleAuthenticate = async () => {
+  const handleLogin = async () => {
     setLoading(true)
     setError('')
+
     try {
-      // Get school by code
-      const { data: schools, error: schoolError } = await supabase
+      const { data: school } = await supabase
         .from('schools')
         .select('*')
         .eq('code', schoolCode)
-        .single()
+        .maybeSingle()
 
-      if (schoolError) throw new Error('School not found')
+      if (!school) {
+        setError('Invalid school code')
+        setLoading(false)
+        return
+      }
 
-      // Check password (you should hash this in production)
-      if (schools.admin_password !== password) {
-        throw new Error('Invalid password')
+      if (school.admin_password !== password) {
+        setError('Invalid password')
+        setLoading(false)
+        return
       }
 
       setAuthenticated(true)
-      setSchoolData(schools)
-      await loadSchoolData(schoolCode)
+      await loadData(schoolCode)
     } catch (err) {
-      setError((err as any)?.message || 'Authentication failed')
-    } finally {
-      setLoading(false)
+      setError('Login failed: ' + (err as any).message)
     }
+
+    setLoading(false)
   }
 
-  // Lock/unlock session
-  const toggleSessionLock = async (sessionId: string, currentLocked: boolean) => {
+  const toggleLock = async (sessionId: string, locked: boolean) => {
     try {
-      const { error } = await supabase
+      await supabase
         .from('sessions')
-        .update({ is_locked: !currentLocked })
+        .update({ is_locked: !locked })
         .eq('id', sessionId)
 
-      if (error) throw error
-      await loadSchoolData(schoolCode)
+      setRefreshing(true)
+      await loadData(schoolCode)
+      setRefreshing(false)
     } catch (err) {
-      console.error('[v0] Error updating session:', err)
       setError('Failed to update session')
     }
   }
 
-  // Logout
   const handleLogout = () => {
     setAuthenticated(false)
-    setSchoolCode('')
     setPassword('')
     setSchoolData(null)
+    setClasses([])
+    setSessions([])
+    setError('')
   }
 
   if (!authenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md p-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-6">Admin Portal</h1>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                School Code
-              </label>
-              <Input
-                type="text"
-                value={schoolCode}
-                onChange={(e) => setSchoolCode(e.target.value)}
-                placeholder="e.g., STM"
-                className="w-full"
-                onKeyPress={(e) => e.key === 'Enter' && handleAuthenticate()}
-              />
+        <Card className="w-full max-w-md shadow-lg">
+          <div className="p-8">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Admin Portal</h1>
+            <p className="text-gray-600 text-sm mb-6">School Management System</p>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-300 rounded text-red-800 text-sm">
+                {error}
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  School Code
+                </label>
+                <Input
+                  type="text"
+                  value={schoolCode}
+                  onChange={(e) => setSchoolCode(e.target.value.toUpperCase())}
+                  placeholder="e.g., STM001"
+                  onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Password
+                </label>
+                <Input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter admin password"
+                  onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+                />
+              </div>
+
+              <Button
+                onClick={handleLogin}
+                disabled={loading || !schoolCode || !password}
+                className="w-full bg-blue-600 hover:bg-blue-700"
+              >
+                {loading ? 'Loading...' : 'Login'}
+              </Button>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Password
-              </label>
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter admin password"
-                className="w-full"
-                onKeyPress={(e) => e.key === 'Enter' && handleAuthenticate()}
-              />
-            </div>
-            {error && <div className="p-3 bg-red-100 text-red-800 rounded text-sm">{error}</div>}
-            <Button
-              onClick={handleAuthenticate}
-              disabled={loading || !schoolCode || !password}
-              className="w-full bg-blue-600 hover:bg-blue-700"
-            >
-              {loading ? 'Authenticating...' : 'Login'}
-            </Button>
           </div>
         </Card>
       </div>
@@ -200,10 +214,10 @@ export default function AdminPortalPage() {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto p-4">
+      {/* Content */}
+      <div className="max-w-7xl mx-auto px-4 py-8">
         {error && (
-          <div className="mb-4 p-4 bg-red-100 border border-red-300 text-red-800 rounded">
+          <div className="mb-4 p-4 bg-red-100 border border-red-300 rounded text-red-800">
             {error}
           </div>
         )}
@@ -216,44 +230,47 @@ export default function AdminPortalPage() {
           </TabsList>
 
           {/* Subjects Tab */}
-          <TabsContent value="subjects" className="space-y-4">
-            <div className="bg-white rounded-lg p-6 border">
-              <h2 className="text-lg font-semibold mb-4">Curriculum Management</h2>
+          <TabsContent value="subjects">
+            <Card className="p-6">
+              <h2 className="text-lg font-semibold mb-4">Manage Curriculum</h2>
               <CurriculumSelector schoolId={schoolData?.id} />
-            </div>
+            </Card>
           </TabsContent>
 
           {/* Classes Tab */}
-          <TabsContent value="classes" className="space-y-4">
-            <div className="bg-white rounded-lg p-6 border">
+          <TabsContent value="classes">
+            <Card className="p-6">
               <h2 className="text-lg font-semibold mb-4">Classes ({classes.length})</h2>
               {classes.length === 0 ? (
                 <p className="text-gray-600">No classes found</p>
               ) : (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {classes.map((cls: any) => (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {classes.map((cls) => (
                     <Card key={cls.id} className="p-4">
                       <h3 className="font-semibold text-gray-900">{cls.name}</h3>
-                      <p className="text-sm text-gray-600">Grade {cls.grade}</p>
-                      <p className="text-sm text-gray-600 mt-2">Capacity: {cls.capacity}</p>
+                      <p className="text-sm text-gray-600">Grade: {cls.grade}</p>
+                      <p className="text-sm text-gray-600">Capacity: {cls.capacity}</p>
                     </Card>
                   ))}
                 </div>
               )}
-            </div>
+            </Card>
           </TabsContent>
 
           {/* Sessions Tab */}
-          <TabsContent value="sessions" className="space-y-4">
-            <div className="bg-white rounded-lg p-6 border">
+          <TabsContent value="sessions">
+            <Card className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold">Exam Sessions ({sessions.length})</h2>
                 <Button
-                  onClick={() => loadSchoolData(schoolCode)}
+                  onClick={() => loadData(schoolCode)}
                   variant="outline"
                   size="sm"
+                  disabled={refreshing}
+                  className="gap-2"
                 >
-                  Refresh
+                  <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                  {refreshing ? 'Refreshing...' : 'Refresh'}
                 </Button>
               </div>
 
@@ -261,48 +278,50 @@ export default function AdminPortalPage() {
                 <p className="text-gray-600">No sessions found</p>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full">
+                  <table className="w-full text-sm">
                     <thead className="bg-gray-100">
                       <tr>
-                        <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Class</th>
-                        <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Year</th>
-                        <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Term</th>
-                        <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Status</th>
-                        <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Created</th>
-                        <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Action</th>
+                        <th className="px-4 py-2 text-left font-medium text-gray-900">Class</th>
+                        <th className="px-4 py-2 text-left font-medium text-gray-900">Year</th>
+                        <th className="px-4 py-2 text-left font-medium text-gray-900">Term</th>
+                        <th className="px-4 py-2 text-left font-medium text-gray-900">Status</th>
+                        <th className="px-4 py-2 text-left font-medium text-gray-900">Created</th>
+                        <th className="px-4 py-2 text-left font-medium text-gray-900">Action</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {sessions.map((session: any) => (
+                      {sessions.map((session) => (
                         <tr key={session.id} className="border-t hover:bg-gray-50">
-                          <td className="px-4 py-2 text-sm font-medium">{session.class?.name}</td>
-                          <td className="px-4 py-2 text-sm">{session.year}</td>
-                          <td className="px-4 py-2 text-sm">Term {session.term}</td>
-                          <td className="px-4 py-2 text-sm">
+                          <td className="px-4 py-2 font-medium">{session.class?.name || 'N/A'}</td>
+                          <td className="px-4 py-2">{session.year}</td>
+                          <td className="px-4 py-2">Term {session.term}</td>
+                          <td className="px-4 py-2">
                             <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                              session.is_locked ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+                              session.is_locked
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-green-100 text-green-800'
                             }`}>
                               {session.is_locked ? 'Locked' : 'Active'}
                             </span>
                           </td>
-                          <td className="px-4 py-2 text-sm text-gray-600">
+                          <td className="px-4 py-2 text-gray-600">
                             {new Date(session.created_at).toLocaleDateString()}
                           </td>
-                          <td className="px-4 py-2 text-sm">
+                          <td className="px-4 py-2">
                             <Button
                               size="sm"
                               variant="outline"
-                              className="gap-2"
-                              onClick={() => toggleSessionLock(session.id, session.is_locked)}
+                              className="gap-1"
+                              onClick={() => toggleLock(session.id, session.is_locked)}
                             >
                               {session.is_locked ? (
                                 <>
-                                  <Unlock className="w-4 h-4" />
+                                  <Unlock className="w-3 h-3" />
                                   Unlock
                                 </>
                               ) : (
                                 <>
-                                  <Lock className="w-4 h-4" />
+                                  <Lock className="w-3 h-3" />
                                   Lock
                                 </>
                               )}
@@ -314,7 +333,7 @@ export default function AdminPortalPage() {
                   </table>
                 </div>
               )}
-            </div>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
