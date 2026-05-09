@@ -1,0 +1,7 @@
+{
+  "buildCommand": "pnpm build",
+  "installCommand": "pnpm install",
+  "env": {
+    "NEXT_PUBLIC_FORCE_REBUILD": "true"
+  }
+}
