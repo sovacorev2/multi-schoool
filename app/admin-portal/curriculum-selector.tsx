@@ -34,10 +34,10 @@ export function CurriculumSelector({ schoolId: propSchoolId }: CurriculumSelecto
     const loadEnabledSubjects = async () => {
       try {
         const { data, error } = await supabase
-          .from('subjects')
+          .from('school_subjects')
           .select('code')
           .eq('school_id', schoolId)
-          .eq('is_disabled', false)
+          .eq('is_enabled', true)
 
         if (error) throw error
         
@@ -83,7 +83,7 @@ export function CurriculumSelector({ schoolId: propSchoolId }: CurriculumSelecto
     try {
       // Delete all existing subjects for this school
       const { error: deleteError } = await supabase
-        .from('subjects')
+        .from('school_subjects')
         .delete()
         .eq('school_id', schoolId)
 
@@ -94,12 +94,11 @@ export function CurriculumSelector({ schoolId: propSchoolId }: CurriculumSelecto
         name: template.name,
         code: template.code,
         school_id: schoolId,
-        is_disabled: !enabledSubjects.has(template.code),
-        is_custom: false
+        is_enabled: enabledSubjects.has(template.code)
       }))
 
       const { error: insertError } = await supabase
-        .from('subjects')
+        .from('school_subjects')
         .insert(subjectsToInsert)
 
       if (insertError) throw insertError

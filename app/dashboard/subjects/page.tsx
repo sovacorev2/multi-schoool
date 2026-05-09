@@ -19,19 +19,19 @@ export default function SubjectsPage() {
   useEffect(() => {
     fetchData()
 
-    // Subscribe to real-time changes in subjects table
+    // Subscribe to real-time changes in school_subjects table
     const channel = supabase
-      .channel(`subjects:school:${currentClass?.school_id}`)
+      .channel(`school_subjects:school:${currentClass?.school_id}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'subjects',
+          table: 'school_subjects',
           filter: `school_id=eq.${currentClass?.school_id}`
         },
         (payload) => {
-          console.log('[v0] Subjects updated in real-time:', payload)
+          console.log('[v0] School subjects updated in real-time:', payload)
           fetchData()
         }
       )
@@ -42,18 +42,18 @@ export default function SubjectsPage() {
     }
   }, [currentClass?.id, currentClass?.school_id])
 
-  async function fetchData() {
-    if (!currentClass) return
+  const fetchData = async () => {
+    if (!currentClass?.school_id) return
 
     try {
       setIsLoading(true)
       
-      // Get all enabled subjects for the school
+      // Get all enabled subjects for the school from school_subjects table
       const { data: schoolSubjects, error: subjectsError } = await supabase
-        .from('subjects')
+        .from('school_subjects')
         .select('*')
         .eq('school_id', currentClass.school_id)
-        .eq('is_disabled', false)
+        .eq('is_enabled', true)
         .order('name', { ascending: true })
 
       if (subjectsError) throw subjectsError
@@ -61,12 +61,12 @@ export default function SubjectsPage() {
 
       // Get currently selected subjects for this class
       const { data: classSubjects, error: classError } = await supabase
-        .from('class_subjects')
-        .select('subject_id')
+        .from('class_enabled_subjects')
+        .select('subject_code')
         .eq('class_id', currentClass.id)
 
       if (classError) throw classError
-      setSelectedSubjects((classSubjects || []).map(cs => cs.subject_id))
+      setSelectedSubjects((classSubjects || []).map(cs => cs.subject_code))
     } catch (error) {
       console.error('Error fetching subjects:', error)
     } finally {
@@ -81,18 +81,18 @@ export default function SubjectsPage() {
     try {
       // Delete existing class subject mappings
       await supabase
-        .from('class_subjects')
+        .from('class_enabled_subjects')
         .delete()
         .eq('class_id', currentClass.id)
 
       // Insert new selections
       if (selectedSubjects.length > 0) {
         const { error } = await supabase
-          .from('class_subjects')
+          .from('class_enabled_subjects')
           .insert(
-            selectedSubjects.map(subjectId => ({
+            selectedSubjects.map(subjectCode => ({
               class_id: currentClass.id,
-              subject_id: subjectId
+              subject_code: subjectCode
             }))
           )
 
@@ -109,11 +109,11 @@ export default function SubjectsPage() {
     }
   }
 
-  const toggleSubject = (subjectId: string) => {
+  const toggleSubject = (subjectCode: string) => {
     setSelectedSubjects(prev => 
-      prev.includes(subjectId)
-        ? prev.filter(id => id !== subjectId)
-        : [...prev, subjectId]
+      prev.includes(subjectCode)
+        ? prev.filter(code => code !== subjectCode)
+        : [...prev, subjectCode]
     )
   }
 
@@ -149,9 +149,9 @@ export default function SubjectsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
               {availableSubjects.map(subject => (
                 <label
-                  key={subject.id}
+                  key={subject.code}
                   className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                    selectedSubjects.includes(subject.id)
+                    selectedSubjects.includes(subject.code)
                       ? 'border-blue-500 bg-blue-50'
                       : 'border-gray-200 bg-white hover:border-blue-300'
                   }`}
@@ -159,16 +159,13 @@ export default function SubjectsPage() {
                   <div className="flex items-start gap-3">
                     <input
                       type="checkbox"
-                      checked={selectedSubjects.includes(subject.id)}
-                      onChange={() => toggleSubject(subject.id)}
+                      checked={selectedSubjects.includes(subject.code)}
+                      onChange={() => toggleSubject(subject.code)}
                       className="mt-1 w-5 h-5"
                     />
                     <div className="flex-1">
                       <div className="font-semibold text-gray-900">{subject.name}</div>
                       <div className="text-sm text-gray-600 font-mono mt-1">Code: {subject.code}</div>
-                      {subject.is_custom && (
-                        <div className="text-xs text-amber-600 mt-2">Custom Subject</div>
-                      )}
                     </div>
                   </div>
                 </label>
