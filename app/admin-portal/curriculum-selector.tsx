@@ -29,24 +29,18 @@ export function CurriculumSelector({ schoolId: propSchoolId }: CurriculumSelecto
 
   // Load existing enabled subjects from database
   useEffect(() => {
-    if (!schoolId) {
-      console.log('[v0] No schoolId available yet')
-      return
-    }
-    
-    console.log('[v0] Loading subjects for school:', schoolId)
+    if (!schoolId) return
     
     const loadEnabledSubjects = async () => {
       try {
         const { data, error } = await supabase
-          .from('subjects')
+          .from('school_subjects')
           .select('code')
           .eq('school_id', schoolId)
-          .eq('is_disabled', false)
+          .eq('is_enabled', true)
 
         if (error) throw error
         
-        console.log('[v0] Loaded enabled subjects:', data)
         const codes = new Set(data?.map(s => s.code) || [])
         setEnabledSubjects(codes)
       } catch (error) {
@@ -83,42 +77,31 @@ export function CurriculumSelector({ schoolId: propSchoolId }: CurriculumSelecto
   }
 
   const saveSelection = async () => {
-    if (!schoolId) {
-      console.log('[v0] No schoolId to save subjects')
-      return
-    }
-    
-    console.log('[v0] Saving subjects. Enabled:', Array.from(enabledSubjects))
+    if (!schoolId) return
     
     setLoading(true)
     try {
       // Delete all existing subjects for this school
-      console.log('[v0] Deleting existing subjects for school:', schoolId)
-      const { error: deleteError, count: deleteCount } = await supabase
-        .from('subjects')
+      const { error: deleteError } = await supabase
+        .from('school_subjects')
         .delete()
         .eq('school_id', schoolId)
 
       if (deleteError) throw deleteError
-      console.log('[v0] Deleted subjects count:', deleteCount)
 
       // Insert new subjects based on selection
       const subjectsToInsert = SUBJECT_TEMPLATES.map(template => ({
         name: template.name,
         code: template.code,
         school_id: schoolId,
-        is_disabled: !enabledSubjects.has(template.code),
-        is_custom: false
+        is_enabled: enabledSubjects.has(template.code)
       }))
 
-      console.log('[v0] Inserting subjects:', subjectsToInsert.length)
-      const { error: insertError, data: insertedData } = await supabase
-        .from('subjects')
+      const { error: insertError } = await supabase
+        .from('school_subjects')
         .insert(subjectsToInsert)
-        .select()
 
       if (insertError) throw insertError
-      console.log('[v0] Successfully saved subjects:', insertedData?.length)
 
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
