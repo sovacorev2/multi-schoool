@@ -6,7 +6,7 @@ import { useSchool } from '@/lib/school-context'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { SUBJECT_TEMPLATES } from '@/lib/subject-templates'
-import { Check, X } from 'lucide-react'
+import { Check, X, Plus } from 'lucide-react'
 
 interface CurriculumSelectorProps {
   schoolId?: string
@@ -17,78 +17,144 @@ export function CurriculumSelector({ schoolId: propSchoolId }: CurriculumSelecto
   const schoolId = propSchoolId || currentSchool?.id
   
   const [enabledSubjects, setEnabledSubjects] = useState<Set<string>>(new Set())
+  const [customSubjects, setCustomSubjects] = useState<Array<{id: string, name: string, code: string}>>([])
   const [loading, setLoading] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [initError, setInitError] = useState<string>('')
+  const [showCustomForm, setShowCustomForm] = useState(false)
+  const [customName, setCustomName] = useState('')
+  const [customCode, setCustomCode] = useState('')
+  const [customError, setCustomError] = useState('')
 
   const supabase = createClient()
-
-  // Initialize tables on component mount
-  useEffect(() => {
-    const initializeTables = async () => {
-      try {
-        // Try to create tables using raw SQL
-        const { error } = await supabase.rpc('execute_sql', {
-          sql: `
-            CREATE TABLE IF NOT EXISTS school_subjects (
-              id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-              school_id uuid NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
-              name text NOT NULL,
-              code text NOT NULL,
-              is_enabled boolean DEFAULT true,
-              created_at timestamp DEFAULT now(),
-              UNIQUE(school_id, code)
-            );
-            
-            CREATE TABLE IF NOT EXISTS class_enabled_subjects (
-              id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-              class_id uuid NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
-              subject_code text NOT NULL,
-              created_at timestamp DEFAULT now(),
-              UNIQUE(class_id, subject_code)
-            );
-          `
-        })
-        
-        if (error && !error.message?.includes('does not exist')) {
-          console.log('[v0] Tables may already exist')
-        }
-      } catch (e) {
-        console.log('[v0] Proceeding with table creation attempt in save')
-      }
-    }
-    
-    initializeTables()
-  }, [])
 
   // Group subjects by grade level for display
   const primaryLower = SUBJECT_TEMPLATES.slice(0, 8)
   const primaryUpper = SUBJECT_TEMPLATES.slice(8, 14)
   const secondary = SUBJECT_TEMPLATES.slice(14)
 
-  // Load existing enabled subjects from database
+  // Load existing subjects from database
   useEffect(() => {
     if (!schoolId) return
     
-    const loadEnabledSubjects = async () => {
+    const loadSubjects = async () => {
       try {
         const { data, error } = await supabase
           .from('school_subjects')
-          .select('code')
+          .select('code, is_enabled, is_custom, name, id')
           .eq('school_id', schoolId)
-          .eq('is_enabled', true)
 
         if (error) throw error
         
-        const codes = new Set(data?.map(s => s.code) || [])
-        setEnabledSubjects(codes)
+        const enabled = new Set<string>()
+        const custom: Array<{id: string, name: string, code: string}> = []
+        
+        data?.forEach(s => {
+          if (s.is_enabled) {
+            enabled.add(s.code)
+          }
+          if (s.is_custom) {
+            custom.push({id: s.id, name: s.name, code: s.code})
+          }
+        })
+        
+        setEnabledSubjects(enabled)
+        setCustomSubjects(custom)
       } catch (error) {
         console.error('[v0] Error loading subjects:', error)
       }
     }
 
-    loadEnabledSubjects()
+    loadSubjects()
   }, [schoolId])
+
+  // Check if code already exists
+  const codeExists = (code: string) => {
+    const allCodes = [
+      ...SUBJECT_TEMPLATES.map(s => s.code),
+      ...customSubjects.map(s => s.code)
+    ]
+    return allCodes.includes(code.toUpperCase())
+  }
+
+  const addCustomSubject = async () => {
+    setCustomError('')
+    
+    // Validation
+    if (!customName.trim()) {
+      setCustomError('Subject name is required')
+      return
+    }
+    
+    if (!customCode.trim()) {
+      setCustomError('Subject code is required')
+      return
+    }
+
+    const code = customCode.toUpperCase().trim()
+    
+    if (code.length > 10) {
+      setCustomError('Code must be 10 characters or less')
+      return
+    }
+
+    if (codeExists(code)) {
+      setCustomError(`Code "${code}" already exists. Choose a unique code.`)
+      return
+    }
+
+    try {
+      // Insert custom subject
+      const { data, error } = await supabase
+        .from('school_subjects')
+        .insert({
+          school_id: schoolId,
+          name: customName.trim(),
+          code: code,
+          is_enabled: true,
+          is_custom: true
+        })
+        .select()
+
+      if (error) throw error
+
+      // Add to custom subjects list
+      if (data && data[0]) {
+        setCustomSubjects([...customSubjects, {
+          id: data[0].id,
+          name: data[0].name,
+          code: data[0].code
+        }])
+        setEnabledSubjects(new Set([...Array.from(enabledSubjects), code]))
+      }
+
+      // Clear form
+      setCustomName('')
+      setCustomCode('')
+      setShowCustomForm(false)
+    } catch (error) {
+      console.error('[v0] Error adding custom subject:', error)
+      setCustomError('Failed to add custom subject: ' + (error as any)?.message)
+    }
+  }
+
+  const removeCustomSubject = async (subjectId: string, code: string) => {
+    try {
+      const { error } = await supabase
+        .from('school_subjects')
+        .delete()
+        .eq('id', subjectId)
+
+      if (error) throw error
+
+      setCustomSubjects(customSubjects.filter(s => s.id !== subjectId))
+      const newEnabled = new Set(enabledSubjects)
+      newEnabled.delete(code)
+      setEnabledSubjects(newEnabled)
+    } catch (error) {
+      console.error('[v0] Error removing custom subject:', error)
+      alert('Failed to remove subject: ' + (error as any)?.message)
+    }
+  }
 
   const toggleSubject = (code: string) => {
     const newSet = new Set(enabledSubjects)
@@ -119,76 +185,46 @@ export function CurriculumSelector({ schoolId: propSchoolId }: CurriculumSelecto
     if (!schoolId) return
     
     setLoading(true)
-    setInitError('')
     try {
-      // First, ensure the table exists
-      console.log('[v0] Ensuring school_subjects table exists...')
-      
-      // Try to create if doesn't exist
-      const { error: createError } = await supabase
-        .from('school_subjects')
-        .select('count', { count: 'exact', head: true })
-      
-      if (createError?.code === 'PGRST116') {
-        // Table doesn't exist, try to create it
-        console.log('[v0] Creating school_subjects table...')
-        const { error: rpcError } = await supabase.rpc('exec_sql', {
-          query: `
-            CREATE TABLE IF NOT EXISTS school_subjects (
-              id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-              school_id uuid NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
-              name text NOT NULL,
-              code text NOT NULL,
-              is_enabled boolean DEFAULT true,
-              created_at timestamp DEFAULT now(),
-              UNIQUE(school_id, code)
-            );
-          `
-        })
-        
-        if (rpcError) {
-          console.log('[v0] RPC call not available, table may exist')
-        }
-      }
-
-      // Delete all existing subjects for this school
-      console.log('[v0] Saving', enabledSubjects.size, 'enabled subjects...')
+      // Delete all existing non-custom subjects for this school
       const { error: deleteError } = await supabase
         .from('school_subjects')
         .delete()
         .eq('school_id', schoolId)
+        .eq('is_custom', false)
 
-      if (deleteError) {
-        console.error('[v0] Delete error:', deleteError)
-        throw deleteError
-      }
+      if (deleteError) throw deleteError
 
-      // Insert new subjects based on selection
+      // Insert template subjects based on selection
       const subjectsToInsert = SUBJECT_TEMPLATES.map(template => ({
         name: template.name,
         code: template.code,
         school_id: schoolId,
-        is_enabled: enabledSubjects.has(template.code)
+        is_enabled: enabledSubjects.has(template.code),
+        is_custom: false
       }))
 
-      console.log('[v0] Inserting', subjectsToInsert.length, 'subjects...')
-      const { error: insertError, data } = await supabase
+      const { error: insertError } = await supabase
         .from('school_subjects')
         .insert(subjectsToInsert)
 
-      if (insertError) {
-        console.error('[v0] Insert error:', insertError)
-        throw insertError
+      if (insertError) throw insertError
+
+      // Update custom subjects enable status
+      for (const custom of customSubjects) {
+        const { error: updateError } = await supabase
+          .from('school_subjects')
+          .update({ is_enabled: enabledSubjects.has(custom.code) })
+          .eq('id', custom.id)
+
+        if (updateError) throw updateError
       }
 
-      console.log('[v0] Successfully saved subjects')
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch (error) {
-      const errorMsg = (error as any)?.message || String(error)
-      console.error('[v0] Error saving subjects:', errorMsg)
-      setInitError('Error: ' + errorMsg)
-      alert('Error saving subjects: ' + errorMsg)
+      console.error('[v0] Error saving subjects:', error)
+      alert('Error saving subjects: ' + (error as any)?.message)
     } finally {
       setLoading(false)
     }
@@ -259,12 +295,121 @@ export function CurriculumSelector({ schoolId: propSchoolId }: CurriculumSelecto
         {renderGroup('Grade 7-9 (Secondary/JSS)', secondary, secondary)}
       </div>
 
+      {/* Custom Subjects Section */}
+      <div className="p-4 border rounded-lg bg-purple-50 border-purple-200">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-gray-900">Custom Subjects</h3>
+          <Button
+            size="sm"
+            onClick={() => setShowCustomForm(!showCustomForm)}
+            className="gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Add Custom Subject
+          </Button>
+        </div>
+
+        {showCustomForm && (
+          <div className="space-y-3 mb-4 p-3 bg-white rounded border border-purple-200">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Subject Name
+              </label>
+              <input
+                type="text"
+                value={customName}
+                onChange={(e) => setCustomName(e.target.value)}
+                placeholder="e.g., Computer Science"
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Subject Code (unique)
+              </label>
+              <input
+                type="text"
+                value={customCode}
+                onChange={(e) => setCustomCode(e.target.value.toUpperCase())}
+                placeholder="e.g., COMP-SCI"
+                maxLength={10}
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm font-mono"
+              />
+              <p className="text-xs text-gray-500 mt-1">Max 10 characters. Must be unique.</p>
+            </div>
+            {customError && (
+              <div className="p-2 bg-red-100 border border-red-300 rounded text-sm text-red-800">
+                {customError}
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                onClick={addCustomSubject}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                Add Subject
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setShowCustomForm(false)
+                  setCustomError('')
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {customSubjects.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {customSubjects.map(subject => (
+              <div
+                key={subject.id}
+                className={`p-3 rounded border-2 transition-all ${
+                  enabledSubjects.has(subject.code)
+                    ? 'border-purple-500 bg-purple-50'
+                    : 'border-gray-200 bg-white'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    checked={enabledSubjects.has(subject.code)}
+                    onChange={() => toggleSubject(subject.code)}
+                    className="mt-0.5"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm text-gray-900">
+                      {subject.name}
+                    </div>
+                    <div className="text-xs text-gray-600 font-mono mt-1">
+                      {subject.code}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => removeCustomSubject(subject.id, subject.code)}
+                    className="text-red-600 hover:text-red-700 ml-2"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-gray-600">No custom subjects added yet.</p>
+        )}
+      </div>
+
       {/* Summary */}
       <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
         <div className="flex items-center justify-between">
           <div>
             <p className="font-semibold text-blue-900">
-              {enabledSubjects.size} subject{enabledSubjects.size !== 1 ? 's' : ''} selected
+              {enabledSubjects.size} subject{enabledSubjects.size !== 1 ? 's' : ''} selected ({customSubjects.filter(s => enabledSubjects.has(s.code)).length} custom)
             </p>
             <p className="text-sm text-blue-800 mt-1">
               Teachers will see only enabled subjects in their portal. Changes appear immediately.
@@ -293,7 +438,7 @@ export function CurriculumSelector({ schoolId: propSchoolId }: CurriculumSelecto
 
       {/* Info */}
       <div className="p-3 bg-amber-50 border border-amber-200 rounded text-sm text-amber-900">
-        <strong>Real-time Sync:</strong> When you save, teachers&apos; portals update immediately with the enabled subjects.
+        <strong>Real-time Sync:</strong> When you save, teachers&apos; portals update immediately with the enabled subjects including any custom subjects you&apos;ve added.
       </div>
     </div>
   )
