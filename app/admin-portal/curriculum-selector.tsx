@@ -19,8 +19,47 @@ export function CurriculumSelector({ schoolId: propSchoolId }: CurriculumSelecto
   const [enabledSubjects, setEnabledSubjects] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [initError, setInitError] = useState<string>('')
 
   const supabase = createClient()
+
+  // Initialize tables on component mount
+  useEffect(() => {
+    const initializeTables = async () => {
+      try {
+        // Try to create tables using raw SQL
+        const { error } = await supabase.rpc('execute_sql', {
+          sql: `
+            CREATE TABLE IF NOT EXISTS school_subjects (
+              id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+              school_id uuid NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+              name text NOT NULL,
+              code text NOT NULL,
+              is_enabled boolean DEFAULT true,
+              created_at timestamp DEFAULT now(),
+              UNIQUE(school_id, code)
+            );
+            
+            CREATE TABLE IF NOT EXISTS class_enabled_subjects (
+              id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+              class_id uuid NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+              subject_code text NOT NULL,
+              created_at timestamp DEFAULT now(),
+              UNIQUE(class_id, subject_code)
+            );
+          `
+        })
+        
+        if (error && !error.message?.includes('does not exist')) {
+          console.log('[v0] Tables may already exist')
+        }
+      } catch (e) {
+        console.log('[v0] Proceeding with table creation attempt in save')
+      }
+    }
+    
+    initializeTables()
+  }, [])
 
   // Group subjects by grade level for display
   const primaryLower = SUBJECT_TEMPLATES.slice(0, 8)
@@ -80,14 +119,49 @@ export function CurriculumSelector({ schoolId: propSchoolId }: CurriculumSelecto
     if (!schoolId) return
     
     setLoading(true)
+    setInitError('')
     try {
+      // First, ensure the table exists
+      console.log('[v0] Ensuring school_subjects table exists...')
+      
+      // Try to create if doesn't exist
+      const { error: createError } = await supabase
+        .from('school_subjects')
+        .select('count', { count: 'exact', head: true })
+      
+      if (createError?.code === 'PGRST116') {
+        // Table doesn't exist, try to create it
+        console.log('[v0] Creating school_subjects table...')
+        const { error: rpcError } = await supabase.rpc('exec_sql', {
+          query: `
+            CREATE TABLE IF NOT EXISTS school_subjects (
+              id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+              school_id uuid NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+              name text NOT NULL,
+              code text NOT NULL,
+              is_enabled boolean DEFAULT true,
+              created_at timestamp DEFAULT now(),
+              UNIQUE(school_id, code)
+            );
+          `
+        })
+        
+        if (rpcError) {
+          console.log('[v0] RPC call not available, table may exist')
+        }
+      }
+
       // Delete all existing subjects for this school
+      console.log('[v0] Saving', enabledSubjects.size, 'enabled subjects...')
       const { error: deleteError } = await supabase
         .from('school_subjects')
         .delete()
         .eq('school_id', schoolId)
 
-      if (deleteError) throw deleteError
+      if (deleteError) {
+        console.error('[v0] Delete error:', deleteError)
+        throw deleteError
+      }
 
       // Insert new subjects based on selection
       const subjectsToInsert = SUBJECT_TEMPLATES.map(template => ({
@@ -97,17 +171,24 @@ export function CurriculumSelector({ schoolId: propSchoolId }: CurriculumSelecto
         is_enabled: enabledSubjects.has(template.code)
       }))
 
-      const { error: insertError } = await supabase
+      console.log('[v0] Inserting', subjectsToInsert.length, 'subjects...')
+      const { error: insertError, data } = await supabase
         .from('school_subjects')
         .insert(subjectsToInsert)
 
-      if (insertError) throw insertError
+      if (insertError) {
+        console.error('[v0] Insert error:', insertError)
+        throw insertError
+      }
 
+      console.log('[v0] Successfully saved subjects')
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch (error) {
-      console.error('[v0] Error saving subjects:', error)
-      alert('Error saving subjects: ' + (error as any)?.message)
+      const errorMsg = (error as any)?.message || String(error)
+      console.error('[v0] Error saving subjects:', errorMsg)
+      setInitError('Error: ' + errorMsg)
+      alert('Error saving subjects: ' + errorMsg)
     } finally {
       setLoading(false)
     }
