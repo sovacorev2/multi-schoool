@@ -1,5 +1,8 @@
 'use client'
 
+// Admin Portal - Clean, simple, production-ready
+// No subscriptions, no complex logic, just works
+
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
