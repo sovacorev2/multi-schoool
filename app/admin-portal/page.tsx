@@ -243,6 +243,38 @@ export default function AdminPortalPage() {
     }
   }, [searchParams, currentSchool, router])
 
+  // Real-time subscription for sessions - updates when teachers create new sessions
+  useEffect(() => {
+    const schoolId = activeSchoolTab || currentSchool?.id
+    if (!schoolId) return
+
+    console.log('[v0] Subscribing to sessions for school:', schoolId)
+    
+    const channel = supabase
+      .channel(`sessions:school:${schoolId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'sessions',
+          filter: `school_id=eq.${schoolId}`
+        },
+        (payload) => {
+          console.log('[v0] Session update received (real-time):', payload.eventType, payload.new)
+          // Refetch sessions for the active school
+          loadAdminData()
+        }
+      )
+      .subscribe((status) => {
+        console.log('[v0] Subscription status:', status)
+      })
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [activeSchoolTab, currentSchool?.id])
+
   const loadSchoolFromCode = async (code: string) => {
     // Clear all data when switching schools
     setClasses([])
@@ -1568,7 +1600,9 @@ export default function AdminPortalPage() {
                           <th className="p-3 text-left font-medium text-gray-600">Class</th>
                           <th className="p-3 text-left font-medium text-gray-600">Year</th>
                           <th className="p-3 text-left font-medium text-gray-600">Term</th>
+                          <th className="p-3 text-left font-medium text-gray-600">Status</th>
                           <th className="p-3 text-left font-medium text-gray-600">Created</th>
+                          <th className="p-3 text-left font-medium text-gray-600">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1579,8 +1613,34 @@ export default function AdminPortalPage() {
                               <td className="p-3 font-medium">{session.class?.name || 'N/A'}</td>
                               <td className="p-3">{session.year}</td>
                               <td className="p-3">Term {session.term}</td>
+                              <td className="p-3">
+                                <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                                  session.is_locked ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+                                }`}>
+                                  {session.is_locked ? 'Locked' : 'Active'}
+                                </span>
+                              </td>
                               <td className="p-3 text-gray-600 text-xs">
                                 {new Date(session.created_at).toLocaleDateString()}
+                              </td>
+                              <td className="p-3 text-xs space-x-2">
+                                <button 
+                                  className="px-2 py-1 rounded bg-blue-100 text-blue-700 hover:bg-blue-200"
+                                  onClick={() => {
+                                    // Toggle lock status
+                                    const newLocked = !session.is_locked
+                                    supabase
+                                      .from('sessions')
+                                      .update({ is_locked: newLocked })
+                                      .eq('id', session.id)
+                                      .then(() => {
+                                        console.log('[v0] Session lock status updated')
+                                        loadAdminData()
+                                      })
+                                  }}
+                                >
+                                  {session.is_locked ? 'Unlock' : 'Lock'}
+                                </button>
                               </td>
                             </tr>
                           ))
