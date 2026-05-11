@@ -17,17 +17,18 @@ export async function POST(request: NextRequest) {
 
     console.log('[v0] Uploading logo for school:', schoolId)
 
-    // Upload to Blob storage
+    // Upload to Blob storage with public access
     const buffer = await file.arrayBuffer()
     const filename = `school-logos/${schoolId}-${Date.now()}-${file.name}`
     
     const blob = await put(filename, buffer, {
-      access: 'private',
+      access: 'public',
     })
 
     console.log('[v0] File uploaded to Blob:', blob.url)
 
-    // Update school logo_url in database
+    // Update school logo_url in database - store just the filename, not the full URL
+    // This allows for flexible URL generation later
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL || '',
       process.env.SUPABASE_SERVICE_ROLE_KEY || ''
