@@ -30,11 +30,16 @@ import {
   changeAdminPassword 
 } from "@/app/actions/auth"
 import { schoolConfig, LOWER_GRADE_CLASSES } from "@/lib/school-config"
+import SchoolLogoUploader from "@/components/admin/SchoolLogoUploader"
+import { useCallback } from "react"
 
 export default function AdminSettingsPage() {
   const [classPasswords, setClassPasswords] = useState<{ id: string; name: string; hasPassword: boolean }[]>([])
   const [passwordResetLoading, setPasswordResetLoading] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [schoolId, setSchoolId] = useState<string | null>(null)
+  const [schoolName, setSchoolName] = useState<string | null>(null)
+  const [schoolLogo, setSchoolLogo] = useState<string | undefined>(undefined)
   
   // Admin password change
   const [currentPassword, setCurrentPassword] = useState("")
@@ -52,10 +57,28 @@ export default function AdminSettingsPage() {
     async function fetchData() {
       const passwords = await getClassesForPasswordManagement()
       setClassPasswords(passwords)
+      
+      // Get school info from localStorage or fetch
+      const school = localStorage.getItem('school')
+      if (school) {
+        const schoolData = JSON.parse(school)
+        setSchoolId(schoolData.id)
+        setSchoolName(schoolData.name)
+        setSchoolLogo(schoolData.logo_url)
+      }
+      
       setIsLoading(false)
     }
     fetchData()
   }, [])
+
+  const handleLogoUploadSuccess = useCallback((logoUrl: string) => {
+    setSchoolLogo(logoUrl)
+    if (schoolId && schoolName) {
+      const schoolData = { id: schoolId, name: schoolName, logo_url: logoUrl }
+      localStorage.setItem('school', JSON.stringify(schoolData))
+    }
+  }, [schoolId, schoolName])
 
   const lowerClassPasswords = classPasswords.filter(c => 
     LOWER_GRADE_CLASSES.some(grade => c.name.includes(grade))
@@ -116,6 +139,26 @@ export default function AdminSettingsPage() {
         <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
         <p className="text-gray-600">Manage system settings and passwords</p>
       </div>
+
+      {/* School Logo Upload */}
+      {schoolId && schoolName && (
+        <Card>
+          <CardHeader>
+            <CardTitle>School Logo</CardTitle>
+            <CardDescription>
+              Upload and manage your school&apos;s logo
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <SchoolLogoUploader
+              schoolId={schoolId}
+              schoolName={schoolName}
+              currentLogoUrl={schoolLogo}
+              onUploadSuccess={handleLogoUploadSuccess}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Admin Password Change */}
       <Card>
