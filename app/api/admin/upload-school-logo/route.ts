@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     const filename = `school-logos/${schoolId}-${Date.now()}-${file.name}`
     
     const blob = await put(filename, buffer, {
-      access: 'public',
+      access: 'private',
     })
 
     console.log('[v0] File uploaded to Blob:', blob.url)
