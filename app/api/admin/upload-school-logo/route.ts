@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
-import { put } from '@vercel/blob'
+import { writeFile } from 'fs/promises'
 import { NextRequest, NextResponse } from 'next/server'
+import { join } from 'path'
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,17 +18,18 @@ export async function POST(request: NextRequest) {
 
     console.log('[v0] Uploading logo for school:', schoolId)
 
-    // Upload to Blob storage with public access
+    // Save to local public folder
     const buffer = await file.arrayBuffer()
-    const filename = `school-logos/${schoolId}-${Date.now()}-${file.name}`
+    const ext = file.name.split('.').pop() || 'jpeg'
+    const filename = `${schoolId}-${Date.now()}.${ext}`
+    const filepath = join(process.cwd(), 'public', 'school-logos', filename)
     
-    const blob = await put(filename, buffer, {
-      access: 'public',
-    })
+    await writeFile(filepath, Buffer.from(buffer))
+    
+    const logoUrl = `/school-logos/${filename}`
+    console.log('[v0] File saved locally:', logoUrl)
 
-    console.log('[v0] File uploaded to Blob:', blob.url)
-
-    // Store the blob URL directly in database
+    // Save the logo URL to database
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL || '',
       process.env.SUPABASE_SERVICE_ROLE_KEY || ''
@@ -35,7 +37,7 @@ export async function POST(request: NextRequest) {
 
     const { data: school, error: updateError } = await supabase
       .from('schools')
-      .update({ logo_url: blob.url })
+      .update({ logo_url: logoUrl })
       .eq('id', schoolId)
       .select('id, name, logo_url')
       .single()
@@ -50,7 +52,7 @@ export async function POST(request: NextRequest) {
       success: true,
       message: 'Logo uploaded successfully',
       school,
-      logoUrl: blob.url
+      logoUrl: logoUrl
     })
   } catch (error) {
     console.error('[v0] Error uploading logo:', error)
