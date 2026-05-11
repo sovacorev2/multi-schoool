@@ -20,20 +20,7 @@ export default function SchoolLogoUploader({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
-  
-  // Convert filename to serve URL if needed
-  const getDisplayUrl = (url?: string) => {
-    if (!url) return undefined
-    // If it's already a serve URL, use as-is
-    if (url.startsWith('/api/')) return url
-    // If it's a filename, convert to serve URL
-    if (url.startsWith('school-logos/')) {
-      return `/api/admin/logo/${encodeURIComponent(url)}`
-    }
-    return url
-  }
-  
-  const [logoUrl, setLogoUrl] = useState(() => getDisplayUrl(currentLogoUrl))
+  const [logoUrl, setLogoUrl] = useState(currentLogoUrl)
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
