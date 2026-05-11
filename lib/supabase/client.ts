@@ -1,8 +1,12 @@
 import { createBrowserClient } from '@supabase/ssr'
 
-// Fallback values when env vars are not available
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://dfrggsoruoytsy1jdnif.supabase.co'
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRmcmdnc29ydW95dHN5bGpkbmlmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAwNDA5MzksImV4cCI6MjA4NTYxNjkzOX0.joHfIet-19ztyB4AV1LLvttvLc1trFxWXeuRGUytTcw'
+// Get values from environment variables
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  throw new Error('Missing Supabase environment variables')
+}
 
 let cachedClient: ReturnType<typeof createBrowserClient> | null = null
 
