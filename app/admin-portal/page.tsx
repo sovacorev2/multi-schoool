@@ -29,6 +29,7 @@ import {
   GraduationCap, ClipboardList, History, Edit, Users, X
 } from 'lucide-react'
 import type { Class, ExamType } from '@/lib/types'
+import SchoolLogoUploader from '@/components/admin/SchoolLogoUploader'
 
 const TERMS = ['Term 1', 'Term 2', 'Term 3']
 
@@ -1424,15 +1425,37 @@ export default function AdminPortalPage() {
 
             {/* Settings Tab */}
             <TabsContent value="settings">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Settings className="w-5 h-5" />
-                    School Settings
-                  </CardTitle>
-                  <CardDescription>Update school information and branding</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
+              <div className="space-y-6">
+                {/* School Logo Upload */}
+                {school && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>School Logo</CardTitle>
+                      <CardDescription>Upload and manage your school's logo</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <SchoolLogoUploader
+                        schoolId={school.id}
+                        schoolName={school.name}
+                        currentLogoUrl={school.logo_url}
+                        onUploadSuccess={(logoUrl) => {
+                          setSchool({ ...school, logo_url: logoUrl })
+                        }}
+                      />
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* School Settings */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Settings className="w-5 h-5" />
+                      School Information
+                    </CardTitle>
+                    <CardDescription>Update school information and branding</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
                   {school && (
                     <>
                       <div className="grid grid-cols-2 gap-4">
@@ -1509,8 +1532,9 @@ export default function AdminPortalPage() {
                       </Button>
                     </>
                   )}
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </div>
             </TabsContent>
 
             {/* Audit Logs Tab */}
