@@ -1,69 +1,87 @@
 'use client'
 
-import { Button } from '@/components/ui/button'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import SchoolLogoUploader from '@/components/admin/SchoolLogoUploader'
+
+interface School {
+  id: string
+  name: string
+  logo_url?: string
+}
 
 export default function UpdateLogosPage() {
-  const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<any>(null)
+  const [schools, setSchools] = useState<School[]>([])
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const handleUpdateLogos = async () => {
-    setLoading(true)
-    setError(null)
+  useEffect(() => {
+    fetchSchools()
+  }, [])
+
+  const fetchSchools = async () => {
     try {
+      setLoading(true)
       const response = await fetch('/api/admin/update-school-logos', {
         method: 'POST'
       })
       
       if (!response.ok) {
-        throw new Error(`Failed to update logos: ${response.statusText}`)
+        throw new Error(`Failed to fetch schools: ${response.statusText}`)
       }
       
       const data = await response.json()
-      setResult(data)
-      console.log('✓ Logos updated:', data)
+      setSchools(data.schools || [])
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Unknown error'
       setError(errorMsg)
-      console.error('✗ Error:', errorMsg)
+      console.error('[v0] Error:', errorMsg)
     } finally {
       setLoading(false)
     }
   }
 
-  return (
-    <div className="p-8">
-      <h1 className="text-3xl font-bold mb-6">Update School Logos</h1>
-      
-      <Button 
-        onClick={handleUpdateLogos}
-        disabled={loading}
-        className="mb-6"
-      >
-        {loading ? 'Updating...' : 'Update Logos'}
-      </Button>
+  const handleLogoUploadSuccess = (schoolId: string, newLogoUrl: string) => {
+    setSchools(schools.map(school => 
+      school.id === schoolId 
+        ? { ...school, logo_url: newLogoUrl }
+        : school
+    ))
+  }
 
+  if (loading) {
+    return (
+      <div className="p-8">
+        <p className="text-gray-600">Loading schools...</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="p-8 max-w-4xl">
+      <h1 className="text-3xl font-bold mb-8">Manage School Logos</h1>
+      
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-          <p className="font-bold">Error</p>
-          <p>{error}</p>
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
+          <p className="font-semibold">Error</p>
+          <p className="text-sm">{error}</p>
         </div>
       )}
 
-      {result && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-          <p className="font-bold mb-4">{result.message}</p>
-          <div className="space-y-2">
-            {result.schools?.map((school: any) => (
-              <div key={school.id} className="flex justify-between">
-                <span className="font-semibold">{school.name}:</span>
-                <span className={school.logo_url ? 'text-green-600' : 'text-red-600'}>
-                  {school.logo_url ? '✓ ' + school.logo_url : '✗ NO LOGO'}
-                </span>
-              </div>
-            ))}
-          </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {schools.map((school) => (
+          <SchoolLogoUploader
+            key={school.id}
+            schoolId={school.id}
+            schoolName={school.name}
+            currentLogoUrl={school.logo_url}
+            onUploadSuccess={(logoUrl) => handleLogoUploadSuccess(school.id, logoUrl)}
+          />
+        ))}
+      </div>
+
+      {schools.length === 0 && (
+        <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded">
+          <p>No schools found</p>
         </div>
       )}
     </div>
