@@ -313,12 +313,15 @@ export default function MarklistPage() {
           ? classResults.reduce((a, b) => a + b.classAvg, 0) / classResults.filter(c => c.classAvg > 0).length || 0
           : 0
 
-        categoryResults.push({
-          category: category.name,
-          classes: classResults,
-          categoryAvg: Math.round(catAvg * 10) / 10,
-          totalLearners: classResults.reduce((a, b) => a + b.totalLearners, 0),
-        })
+        // Only add category if it has classes
+        if (classResults.length > 0) {
+          categoryResults.push({
+            category: category.name,
+            classes: classResults,
+            categoryAvg: Math.round(catAvg * 10) / 10,
+            totalLearners: classResults.reduce((a, b) => a + b.totalLearners, 0),
+          })
+        }
       }
 
       setSchoolPerformance(categoryResults)
