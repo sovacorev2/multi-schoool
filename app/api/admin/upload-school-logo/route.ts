@@ -1,7 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { writeFile } from 'fs/promises'
 import { NextRequest, NextResponse } from 'next/server'
-import { join } from 'path'
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,16 +16,13 @@ export async function POST(request: NextRequest) {
 
     console.log('[v0] Uploading logo for school:', schoolId)
 
-    // Save to local public folder
+    // Convert file to base64
     const buffer = await file.arrayBuffer()
-    const ext = file.name.split('.').pop() || 'jpeg'
-    const filename = `${schoolId}-${Date.now()}.${ext}`
-    const filepath = join(process.cwd(), 'public', 'school-logos', filename)
-    
-    await writeFile(filepath, Buffer.from(buffer))
-    
-    const logoUrl = `/school-logos/${filename}`
-    console.log('[v0] File saved locally:', logoUrl)
+    const base64 = Buffer.from(buffer).toString('base64')
+    const mimeType = file.type || 'image/jpeg'
+    const dataUrl = `data:${mimeType};base64,${base64}`
+
+    console.log('[v0] File converted to base64, size:', dataUrl.length)
 
     // Save the logo URL to database
     const supabase = createClient(
@@ -37,7 +32,7 @@ export async function POST(request: NextRequest) {
 
     const { data: school, error: updateError } = await supabase
       .from('schools')
-      .update({ logo_url: logoUrl })
+      .update({ logo_url: dataUrl })
       .eq('id', schoolId)
       .select('id, name, logo_url')
       .single()
@@ -52,7 +47,7 @@ export async function POST(request: NextRequest) {
       success: true,
       message: 'Logo uploaded successfully',
       school,
-      logoUrl: logoUrl
+      logoUrl: dataUrl
     })
   } catch (error) {
     console.error('[v0] Error uploading logo:', error)
