@@ -1765,7 +1765,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
               const isStreamedClass = classWords.length > 2
               
               return (
-                <table className="w-full text-sm border-collapse border-2 border-gray-800">
+                <table className="w-full text-base border-collapse border-2 border-gray-800">
               <thead>
                 <tr className="bg-gray-200">
                   <th className="border border-gray-600 p-2 text-left font-bold">No.</th>
@@ -1897,7 +1897,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
               <Card>
                 <CardContent className="pt-6">
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm border-collapse border-2 border-gray-800">
+                <table className="w-full text-base border-collapse border-2 border-gray-800">
                       <thead>
                         <tr className="bg-gray-200">
                           <th className="border border-gray-600 p-2 text-left font-bold">No.</th>
@@ -1918,7 +1918,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                           <th className="border border-gray-600 p-2 text-left font-bold"></th>
                           {subjects.map((subject) => (
                             <React.Fragment key={subject.id}>
-                              <th className="border border-gray-600 p-2 font-bold text-xs">
+                  <th className="border border-gray-600 p-2 font-bold text-sm">
                                 Marks
                               </th>
                               <th className="border border-gray-600 p-2 font-bold text-xs" style={{ color: '#1a3a52' }}>
@@ -2035,7 +2035,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                             const meanPerformance = getGradeLevelByClass(Math.round(mean), currentClass?.name)
                             return (
                               <React.Fragment key={`mean-${subject.id}`}>
-                                <td className="border border-gray-600 p-2 text-center text-sm">
+                  <td className="border border-gray-600 p-2 text-center text-base">
                                   {scores.length > 0 ? mean.toFixed(1) : '-'}
                                 </td>
                                 <td className="border border-gray-600 p-2 text-center text-sm font-bold" style={{ color: '#1a3a52' }}>
