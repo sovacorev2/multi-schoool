@@ -224,7 +224,14 @@ export default function MarklistPage() {
       const categoryResults = []
 
       for (const category of CATEGORIES) {
-        const catClasses = allClasses.filter(c => category.classNames.includes(c.name))
+        // Filter classes by checking if they start with any of the category class names
+        // This handles both non-streamed classes (e.g., "Grade 9") and streamed classes (e.g., "Grade 9 WEST", "Grade 9 EAST")
+        const catClasses = allClasses.filter(c => {
+          const className = c.name.trim()
+          return category.classNames.some(catName => 
+            className === catName || className.startsWith(catName + ' ')
+          )
+        })
         const classResults = []
 
         for (const cls of catClasses) {
