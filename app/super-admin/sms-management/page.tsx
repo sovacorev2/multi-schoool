@@ -35,6 +35,8 @@ export default function SuperAdminSMSPage() {
   const [password, setPassword] = useState('')
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [authError, setAuthError] = useState('')
+  const [setupNeeded, setSetupNeeded] = useState(false)
+  const [settingUp, setSettingUp] = useState(false)
   
   // Buy SMS from Africa's Talking
   const [buyingSMS, setBuyingSMS] = useState(false)
@@ -76,10 +78,16 @@ export default function SuperAdminSMSPage() {
       }
 
       // Load bundles
-      const { data: bundlesData } = await supabase
+      const { data: bundlesData, error: bundlesError } = await supabase
         .from('sms_bundles')
         .select('*')
         .order('sms_count')
+
+      if (bundlesError?.code === 'PGRST116') {
+        console.log('[v0] SMS tables not found - setup needed')
+        setSetupNeeded(true)
+        return
+      }
 
       if (bundlesData) {
         setState(prev => ({ ...prev, bundles: bundlesData }))
@@ -108,6 +116,31 @@ export default function SuperAdminSMSPage() {
       setAuthError('')
     } else {
       setAuthError('Invalid password')
+    }
+  }
+
+  const handleSetupDatabase = async () => {
+    setSettingUp(true)
+    try {
+      const response = await fetch('/api/sms/setup-database', {
+        method: 'POST'
+      })
+
+      if (response.ok) {
+        alert('SMS database setup completed! Please refresh the page.')
+        setSetupNeeded(false)
+        setTimeout(() => {
+          window.location.reload()
+        }, 1000)
+      } else {
+        const data = await response.json()
+        alert(`Setup message: ${data.error || 'Unknown error'}. Please check Supabase console.`)
+      }
+    } catch (error) {
+      console.error('[v0] Error setting up database:', error)
+      alert('Failed to setup database. Check console for errors.')
+    } finally {
+      setSettingUp(false)
     }
   }
 
@@ -184,6 +217,62 @@ export default function SuperAdminSMSPage() {
             </form>
           </CardContent>
         </Card>
+      </div>
+    )
+  }
+
+  // Show setup required message
+  if (setupNeeded) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-2xl mx-auto">
+          <Card className="border-yellow-200 bg-yellow-50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-yellow-900">
+                <AlertCircle className="w-5 h-5" />
+                Database Setup Required
+              </CardTitle>
+              <CardDescription className="text-yellow-800">
+                SMS tables need to be created in Supabase before using the system
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-gray-700">
+                The SMS system requires database tables to store bundles, credits, and transactions. 
+                You have two options:
+              </p>
+
+              <div className="space-y-3">
+                <div className="p-4 border border-blue-200 bg-blue-50 rounded-lg">
+                  <h3 className="font-semibold text-blue-900 mb-2">Option 1: Automatic Setup</h3>
+                  <p className="text-sm text-blue-800 mb-3">
+                    Click the button below to automatically create all required SMS tables.
+                  </p>
+                  <Button
+                    onClick={handleSetupDatabase}
+                    disabled={settingUp}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {settingUp ? 'Setting up...' : 'Setup SMS Database'}
+                  </Button>
+                </div>
+
+                <div className="p-4 border border-green-200 bg-green-50 rounded-lg">
+                  <h3 className="font-semibold text-green-900 mb-2">Option 2: Manual Setup</h3>
+                  <p className="text-sm text-green-800 mb-3">
+                    Go to Supabase SQL Editor and run the SQL from <code className="bg-green-100 px-2 py-1 rounded">scripts/create-sms-tables.sql</code>
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={() => window.open('https://supabase.com/dashboard', '_blank')}
+                  >
+                    Open Supabase
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     )
   }
