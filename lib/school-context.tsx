@@ -17,6 +17,9 @@ export interface School {
   is_active: boolean
   feature_report_cards?: boolean
   feature_whatsapp_reports?: boolean
+  feature_bulk_sms?: boolean
+  feature_sms?: boolean
+  twilio_phone_number?: string | null
   feature_certificates?: boolean
   feature_bulk_sms?: boolean
   subscription_plan?: string
