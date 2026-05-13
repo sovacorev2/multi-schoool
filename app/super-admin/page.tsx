@@ -22,8 +22,9 @@ interface School {
   created_at: string
   feature_report_cards: boolean
   feature_whatsapp_reports: boolean
-  feature_certificates: boolean
+  feature_sms: boolean
   feature_bulk_sms: boolean
+  feature_certificates: boolean
   subscription_plan: string
   subscription_expires_at: string | null
 }
@@ -127,8 +128,9 @@ export default function SuperAdminPage() {
       const featureNames: Record<string, string> = {
         feature_report_cards: 'Report Cards',
         feature_whatsapp_reports: 'WhatsApp Reports',
-        feature_certificates: 'Certificates',
-        feature_bulk_sms: 'Bulk SMS'
+        feature_sms: 'SMS Communications',
+        feature_bulk_sms: 'Bulk SMS',
+        feature_certificates: 'Certificates'
       }
       
       await supabase.from('activity_logs').insert({
@@ -208,8 +210,9 @@ export default function SuperAdminPage() {
       .update({ 
         feature_report_cards: true,
         feature_whatsapp_reports: true,
-        feature_certificates: true,
+        feature_sms: true,
         feature_bulk_sms: true,
+        feature_certificates: true,
         subscription_plan: 'premium'
       })
       .eq('id', schoolId)
@@ -220,8 +223,9 @@ export default function SuperAdminPage() {
           ...s, 
           feature_report_cards: true,
           feature_whatsapp_reports: true,
-          feature_certificates: true,
+          feature_sms: true,
           feature_bulk_sms: true,
+          feature_certificates: true,
           subscription_plan: 'premium'
         } : s
       ))
@@ -236,8 +240,9 @@ export default function SuperAdminPage() {
       .update({ 
         feature_report_cards: false,
         feature_whatsapp_reports: false,
-        feature_certificates: false,
+        feature_sms: false,
         feature_bulk_sms: false,
+        feature_certificates: false,
         subscription_plan: 'basic'
       })
       .eq('id', schoolId)
@@ -248,8 +253,9 @@ export default function SuperAdminPage() {
           ...s, 
           feature_report_cards: false,
           feature_whatsapp_reports: false,
-          feature_certificates: false,
+          feature_sms: false,
           feature_bulk_sms: false,
+          feature_certificates: false,
           subscription_plan: 'basic'
         } : s
       ))
@@ -334,22 +340,34 @@ export default function SuperAdminPage() {
                 <p className="text-xs text-gray-500">Manage Schools & Features</p>
               </div>
             </div>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setIsAuthenticated(false)}
-              className="text-gray-600"
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Logout
-            </Button>
+            <div className="flex items-center gap-2">
+              <a href="/super-admin/sms-management">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="text-gray-600 hover:text-blue-600 hover:border-blue-600"
+                >
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  SMS Management
+                </Button>
+              </a>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setIsAuthenticated(false)}
+                className="text-gray-600"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
           <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -384,6 +402,19 @@ export default function SuperAdminPage() {
                   {schools.filter(s => s.feature_whatsapp_reports).length}
                 </p>
                 <p className="text-sm text-gray-500">WhatsApp Reports</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                <Send className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900">
+                  {schools.filter(s => s.feature_bulk_sms).length}
+                </p>
+                <p className="text-sm text-gray-500">SMS Enabled</p>
               </div>
             </div>
           </div>
