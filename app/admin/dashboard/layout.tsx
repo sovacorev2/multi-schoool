@@ -15,7 +15,8 @@ import {
   Settings,
   LogOut,
   Menu,
-  X
+  X,
+  MessageSquare
 } from "lucide-react"
 import Link from "next/link"
 import { schoolConfig } from "@/lib/school-config"
@@ -27,6 +28,7 @@ export default function AdminDashboardLayout({
 }) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [schoolData, setSchoolData] = useState<any>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -36,6 +38,14 @@ export default function AdminDashboardLayout({
         router.push("/admin")
       } else {
         setIsAuthenticated(true)
+        // Fetch school data to check if SMS is enabled
+        try {
+          const response = await fetch('/api/school/current')
+          const data = await response.json()
+          setSchoolData(data)
+        } catch (error) {
+          console.log('[v0] Error fetching school data:', error)
+        }
       }
     }
     checkAuth()
@@ -59,6 +69,7 @@ export default function AdminDashboardLayout({
     { href: "/admin/dashboard/classes", icon: BookOpen, label: "Classes" },
     { href: "/admin/dashboard/learners", icon: Users, label: "Learners" },
     { href: "/admin/dashboard/sessions", icon: ClipboardList, label: "Sessions & Locks" },
+    ...(schoolData?.feature_sms ? [{ href: "/admin/dashboard/sms", icon: MessageSquare, label: "SMS" }] : []),
     { href: "/admin/dashboard/settings", icon: Settings, label: "Settings" },
   ]
 
