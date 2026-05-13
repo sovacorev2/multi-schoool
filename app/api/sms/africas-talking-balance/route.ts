@@ -25,7 +25,8 @@ export async function GET(request: NextRequest) {
     )
 
     if (!response.ok) {
-      console.error('[v0] Africa\'s Talking API error:', response.status)
+      const errorText = await response.text()
+      console.error('[v0] Africa\'s Talking API error:', response.status, errorText)
       return NextResponse.json(
         { balance: 0, error: 'Failed to fetch balance' },
         { status: 200 }
@@ -33,11 +34,21 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json()
-    const balance = data.UserData?.balance || 0
+    console.log('[v0] Africa\'s Talking response:', JSON.stringify(data, null, 2))
+    
+    // Handle different response formats
+    let balance = 0
+    if (data.UserData?.balance) {
+      const balanceStr = String(data.UserData.balance)
+      // Remove "KES " prefix if present and parse the number
+      balance = parseFloat(balanceStr.replace('KES ', '').trim())
+    }
+
+    console.log('[v0] Parsed balance:', balance)
 
     return NextResponse.json({
       success: true,
-      balance: parseFloat(balance.replace('KES ', ''))
+      balance: balance || 0
     })
   } catch (error) {
     console.error('[v0] Error getting Africa\'s Talking balance:', error)

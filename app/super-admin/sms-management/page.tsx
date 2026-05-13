@@ -55,7 +55,10 @@ export default function SuperAdminSMSPage() {
       const balanceRes = await fetch('/api/sms/africas-talking-balance')
       if (balanceRes.ok) {
         const balanceData = await balanceRes.json()
+        console.log('[v0] Balance API response:', balanceData)
         setState(prev => ({ ...prev, africastalkingBalance: balanceData.balance || 0 }))
+      } else {
+        console.error('[v0] Balance API error status:', balanceRes.status)
       }
 
       // Load active schools with SMS
