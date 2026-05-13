@@ -12,9 +12,9 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Get balance from Africa's Talking
+    // Get balance from Africa's Talking (LIVE API)
     const response = await fetch(
-      `https://api.sandbox.africastalking.com/version1/user?username=${username}`,
+      `https://api.africastalking.com/version1/user?username=${username}`,
       {
         headers: {
           'Accept': 'application/json',
