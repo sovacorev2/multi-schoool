@@ -644,9 +644,12 @@ export default function MarklistPage() {
         .eq('class_id', targetClassId)
 
       if (!allSessions || allSessions.length === 0) {
+        console.log('[v0] No sessions found for class:', targetClassId)
         setIsLoadingComparison(false)
         return
       }
+
+      console.log('[v0] Found', allSessions.length, 'sessions for class')
 
       // Build ordered list: Term 1 Opener, Term 1 Mid Term, Term 1 End Term, Term 2 Opener, etc.
       const termOrder = (term: string): number => {
@@ -663,12 +666,16 @@ export default function MarklistPage() {
         }))
         .sort((a, b) => a.sortKey - b.sortKey)
 
+      console.log('[v0] Sessions ordered, current session ID:', selectedSession.id)
+
       const currentIdx = ordered.findIndex(s => s.id === selectedSession.id)
+      console.log('[v0] Current session index:', currentIdx)
 
       // If no exact match by ID (admin viewing different class), find the closest matching session
       let currentSessionForComparison = selectedSession
       let currentIdxFinal = currentIdx
       if (currentIdx === -1 && overrideClassId) {
+        console.log('[v0] Current session not found in ordered list, finding match for override class')
         // Find session with same term, year, exam_type for the target class
         const match = ordered.find(s =>
           s.term === selectedSession.term &&
@@ -678,20 +685,24 @@ export default function MarklistPage() {
         if (match) {
           currentSessionForComparison = match
           currentIdxFinal = ordered.indexOf(match)
+          console.log('[v0] Found matching session, new index:', currentIdxFinal)
         } else {
           // Just use last session
           currentIdxFinal = ordered.length - 1
           currentSessionForComparison = ordered[currentIdxFinal]
+          console.log('[v0] No exact match, using last session, index:', currentIdxFinal)
         }
       }
 
       if (currentIdxFinal <= 0) {
+        console.log('[v0] No previous session available (index <= 0)')
         setComparisonData(null)
         setIsLoadingComparison(false)
         return
       }
 
       const previousSession = ordered[currentIdxFinal - 1]
+      console.log('[v0] Previous session:', previousSession.exam_types?.name)
 
   // Fetch subjects, learners, and marks for both sessions (for the target class)
   const [targetSubjectsRes, targetLearnersRes, currentMarksRes, previousMarksRes] = await Promise.all([
@@ -705,6 +716,8 @@ export default function MarklistPage() {
       const targetLearners = targetLearnersRes.data || []
       const currentMarks = currentMarksRes.data || []
       const previousMarks = previousMarksRes.data || []
+
+      console.log('[v0] Fetched:', { subjects: targetSubjects.length, learners: targetLearners.length, currentMarks: currentMarks.length, previousMarks: previousMarks.length })
 
       // Subject comparisons - use whatever data exists (even partial)
       const subjectComparisons = targetSubjects.map(subject => {
@@ -746,6 +759,8 @@ export default function MarklistPage() {
       const currentClassAvgVal = curClassTotal.length > 0 ? Math.round((curClassTotal.reduce((a, b) => a + b.currentTotal, 0) / curClassTotal.length) * 10) / 10 : 0
       const previousClassAvgVal = prevClassTotal.length > 0 ? Math.round((prevClassTotal.reduce((a, b) => a + b.previousTotal, 0) / prevClassTotal.length) * 10) / 10 : 0
 
+      console.log('[v0] Comparison data prepared:', { topImprovers: topImprovers.length, topDroppers: topDroppers.length })
+
       setComparisonData({
         currentSession: { name: currentSessionForComparison.exam_types?.name || '', term: currentSessionForComparison.term, year: currentSessionForComparison.year },
         previousSession: { name: previousSession.exam_types?.name || '', term: previousSession.term, year: previousSession.year },
@@ -757,16 +772,20 @@ export default function MarklistPage() {
         learnerComparisons: learnerComparisons.sort((a, b) => b.change - a.change),
       })
     } catch (err) {
-      console.error('Comparison error:', err)
+      console.error('[v0] Comparison error:', err)
     } finally {
       setIsLoadingComparison(false)
     }
   }, [selectedSession, currentClass])
 
-  // Auto-fetch comparison when session is selected
+  // Auto-fetch comparison when session is selected or class changes
   useEffect(() => {
     if (selectedSession) {
-      fetchExamComparison(comparisonClassId || undefined)
+      const classToCompare = comparisonClassId || currentClass?.id
+      if (classToCompare) {
+        console.log('[v0] Fetching comparison for class:', classToCompare)
+        fetchExamComparison(comparisonClassId || undefined)
+      }
     }
   }, [selectedSession, fetchExamComparison, comparisonClassId])
 
