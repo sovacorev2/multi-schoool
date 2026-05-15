@@ -43,6 +43,7 @@ export default function LearnersPage() {
   const [birthCertNumber, setBirthCertNumber] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null)
   
   // Edit state
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -69,6 +70,29 @@ export default function LearnersPage() {
     fetchData()
     fetchAllClasses()
   }, [currentClass?.id])
+
+  // Check for duplicates in real-time as user types
+  useEffect(() => {
+    if (!name.trim()) {
+      setDuplicateWarning(null)
+      return
+    }
+
+    // Check local learners list for duplicates
+    const duplicates = learners.filter(l =>
+      l.name.toLowerCase() === name.trim().toLowerCase() ||
+      (assessmentNumber.trim() && l.admission_number === assessmentNumber.trim())
+    )
+
+    if (duplicates.length > 0) {
+      const duplicateInfo = duplicates
+        .map(d => `${d.name}${d.admission_number ? ` (${d.admission_number})` : ''}`)
+        .join(', ')
+      setDuplicateWarning(`Existing learner found: ${duplicateInfo}`)
+    } else {
+      setDuplicateWarning(null)
+    }
+  }, [name, assessmentNumber, learners])
 
   async function fetchData() {
     if (!currentClass) {
@@ -269,6 +293,43 @@ export default function LearnersPage() {
 
     setIsSubmitting(true)
     try {
+      // Check for duplicates - same name + admission number in same class
+      const { data: existingLearners, error: checkError } = await supabase
+        .from('learners')
+        .select('id, name, admission_number')
+        .eq('class_id', currentClass.id)
+        .or(`name.ilike.${name.trim()},admission_number.eq.${assessmentNumber.trim() || null}`)
+
+      if (checkError) {
+        console.error('[v0] Error checking duplicates:', checkError)
+      }
+
+      // Check for exact or near-duplicate matches
+      if (existingLearners && existingLearners.length > 0) {
+        const duplicates = existingLearners.filter(existing => 
+          existing.name.toLowerCase() === name.trim().toLowerCase() ||
+          (assessmentNumber.trim() && existing.admission_number === assessmentNumber.trim())
+        )
+
+        if (duplicates.length > 0) {
+          const duplicateInfo = duplicates
+            .map(d => `${d.name}${d.admission_number ? ` (${d.admission_number})` : ''}`)
+            .join(', ')
+          
+          const userConfirmed = confirm(
+            `⚠️ DUPLICATE LEARNER DETECTED\n\n` +
+            `A learner with similar information already exists:\n${duplicateInfo}\n\n` +
+            `Are you sure you want to register this learner again?\n` +
+            `(This is usually not recommended)`
+          )
+
+          if (!userConfirmed) {
+            setIsSubmitting(false)
+            return
+          }
+        }
+      }
+
       const learnerData = {
         name: name.trim(),
         admission_number: assessmentNumber.trim() || null,
@@ -300,7 +361,7 @@ export default function LearnersPage() {
         setSelectedGender('')
         setParentPhone('')
         setBirthCertNumber('')
-        alert('Learner added successfully!')
+        alert('Learner registered successfully!')
       }
     } catch (error) {
       console.error('Error adding learner:', error)
@@ -453,6 +514,22 @@ export default function LearnersPage() {
       {/* Add Learner Form */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
         <h2 className="text-xl font-bold text-gray-900 mb-6">Register New Learner</h2>
+        
+        {/* Duplicate Warning Alert */}
+        {duplicateWarning && (
+          <div className="mb-6 p-4 bg-amber-50 border border-amber-300 rounded-lg flex items-start gap-3">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-amber-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-medium text-amber-800">⚠️ Duplicate Learner Detected</h3>
+              <p className="text-sm text-amber-700 mt-1">{duplicateWarning}</p>
+              <p className="text-xs text-amber-600 mt-2">This learner appears to already be registered in this class. Please verify before registering again.</p>
+            </div>
+          </div>
+        )}
         
         <form onSubmit={handleAddLearner} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
