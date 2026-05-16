@@ -619,9 +619,17 @@ export default function MarklistPage() {
 
   // Exam comparison: find the previous session and compare
   const fetchExamComparison = useCallback(async (overrideClassId?: string) => {
-    if (!selectedSession) return
+    if (!selectedSession) {
+      console.log('[v0] No selectedSession, skipping comparison')
+      return
+    }
     const targetClassId = overrideClassId || currentClass?.id
-    if (!targetClassId) return
+    if (!targetClassId) {
+      console.log('[v0] No targetClassId, skipping comparison')
+      return
+    }
+    
+    console.log('[v0] Starting comparison fetch for class:', targetClassId, 'session:', selectedSession.id)
     setIsLoadingComparison(true)
     setComparisonData(null)
 
@@ -638,10 +646,16 @@ export default function MarklistPage() {
 
     try {
       // Fetch all sessions for the target class
-      const { data: allSessions } = await supabase
+      const { data: allSessions, error: sessionsError } = await supabase
         .from('sessions')
         .select('*, exam_types(*)')
         .eq('class_id', targetClassId)
+
+      if (sessionsError) {
+        console.error('[v0] Error fetching sessions:', sessionsError)
+        setIsLoadingComparison(false)
+        return
+      }
 
       if (!allSessions || allSessions.length === 0) {
         console.log('[v0] No sessions found for class:', targetClassId)
@@ -650,6 +664,13 @@ export default function MarklistPage() {
       }
 
       console.log('[v0] Found', allSessions.length, 'sessions for class')
+
+      // Need at least 2 sessions to compare
+      if (allSessions.length < 2) {
+        console.log('[v0] Only 1 session exists, cannot compare (need at least 2)')
+        setIsLoadingComparison(false)
+        return
+      }
 
       // Build ordered list: Term 1 Opener, Term 1 Mid Term, Term 1 End Term, Term 2 Opener, etc.
       const termOrder = (term: string): number => {
@@ -666,16 +687,16 @@ export default function MarklistPage() {
         }))
         .sort((a, b) => a.sortKey - b.sortKey)
 
-      console.log('[v0] Sessions ordered, current session ID:', selectedSession.id)
+      console.log('[v0] Sessions ordered:', ordered.map(s => `${s.exam_types?.name} ${s.term} ${s.year}`))
+      console.log('[v0] Looking for session ID:', selectedSession.id)
 
-      const currentIdx = ordered.findIndex(s => s.id === selectedSession.id)
+      let currentIdx = ordered.findIndex(s => s.id === selectedSession.id)
       console.log('[v0] Current session index:', currentIdx)
 
-      // If no exact match by ID (admin viewing different class), find the closest matching session
+      // If the selected session is not in this class's sessions, find the matching one by term/year/exam_type
       let currentSessionForComparison = selectedSession
-      let currentIdxFinal = currentIdx
-      if (currentIdx === -1 && overrideClassId) {
-        console.log('[v0] Current session not found in ordered list, finding match for override class')
+      if (currentIdx === -1) {
+        console.log('[v0] Selected session not found in class sessions, finding matching session...')
         // Find session with same term, year, exam_type for the target class
         const match = ordered.find(s =>
           s.term === selectedSession.term &&
@@ -684,25 +705,25 @@ export default function MarklistPage() {
         )
         if (match) {
           currentSessionForComparison = match
-          currentIdxFinal = ordered.indexOf(match)
-          console.log('[v0] Found matching session, new index:', currentIdxFinal)
+          currentIdx = ordered.indexOf(match)
+          console.log('[v0] Found matching session at index:', currentIdx)
         } else {
-          // Just use last session
-          currentIdxFinal = ordered.length - 1
-          currentSessionForComparison = ordered[currentIdxFinal]
-          console.log('[v0] No exact match, using last session, index:', currentIdxFinal)
+          // Use the most recent session as current
+          currentIdx = ordered.length - 1
+          currentSessionForComparison = ordered[currentIdx]
+          console.log('[v0] No exact match, using most recent session at index:', currentIdx)
         }
       }
 
-      if (currentIdxFinal <= 0) {
-        console.log('[v0] No previous session available (index <= 0)')
-        setComparisonData(null)
+      // Check if we can do comparison (need a previous session)
+      if (currentIdx <= 0) {
+        console.log('[v0] Current session is first or not found, no previous session available')
         setIsLoadingComparison(false)
         return
       }
 
-      const previousSession = ordered[currentIdxFinal - 1]
-      console.log('[v0] Previous session:', previousSession.exam_types?.name)
+      const previousSession = ordered[currentIdx - 1]
+      console.log('[v0] Comparing:', previousSession.exam_types?.name, 'vs', currentSessionForComparison.exam_types?.name)
 
   // Fetch subjects, learners, and marks for both sessions (for the target class)
   const [targetSubjectsRes, targetLearnersRes, currentMarksRes, previousMarksRes] = await Promise.all([
