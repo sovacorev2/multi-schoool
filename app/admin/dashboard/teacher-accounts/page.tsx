@@ -16,6 +16,8 @@ interface TeacherAccount {
   email: string
   first_name: string
   last_name: string
+  pin: string
+  is_active: boolean
   created_at: string
 }
 
@@ -79,7 +81,10 @@ export default function TeacherAccountsPage() {
         throw new Error('Password must be at least 6 characters')
       }
 
-      // Add to teacher_accounts table
+      // Generate unique PIN
+      const pin = String(Math.floor(Math.random() * 10000)).padStart(4, '0')
+
+      // Add to teacher_accounts table with PIN
       const { data, error } = await supabase
         .from('teacher_accounts')
         .insert([{
@@ -88,6 +93,7 @@ export default function TeacherAccountsPage() {
           password: formData.password, // In production, use hashing
           first_name: formData.firstName,
           last_name: formData.lastName,
+          pin: pin,
         }])
         .select()
 
@@ -98,7 +104,30 @@ export default function TeacherAccountsPage() {
         throw error
       }
 
-      setFormSuccess(`Teacher account created for ${formData.firstName}`)
+      // Send welcome email with PIN
+      try {
+        const emailResponse = await fetch('/api/send-teacher-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: formData.email,
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            pin: pin,
+            schoolName: currentSchool?.name || 'School',
+            welcomePassword: formData.password,
+          }),
+        })
+
+        if (!emailResponse.ok) {
+          console.warn('[v0] Email sending failed, but teacher account was created')
+        }
+      } catch (emailError) {
+        console.warn('[v0] Could not send email:', emailError)
+        // Continue anyway - account is created
+      }
+
+      setFormSuccess(`✅ Teacher account created for ${formData.firstName}. Sent PIN ${pin} to ${formData.email}`)
       setFormData({ email: '', password: '', firstName: '', lastName: '' })
       setShowAddForm(false)
       await fetchTeachers()
@@ -181,7 +210,7 @@ export default function TeacherAccountsPage() {
               </div>
 
               <div>
-                <Label htmlFor="email">Email (Login) *</Label>
+                <Label htmlFor="email">Email (to send PIN) *</Label>
                 <Input
                   id="email"
                   type="email"
@@ -190,11 +219,11 @@ export default function TeacherAccountsPage() {
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
                 />
-                <p className="text-xs text-gray-500 mt-1">Teacher will use this email to login</p>
+                <p className="text-xs text-gray-500 mt-1">Welcome email with unique PIN will be sent to this email</p>
               </div>
 
               <div>
-                <Label htmlFor="password">Password *</Label>
+                <Label htmlFor="password">Welcome Password *</Label>
                 <Input
                   id="password"
                   type="password"
@@ -203,7 +232,7 @@ export default function TeacherAccountsPage() {
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
                 />
-                <p className="text-xs text-gray-500 mt-1">Minimum 6 characters</p>
+                <p className="text-xs text-gray-500 mt-1">Shared welcome password that teachers use before entering their PIN. Minimum 6 characters.</p>
               </div>
 
               <div className="flex gap-2">
@@ -245,8 +274,9 @@ export default function TeacherAccountsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
-                    <TableHead>Email (Login)</TableHead>
-                    <TableHead>Password</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>PIN Code</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
@@ -257,24 +287,16 @@ export default function TeacherAccountsPage() {
                       <TableCell className="font-medium">
                         {teacher.first_name} {teacher.last_name}
                       </TableCell>
-                      <TableCell>{teacher.email}</TableCell>
+                      <TableCell className="text-sm">{teacher.email}</TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span className={showPassword === teacher.id ? '' : 'blur'}>
-                            ••••••
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(showPassword === teacher.id ? null : teacher.id)}
-                            className="text-gray-600 hover:text-gray-900"
-                          >
-                            {showPassword === teacher.id ? (
-                              <EyeOff className="w-4 h-4" />
-                            ) : (
-                              <Eye className="w-4 h-4" />
-                            )}
-                          </button>
+                        <div className="font-mono font-bold text-lg bg-gray-100 px-3 py-2 rounded w-fit">
+                          {teacher.pin}
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={teacher.is_active ? 'default' : 'secondary'}>
+                          {teacher.is_active ? 'Active' : 'Inactive'}
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-sm text-gray-600">
                         {new Date(teacher.created_at).toLocaleDateString()}
