@@ -1,9 +1,13 @@
 "use client"
 
+export const dynamic = 'force-dynamic'
+
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
 import { 
   Users, 
   BookOpen, 
@@ -11,9 +15,13 @@ import {
   Lock,
   Unlock,
   TrendingUp,
-  Calendar
+  Calendar,
+  Key,
+  AlertCircle,
+  CheckCircle2
 } from "lucide-react"
 import { schoolConfig } from "@/lib/school-config"
+import { useSchool } from "@/lib/school-context"
 
 interface Stats {
   totalClasses: number
@@ -22,23 +30,32 @@ interface Stats {
   lockedSessions: number
   unlockedSessions: number
   recentActivity: { action: string; details: string; created_at: string }[]
+  teacherAccounts?: number
 }
 
 export default function AdminOverviewPage() {
+  const { currentSchool } = useSchool()
   const [stats, setStats] = useState<Stats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [pinLoginEnabled, setPinLoginEnabled] = useState(false)
 
   useEffect(() => {
     async function fetchStats() {
       try {
         const supabase = createClient()
         
-        const [classesRes, learnersRes, sessionsRes, logsRes] = await Promise.all([
+        // Check if PIN login is enabled for this school
+        if (currentSchool) {
+          setPinLoginEnabled((currentSchool as any)?.enable_pin_login === true)
+        }
+        
+        const [classesRes, learnersRes, sessionsRes, logsRes, teachersRes] = await Promise.all([
           supabase.from("classes").select("id", { count: "exact" }),
           supabase.from("learners").select("id", { count: "exact" }),
           supabase.from("sessions").select("*"),
           supabase.from("activity_logs").select("*").order("created_at", { ascending: false }).limit(5),
+          currentSchool?.id ? supabase.from("teacher_accounts").select("id", { count: "exact" }).eq('school_id', currentSchool.id) : Promise.resolve({ count: 0 })
         ])
 
         const sessions = sessionsRes.data || []
@@ -50,6 +67,7 @@ export default function AdminOverviewPage() {
           lockedSessions: sessions.filter(s => s.is_locked).length,
           unlockedSessions: sessions.filter(s => !s.is_locked).length,
           recentActivity: logsRes.data || [],
+          teacherAccounts: teachersRes.count || 0
         })
       } catch (err) {
         console.error("Failed to fetch stats:", err)
@@ -59,7 +77,7 @@ export default function AdminOverviewPage() {
       }
     }
     fetchStats()
-  }, [])
+  }, [currentSchool])
 
   if (isLoading) {
     return (
@@ -138,6 +156,67 @@ export default function AdminOverviewPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* PIN Login Management Card */}
+      <Card className={pinLoginEnabled ? "border-green-200 bg-green-50" : "border-gray-200"}>
+        <CardHeader className="flex flex-row items-center justify-between pb-3">
+          <div className="flex items-center gap-2">
+            <Key className={pinLoginEnabled ? "w-5 h-5 text-green-600" : "w-5 h-5 text-gray-400"} />
+            <div>
+              <CardTitle className="text-lg">Teacher PIN Login System</CardTitle>
+              <CardDescription>
+                {pinLoginEnabled ? "PIN-based teacher authentication enabled for your school" : "Feature not yet enabled"}
+              </CardDescription>
+            </div>
+          </div>
+          {pinLoginEnabled && <CheckCircle2 className="w-5 h-5 text-green-600" />}
+          {!pinLoginEnabled && <AlertCircle className="w-5 h-5 text-gray-400" />}
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {pinLoginEnabled && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-600">Teacher Accounts Created</p>
+                    <p className="text-2xl font-bold text-green-600">{stats?.teacherAccounts || 0}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Feature Status</p>
+                    <Badge className="bg-green-600 text-white mt-2">Active</Badge>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-700 bg-white p-3 rounded border border-green-100">
+                  ✓ Teachers can login with PIN + Welcome Password
+                  <br />
+                  ✓ Access control per class and subject
+                  <br />
+                  ✓ Automatic teacher comments on marks
+                </p>
+                <div className="flex gap-2">
+                  <Link href="/admin/dashboard/teacher-accounts">
+                    <Button className="gap-2" variant="default">
+                      <Key className="w-4 h-4" />
+                      Manage Teacher Accounts
+                    </Button>
+                  </Link>
+                  <Link href="/admin/dashboard/teacher-assignments">
+                    <Button className="gap-2" variant="outline">
+                      <Users className="w-4 h-4" />
+                      Manage Assignments
+                    </Button>
+                  </Link>
+                </div>
+              </>
+            )}
+            {!pinLoginEnabled && (
+              <p className="text-sm text-gray-700">
+                The PIN-based teacher login system is currently available as a pilot feature for selected schools. Please contact support to enable this feature for your school.
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Recent Activity */}
       <Card>

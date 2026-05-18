@@ -24,6 +24,8 @@ export interface School {
   feature_bulk_sms?: boolean
   subscription_plan?: string
   subscription_expires_at?: string | null
+  enable_pin_login?: boolean
+  pin_login_enabled_at?: string | null
 }
 
 interface SchoolContextType {
