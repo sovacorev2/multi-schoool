@@ -4,6 +4,30 @@ import { useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useSchool } from '@/lib/school-context'
+import { getGradeLevelByClass } from '@/lib/grading-utils'
+
+// Helper function to generate automatic teacher comment based on average performance level
+function getAutoTeacherComment(averageLevel: string): string {
+  const level = averageLevel.toUpperCase()
+  
+  if (level === 'BE1') return 'Learner requires a lot of support to complete learning tasks. Participation in class activities is minimal and needs improvement. More practice and concentration are needed for better performance.'
+  if (level === 'BE2') return 'Learner is making slow progress but still requires close guidance. Attempts class activities though confidence is still low. With more effort and practice, performance can improve gradually.'
+  if (level.startsWith('BE')) return 'Learner requires additional support to complete learning tasks. Participation needs improvement. More practice and concentration are needed for better performance.'
+  
+  if (level === 'AE1') return 'Learner is beginning to understand concepts but needs more support. Shows signs of improvement in class activities and assignments. Regular revision will help achieve expected outcomes.'
+  if (level === 'AE2') return 'Learner demonstrates improving understanding of concepts taught. Participates in learning activities and shows positive progress. Continued effort will enable the learner to meet expectations fully.'
+  if (level.startsWith('AE')) return 'Learner is beginning to understand concepts and shows signs of improvement. Continued effort and regular revision will help achieve expected outcomes.'
+  
+  if (level === 'ME1') return 'Learner demonstrates satisfactory understanding of concepts. Completes assigned tasks well and participates actively in class. Keep working hard to maintain steady progress.'
+  if (level === 'ME2') return 'Learner consistently achieves the expected learning outcomes. Demonstrates confidence and good participation during lessons. Maintain the good performance and positive learning spirit.'
+  if (level.startsWith('ME')) return 'Learner demonstrates satisfactory understanding and participates well in class activities. Keep working hard to maintain steady progress.'
+  
+  if (level === 'EE1') return 'Learner demonstrates very good understanding and application of concepts. Participates actively and produces high-quality work. Continue striving for excellence in all learning activities.'
+  if (level === 'EE2') return 'Outstanding performance! Learner shows excellent mastery of concepts and exceptional creativity. A role model for peers. Keep up the excellent work and continue inspiring others.'
+  if (level.startsWith('EE')) return 'Learner demonstrates excellent understanding and application of concepts. Participates actively and produces high-quality work. Continue striving for excellence.'
+  
+  return ''
+}
 
 interface StudentReport {
   learner: { id: string; name: string; admission_number: string }
@@ -249,10 +273,22 @@ export default function PrintReportsPage() {
               </div>
             </div>
 
-            {/* Teacher Comments */}
+            {/* Teacher Comments - Auto-generated based on performance level (except St James) */}
             <div style={{ marginBottom: '10px' }}>
               <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', fontSize: '10px' }}>TEACHER&apos;S COMMENTS:</p>
-              <div style={{ borderBottom: '1px dotted #000', height: '40px', marginBottom: '5px' }}></div>
+              <div style={{ borderBottom: '1px dotted #000', minHeight: '40px', marginBottom: '5px', padding: '5px 0', fontSize: '9px', lineHeight: '1.4' }}>
+                {/* Show auto comment for all schools except St James */}
+                {(() => {
+                  const isStJames = currentSchool?.code?.toLowerCase() === 'stjames' || currentSchool?.name?.toLowerCase()?.includes('st james')
+                  if (isStJames) return ''
+                  
+                  // Calculate performance level from average
+                  const perfLevel = report.average >= 80 ? 'EE' : report.average >= 60 ? 'ME' : report.average >= 40 ? 'AE' : 'BE'
+                  // Add sublevel based on score within range
+                  const sublevel = report.average % 20 >= 10 ? '2' : '1'
+                  return getAutoTeacherComment(perfLevel + sublevel)
+                })()}
+              </div>
             </div>
 
             {/* School Closure Dates */}
