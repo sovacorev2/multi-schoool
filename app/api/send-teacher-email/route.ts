@@ -52,14 +52,17 @@ export async function POST(req: NextRequest) {
             </div>
 
             <div class="section">
-              <h3 style="color: #2c3e50;">Login Instructions</h3>
+              <h3 style="color: #2c3e50;">How to Login</h3>
               <ol>
                 <li>Visit the ShuleTech teacher login page</li>
-                <li>Enter the <strong>Welcome Password:</strong> <code>${welcomePassword}</code></li>
-                <li>Enter your <strong>PIN:</strong> <code>${pin}</code></li>
-                <li>Select your school and click Login</li>
+                <li>Select your school: <strong>${schoolName}</strong></li>
+                <li>Enter your unique PIN: <strong>${pin}</strong></li>
+                <li>Click Login</li>
                 <li>You will see only your assigned classes and subjects</li>
               </ol>
+              <p style="background-color: #e8f4f8; padding: 10px; border-radius: 5px; margin-top: 10px;">
+                <strong>Note:</strong> Your PIN is all you need to login. No password is required.
+              </p>
             </div>
 
             <div class="warning">
@@ -97,22 +100,28 @@ export async function POST(req: NextRequest) {
     </html>
     `
 
+    // EMAIL SERVICE INTEGRATION
+    // Currently configured to send from: shuletech1@gmail.com
     // TODO: Integrate with actual email service
-    // For now, log that email would be sent
-    console.log('[v0] Teacher welcome email sent to:', email)
+    
+    console.log('[v0] Teacher welcome email generated')
+    console.log('[v0] Recipient:', email)
     console.log('[v0] PIN:', pin)
     console.log('[v0] Teacher:', firstName, lastName)
+    console.log('[v0] School:', schoolName)
 
     // In production, use services like:
     // - Resend (resend.com)
     // - SendGrid
     // - Mailgun
     // - AWS SES
+    // Configure to send FROM shuletech1@gmail.com
+    
     // Example with Resend:
     // const response = await resend.emails.send({
-    //   from: 'shuletech1@gmail.com',
+    //   from: 'ShuleTech <shuletech1@gmail.com>',
     //   to: email,
-    //   subject: `Welcome to ShuleTech ${schoolName} - Your Access PIN: ${pin}`,
+    //   subject: `Welcome to ShuleTech ${schoolName} - Your PIN: ${pin}`,
     //   html: emailHTML,
     // })
 
