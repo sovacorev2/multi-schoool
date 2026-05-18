@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -8,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Eye, EyeOff, Trash2, Plus } from 'lucide-react'
+import { Trash2, Plus, Mail, Copy, Check } from 'lucide-react'
 import { useSchool } from '@/lib/school-context'
 
 interface TeacherAccount {
@@ -18,6 +20,7 @@ interface TeacherAccount {
   last_name: string
   pin: string
   is_active: boolean
+  email_sent: boolean
   created_at: string
 }
 
@@ -26,10 +29,10 @@ export default function TeacherAccountsPage() {
   const [teachers, setTeachers] = useState<TeacherAccount[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
-  const [showPassword, setShowPassword] = useState<string | null>(null)
+  const [copiedPin, setCopiedPin] = useState<string | null>(null)
   const [pinLoginEnabled, setPinLoginEnabled] = useState(false)
 
-  // Check if PIN login is enabled for this school (pilot feature)
+  // Check if PIN login is enabled for this school
   useEffect(() => {
     if (currentSchool) {
       const hasPinLogin = (currentSchool as any)?.enable_pin_login === true
@@ -37,10 +40,9 @@ export default function TeacherAccountsPage() {
     }
   }, [currentSchool])
   
-  // Form state
+  // Form state - SIMPLIFIED: No password!
   const [formData, setFormData] = useState({
     email: '',
-    password: '',
     firstName: '',
     lastName: '',
   })
@@ -68,7 +70,7 @@ export default function TeacherAccountsPage() {
       if (error) throw error
       setTeachers(data || [])
     } catch (error) {
-      console.error('Error fetching teachers:', error)
+      console.error('[v0] Error fetching teachers:', error)
     } finally {
       setIsLoading(false)
     }
@@ -81,28 +83,43 @@ export default function TeacherAccountsPage() {
     setIsSubmitting(true)
 
     try {
-      // Validate
-      if (!formData.email || !formData.password || !formData.firstName) {
-        throw new Error('Please fill in all required fields')
+      // Validate - NO PASSWORD REQUIRED
+      if (!formData.email || !formData.firstName) {
+        throw new Error('Please fill in First Name and Email')
       }
 
-      if (formData.password.length < 6) {
-        throw new Error('Password must be at least 6 characters')
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(formData.email)) {
+        throw new Error('Please enter a valid email address')
       }
 
-      // Generate unique PIN
-      const pin = String(Math.floor(Math.random() * 10000)).padStart(4, '0')
+      // Generate unique 4-digit PIN
+      let pin = ''
+      let isUnique = false
+      
+      while (!isUnique) {
+        pin = String(Math.floor(Math.random() * 10000)).padStart(4, '0')
+        // Check if PIN already exists
+        const { data: existing } = await supabase
+          .from('teacher_accounts')
+          .select('id')
+          .eq('pin', pin)
+          .eq('school_id', currentSchool?.id)
+        
+        isUnique = !existing || existing.length === 0
+      }
 
-      // Add to teacher_accounts table with PIN
+      // Create account WITHOUT password - just use PIN
       const { data, error } = await supabase
         .from('teacher_accounts')
         .insert([{
           school_id: currentSchool?.id,
           email: formData.email.toLowerCase(),
-          password: formData.password, // In production, use hashing
           first_name: formData.firstName,
-          last_name: formData.lastName,
+          last_name: formData.lastName || '',
           pin: pin,
+          password: '', // Empty password - PIN is the credential
         }])
         .select()
 
@@ -113,7 +130,7 @@ export default function TeacherAccountsPage() {
         throw error
       }
 
-      // Send welcome email with PIN
+      // Send welcome email with PIN from shuletech1@gmail.com
       try {
         const emailResponse = await fetch('/api/send-teacher-email', {
           method: 'POST',
@@ -121,23 +138,22 @@ export default function TeacherAccountsPage() {
           body: JSON.stringify({
             email: formData.email,
             firstName: formData.firstName,
-            lastName: formData.lastName,
+            lastName: formData.lastName || '',
             pin: pin,
-            schoolName: currentSchool?.name || 'School',
-            welcomePassword: formData.password,
+            schoolName: currentSchool?.name || 'ShuleTech',
+            senderEmail: 'shuletech1@gmail.com',
           }),
         })
 
         if (!emailResponse.ok) {
-          console.warn('[v0] Email sending failed, but teacher account was created')
+          console.warn('[v0] Email sending failed but teacher account created')
         }
       } catch (emailError) {
-        console.warn('[v0] Could not send email:', emailError)
-        // Continue anyway - account is created
+        console.warn('[v0] Email error:', emailError)
       }
 
-      setFormSuccess(`✅ Teacher account created for ${formData.firstName}. Sent PIN ${pin} to ${formData.email}`)
-      setFormData({ email: '', password: '', firstName: '', lastName: '' })
+      setFormSuccess(`✅ Teacher "${formData.firstName}" registered with PIN: ${pin}. Email sent to ${formData.email}`)
+      setFormData({ email: '', firstName: '', lastName: '' })
       setShowAddForm(false)
       await fetchTeachers()
     } catch (error) {
@@ -147,150 +163,188 @@ export default function TeacherAccountsPage() {
     }
   }
 
-  async function handleDeleteTeacher(teacherId: string) {
+  async function handleDeleteTeacher(id: string) {
     if (!confirm('Are you sure you want to delete this teacher account?')) return
 
     try {
       const { error } = await supabase
         .from('teacher_accounts')
         .delete()
-        .eq('id', teacherId)
+        .eq('id', id)
 
       if (error) throw error
       
       setFormSuccess('Teacher account deleted')
       await fetchTeachers()
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : 'Failed to delete teacher account')
+      setFormError(error instanceof Error ? error.message : 'Failed to delete teacher')
     }
   }
 
-  if (!currentSchool) {
-    return <div className="p-4 text-gray-600">Please select a school</div>
+  async function handleResendEmail(teacher: TeacherAccount) {
+    try {
+      const emailResponse = await fetch('/api/send-teacher-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: teacher.email,
+          firstName: teacher.first_name,
+          lastName: teacher.last_name,
+          pin: teacher.pin,
+          schoolName: currentSchool?.name || 'ShuleTech',
+          senderEmail: 'shuletech1@gmail.com',
+        }),
+      })
+
+      if (emailResponse.ok) {
+        setFormSuccess(`Email resent to ${teacher.email}`)
+        // Update email_sent flag
+        await supabase
+          .from('teacher_accounts')
+          .update({ email_sent: true })
+          .eq('id', teacher.id)
+        await fetchTeachers()
+      } else {
+        setFormError('Failed to resend email')
+      }
+    } catch (error) {
+      setFormError('Error resending email')
+    }
+  }
+
+  function copyToClipboard(pin: string) {
+    navigator.clipboard.writeText(pin)
+    setCopiedPin(pin)
+    setTimeout(() => setCopiedPin(null), 2000)
+  }
+
+  if (!pinLoginEnabled) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Teacher PIN Accounts</h1>
+          <p className="text-gray-600">PIN-based teacher authentication is not enabled for your school</p>
+        </div>
+        <Card className="border-yellow-200 bg-yellow-50">
+          <CardHeader>
+            <CardTitle className="text-yellow-900">Feature Not Enabled</CardTitle>
+          </CardHeader>
+          <CardContent className="text-yellow-800">
+            <p>The PIN-based teacher login system is currently available for selected pilot schools only.</p>
+            <p className="mt-2">Contact support to enable this feature for your school.</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Teacher Accounts</h1>
-        <p className="text-gray-600">Create and manage individual teacher login accounts</p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Teacher PIN Accounts</h1>
+          <p className="text-gray-600 mt-1">Register teachers with auto-generated PIN codes</p>
+        </div>
+        <Button 
+          onClick={() => setShowAddForm(!showAddForm)}
+          className="gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          Register New Teacher
+        </Button>
       </div>
 
-      {/* PIN Login Feature Flag Banner */}
-      {pinLoginEnabled && (
-        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-blue-900">
-          <p className="font-semibold">✓ PIN-Based Login Enabled</p>
-          <p className="text-sm mt-1">Teachers will use a unique 4-digit PIN + welcome password to login.</p>
-        </div>
-      )}
-      {!pinLoginEnabled && (
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-900">
-          <p className="font-semibold">ℹ PIN-Based Login Not Enabled</p>
-          <p className="text-sm mt-1">This feature is currently in pilot mode for SHULE TECH school only. Your school uses the standard authentication system.</p>
-        </div>
-      )}
+      {/* Info Banner */}
+      <Card className="border-blue-200 bg-blue-50">
+        <CardContent className="pt-6">
+          <p className="text-sm text-blue-900">
+            <strong>How it works:</strong> Teachers are registered with their name and email only. The system generates a unique 4-digit PIN. An email is sent to the teacher with their PIN and login instructions. No password is required.
+          </p>
+        </CardContent>
+      </Card>
 
       {/* Messages */}
       {formError && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-800">
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
           {formError}
         </div>
       )}
       {formSuccess && (
-        <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-green-800">
+        <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-green-800 text-sm">
           {formSuccess}
         </div>
       )}
 
-      {/* Add Teacher Form */}
-      {showAddForm ? (
+      {/* Add Form */}
+      {showAddForm && (
         <Card>
           <CardHeader>
-            <CardTitle>Add New Teacher Account</CardTitle>
+            <CardTitle>Register New Teacher</CardTitle>
+            <CardDescription>Enter teacher details. PIN will be auto-generated and emailed.</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleAddTeacher} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="firstName">First Name *</Label>
-                  <Input
-                    id="firstName"
-                    placeholder="John"
-                    value={formData.firstName}
-                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="lastName">Last Name</Label>
-                  <Input
-                    id="lastName"
-                    placeholder="Doe"
-                    value={formData.lastName}
-                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                  />
-                </div>
+            <form onSubmit={handleAddTeacher} className="space-y-4 max-w-md">
+              <div>
+                <Label htmlFor="firstName">First Name *</Label>
+                <Input
+                  id="firstName"
+                  placeholder="John"
+                  value={formData.firstName}
+                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                  required
+                />
               </div>
 
               <div>
-                <Label htmlFor="email">Email (to send PIN) *</Label>
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input
+                  id="lastName"
+                  placeholder="Ochieng"
+                  value={formData.lastName}
+                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="email">Email Address *</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="john@example.com"
+                  placeholder="john.ochieng@shuletech.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
                 />
-                <p className="text-xs text-gray-500 mt-1">Welcome email with unique PIN will be sent to this email</p>
+                <p className="text-xs text-gray-500 mt-1">Email where PIN will be sent</p>
               </div>
 
-              <div>
-                <Label htmlFor="password">Welcome Password *</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  required
-                />
-                <p className="text-xs text-gray-500 mt-1">Shared welcome password that teachers use before entering their PIN. Minimum 6 characters.</p>
-              </div>
-
-              <div className="flex gap-2">
+              <div className="flex gap-2 pt-4">
                 <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? 'Creating...' : 'Create Account'}
+                  {isSubmitting ? 'Creating...' : 'Register Teacher'}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => setShowAddForm(false)}>
+                <Button 
+                  type="button" 
+                  variant="outline"
+                  onClick={() => setShowAddForm(false)}
+                >
                   Cancel
                 </Button>
               </div>
             </form>
           </CardContent>
         </Card>
-      ) : (
-        <Button onClick={() => setShowAddForm(true)} className="w-full">
-          <Plus className="w-4 h-4 mr-2" />
-          Add New Teacher Account
-        </Button>
       )}
 
       {/* Teachers Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Teacher Accounts ({teachers.length})</CardTitle>
-          <CardDescription>
-            After creating an account, assign the teacher to classes and subjects in the Teacher Assignments section
-          </CardDescription>
+          <CardTitle>Registered Teachers ({teachers.length})</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8 text-gray-600">Loading teachers...</div>
+            <p className="text-gray-500">Loading teachers...</p>
           ) : teachers.length === 0 ? (
-            <div className="text-center py-8 text-gray-600">
-              No teacher accounts yet. Create one to get started.
-            </div>
+            <p className="text-gray-500 text-center py-8">No teachers registered yet. Register your first teacher above.</p>
           ) : (
             <div className="overflow-x-auto">
               <Table>
@@ -299,7 +353,7 @@ export default function TeacherAccountsPage() {
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>PIN Code</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Email Status</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
@@ -312,22 +366,46 @@ export default function TeacherAccountsPage() {
                       </TableCell>
                       <TableCell className="text-sm">{teacher.email}</TableCell>
                       <TableCell>
-                        <div className="font-mono font-bold text-lg bg-gray-100 px-3 py-2 rounded w-fit">
-                          {teacher.pin}
+                        <div className="flex items-center gap-2">
+                          <div className="font-mono font-bold text-lg bg-gray-100 px-3 py-1 rounded">
+                            {teacher.pin}
+                          </div>
+                          <button
+                            onClick={() => copyToClipboard(teacher.pin)}
+                            className="text-gray-500 hover:text-gray-700"
+                            title="Copy PIN"
+                          >
+                            {copiedPin === teacher.pin ? (
+                              <Check className="w-4 h-4 text-green-600" />
+                            ) : (
+                              <Copy className="w-4 h-4" />
+                            )}
+                          </button>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={teacher.is_active ? 'default' : 'secondary'}>
-                          {teacher.is_active ? 'Active' : 'Inactive'}
-                        </Badge>
+                        {teacher.email_sent ? (
+                          <Badge className="bg-green-100 text-green-800">Sent</Badge>
+                        ) : (
+                          <Badge className="bg-yellow-100 text-yellow-800">Pending</Badge>
+                        )}
                       </TableCell>
                       <TableCell className="text-sm text-gray-600">
                         {new Date(teacher.created_at).toLocaleDateString()}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="space-x-2">
+                        <button
+                          onClick={() => handleResendEmail(teacher)}
+                          className="text-blue-600 hover:text-blue-900 text-sm"
+                          title="Resend email"
+                        >
+                          <Mail className="w-4 h-4 inline mr-1" />
+                          Resend
+                        </button>
                         <button
                           onClick={() => handleDeleteTeacher(teacher.id)}
                           className="text-red-600 hover:text-red-900"
+                          title="Delete teacher"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
