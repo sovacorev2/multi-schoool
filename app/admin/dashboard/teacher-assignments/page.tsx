@@ -1,13 +1,21 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useSchool } from '@/lib/school-context'
 import { useRouter } from 'next/navigation'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Trash2, Plus, Users } from 'lucide-react'
 
 interface Teacher {
-  user_id: string
-  name: string
+  id: string
+  first_name: string
+  last_name: string
   email: string
 }
 
@@ -58,22 +66,20 @@ export default function TeacherAssignmentsPage() {
     setLoading(true)
 
     try {
-      // Fetch teachers from school_users
-      const { data: schoolUsers } = await supabase
-        .from('school_users')
-        .select(`
-          user_id,
-          users!inner(id, name, email)
-        `)
+      // Fetch teachers from teacher_accounts
+      const { data: teacherAccounts } = await supabase
+        .from('teacher_accounts')
+        .select('*')
         .eq('school_id', currentSchool.id)
-        .eq('role', 'teacher')
+        .eq('is_active', true)
 
-      if (schoolUsers) {
+      if (teacherAccounts) {
         setTeachers(
-          schoolUsers.map((su: any) => ({
-            user_id: su.user_id,
-            name: su.users?.name || 'Unknown',
-            email: su.users?.email || '',
+          teacherAccounts.map((ta: any) => ({
+            id: ta.id,
+            first_name: ta.first_name,
+            last_name: ta.last_name,
+            email: ta.email,
           }))
         )
       }
@@ -112,21 +118,19 @@ export default function TeacherAssignmentsPage() {
         .eq('is_active', true)
 
       if (assignmentsData) {
-        const enrichedAssignments = await Promise.all(
-          assignmentsData.map(async (a: any) => {
-            const teacher = teachers.find(t => t.user_id === a.user_id)
-            return {
-              id: a.id,
-              user_id: a.user_id,
-              class_id: a.class_id,
-              subject_id: a.subject_id,
-              is_active: a.is_active,
-              teacher_name: teacher?.name || 'Unknown Teacher',
-              class_name: a.classes?.name || 'Unknown Class',
-              subject_name: a.subjects?.name || null,
-            }
-          })
-        )
+        const enrichedAssignments = assignmentsData.map((a: any) => {
+          const teacher = teachers.find(t => t.id === a.user_id)
+          return {
+            id: a.id,
+            user_id: a.user_id,
+            class_id: a.class_id,
+            subject_id: a.subject_id,
+            is_active: a.is_active,
+            teacher_name: teacher ? `${teacher.first_name} ${teacher.last_name}` : 'Unknown Teacher',
+            class_name: a.classes?.name || 'Unknown Class',
+            subject_name: a.subjects?.name || null,
+          }
+        })
         setAssignments(enrichedAssignments)
       }
     } catch (error) {
@@ -242,8 +246,8 @@ export default function TeacherAssignmentsPage() {
             >
               <option value="">Select a teacher...</option>
               {teachers.map(t => (
-                <option key={t.user_id} value={t.user_id}>
-                  {t.name}
+                <option key={t.id} value={t.id}>
+                  {t.first_name} {t.last_name}
                 </option>
               ))}
             </select>
