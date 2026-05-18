@@ -27,6 +27,15 @@ export default function TeacherAccountsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
   const [showPassword, setShowPassword] = useState<string | null>(null)
+  const [pinLoginEnabled, setPinLoginEnabled] = useState(false)
+
+  // Check if PIN login is enabled for this school (pilot feature)
+  useEffect(() => {
+    if (currentSchool) {
+      const hasPinLogin = (currentSchool as any)?.enable_pin_login === true
+      setPinLoginEnabled(hasPinLogin)
+    }
+  }, [currentSchool])
   
   // Form state
   const [formData, setFormData] = useState({
@@ -166,6 +175,20 @@ export default function TeacherAccountsPage() {
         <h1 className="text-2xl font-bold text-gray-900">Teacher Accounts</h1>
         <p className="text-gray-600">Create and manage individual teacher login accounts</p>
       </div>
+
+      {/* PIN Login Feature Flag Banner */}
+      {pinLoginEnabled && (
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-blue-900">
+          <p className="font-semibold">✓ PIN-Based Login Enabled</p>
+          <p className="text-sm mt-1">Teachers will use a unique 4-digit PIN + welcome password to login.</p>
+        </div>
+      )}
+      {!pinLoginEnabled && (
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-900">
+          <p className="font-semibold">ℹ PIN-Based Login Not Enabled</p>
+          <p className="text-sm mt-1">This feature is currently in pilot mode for SHULE TECH school only. Your school uses the standard authentication system.</p>
+        </div>
+      )}
 
       {/* Messages */}
       {formError && (

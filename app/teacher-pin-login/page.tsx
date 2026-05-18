@@ -30,15 +30,21 @@ export default function TeacherPINLogin() {
   async function fetchSchools() {
     try {
       setSchoolsLoading(true)
+      // Only show schools with PIN login enabled (pilot feature)
       const { data, error } = await supabase
         .from('schools')
         .select('id, name')
+        .eq('enable_pin_login', true)
         .order('name')
 
       if (error) throw error
+      if (!data || data.length === 0) {
+        setError('PIN-based login is not yet enabled for your school. Please use the standard login.')
+      }
       setSchools(data || [])
     } catch (err) {
       console.error('[v0] Error fetching schools:', err)
+      setError('Could not load schools. Please try again.')
     } finally {
       setSchoolsLoading(false)
     }
