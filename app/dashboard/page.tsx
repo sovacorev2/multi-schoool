@@ -1,4 +1,5 @@
 'use client'
+export const dynamic = 'force-dynamic'
 
 import { useClass } from '@/lib/class-context'
 import { useRouter } from 'next/navigation'

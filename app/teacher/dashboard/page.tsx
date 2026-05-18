@@ -1,25 +1,36 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getTeacherSession } from '@/lib/teacher-session'
+import { TeacherSession } from '@/lib/types/teacher'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { LogOut, BookOpen, Users } from 'lucide-react'
 
 export default function TeacherDashboard() {
   const router = useRouter()
-  const [session, setSession] = useState<any>(null)
+  const [session, setSession] = useState<TeacherSession | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const loadSession = async () => {
-      const teacherSession = await getTeacherSession()
-      if (!teacherSession) {
-        router.push('/teacher-login')
+    const loadSession = () => {
+      // Get session from localStorage (set by login page)
+      const sessionStr = localStorage.getItem('teacher_session')
+      if (!sessionStr) {
+        router.push('/teacher-pin-login')
         return
       }
-      setSession(teacherSession)
+      
+      try {
+        const teacherSession = JSON.parse(sessionStr) as TeacherSession
+        setSession(teacherSession)
+      } catch (error) {
+        console.error('[v0] Failed to parse session:', error)
+        router.push('/teacher-pin-login')
+        return
+      }
       setIsLoading(false)
     }
 

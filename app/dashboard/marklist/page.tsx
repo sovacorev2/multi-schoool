@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import React from "react"
 import { formatGradeWithPoints, getPerformanceLevelWithPoints, getGradeLevelByClass } from '@/lib/grading-utils'
 import { getSubjectDisplay, normalizeSubjectName, areSubjectsEqual } from '@/lib/subject-utils'

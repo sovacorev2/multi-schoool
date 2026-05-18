@@ -16,7 +16,8 @@ import {
   LogOut,
   Menu,
   X,
-  MessageSquare
+  MessageSquare,
+  Key
 } from "lucide-react"
 import Link from "next/link"
 import { schoolConfig } from "@/lib/school-config"
@@ -69,6 +70,8 @@ export default function AdminDashboardLayout({
     { href: "/admin/dashboard/classes", icon: BookOpen, label: "Classes" },
     { href: "/admin/dashboard/learners", icon: Users, label: "Learners" },
     { href: "/admin/dashboard/sessions", icon: ClipboardList, label: "Sessions & Locks" },
+    { href: "/admin/dashboard/teacher-accounts", icon: Key, label: "Teacher PIN Accounts" },
+    { href: "/admin/dashboard/teacher-assignments", icon: Users, label: "Teacher Assignments" },
     ...(schoolData?.feature_sms ? [{ href: "/admin/dashboard/sms", icon: MessageSquare, label: "SMS" }] : []),
     { href: "/admin/dashboard/settings", icon: Settings, label: "Settings" },
   ]
