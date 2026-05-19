@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, firstName, lastName, pin, schoolName, welcomePassword } = await req.json()
+    const { email, firstName, lastName, pin, schoolName, assignments = [] } = await req.json()
 
     // Validate input
     if (!email || !firstName || !pin || !schoolName) {
@@ -79,7 +79,28 @@ export async function POST(req: NextRequest) {
             <div class="section">
               <h3 style="color: #2c3e50;">Your Assigned Classes and Subjects</h3>
               <p>You can view, enter, and edit marks only for these classes and subjects:</p>
-              <p style="color: #999; font-size: 14px;">Your assignments will be visible in your dashboard after you log in.</p>
+              ${assignments && assignments.length > 0 ? `
+              <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
+                <thead>
+                  <tr style="background-color: #3498db; color: white;">
+                    <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Class</th>
+                    <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Subject</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${assignments.map(a => `
+                    <tr style="background-color: #f9f9f9;">
+                      <td style="padding: 10px; border: 1px solid #ddd;"><strong>${a.className}</strong></td>
+                      <td style="padding: 10px; border: 1px solid #ddd;">${a.subjectName}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+              ` : `
+              <p style="background-color: #e8f5e9; padding: 10px; border-radius: 5px; border-left: 4px solid #4caf50; color: #2e7d32;">
+                ✓ Your assignments have been configured. You can now log in and access your classes and subjects.
+              </p>
+              `}
             </div>
 
             <div class="section">
