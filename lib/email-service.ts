@@ -1,11 +1,12 @@
+import { Resend } from 'resend'
+
 /**
- * Email service for teacher notifications
+ * Email service for teacher notifications using Resend
  * 
- * CURRENT: Logs emails to console for testing
- * PRODUCTION: Replace with Resend, SendGrid, Mailgun, or AWS SES
- * 
- * Environment variable needed: EMAIL_SERVICE_API_KEY
+ * Environment variable needed: RESEND_API_KEY
  */
+
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 
 interface TeacherAssignment {
   className: string
@@ -136,44 +137,50 @@ export async function sendTeacherWelcomeEmail(
     </html>
     `
 
-    // DEVELOPMENT: Log email details to console
+    // Send via Resend
+    if (!resend) {
+      console.warn('[v0] Resend API key not configured. Email not sent.')
+      // Fallback: Log to console for testing
+      console.log('')
+      console.log('╔════════════════════════════════════════════════════════════════╗')
+      console.log('║              📧 TEACHER EMAIL (CONSOLE FALLBACK) 📧            ║')
+      console.log('╚════════════════════════════════════════════════════════════════╝')
+      console.log(`TO: ${email}`)
+      console.log(`PIN: ${pin}`)
+      console.log('')
+      return { success: false, error: 'Resend API key not configured' }
+    }
+
+    const response = await resend.emails.send({
+      from: 'ShuleTech <shuletech1@gmail.com>',
+      to: email,
+      subject: `Welcome to ShuleTech ${schoolName} - Your PIN: ${pin}`,
+      html: emailHTML,
+    })
+
+    if (response.error) {
+      console.error('[v0] Resend error:', response.error)
+      return { success: false, error: response.error.message }
+    }
+
     console.log('')
     console.log('╔════════════════════════════════════════════════════════════════╗')
-    console.log('║              📧 TEACHER EMAIL NOTIFICATION 📧                  ║')
+    console.log('║              ✅ EMAIL SENT SUCCESSFULLY VIA RESEND ✅          ║')
     console.log('╚════════════════════════════════════════════════════════════════╝')
-    console.log('')
     console.log(`TO: ${email}`)
     console.log(`FROM: shuletech1@gmail.com`)
     console.log(`SUBJECT: Welcome to ShuleTech ${schoolName} - Your PIN: ${pin}`)
+    console.log(`MESSAGE ID: ${response.id}`)
     console.log('')
-    console.log('────────────────────────────────────────────────────────────────')
     console.log(`TEACHER: ${firstName} ${lastName}`)
-    console.log(`SCHOOL: ${schoolName}`)
     console.log(`PIN: ${pin}`)
-    console.log('')
     console.log('ASSIGNED CLASSES AND SUBJECTS:')
     assignments.forEach(a => {
       console.log(`  ✓ ${a.className} - ${a.subjectName}`)
     })
     console.log('')
-    console.log('────────────────────────────────────────────────────────────────')
-    console.log('')
 
-    // PRODUCTION: Integrate with actual email service
-    // Options: Resend, SendGrid, Mailgun, AWS SES
-    // Example with Resend:
-    // if (process.env.RESEND_API_KEY) {
-    //   const resend = new Resend(process.env.RESEND_API_KEY)
-    //   const response = await resend.emails.send({
-    //     from: 'ShuleTech <shuletech1@gmail.com>',
-    //     to: email,
-    //     subject: `Welcome to ShuleTech ${schoolName} - Your PIN: ${pin}`,
-    //     html: emailHTML,
-    //   })
-    //   return { success: !response.error, error: response.error?.message }
-    // }
-
-    return { success: true }
+    return { success: true, messageId: response.id }
   } catch (error) {
     console.error('[v0] Error preparing email:', error)
     return { success: false, error: 'Failed to prepare email' }
@@ -186,23 +193,74 @@ export async function sendPINResetEmail(
   schoolName: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    console.log('')
-    console.log('╔════════════════════════════════════════════════════════════════╗')
-    console.log('║               🔐 PIN RESET EMAIL NOTIFICATION 🔐               ║')
-    console.log('╚════════════════════════════════════════════════════════════════╝')
-    console.log('')
-    console.log(`TO: ${email}`)
-    console.log(`FROM: shuletech1@gmail.com`)
-    console.log(`SUBJECT: ShuleTech ${schoolName} - PIN Reset`)
-    console.log('')
-    console.log(`NEW PIN: ${pin}`)
-    console.log('')
-    console.log('────────────────────────────────────────────────────────────────')
-    console.log('')
+    const emailHTML = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background-color: #e74c3c; color: white; padding: 20px; border-radius: 5px; text-align: center; }
+          .content { background-color: #f9f9f9; padding: 20px; }
+          .pin-box { background-color: white; padding: 20px; border-left: 4px solid #e74c3c; margin: 20px 0; text-align: center; }
+          .pin-number { font-size: 48px; font-weight: bold; color: #e74c3c; letter-spacing: 10px; font-family: monospace; }
+          .warning { background-color: #ffe5e5; padding: 15px; border-radius: 5px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Your PIN Has Been Reset</h1>
+            <p>ShuleTech ${schoolName}</p>
+          </div>
 
-    return { success: true }
+          <div class="content">
+            <p>Your PIN has been reset by your school administrator.</p>
+
+            <div class="pin-box">
+              <p style="margin: 0 0 10px 0; color: #666;"><strong>YOUR NEW PIN:</strong></p>
+              <div class="pin-number">${pin}</div>
+            </div>
+
+            <p>Please use this new PIN to access the system. Keep it safe and confidential.</p>
+
+            <div class="warning">
+              <h4 style="margin-top: 0;">⚠️ Important</h4>
+              <ul style="margin: 10px 0;">
+                <li>This is your new unique PIN</li>
+                <li>Keep it safe and do not share it</li>
+                <li>If you did not request this reset, contact your admin immediately</li>
+              </ul>
+            </div>
+
+            <p>Best regards,<br><strong>ShuleTech Examination System</strong></p>
+          </div>
+        </div>
+      </body>
+    </html>
+    `
+
+    if (!resend) {
+      console.warn('[v0] Resend API key not configured. PIN reset email not sent.')
+      return { success: false, error: 'Resend API key not configured' }
+    }
+
+    const response = await resend.emails.send({
+      from: 'ShuleTech <shuletech1@gmail.com>',
+      to: email,
+      subject: `ShuleTech ${schoolName} - Your PIN Has Been Reset`,
+      html: emailHTML,
+    })
+
+    if (response.error) {
+      console.error('[v0] Resend PIN reset error:', response.error)
+      return { success: false, error: response.error.message }
+    }
+
+    console.log('[v0] PIN reset email sent successfully to:', email)
+    return { success: true, messageId: response.id }
   } catch (error) {
-    console.error('[v0] Error preparing PIN reset email:', error)
-    return { success: false, error: 'Failed to prepare email' }
+    console.error('[v0] Error sending PIN reset email:', error)
+    return { success: false, error: 'Failed to send PIN reset email' }
   }
 }

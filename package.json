@@ -29,6 +29,7 @@
     "react": "19.0.0",
     "react-day-picker": "8.10.1",
     "react-dom": "19.0.0",
+    "resend": "^6.12.3",
     "tailwind-merge": "2.5.5",
     "tailwindcss-animate": "1.0.7",
     "twilio": "^6.0.2"

@@ -807,20 +807,6 @@ export default function AdminPortalPage() {
 
     try {
       const supabase = createClient()
-      
-      // Check if assignment already exists
-      const { data: existing } = await supabase
-        .from('teacher_assignments')
-        .select('id')
-        .eq('teacher_id', assignFormData.teacherId)
-        .eq('class_id', assignFormData.classId)
-        .eq('subject_id', assignFormData.subjectId || null)
-        .single()
-      
-      if (existing) {
-        setAssignMessage({ type: 'error', text: 'This teacher is already assigned to this class and subject' })
-        return
-      }
 
       const { error } = await supabase
         .from('teacher_assignments')
@@ -834,7 +820,13 @@ export default function AdminPortalPage() {
 
       if (error) {
         console.error('[v0] Assignment error:', error)
-        throw error
+        // Check for duplicate constraint error
+        if (error.message && error.message.includes('duplicate')) {
+          setAssignMessage({ type: 'error', text: 'This teacher is already assigned to this class and subject' })
+        } else {
+          setAssignMessage({ type: 'error', text: error.message || 'Failed to create assignment' })
+        }
+        return
       }
 
       // Reload assignments
@@ -1840,7 +1832,11 @@ export default function AdminPortalPage() {
                                 <option value="">-- All Subjects (Class Teacher) --</option>
                                 {subjects
                                   .filter(subject => {
-                                    // Show subject if it's not already assigned to this teacher for this class
+                                    // Only show subjects registered for the selected class
+                                    if (assignFormData.classId && subject.class_id !== assignFormData.classId) {
+                                      return false
+                                    }
+                                    // Also filter out subjects already assigned to this teacher for this class
                                     const alreadyAssigned = teacherAssignments.some(
                                       a => a.teacher_id === assignFormData.teacherId && 
                                            a.class_id === assignFormData.classId && 
