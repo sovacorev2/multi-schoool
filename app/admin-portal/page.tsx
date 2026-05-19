@@ -808,15 +808,23 @@ export default function AdminPortalPage() {
     try {
       const supabase = createClient()
 
-      const { error } = await supabase
+      console.log('[v0] Creating assignment:', {
+        school_id: currentSchool?.id,
+        teacher_id: assignFormData.teacherId,
+        class_id: assignFormData.classId,
+        subject_id: assignFormData.subjectId || null,
+      })
+
+      const { data, error } = await supabase
         .from('teacher_assignments')
-        .insert([{
+        .insert({
           school_id: currentSchool?.id,
           teacher_id: assignFormData.teacherId,
           class_id: assignFormData.classId,
           subject_id: assignFormData.subjectId || null,
           is_active: true
-        }])
+        })
+        .select()
 
       if (error) {
         console.error('[v0] Assignment error:', error)
@@ -828,6 +836,8 @@ export default function AdminPortalPage() {
         }
         return
       }
+
+      console.log('[v0] Assignment created:', data)
 
       // Reload assignments
       const { data: newAssignments } = await supabase
@@ -1811,7 +1821,9 @@ export default function AdminPortalPage() {
                               <select
                                 className="w-full border border-gray-300 rounded-lg px-3 py-2"
                                 value={assignFormData.classId}
-                                onChange={(e) => setAssignFormData({...assignFormData, classId: e.target.value})}
+                                onChange={(e) => {
+                                  setAssignFormData({...assignFormData, classId: e.target.value, subjectId: ''})
+                                }}
                               >
                                 <option value="">-- Choose a class --</option>
                                 {classes.map(cls => (
@@ -1830,13 +1842,14 @@ export default function AdminPortalPage() {
                                 onChange={(e) => setAssignFormData({...assignFormData, subjectId: e.target.value})}
                               >
                                 <option value="">-- All Subjects (Class Teacher) --</option>
-                                {subjects
-                                  .filter(subject => {
-                                    // Only show subjects registered for the selected class
-                                    if (assignFormData.classId && subject.class_id !== assignFormData.classId) {
-                                      return false
-                                    }
-                                    // Also filter out subjects already assigned to this teacher for this class
+                                {(() => {
+                                  // Filter subjects that belong to the selected class
+                                  const classSubjects = assignFormData.classId 
+                                    ? subjects.filter(s => s.class_id === assignFormData.classId)
+                                    : []
+                                  
+                                  // Further filter to exclude already-assigned subjects
+                                  const availableSubjects = classSubjects.filter(subject => {
                                     const alreadyAssigned = teacherAssignments.some(
                                       a => a.teacher_id === assignFormData.teacherId && 
                                            a.class_id === assignFormData.classId && 
@@ -1844,6 +1857,16 @@ export default function AdminPortalPage() {
                                     )
                                     return !alreadyAssigned
                                   })
+                                  
+                                  if (assignFormData.classId) {
+                                    console.log('[v0] Selected Class:', assignFormData.classId)
+                                    console.log('[v0] All Subjects in School:', subjects.map(s => ({ id: s.id, name: s.name, class_id: s.class_id })))
+                                    console.log('[v0] Subjects for this class:', classSubjects.map(s => ({ id: s.id, name: s.name })))
+                                    console.log('[v0] Available (not assigned):', availableSubjects.map(s => ({ id: s.id, name: s.name })))
+                                  }
+                                  
+                                  return availableSubjects
+                                })()
                                   .map(subject => (
                                     <option key={subject.id} value={subject.id}>
                                       {subject.name}
