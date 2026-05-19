@@ -3700,10 +3700,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                       </div>
                       <div style={{ fontSize: '11px', color: '#9ca3af' }}>{new Date().toLocaleDateString()}</div>
                     </div>
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{ width: '180px', borderBottom: '1px solid #9ca3af', marginBottom: '6px', height: '24px' }} />
-                      <div style={{ fontSize: '12px', color: '#6b7280' }}>Head Teacher</div>
-                    </div>
+
                   </div>
                 </div>
               </div>
