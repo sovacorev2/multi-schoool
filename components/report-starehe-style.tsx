@@ -726,17 +726,6 @@ export function ReportStareheStyle({
                       <div style={{ padding: '4px', fontSize: '8px' }}>DATE: ________________</div>
                     </div>
 
-                    {/* Head Teacher Remarks */}
-                    <div style={{ border: '1px solid #666', marginBottom: '5px' }}>
-                      <div style={{ backgroundColor: '#ddd', fontWeight: 'bold', padding: '4px', borderBottom: '1px solid #666', fontSize: '9px' }}>HEAD TEACHER'S REMARKS:</div>
-                      <div style={{ padding: '5px', minHeight: '30px' }}></div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', padding: '4px', borderTop: '1px solid #666', fontSize: '8px' }}>
-                        <div>SIGN: __________</div>
-                        <div>DATE: __________</div>
-                        <div>STAMP:</div>
-                      </div>
-                    </div>
-
                     {/* Parent/Guardian Remarks */}
                     <div style={{ border: '1px solid #666' }}>
                       <div style={{ backgroundColor: '#ddd', fontWeight: 'bold', padding: '4px', borderBottom: '1px solid #666', fontSize: '9px' }}>PARENT/GUARDIAN'S REMARKS:</div>

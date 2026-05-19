@@ -807,6 +807,21 @@ export default function AdminPortalPage() {
 
     try {
       const supabase = createClient()
+      
+      // Check if assignment already exists
+      const { data: existing } = await supabase
+        .from('teacher_assignments')
+        .select('id')
+        .eq('teacher_id', assignFormData.teacherId)
+        .eq('class_id', assignFormData.classId)
+        .eq('subject_id', assignFormData.subjectId || null)
+        .single()
+      
+      if (existing) {
+        setAssignMessage({ type: 'error', text: 'This teacher is already assigned to this class and subject' })
+        return
+      }
+
       const { error } = await supabase
         .from('teacher_assignments')
         .insert([{
@@ -817,7 +832,10 @@ export default function AdminPortalPage() {
           is_active: true
         }])
 
-      if (error) throw error
+      if (error) {
+        console.error('[v0] Assignment error:', error)
+        throw error
+      }
 
       // Reload assignments
       const { data: newAssignments } = await supabase
@@ -1820,11 +1838,21 @@ export default function AdminPortalPage() {
                                 onChange={(e) => setAssignFormData({...assignFormData, subjectId: e.target.value})}
                               >
                                 <option value="">-- All Subjects (Class Teacher) --</option>
-                                {subjects.map(subject => (
-                                  <option key={subject.id} value={subject.id}>
-                                    {subject.name}
-                                  </option>
-                                ))}
+                                {subjects
+                                  .filter(subject => {
+                                    // Show subject if it's not already assigned to this teacher for this class
+                                    const alreadyAssigned = teacherAssignments.some(
+                                      a => a.teacher_id === assignFormData.teacherId && 
+                                           a.class_id === assignFormData.classId && 
+                                           a.subject_id === subject.id
+                                    )
+                                    return !alreadyAssigned
+                                  })
+                                  .map(subject => (
+                                    <option key={subject.id} value={subject.id}>
+                                      {subject.name}
+                                    </option>
+                                  ))}
                               </select>
                               <p className="text-xs text-gray-600 mt-1">Leave blank if teacher teaches all subjects in this class. Select a subject for subject-specific assignment (Grades 4-8).</p>
                             </div>
