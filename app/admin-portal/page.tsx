@@ -766,25 +766,8 @@ export default function AdminPortalPage() {
 
       // Add to list
       setTeacherAccounts([...teacherAccounts, data])
-      
-      // Send email
-      try {
-        await fetch('/api/send-teacher-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: pinFormData.email,
-            firstName: pinFormData.firstName,
-            lastName: pinFormData.lastName,
-            pin: pin,
-            schoolName: currentSchool.name
-          })
-        })
-      } catch (emailError) {
-        console.warn('[v0] Email sending failed:', emailError)
-      }
 
-      setPinFormMessage({ type: 'success', text: `Teacher account created! PIN: ${pin} sent to ${pinFormData.email}` })
+      setPinFormMessage({ type: 'success', text: `Teacher account created! PIN: ${pin}. Now assign this teacher to classes/subjects, then email will be sent.` })
       setPinFormData({ firstName: '', lastName: '', email: '' })
       
       setTimeout(() => {
@@ -846,7 +829,36 @@ export default function AdminPortalPage() {
         setTeacherAssignments(newAssignments)
       }
 
-      setAssignMessage({ type: 'success', text: 'Assignment created successfully!' })
+      // Get teacher and class details for email
+      const teacher = teacherAccounts.find(t => t.id === assignFormData.teacherId)
+      const selectedClass = classes.find(c => c.id === assignFormData.classId)
+      const selectedSubject = assignFormData.subjectId ? subjects.find(s => s.id === assignFormData.subjectId) : null
+      
+      // Get all assignments for this teacher
+      const teacherAllAssignments = newAssignments?.filter(a => a.teacher_id === assignFormData.teacherId) || []
+
+      // Send email with assignment details
+      try {
+        await fetch('/api/send-teacher-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: teacher?.email,
+            firstName: teacher?.first_name,
+            lastName: teacher?.last_name,
+            pin: teacher?.pin,
+            schoolName: currentSchool?.name,
+            assignments: teacherAllAssignments.map(a => ({
+              className: a.classes?.name,
+              subjectName: a.subjects?.name || 'All Subjects'
+            }))
+          })
+        })
+      } catch (emailError) {
+        console.warn('[v0] Email sending failed:', emailError)
+      }
+
+      setAssignMessage({ type: 'success', text: 'Assignment created and email sent to teacher with PIN + assignment details!' })
       setAssignFormData({ teacherId: '', classId: '', subjectId: '' })
       
       setTimeout(() => {
