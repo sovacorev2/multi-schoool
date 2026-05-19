@@ -69,6 +69,17 @@ export default function TeacherPINLogin() {
         throw new Error('Please select your school')
       }
 
+      // First, verify welcome password against school
+      const { data: schoolData } = await supabase
+        .from('schools')
+        .select('admin_password')
+        .eq('id', school)
+        .single()
+
+      if (!schoolData || schoolData.admin_password !== welcomePassword) {
+        throw new Error('Invalid welcome password. Please try again.')
+      }
+
       // Verify PIN and get teacher details
       const { data: teacher, error: teacherError } = await supabase
         .from('teacher_accounts')
@@ -79,7 +90,6 @@ export default function TeacherPINLogin() {
           last_name,
           email,
           school_id,
-          password,
           is_active,
           teacher_assignments(
             id,
@@ -97,11 +107,6 @@ export default function TeacherPINLogin() {
 
       if (teacherError || !teacher) {
         throw new Error('Invalid PIN or teacher not found. Please check and try again.')
-      }
-
-      // Verify password
-      if (teacher.password !== welcomePassword) {
-        throw new Error('Incorrect welcome password')
       }
 
       // Store session in localStorage
