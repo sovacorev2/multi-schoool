@@ -223,6 +223,12 @@ export default function AdminPortalPage() {
   const [pinLoginEnabled, setPinLoginEnabled] = useState(false)
   const [pinFormMessage, setPinFormMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
+  // Teacher Assignments State
+  const [teacherAssignments, setTeacherAssignments] = useState<any[]>([])
+  const [assignFormData, setAssignFormData] = useState({ teacherId: '', classId: '', subjectId: '' })
+  const [showAssignForm, setShowAssignForm] = useState(false)
+  const [assignMessage, setAssignMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
   // Load school from URL or context - redirect if no school
   useEffect(() => {
     const schoolCode = searchParams.get('school')
@@ -298,12 +304,13 @@ export default function AdminPortalPage() {
     try {
       const supabase = createClient()
 
-      const [classesRes, examTypesRes, subjectsRes, schoolRes, teachersRes] = await Promise.all([
+      const [classesRes, examTypesRes, subjectsRes, schoolRes, teachersRes, assignmentsRes] = await Promise.all([
         supabase.from('classes').select('*').eq('school_id', currentSchool.id).order('display_order'),
         supabase.from('exam_types').select('*').eq('school_id', currentSchool.id).order('name'),
         supabase.from('subjects').select('*').eq('school_id', currentSchool.id).order('name'),
         supabase.from('schools').select('enable_pin_login').eq('id', currentSchool.id).single(),
         supabase.from('teacher_accounts').select('*').eq('school_id', currentSchool.id),
+        supabase.from('teacher_assignments').select('*, classes(name), subjects(name), teacher_accounts(first_name, last_name)').eq('school_id', currentSchool.id),
       ])
 
       if (classesRes.data) setClasses(classesRes.data)
@@ -318,6 +325,11 @@ export default function AdminPortalPage() {
       // Load teacher accounts
       if (teachersRes.data) {
         setTeacherAccounts(teachersRes.data)
+      }
+
+      // Load teacher assignments
+      if (assignmentsRes.data) {
+        setTeacherAssignments(assignmentsRes.data)
       }
 
       // Load deadlines from sessions - only show sessions with exam_type_id (actual exam sessions)
@@ -803,6 +815,68 @@ export default function AdminPortalPage() {
     }
   }
 
+  // Assign teacher to class/subject
+  const assignTeacherToClass = async () => {
+    if (!assignFormData.teacherId || !assignFormData.classId) {
+      setAssignMessage({ type: 'error', text: 'Please select a teacher and class' })
+      return
+    }
+
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('teacher_assignments')
+        .insert([{
+          school_id: currentSchool?.id,
+          teacher_id: assignFormData.teacherId,
+          class_id: assignFormData.classId,
+          subject_id: assignFormData.subjectId || null,
+          is_active: true
+        }])
+
+      if (error) throw error
+
+      // Reload assignments
+      const { data: newAssignments } = await supabase
+        .from('teacher_assignments')
+        .select('*, classes(name), subjects(name), teacher_accounts(first_name, last_name)')
+        .eq('school_id', currentSchool?.id)
+
+      if (newAssignments) {
+        setTeacherAssignments(newAssignments)
+      }
+
+      setAssignMessage({ type: 'success', text: 'Assignment created successfully!' })
+      setAssignFormData({ teacherId: '', classId: '', subjectId: '' })
+      
+      setTimeout(() => {
+        setShowAssignForm(false)
+        setAssignMessage(null)
+      }, 2000)
+    } catch (err) {
+      setAssignMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to create assignment' })
+    }
+  }
+
+  // Delete assignment
+  const deleteAssignment = async (assignmentId: string) => {
+    if (!confirm('Remove this assignment?')) return
+    
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('teacher_assignments')
+        .delete()
+        .eq('id', assignmentId)
+
+      if (error) throw error
+      
+      setTeacherAssignments(teacherAssignments.filter(a => a.id !== assignmentId))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to delete assignment')
+    }
+  }
+
   if (!currentSchool) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -963,10 +1037,16 @@ export default function AdminPortalPage() {
                 Teachers
               </TabsTrigger>
               {pinLoginEnabled && (
-                <TabsTrigger value="pin-accounts" className="flex items-center gap-2 bg-green-50 text-green-700">
-                  <Key className="w-4 h-4" />
-                  PIN Accounts
-                </TabsTrigger>
+                <>
+                  <TabsTrigger value="pin-accounts" className="flex items-center gap-2 bg-green-50 text-green-700">
+                    <Key className="w-4 h-4" />
+                    PIN Accounts
+                  </TabsTrigger>
+                  <TabsTrigger value="pin-assignments" className="flex items-center gap-2 bg-blue-50 text-blue-700">
+                    <Users className="w-4 h-4" />
+                    Assignments
+                  </TabsTrigger>
+                </>
               )}
               <TabsTrigger value="passwords" className="flex items-center gap-2">
                 <Lock className="w-4 h-4" />
@@ -1646,6 +1726,169 @@ export default function AdminPortalPage() {
 
                     {teacherAccounts.length === 0 && !showPINForm && (
                       <p className="text-center text-gray-500 py-8">No teachers registered yet. Click "Register New Teacher" to get started.</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
+
+            {/* Teacher Assignments Tab */}
+            {pinLoginEnabled && (
+              <TabsContent value="pin-assignments">
+                <Card className="border-blue-200 bg-blue-50/30">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-blue-700">
+                      <Users className="w-5 h-5" />
+                      Assign Teachers to Classes & Subjects
+                    </CardTitle>
+                    <CardDescription className="text-blue-600">
+                      Assign teachers to classes and specific subjects. Teachers can only edit marks for their assigned subjects.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* Add Assignment Form */}
+                    {!showAssignForm ? (
+                      <Button 
+                        onClick={() => setShowAssignForm(true)}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Assign Teacher to Class
+                      </Button>
+                    ) : (
+                      <Card className="border-blue-300 bg-white">
+                        <CardHeader>
+                          <CardTitle className="text-lg">Create Assignment</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          {assignMessage && (
+                            <div className={`p-3 rounded-lg text-sm ${assignMessage.type === 'success' ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'}`}>
+                              {assignMessage.text}
+                            </div>
+                          )}
+
+                          <div className="space-y-4">
+                            <div>
+                              <label className="text-sm font-medium text-gray-700 block mb-2">Select Teacher *</label>
+                              <select
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                                value={assignFormData.teacherId}
+                                onChange={(e) => setAssignFormData({...assignFormData, teacherId: e.target.value})}
+                              >
+                                <option value="">-- Choose a teacher --</option>
+                                {teacherAccounts.map(teacher => (
+                                  <option key={teacher.id} value={teacher.id}>
+                                    {teacher.first_name} {teacher.last_name} ({teacher.email})
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="text-sm font-medium text-gray-700 block mb-2">Select Class *</label>
+                              <select
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                                value={assignFormData.classId}
+                                onChange={(e) => setAssignFormData({...assignFormData, classId: e.target.value})}
+                              >
+                                <option value="">-- Choose a class --</option>
+                                {classes.map(cls => (
+                                  <option key={cls.id} value={cls.id}>
+                                    {cls.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="text-sm font-medium text-gray-700 block mb-2">Subject (Optional)</label>
+                              <select
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                                value={assignFormData.subjectId}
+                                onChange={(e) => setAssignFormData({...assignFormData, subjectId: e.target.value})}
+                              >
+                                <option value="">-- All Subjects (Class Teacher) --</option>
+                                {subjects.map(subject => (
+                                  <option key={subject.id} value={subject.id}>
+                                    {subject.name}
+                                  </option>
+                                ))}
+                              </select>
+                              <p className="text-xs text-gray-600 mt-1">Leave blank if teacher teaches all subjects in this class. Select a subject for subject-specific assignment (Grades 4-8).</p>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2 pt-4">
+                            <Button 
+                              onClick={() => assignTeacherToClass()}
+                              disabled={!assignFormData.teacherId || !assignFormData.classId}
+                              className="bg-blue-600 hover:bg-blue-700"
+                            >
+                              Create Assignment
+                            </Button>
+                            <Button 
+                              variant="outline"
+                              onClick={() => {
+                                setShowAssignForm(false)
+                                setAssignFormData({teacherId: '', classId: '', subjectId: ''})
+                                setAssignMessage(null)
+                              }}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Assignments List */}
+                    {teacherAssignments.length > 0 && (
+                      <div className="space-y-3">
+                        <h3 className="font-semibold text-gray-900">Active Assignments ({teacherAssignments.length})</h3>
+                        <div className="border rounded-lg overflow-hidden">
+                          <table className="w-full text-sm">
+                            <thead className="bg-blue-100 border-b border-blue-300">
+                              <tr>
+                                <th className="p-3 text-left font-semibold">Teacher</th>
+                                <th className="p-3 text-left font-semibold">Class</th>
+                                <th className="p-3 text-left font-semibold">Subject</th>
+                                <th className="p-3 text-left font-semibold">Status</th>
+                                <th className="p-3 text-left font-semibold">Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {teacherAssignments.map(assignment => (
+                                <tr key={assignment.id} className="border-t">
+                                  <td className="p-3 font-medium">{assignment.teacher_accounts?.first_name} {assignment.teacher_accounts?.last_name}</td>
+                                  <td className="p-3 text-gray-600">{assignment.classes?.name}</td>
+                                  <td className="p-3 text-gray-600">{assignment.subjects?.name || 'All Subjects'}</td>
+                                  <td className="p-3">
+                                    {assignment.is_active ? (
+                                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">Active</span>
+                                    ) : (
+                                      <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs font-medium">Inactive</span>
+                                    )}
+                                  </td>
+                                  <td className="p-3">
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => deleteAssignment(assignment.id)}
+                                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {teacherAssignments.length === 0 && !showAssignForm && (
+                      <p className="text-center text-gray-500 py-8">No assignments yet. Click "Assign Teacher to Class" to get started.</p>
                     )}
                   </CardContent>
                 </Card>
