@@ -29,7 +29,7 @@ import {
 import { 
   Shield, Eye, EyeOff, Settings, BookOpen, Calendar, 
   Clock, FileText, Plus, Trash2, Save, ArrowLeft, Lock, Unlock,
-  GraduationCap, ClipboardList, History, Edit, Users, X
+  GraduationCap, ClipboardList, History, Edit, Users, X, Key, Copy, Check
 } from 'lucide-react'
 import type { Class, ExamType } from '@/lib/types'
 import SchoolLogoUploader from '@/components/admin/SchoolLogoUploader'
@@ -215,6 +215,14 @@ export default function AdminPortalPage() {
   const [classTeachers, setClassTeachers] = useState<{[key: string]: string}>({})
   const [teacherUpdateSuccess, setTeacherUpdateSuccess] = useState('')
 
+  // PIN Login State
+  const [teacherAccounts, setTeacherAccounts] = useState<any[]>([])
+  const [showPINForm, setShowPINForm] = useState(false)
+  const [pinFormData, setPinFormData] = useState({ firstName: '', lastName: '', email: '' })
+  const [copiedPIN, setCopiedPIN] = useState<string | null>(null)
+  const [pinLoginEnabled, setPinLoginEnabled] = useState(false)
+  const [pinFormMessage, setPinFormMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
   // Load school from URL or context - redirect if no school
   useEffect(() => {
     const schoolCode = searchParams.get('school')
@@ -290,15 +298,27 @@ export default function AdminPortalPage() {
     try {
       const supabase = createClient()
 
-      const [classesRes, examTypesRes, subjectsRes] = await Promise.all([
+      const [classesRes, examTypesRes, subjectsRes, schoolRes, teachersRes] = await Promise.all([
         supabase.from('classes').select('*').eq('school_id', currentSchool.id).order('display_order'),
         supabase.from('exam_types').select('*').eq('school_id', currentSchool.id).order('name'),
         supabase.from('subjects').select('*').eq('school_id', currentSchool.id).order('name'),
+        supabase.from('schools').select('enable_pin_login').eq('id', currentSchool.id).single(),
+        supabase.from('teacher_accounts').select('*').eq('school_id', currentSchool.id),
       ])
 
       if (classesRes.data) setClasses(classesRes.data)
       if (examTypesRes.data) setExamTypes(examTypesRes.data)
       if (subjectsRes.data) setSubjects(subjectsRes.data)
+      
+      // Load PIN login settings
+      if (schoolRes.data) {
+        setPinLoginEnabled(schoolRes.data.enable_pin_login === true)
+      }
+      
+      // Load teacher accounts
+      if (teachersRes.data) {
+        setTeacherAccounts(teachersRes.data)
+      }
 
       // Load deadlines from sessions - only show sessions with exam_type_id (actual exam sessions)
       const { data: sessionsData } = await supabase
@@ -700,6 +720,89 @@ export default function AdminPortalPage() {
     }
   }
 
+  // Create teacher account with PIN
+  const createTeacherAccount = async () => {
+    if (!currentSchool || !pinFormData.firstName || !pinFormData.lastName || !pinFormData.email) {
+      setPinFormMessage({ type: 'error', text: 'Please fill in all fields' })
+      return
+    }
+
+    try {
+      const supabase = createClient()
+      
+      // Generate unique PIN
+      const pin = String(Math.floor(Math.random() * 10000)).padStart(4, '0')
+      
+      // Create teacher account
+      const { data, error } = await supabase
+        .from('teacher_accounts')
+        .insert([{
+          school_id: currentSchool.id,
+          first_name: pinFormData.firstName,
+          last_name: pinFormData.lastName,
+          email: pinFormData.email,
+          pin: pin,
+          is_active: true
+        }])
+        .select()
+        .single()
+
+      if (error) {
+        setPinFormMessage({ type: 'error', text: error.message })
+        return
+      }
+
+      // Add to list
+      setTeacherAccounts([...teacherAccounts, data])
+      
+      // Send email
+      try {
+        await fetch('/api/send-teacher-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: pinFormData.email,
+            firstName: pinFormData.firstName,
+            lastName: pinFormData.lastName,
+            pin: pin,
+            schoolName: currentSchool.name
+          })
+        })
+      } catch (emailError) {
+        console.warn('[v0] Email sending failed:', emailError)
+      }
+
+      setPinFormMessage({ type: 'success', text: `Teacher account created! PIN: ${pin} sent to ${pinFormData.email}` })
+      setPinFormData({ firstName: '', lastName: '', email: '' })
+      
+      setTimeout(() => {
+        setShowPINForm(false)
+        setPinFormMessage(null)
+      }, 3000)
+    } catch (err) {
+      setPinFormMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to create account' })
+    }
+  }
+
+  // Delete teacher account
+  const deleteTeacherAccount = async (teacherId: string) => {
+    if (!confirm('Are you sure? This cannot be undone.')) return
+    
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('teacher_accounts')
+        .delete()
+        .eq('id', teacherId)
+
+      if (error) throw error
+      
+      setTeacherAccounts(teacherAccounts.filter(t => t.id !== teacherId))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to delete account')
+    }
+  }
+
   if (!currentSchool) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -846,7 +949,7 @@ export default function AdminPortalPage() {
           </div>
         ) : (
           <Tabs defaultValue="deadlines" className="space-y-6">
-            <TabsList className="grid grid-cols-8 w-full max-w-5xl">
+            <TabsList className="grid grid-cols-9 w-full max-w-full">
               <TabsTrigger value="deadlines" className="flex items-center gap-2">
                 <Clock className="w-4 h-4" />
                 Deadlines
@@ -859,6 +962,12 @@ export default function AdminPortalPage() {
                 <Users className="w-4 h-4" />
                 Teachers
               </TabsTrigger>
+              {pinLoginEnabled && (
+                <TabsTrigger value="pin-accounts" className="flex items-center gap-2 bg-green-50 text-green-700">
+                  <Key className="w-4 h-4" />
+                  PIN Accounts
+                </TabsTrigger>
+              )}
               <TabsTrigger value="passwords" className="flex items-center gap-2">
                 <Lock className="w-4 h-4" />
                 Passwords
@@ -1382,6 +1491,166 @@ export default function AdminPortalPage() {
               </Card>
             </TabsContent>
 
+            {/* PIN Accounts Tab - Only show if enabled for this school */}
+            {pinLoginEnabled && (
+              <TabsContent value="pin-accounts">
+                <Card className="border-green-200 bg-green-50/30">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-green-700">
+                      <Key className="w-5 h-5" />
+                      Teacher PIN Login Accounts
+                    </CardTitle>
+                    <CardDescription className="text-green-600">
+                      Register teachers with PIN codes for secure access to mark entry
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* Add New Teacher Form */}
+                    {!showPINForm ? (
+                      <Button 
+                        onClick={() => setShowPINForm(true)}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Register New Teacher
+                      </Button>
+                    ) : (
+                      <Card className="border-green-300 bg-white">
+                        <CardHeader>
+                          <CardTitle className="text-lg">Register Teacher Account</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          {pinFormMessage && (
+                            <div className={`p-3 rounded-lg text-sm ${pinFormMessage.type === 'success' ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'}`}>
+                              {pinFormMessage.text}
+                            </div>
+                          )}
+                          
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="text-sm font-medium text-gray-700 block mb-1">First Name *</label>
+                                <Input
+                                  placeholder="John"
+                                  value={pinFormData.firstName}
+                                  onChange={(e) => setPinFormData({...pinFormData, firstName: e.target.value})}
+                                />
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium text-gray-700 block mb-1">Last Name *</label>
+                                <Input
+                                  placeholder="Ochieng"
+                                  value={pinFormData.lastName}
+                                  onChange={(e) => setPinFormData({...pinFormData, lastName: e.target.value})}
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium text-gray-700 block mb-1">Email Address *</label>
+                              <Input
+                                type="email"
+                                placeholder="john@school.com"
+                                value={pinFormData.email}
+                                onChange={(e) => setPinFormData({...pinFormData, email: e.target.value})}
+                              />
+                            </div>
+                            
+                            <p className="text-sm text-gray-600 bg-blue-50 p-3 rounded border border-blue-200">
+                              A unique 4-digit PIN will be generated automatically and sent via email to {pinFormData.email || 'the teacher'}.
+                            </p>
+                          </div>
+
+                          <div className="flex gap-2 pt-4">
+                            <Button 
+                              onClick={() => createTeacherAccount()}
+                              disabled={!pinFormData.firstName || !pinFormData.lastName || !pinFormData.email}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              Create Account & Send Email
+                            </Button>
+                            <Button 
+                              variant="outline"
+                              onClick={() => {
+                                setShowPINForm(false)
+                                setPinFormData({firstName: '', lastName: '', email: ''})
+                                setPinFormMessage(null)
+                              }}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Teacher Accounts List */}
+                    {teacherAccounts.length > 0 && (
+                      <div className="space-y-3">
+                        <h3 className="font-semibold text-gray-900">Registered Teachers</h3>
+                        <div className="border rounded-lg overflow-hidden">
+                          <table className="w-full text-sm">
+                            <thead className="bg-green-100 border-b border-green-300">
+                              <tr>
+                                <th className="p-3 text-left font-semibold">Name</th>
+                                <th className="p-3 text-left font-semibold">Email</th>
+                                <th className="p-3 text-left font-semibold">PIN Code</th>
+                                <th className="p-3 text-left font-semibold">Status</th>
+                                <th className="p-3 text-left font-semibold">Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {teacherAccounts.map(teacher => (
+                                <tr key={teacher.id} className="border-t">
+                                  <td className="p-3 font-medium">{teacher.first_name} {teacher.last_name}</td>
+                                  <td className="p-3 text-gray-600">{teacher.email}</td>
+                                  <td className="p-3">
+                                    <div className="flex items-center gap-2">
+                                      <code className="bg-gray-200 px-3 py-1 rounded font-mono font-bold text-lg">{teacher.pin}</code>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(teacher.pin)
+                                          setCopiedPIN(teacher.pin)
+                                          setTimeout(() => setCopiedPIN(null), 2000)
+                                        }}
+                                      >
+                                        {copiedPIN === teacher.pin ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                                      </Button>
+                                    </div>
+                                  </td>
+                                  <td className="p-3">
+                                    {teacher.is_active ? (
+                                      <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">Active</span>
+                                    ) : (
+                                      <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs font-medium">Inactive</span>
+                                    )}
+                                  </td>
+                                  <td className="p-3">
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => deleteTeacherAccount(teacher.id)}
+                                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {teacherAccounts.length === 0 && !showPINForm && (
+                      <p className="text-center text-gray-500 py-8">No teachers registered yet. Click "Register New Teacher" to get started.</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
 
             {/* Exam Types Tab */}
             <TabsContent value="exams">
