@@ -327,7 +327,7 @@ export default function AdminPortalPage() {
         })))
       }
 
-      // Load audit logs
+      // Load audit logs - simple and straightforward
       const { data: logsData } = await supabase
         .from('activity_logs')
         .select('*')
@@ -335,35 +335,14 @@ export default function AdminPortalPage() {
         .order('created_at', { ascending: false })
         .limit(100)
 
-      // Get class information for audit logs
-      let classMap: any = {}
-      if (logsData && logsData.length > 0) {
-        const classIds = [...new Set(logsData.map((log: any) => log.class_id).filter(Boolean))]
-        if (classIds.length > 0) {
-          const { data: classesData } = await supabase
-            .from('classes')
-            .select('id, name')
-            .in('id', classIds)
-          
-          if (classesData) {
-            classMap = classesData.reduce((acc: any, cls: any) => {
-              acc[cls.id] = cls.name
-              return acc
-            }, {})
-          }
-        }
-      }
-
       if (logsData) {
         setAuditLogs(logsData.map((log: any) => ({
           id: log.id,
           action: log.action,
           details: log.details,
-          performed_by: log.performed_by || 'Unknown',
-          teacher_pin: log.teacher_pin || 'Unknown',
+          performed_by: log.performed_by,
+          teacher_pin: log.teacher_pin,
           class_id: log.class_id,
-          class_name: log.class_id ? (classMap[log.class_id] || 'Unknown Class') : 'Unknown Class',
-          session_info: '',
           created_at: log.created_at
         })))
       }
@@ -1775,45 +1754,35 @@ export default function AdminPortalPage() {
                   ) : (
                     <div className="space-y-3 max-h-[600px] overflow-y-auto">
                       {auditLogs.map((log: any) => (
-                        <div key={log.id} className="border rounded-lg p-4 bg-gradient-to-r from-gray-50 to-white hover:shadow-md transition-shadow">
+                        <div key={log.id} className="border rounded-lg p-4 bg-white hover:shadow-lg transition-shadow">
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex-1 space-y-2">
-                              {/* Action and Class */}
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-bold text-sm capitalize bg-gradient-to-r from-blue-600 to-blue-700 text-white px-3 py-1 rounded-full">
+                              {/* Action Badge */}
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-sm capitalize bg-blue-600 text-white px-3 py-1 rounded">
                                   {log.action?.replace(/_/g, ' ')}
                                 </span>
-                                {log.class_name && log.class_name !== 'Unknown Class' && (
-                                  <span className="text-sm font-bold bg-gradient-to-r from-green-100 to-green-50 text-green-800 px-4 py-1 rounded-full border border-green-300">
-                                    {log.class_name}
-                                  </span>
-                                )}
                               </div>
 
-                              {/* Teacher PIN - Prominently displayed */}
-                              <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 border-2 border-yellow-400 p-3 rounded-lg">
-                                <p className="text-xs font-semibold text-gray-600 mb-1">Teacher PIN (Performed By):</p>
-                                <p className="text-lg font-bold font-mono text-yellow-700 tracking-widest">{log.teacher_pin}</p>
+                              {/* Teacher PIN */}
+                              <div className="bg-yellow-100 border border-yellow-400 p-2 rounded">
+                                <p className="text-sm font-mono font-bold text-yellow-800">
+                                  Teacher PIN: {log.teacher_pin || 'Unknown'}
+                                </p>
                               </div>
 
-                              {/* Details */}
+                              {/* What they did */}
                               {log.details && (
-                                <p className="text-xs text-gray-700 bg-gray-100 p-2 rounded">
-                                  <span className="font-semibold">Details:</span> {typeof log.details === 'object' 
-                                    ? JSON.stringify(log.details) 
-                                    : log.details}
+                                <p className="text-sm text-gray-700">
+                                  {typeof log.details === 'object' ? JSON.stringify(log.details) : log.details}
                                 </p>
                               )}
                             </div>
 
-                            {/* Timestamp */}
-                            <div className="text-right">
-                              <p className="text-xs text-gray-500 font-mono">
-                                {new Date(log.created_at).toLocaleDateString()}
-                              </p>
-                              <p className="text-xs text-gray-500 font-mono">
-                                {new Date(log.created_at).toLocaleTimeString()}
-                              </p>
+                            {/* When */}
+                            <div className="text-right text-xs text-gray-500">
+                              <p>{new Date(log.created_at).toLocaleDateString()}</p>
+                              <p>{new Date(log.created_at).toLocaleTimeString()}</p>
                             </div>
                           </div>
                         </div>
