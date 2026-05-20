@@ -12,6 +12,7 @@ export default function SubjectsPage() {
   const { currentClass } = useClass()
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [assignedSubjectIds, setAssignedSubjectIds] = useState<Set<string>>(new Set())
+  const [isClassTeacher, setIsClassTeacher] = useState(false)
   const [subjectName, setSubjectName] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -44,6 +45,11 @@ export default function SubjectsPage() {
         .eq('class_id', currentClass.id)
 
       if (error) throw error
+      
+      // Check if teacher is class teacher (has assignment with no subject_id)
+      const isClassTeacherAssignment = data?.some(a => !a.subject_id) || false
+      setIsClassTeacher(isClassTeacherAssignment)
+      
       const assignedIds = new Set(data?.map(a => a.subject_id).filter(Boolean) || [])
       setAssignedSubjectIds(assignedIds)
     } catch (error) {
@@ -208,7 +214,8 @@ export default function SubjectsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-8">
             {subjects.map((subject) => {
               const isAssigned = assignedSubjectIds.has(subject.id)
-              const canEdit = isAssigned
+              // Class teachers can edit all subjects, others can only edit assigned ones
+              const canEdit = isClassTeacher || isAssigned
               
               return (
                 <div
@@ -222,7 +229,7 @@ export default function SubjectsPage() {
                       {subject.name}
                     </h3>
                     <p className="text-xs text-gray-500 mt-1">
-                      {canEdit ? 'Assigned to you' : 'Not assigned'}
+                      {isClassTeacher ? 'Class teacher - can edit all' : isAssigned ? 'Assigned to you' : 'Not assigned'}
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -234,7 +241,7 @@ export default function SubjectsPage() {
                           ? 'text-blue-600 hover:bg-blue-50 cursor-pointer'
                           : 'text-gray-300 cursor-not-allowed'
                       }`}
-                      title={canEdit ? 'Edit subject' : 'Not assigned to you'}
+                      title={canEdit ? 'Edit subject' : 'Not allowed - not a class teacher'}
                     >
                       <Edit2 className="w-5 h-5" />
                     </button>
@@ -246,7 +253,7 @@ export default function SubjectsPage() {
                           ? 'text-red-600 hover:bg-red-50 cursor-pointer'
                           : 'text-gray-300 cursor-not-allowed'
                       }`}
-                      title={canEdit ? 'Delete subject' : 'Not assigned to you'}
+                      title={canEdit ? 'Delete subject' : 'Not allowed - not a class teacher'}
                     >
                       <Trash2 className="w-5 h-5" />
                     </button>

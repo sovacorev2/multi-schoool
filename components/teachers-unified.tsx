@@ -14,6 +14,12 @@ interface Teacher {
   pin?: string
 }
 
+interface ClassTeacherAssignment {
+  teacherId: string
+  classId: string
+  teacherName: string
+}
+
 interface Assignment {
   id: string
   user_id: string
@@ -82,11 +88,10 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
       .eq('school_id', schoolId)
       .order('display_order')
 
-    // Load all subjects
+    // Load all subjects (no school_id filter - subjects belong to classes)
     const { data: subjectsRes, error: subjectsError } = await supabase
       .from('subjects')
       .select('*')
-      .eq('school_id', schoolId)
       .order('name')
 
     console.log('[v0] Subjects loaded:', { subjectsRes, subjectsError, schoolId })
@@ -110,6 +115,14 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
       .order('name')
 
     setClassSubjects(subjectsRes || [])
+  }
+
+  // Get classes where teacher is class teacher (no specific subject assigned)
+  const getTeacherClassTeacherFor = (teacherId: string) => {
+    return assignments
+      .filter(a => a.user_id === teacherId && !a.subject_id && a.is_active)
+      .map(a => classes.find(c => c.id === a.class_id)?.name)
+      .filter(Boolean)
   }
 
   // Create new teacher
@@ -401,9 +414,17 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
                 <div key={teacher.id} className="bg-white p-4 rounded-lg border border-gray-200">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
-                      <h4 className="font-semibold text-base">
-                        {teacher.first_name} {teacher.last_name}
-                      </h4>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="font-semibold text-base">
+                          {teacher.first_name} {teacher.last_name}
+                        </h4>
+                        {/* Class Teacher Badges */}
+                        {getTeacherClassTeacherFor(teacher.id).map((className) => (
+                          <span key={className} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-medium">
+                            Class Teacher: {className}
+                          </span>
+                        ))}
+                      </div>
                       <p className="text-sm text-gray-600">{teacher.email}</p>
                       <p className="text-xs text-gray-500 mt-1">PIN: {teacher.pin}</p>
 
