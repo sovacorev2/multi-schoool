@@ -314,7 +314,7 @@ export default function MarksPage() {
       teacher_pin: teacherPin,
       action: "session_created",
       details: `Created session: ${examTypes.find(e => e.id === newSession.exam_type_id)?.name} - ${newSession.term} ${newSession.year} for ${currentClass.name}`,
-      performed_by: currentClass.name,
+      performed_by: teacherPin || 'Unknown',
     });
 
     setSessions([data, ...sessions]);
@@ -398,7 +398,7 @@ export default function MarksPage() {
       teacher_pin: teacherPin,
       action: "marks_submitted",
       details: `Submitted marks for ${learners.length} learners in ${subjects.length} subjects - ${currentClass.name}`,
-      performed_by: currentClass.name,
+      performed_by: teacherPin || 'Unknown',
     });
 
     setIsSaving(false);
