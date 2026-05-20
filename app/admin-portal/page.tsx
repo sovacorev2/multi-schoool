@@ -134,6 +134,10 @@ export default function AdminPortalPage() {
   const [passwordError, setPasswordError] = useState('')
   const [isAuthenticating, setIsAuthenticating] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [pinRequired, setPinRequired] = useState(false)
+  const [pin, setPin] = useState('')
+  const [pinError, setPinError] = useState('')
+  const [isValidatingPin, setIsValidatingPin] = useState(false)
 
   // Data state
   const [school, setSchool] = useState<School | null>(null)
@@ -257,8 +261,13 @@ export default function AdminPortalPage() {
 
       if (schoolData && schoolData.admin_password === password) {
         setSchool(schoolData)
-        setIsAuthenticated(true)
-        loadAdminData()
+        // If PIN management is enabled, show PIN entry page instead of full access
+        if (schoolData.feature_pin_management === true) {
+          setPinRequired(true)
+        } else {
+          setIsAuthenticated(true)
+          loadAdminData()
+        }
       } else {
         setPasswordError('Incorrect admin password')
       }
@@ -266,6 +275,47 @@ export default function AdminPortalPage() {
       setPasswordError('An error occurred. Please try again.')
     } finally {
       setIsAuthenticating(false)
+    }
+  }
+
+  // Handle PIN validation
+  const handlePinSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setPinError('')
+    setIsValidatingPin(true)
+
+    try {
+      if (!pin || pin.length === 0) {
+        setPinError('Please enter your PIN')
+        setIsValidatingPin(false)
+        return
+      }
+
+      const supabase = createClient()
+      
+      // Check if this PIN exists in teacher_accounts for this school
+      const { data: teacherData } = await supabase
+        .from('teacher_accounts')
+        .select('id, pin')
+        .eq('school_id', currentSchool?.id)
+        .eq('pin', pin)
+        .single()
+
+      if (teacherData) {
+        // PIN is valid - store it and grant access
+        localStorage.setItem('teacher_pin', pin)
+        localStorage.setItem('teacher_id', teacherData.id)
+        setPinRequired(false)
+        setIsAuthenticated(true)
+        setPin('')
+        loadAdminData()
+      } else {
+        setPinError('Invalid PIN')
+      }
+    } catch (error) {
+      setPinError('PIN not found. Please try again.')
+    } finally {
+      setIsValidatingPin(false)
     }
   }
 
@@ -887,6 +937,80 @@ export default function AdminPortalPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full"></div>
+      </div>
+    )
+  }
+
+  // PIN screen (appears after password is entered if PIN management is enabled)
+  if (pinRequired && !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md shadow-lg">
+          <CardHeader className="text-center space-y-4 pb-6">
+            <div className="flex justify-center mb-4">
+              <div 
+                className="w-16 h-16 rounded-full flex items-center justify-center"
+                style={{ backgroundColor: currentSchool.primary_color || '#2563eb' }}
+              >
+                <Lock className="w-8 h-8 text-white" />
+              </div>
+            </div>
+            <div>
+              <CardTitle className="text-2xl font-bold mb-2">Enter Your PIN</CardTitle>
+              <CardDescription className="text-base text-gray-600">
+                Teacher PIN verification required
+              </CardDescription>
+            </div>
+          </CardHeader>
+
+          <CardContent>
+            <form onSubmit={handlePinSubmit} className="space-y-5">
+              {pinError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                  {pinError}
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Your PIN</label>
+                <Input
+                  type="password"
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value)}
+                  placeholder="Enter your 4-digit PIN"
+                  maxLength={6}
+                  className="text-center text-2xl tracking-widest"
+                  required
+                  autoFocus
+                />
+              </div>
+
+              <Button
+                type="submit"
+                disabled={isValidatingPin || !pin}
+                className="w-full h-11 text-white font-medium"
+                style={{ backgroundColor: currentSchool.primary_color || '#2563eb' }}
+              >
+                {isValidatingPin ? 'Verifying...' : 'Verify PIN'}
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setPinRequired(false)
+                  setPassword('')
+                  setPin('')
+                  setPinError('')
+                }}
+                className="w-full"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     )
   }
