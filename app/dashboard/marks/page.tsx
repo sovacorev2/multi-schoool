@@ -149,7 +149,9 @@ export default function MarksPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
-  
+  const [assignedSubjectIds, setAssignedSubjectIds] = useState<Set<string>>(new Set());
+  const [isShuletech, setIsShuletech] = useState(false);
+  const [isClassTeacher, setIsClassTeacher] = useState(false);
 
   // Session selection
   const [selectedSessionId, setSelectedSessionId] = useState<string>("");
