@@ -16,6 +16,7 @@
     "@radix-ui/react-select": "^2.0.0",
     "@radix-ui/react-slot": "^1.2.4-rc.1761582029795",
     "@radix-ui/react-tabs": "^1.0.4",
+    "@sendgrid/mail": "^8.1.6",
     "@supabase/ssr": "0.8.0",
     "@supabase/supabase-js": "2.57.4",
     "@vercel/analytics": "1.6.1",

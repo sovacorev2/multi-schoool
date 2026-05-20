@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import sgMail from '@sendgrid/mail'
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,14 +13,13 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    console.log('[v0] Server: API key available:', !!process.env.RESEND_API_KEY)
     console.log('[v0] Server: Sending email to', email)
 
-    // Check if API key is configured
-    if (!process.env.RESEND_API_KEY) {
-      console.error('[v0] RESEND_API_KEY not configured')
+    // Check if SendGrid API key is configured
+    if (!process.env.SENDGRID_API_KEY) {
+      console.error('[v0] SENDGRID_API_KEY not configured')
       return NextResponse.json(
-        { success: false, error: 'RESEND_API_KEY not configured on server' },
+        { success: false, error: 'SENDGRID_API_KEY not configured on server' },
         { status: 500 }
       )
     }
@@ -134,34 +133,22 @@ export async function POST(req: NextRequest) {
     </html>
     `
 
-    // Initialize Resend with API key from server environment
-    const resend = new Resend(process.env.RESEND_API_KEY)
+    // Initialize SendGrid
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY)
 
-    console.log('[v0] Sending email via Resend...')
+    console.log('[v0] Sending email via SendGrid...')
 
-    // Send email via Resend
-    // Using account owner email as sender - this is allowed in Resend's test mode
-    // Once you have more senders verified, you can add hello@shuletechsolutions.co.ke
-    const response = await resend.emails.send({
-      from: 'ShuleTech <onboarding@resend.dev>',
+    // Send email via SendGrid
+    const response = await sgMail.send({
       to: email,
+      from: 'hello@shuletechsolutions.co.ke',
       subject: `Welcome to ShuleTech ${schoolName} - Your PIN: ${pin}`,
       html: emailHTML,
     })
 
-    console.log('[v0] Resend response:', response)
-
-    if (response.error) {
-      console.error('[v0] Resend error:', response.error)
-      return NextResponse.json(
-        { success: false, error: response.error.message },
-        { status: 500 }
-      )
-    }
-
     console.log('[v0] Email sent successfully!')
-    console.log('[v0] From: onboarding@resend.dev')
-    console.log('[v0] Message ID:', response.id)
+    console.log('[v0] From: hello@shuletechsolutions.co.ke')
+    console.log('[v0] Message ID:', response[0].headers['x-message-id'])
     console.log('[v0] To:', email)
     console.log('[v0] PIN:', pin)
 
@@ -169,12 +156,13 @@ export async function POST(req: NextRequest) {
       success: true,
       message: 'Welcome email sent successfully',
       email: email,
-      messageId: response.id,
+      messageId: response[0].headers['x-message-id'],
     })
   } catch (error) {
     console.error('[v0] Error sending email:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Failed to send email'
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : 'Failed to send email' },
+      { success: false, error: errorMessage },
       { status: 500 },
     )
   }
