@@ -4,9 +4,8 @@ import React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
 import { useClass } from "@/lib/class-context"
-import { verifyTeacherPassword, setupTeacherPassword } from "@/app/actions/auth"
+import { verifyTeacherPassword, setupTeacherPassword, verifyTeacherPin } from "@/app/actions/auth"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -95,32 +94,20 @@ export default function TeacherAuthPage() {
         return
       }
 
-      // Find teacher account by PIN - the PIN is what identifies the teacher
-      const supabase = createClient()
-      const { data: teacher, error } = await supabase
-        .from('teacher_accounts')
-        .select('id, pin, first_name, email')
-        .eq('pin', pin)
-        .single()
-
-      if (error || !teacher) {
-        setError("PIN not found. Check the email sent to you.")
-        setIsLoading(false)
-        return
-      }
-
-      // Verify PIN matches (should always match since we queried by PIN, but double-check)
-      if (teacher.pin !== pin) {
-        setError("Incorrect PIN. Check the email sent to you.")
+      // Verify PIN using server action
+      const result = await verifyTeacherPin(pin)
+      
+      if (!result.success) {
+        setError(result.error || "PIN verification failed")
         setIsLoading(false)
         return
       }
 
       // PIN verified - store teacher in session and redirect to dashboard
       localStorage.setItem('teacher_authenticated', 'true')
-      localStorage.setItem('teacher_id', teacher.id)
+      localStorage.setItem('teacher_id', result.teacher_id!)
       localStorage.setItem('class_id', classId!)
-      localStorage.setItem('teacher_name', teacher.first_name || 'Teacher')
+      localStorage.setItem('teacher_name', result.teacher_name || 'Teacher')
       router.push("/dashboard")
     } catch (err) {
       console.error('[v0] PIN verification error:', err)
