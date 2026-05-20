@@ -7,6 +7,7 @@ import React, { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useSchool } from '@/lib/school-context'
+import { sortClassesByLevel } from '@/lib/class-sort-utils'
 import {
   Select,
   SelectContent,
@@ -315,7 +316,7 @@ export default function AdminPortalPage() {
         supabase.from('teacher_assignments').select('*').eq('school_id', currentSchool.id),
       ])
 
-      if (classesRes.data) setClasses(classesRes.data)
+      if (classesRes.data) setClasses(sortClassesByLevel(classesRes.data))
       if (examTypesRes.data) setExamTypes(examTypesRes.data)
       if (subjectsRes.data) setSubjects(subjectsRes.data)
       

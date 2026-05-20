@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { verifyAdminPassword } from "@/app/actions/auth"
 import { createClient } from "@/lib/supabase/client"
+import { sortClassesByLevel } from "@/lib/class-sort-utils"
 import { useClass } from "@/lib/class-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -46,7 +47,7 @@ export default function AdminLoginPage() {
             supabase.from('classes').select('*').order('display_order'),
             supabase.from('exam_types').select('*').order('name'),
           ])
-          if (classesRes.data) setClasses(classesRes.data)
+          if (classesRes.data) setClasses(sortClassesByLevel(classesRes.data))
           if (examTypesRes.data) setExamTypes(examTypesRes.data)
         } catch (err) {
           console.error('[v0] Error fetching data:', err)

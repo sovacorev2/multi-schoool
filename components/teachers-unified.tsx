@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { sendTeacherWelcomeEmail } from '@/lib/email-service'
+import { sortClassesByLevel } from '@/lib/class-sort-utils'
 import type { Subject } from '@/lib/types'
 
 interface Teacher {
@@ -74,18 +75,11 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
       .from('classes')
       .select('*')
       .eq('school_id', schoolId)
-      .order('name')
-
-    // Load all subjects
-    const { data: subjectsRes } = await supabase
-      .from('subjects')
-      .select('*')
-      .eq('school_id', schoolId)
-      .order('name')
+      .order('display_order')
 
     setTeachers(teachersRes || [])
     setAssignments(assignmentsRes || [])
-    setClasses(classesRes || [])
+    setClasses(sortClassesByLevel(classesRes || []))
     setSubjects(subjectsRes || [])
   }
 

@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic'
 import React from "react"
 import { formatGradeWithPoints, getPerformanceLevelWithPoints, getGradeLevelByClass } from '@/lib/grading-utils'
 import { getSubjectDisplay, normalizeSubjectName, areSubjectsEqual } from '@/lib/subject-utils'
+import { sortClassesByLevel } from '@/lib/class-sort-utils'
 
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -817,7 +818,7 @@ export default function MarklistPage() {
     if (!currentSchool?.id) return
     const supabase = createClient()
     supabase.from('classes').select('id, name').eq('school_id', currentSchool?.id).order('display_order').then(({ data }) => {
-      setAllClasses(data || [])
+      setAllClasses(sortClassesByLevel(data || []))
     })
   }, [currentSchool?.id])
 

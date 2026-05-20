@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { sortClassesByLevel } from '@/lib/class-sort-utils'
 import { useClass } from '@/lib/class-context'
 import { useSchool } from '@/lib/school-context'
 import { isNetworkError, getFallbackData, cacheFallbackData } from '@/lib/fallback-data'
@@ -208,7 +209,7 @@ function HomePageContent() {
         }
 
         if (classesRes.data) {
-          setClasses(classesRes.data)
+          setClasses(sortClassesByLevel(classesRes.data))
           cacheFallbackData('classes', classesRes.data)
         }
         if (examTypesRes.data) {

@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { sortClassesByLevel } from '@/lib/class-sort-utils'
 import { useClass } from '@/lib/class-context'
 import {
   Select,
@@ -55,7 +56,7 @@ export default function LoginPage() {
           supabase.from('exam_types').select('*').order('name'),
         ])
 
-        if (classesRes.data) setClasses(classesRes.data)
+        if (classesRes.data) setClasses(sortClassesByLevel(classesRes.data))
         if (examTypesRes.data) setExamTypes(examTypesRes.data)
       } catch (err) {
         setError('Failed to load data. Please check your Supabase configuration.')
