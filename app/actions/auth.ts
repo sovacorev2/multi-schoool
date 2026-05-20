@@ -81,6 +81,38 @@ export async function verifyTeacherPassword(classId: string, password: string): 
   return { success: false, error: "Incorrect password" }
 }
 
+export async function verifyTeacherPin(pin: string): Promise<{ success: boolean; error?: string; teacher_id?: string; teacher_name?: string }> {
+  const supabase = await createClient()
+  
+  try {
+    // Find teacher by PIN
+    const { data: teacher, error } = await supabase
+      .from('teacher_accounts')
+      .select('id, pin, first_name, email')
+      .eq('pin', pin)
+      .single()
+
+    if (error || !teacher) {
+      return { success: false, error: "PIN not found. Check the email sent to you." }
+    }
+
+    // Verify PIN matches
+    if (teacher.pin !== pin) {
+      return { success: false, error: "Incorrect PIN." }
+    }
+
+    // PIN verified successfully
+    return { 
+      success: true, 
+      teacher_id: teacher.id,
+      teacher_name: teacher.first_name || 'Teacher'
+    }
+  } catch (err) {
+    console.error('[v0] PIN verification error:', err)
+    return { success: false, error: "An error occurred during PIN verification." }
+  }
+}
+
 export async function setupTeacherPassword(classId: string, password: string, confirmPassword: string): Promise<{ success: boolean; error?: string }> {
   if (password !== confirmPassword) {
     return { success: false, error: "Passwords do not match" }
