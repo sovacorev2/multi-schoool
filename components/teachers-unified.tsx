@@ -207,8 +207,17 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
         }
       })
 
-      console.log('[v0] Notifying teacher:', teacher.email)
+      console.log('[v0] Teacher:', teacher)
+      console.log('[v0] Teacher assignments found:', teacherAssignments.length)
       console.log('[v0] Enriched assignments:', enrichedAssignments)
+      console.log('[v0] Email data to send:', {
+        email: teacher.email,
+        firstName: teacher.first_name,
+        lastName: teacher.last_name,
+        pin: teacher.pin,
+        schoolName,
+        assignments: enrichedAssignments,
+      })
 
       const result = await sendTeacherWelcomeEmail({
         email: teacher.email,

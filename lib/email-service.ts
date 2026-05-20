@@ -33,6 +33,11 @@ export async function sendTeacherWelcomeEmail(
   try {
     const { email, firstName, lastName, pin, schoolName, assignments } = data
 
+    // Defensive check for assignments
+    if (!assignments || !Array.isArray(assignments)) {
+      return { success: false, error: 'Assignments array is missing or invalid' }
+    }
+
     // Build assignments table HTML
     const assignmentsHTML = assignments
       .map(
