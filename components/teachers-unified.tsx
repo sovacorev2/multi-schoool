@@ -32,6 +32,7 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
   const [teachers, setTeachers] = useState<Teacher[]>([])
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [classes, setClasses] = useState<any[]>([])
+  const [subjects, setSubjects] = useState<Subject[]>([])
   const [classSubjects, setClassSubjects] = useState<Subject[]>([])
   const [selectedClass, setSelectedClass] = useState('')
 
@@ -75,9 +76,17 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
       .eq('school_id', schoolId)
       .order('name')
 
+    // Load all subjects
+    const { data: subjectsRes } = await supabase
+      .from('subjects')
+      .select('*')
+      .eq('school_id', schoolId)
+      .order('name')
+
     setTeachers(teachersRes || [])
     setAssignments(assignmentsRes || [])
     setClasses(classesRes || [])
+    setSubjects(subjectsRes || [])
   }
 
   // Load subjects when class is selected
@@ -196,7 +205,7 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
       // Enrich assignments with class and subject names
       const enrichedAssignments = teacherAssignments.map(a => {
         const classData = classes.find(c => c.id === a.class_id)
-        const subjectData = classSubjects.find(s => s.id === a.subject_id)
+        const subjectData = subjects.find(s => s.id === a.subject_id)
 
         return {
           className: classData?.name || 'Unknown Class',
@@ -314,10 +323,13 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
                           <ul className="space-y-1 text-gray-600">
                             {teacherAssignments.map((a) => {
                               const classData = classes.find((c) => c.id === a.class_id)
+                              // Find subject name from allSubjects (need to load all subjects)
+                              const subjectData = subjects.find((s) => s.id === a.subject_id)
                               return (
                                 <li key={a.id}>
                                   {classData?.name || 'Unknown Class'}
-                                  {a.subject_id && ` - ${a.subject_id}`}
+                                  {a.subject_id && ` - ${subjectData?.name || 'Unknown Subject'}`}
+                                  {!a.subject_id && ' - All Subjects'}
                                 </li>
                               )
                             })}
