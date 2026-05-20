@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useClass } from "@/lib/class-context";
 import { useSchool } from "@/lib/school-context";
+import { isShuleTechSchool } from "@/lib/shuletech-features";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
