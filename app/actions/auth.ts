@@ -32,13 +32,13 @@ async function getAdminPassword(): Promise<string> {
   return data?.value || "admin26"
 }
 
-export async function verifyTeacherPassword(classId: string, password: string): Promise<{ success: boolean; error?: string; needsSetup?: boolean; teacher_id?: string }> {
+export async function verifyTeacherPassword(classId: string, password: string): Promise<{ success: boolean; error?: string; needsSetup?: boolean; teacher_id?: string; pinEnabled?: boolean }> {
   const supabase = await createClient()
   
   // Get class info
   const { data: classData, error } = await supabase
     .from("classes")
-    .select("*")
+    .select("*, schools(enable_pin_login)")
     .eq("id", classId)
     .single()
   
@@ -54,6 +54,9 @@ export async function verifyTeacherPassword(classId: string, password: string): 
     return { success: false, needsSetup: true }
   }
   
+  // Check if PIN is enabled for this school
+  const pinEnabled = classData.schools?.enable_pin_login || false
+  
   // Try plain text comparison first (for passwords set via admin portal like "welcome")
   if (password === storedPassword) {
     const cookieStore = await cookies()
@@ -63,7 +66,7 @@ export async function verifyTeacherPassword(classId: string, password: string): 
       sameSite: "lax",
       maxAge: 60 * 60 * 8, // 8 hours
     })
-    return { success: true, teacher_id: classId }
+    return { success: true, teacher_id: classId, pinEnabled }
   }
   
   // Also try hashed password (for backwards compatibility with passwords set by teachers)
@@ -75,7 +78,7 @@ export async function verifyTeacherPassword(classId: string, password: string): 
       sameSite: "lax",
       maxAge: 60 * 60 * 8,
     })
-    return { success: true, teacher_id: classId }
+    return { success: true, teacher_id: classId, pinEnabled }
   }
   
   return { success: false, error: "Incorrect password" }

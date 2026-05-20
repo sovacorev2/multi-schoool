@@ -21,6 +21,7 @@ export default function TeacherAuthPage() {
   const [error, setError] = useState("")
   const [needsSetup, setNeedsSetup] = useState(false)
   const [showPinScreen, setShowPinScreen] = useState(false)
+  const [pinEnabled, setPinEnabled] = useState(false)
   
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -42,8 +43,20 @@ export default function TeacherAuthPage() {
   useEffect(() => {
     if (!classId) {
       router.push("/")
+    } else {
+      // Fetch school's PIN setting based on class
+      fetchPinSetting()
     }
   }, [classId, router])
+
+  const fetchPinSetting = async () => {
+    try {
+      // This will be fetched when verifying password via the auth action
+      // For now, we'll check after password verification
+    } catch (err) {
+      console.error('[v0] Error fetching PIN setting:', err)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -63,10 +76,18 @@ export default function TeacherAuthPage() {
         // Verifying existing password
         const result = await verifyTeacherPassword(classId!, password)
         if (result.success) {
-          // Password verified - show PIN screen
-          // (We don't store teacherId yet - will get it from PIN)
-          setShowPinScreen(true)
-          setPassword("")
+          // Check if PIN is enabled for this school
+          if (result.pinEnabled) {
+            // PIN is enabled - show PIN screen
+            setPinEnabled(true)
+            setShowPinScreen(true)
+            setPassword("")
+          } else {
+            // PIN not enabled - go directly to dashboard
+            localStorage.setItem('teacher_authenticated', 'true')
+            localStorage.setItem('class_id', classId!)
+            router.push("/dashboard")
+          }
         } else if (result.needsSetup) {
           setNeedsSetup(true)
           setPassword("")
