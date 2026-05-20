@@ -266,6 +266,26 @@ export default function SuperAdminPage() {
     setSavingSchool(null)
   }
 
+  async function enablePilotFeatures(schoolId: string) {
+    setSavingSchool(schoolId)
+    const { error } = await supabase
+      .from('schools')
+      .update({ 
+        feature_pin_management: true
+      })
+      .eq('id', schoolId)
+    
+    if (!error) {
+      setSchools(schools.map(s => 
+        s.id === schoolId ? { 
+          ...s, 
+          feature_pin_management: true
+        } : s
+      ))
+    }
+    setSavingSchool(null)
+  }
+
   const filteredSchools = schools.filter(school => 
     school.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     school.code.toLowerCase().includes(searchTerm.toLowerCase())
@@ -564,7 +584,7 @@ export default function SuperAdminPage() {
                           {school.subscription_plan.toUpperCase()}
                         </span>
                         <span className="text-gray-400">|</span>
-                        <span>{getFeatureCount(school)}/4 features</span>
+                        <span>{getFeatureCount(school)}/5 features</span>
                       </div>
                     </div>
                   </div>
@@ -592,6 +612,14 @@ export default function SuperAdminPage() {
                       >
                         <Check className="w-4 h-4 mr-1" />
                         Enable All Features
+                      </Button>
+                      <Button 
+                        size="sm"
+                        onClick={() => enablePilotFeatures(school.id)}
+                        className="bg-purple-600 hover:bg-purple-700"
+                      >
+                        <Shield className="w-4 h-4 mr-1" />
+                        Enable Pilot Features
                       </Button>
                       <Button 
                         size="sm" 
