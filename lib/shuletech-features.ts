@@ -10,7 +10,22 @@ export const SHULETECH_SCHOOL_NAME = 'ShuleTech'
  * Check if a school is ShuleTech (pilot school for new features)
  */
 export function isShuleTechSchool(schoolName?: string): boolean {
-  return schoolName?.toLowerCase() === SHULETECH_SCHOOL_NAME.toLowerCase()
+  if (!schoolName) {
+    console.log('[v0] isShuleTechSchool: schoolName is empty/null')
+    return false
+  }
+  
+  const normalized = schoolName.toLowerCase().trim()
+  const isMatch = normalized === SHULETECH_SCHOOL_NAME.toLowerCase()
+  
+  console.log('[v0] isShuleTechSchool check:', { 
+    input: schoolName, 
+    normalized, 
+    expected: SHULETECH_SCHOOL_NAME.toLowerCase(),
+    isMatch 
+  })
+  
+  return isMatch
 }
 
 /**

@@ -290,6 +290,9 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
 
   // Send email to teacher (ShuleTech only)
   const notifyTeacher = async (teacher: Teacher) => {
+    console.log('[v0] notifyTeacher called with schoolName:', schoolName)
+    console.log('[v0] isShuleTechSchool check:', isShuleTechSchool(schoolName))
+    
     // Only send emails for ShuleTech school
     if (!isShuleTechSchool(schoolName)) {
       setMessage({ type: 'error', text: 'Email notifications are only available for ShuleTech at this time' })
