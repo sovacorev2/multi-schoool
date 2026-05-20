@@ -327,13 +327,32 @@ export default function AdminPortalPage() {
         })))
       }
 
-      // Load audit logs with class information
+      // Load audit logs
       const { data: logsData } = await supabase
         .from('activity_logs')
-        .select('*, classes(id, name)')
+        .select('*')
         .eq('school_id', currentSchool.id)
         .order('created_at', { ascending: false })
         .limit(100)
+
+      // Get class information for audit logs
+      let classMap: any = {}
+      if (logsData && logsData.length > 0) {
+        const classIds = [...new Set(logsData.map((log: any) => log.class_id).filter(Boolean))]
+        if (classIds.length > 0) {
+          const { data: classesData } = await supabase
+            .from('classes')
+            .select('id, name')
+            .in('id', classIds)
+          
+          if (classesData) {
+            classMap = classesData.reduce((acc: any, cls: any) => {
+              acc[cls.id] = cls.name
+              return acc
+            }, {})
+          }
+        }
+      }
 
       if (logsData) {
         setAuditLogs(logsData.map((log: any) => ({
@@ -343,7 +362,7 @@ export default function AdminPortalPage() {
           performed_by: log.performed_by || 'Unknown',
           teacher_pin: log.teacher_pin || 'Unknown',
           class_id: log.class_id,
-          class_name: log.classes?.name || 'Unknown Class',
+          class_name: log.class_id ? (classMap[log.class_id] || 'Unknown Class') : 'Unknown Class',
           session_info: '',
           created_at: log.created_at
         })))
