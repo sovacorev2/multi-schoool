@@ -282,7 +282,7 @@ export default function AdminPortalPage() {
         supabase.from('exam_types').select('*').eq('school_id', currentSchool.id).order('name'),
         // Subjects don't have school_id - they belong to classes. Query without school filter.
         supabase.from('subjects').select('*').order('name'),
-        supabase.from('schools').select('enable_pin_login').eq('id', currentSchool.id).single(),
+        supabase.from('schools').select('*').eq('id', currentSchool.id).single(),
         supabase.from('teacher_accounts').select('*').eq('school_id', currentSchool.id),
         supabase.from('teacher_assignments').select('*').eq('school_id', currentSchool.id),
       ])
@@ -293,7 +293,7 @@ export default function AdminPortalPage() {
       
       // Load PIN login settings
       if (schoolRes.data) {
-        setPinLoginEnabled(schoolRes.data.enable_pin_login === true)
+        setPinLoginEnabled(schoolRes.data.feature_pin_management === true)
       }
       
       // Load teacher accounts
