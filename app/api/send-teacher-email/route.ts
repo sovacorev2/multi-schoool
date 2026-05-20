@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { Resend } from 'resend'
 
 export async function POST(req: NextRequest) {
   try {
@@ -9,6 +10,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 },
+      )
+    }
+
+    console.log('[v0] Server: API key available:', !!process.env.RESEND_API_KEY)
+    console.log('[v0] Server: Sending email to', email)
+
+    // Check if API key is configured
+    if (!process.env.RESEND_API_KEY) {
+      console.error('[v0] RESEND_API_KEY not configured')
+      return NextResponse.json(
+        { success: false, error: 'RESEND_API_KEY not configured on server' },
+        { status: 500 }
       )
     }
 
@@ -121,40 +134,44 @@ export async function POST(req: NextRequest) {
     </html>
     `
 
-    // EMAIL SERVICE INTEGRATION
-    // Currently configured to send from: shuletech1@gmail.com
-    // TODO: Integrate with actual email service
-    
-    console.log('[v0] Teacher welcome email generated')
-    console.log('[v0] Recipient:', email)
-    console.log('[v0] PIN:', pin)
-    console.log('[v0] Teacher:', firstName, lastName)
-    console.log('[v0] School:', schoolName)
+    // Initialize Resend with API key from server environment
+    const resend = new Resend(process.env.RESEND_API_KEY)
 
-    // In production, use services like:
-    // - Resend (resend.com)
-    // - SendGrid
-    // - Mailgun
-    // - AWS SES
-    // Configure to send FROM shuletech1@gmail.com
-    
-    // Example with Resend:
-    // const response = await resend.emails.send({
-    //   from: 'ShuleTech <shuletech1@gmail.com>',
-    //   to: email,
-    //   subject: `Welcome to ShuleTech ${schoolName} - Your PIN: ${pin}`,
-    //   html: emailHTML,
-    // })
+    console.log('[v0] Sending email via Resend...')
+
+    // Send email via Resend
+    const response = await resend.emails.send({
+      from: 'ShuleTech <shuletech1@gmail.com>',
+      to: email,
+      subject: `Welcome to ShuleTech ${schoolName} - Your PIN: ${pin}`,
+      html: emailHTML,
+    })
+
+    console.log('[v0] Resend response:', response)
+
+    if (response.error) {
+      console.error('[v0] Resend error:', response.error)
+      return NextResponse.json(
+        { success: false, error: response.error.message },
+        { status: 500 }
+      )
+    }
+
+    console.log('[v0] Email sent successfully!')
+    console.log('[v0] Message ID:', response.id)
+    console.log('[v0] To:', email)
+    console.log('[v0] PIN:', pin)
 
     return NextResponse.json({
       success: true,
       message: 'Welcome email sent successfully',
       email: email,
+      messageId: response.id,
     })
   } catch (error) {
     console.error('[v0] Error sending email:', error)
     return NextResponse.json(
-      { error: 'Failed to send email' },
+      { success: false, error: error instanceof Error ? error.message : 'Failed to send email' },
       { status: 500 },
     )
   }
