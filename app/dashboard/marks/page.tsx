@@ -307,7 +307,21 @@ export default function MarksPage() {
     }
 
     // Log the action with teacher PIN and class ID
-    const teacherPin = typeof window !== 'undefined' ? localStorage.getItem('teacher_pin') : null
+    let teacherPin = typeof window !== 'undefined' ? localStorage.getItem('teacher_pin') : null
+    
+    // If PIN not in localStorage, fetch from database
+    if (!teacherPin && typeof window !== 'undefined') {
+      const teacherId = localStorage.getItem('teacher_id')
+      if (teacherId) {
+        const { data: teacherData } = await supabase
+          .from('teacher_accounts')
+          .select('pin')
+          .eq('id', teacherId)
+          .single()
+        teacherPin = teacherData?.pin || null
+      }
+    }
+    
     await supabase.from("activity_logs").insert({
       school_id: currentSchool?.id,
       class_id: currentClass?.id,
@@ -391,7 +405,21 @@ export default function MarksPage() {
     }
 
     // Log the action with teacher PIN and class ID for audit trail
-    const teacherPin = typeof window !== 'undefined' ? localStorage.getItem('teacher_pin') : null
+    let teacherPin = typeof window !== 'undefined' ? localStorage.getItem('teacher_pin') : null
+    
+    // If PIN not in localStorage, fetch from database
+    if (!teacherPin && typeof window !== 'undefined') {
+      const teacherId = localStorage.getItem('teacher_id')
+      if (teacherId) {
+        const { data: teacherData } = await supabase
+          .from('teacher_accounts')
+          .select('pin')
+          .eq('id', teacherId)
+          .single()
+        teacherPin = teacherData?.pin || null
+      }
+    }
+    
     await supabase.from("activity_logs").insert({
       school_id: currentSchool?.id,
       class_id: currentClass?.id,
