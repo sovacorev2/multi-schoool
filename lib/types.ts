@@ -5,6 +5,7 @@ export interface Class {
   password: string | null
   display_order: number
   teacher_name: string | null
+  school_id: string
   created_at: string
 }
 
