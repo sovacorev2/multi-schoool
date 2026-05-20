@@ -780,6 +780,7 @@ export default function AdminPortalPage() {
 
     try {
       const supabase = createClient()
+      console.log('[v0] Assigning teacher:', { assignFormData, schoolId: currentSchool?.id })
 
       const { data, error } = await supabase
         .from('teacher_assignments')
@@ -793,7 +794,7 @@ export default function AdminPortalPage() {
         .select()
 
       if (error) {
-        console.error('[v0] Assignment error:', error)
+        console.error('[v0] Assignment insert error:', error)
         // Check for duplicate constraint error
         if (error.message && error.message.includes('duplicate')) {
           setAssignMessage({ type: 'error', text: 'This teacher is already assigned to this class and subject' })
@@ -803,13 +804,15 @@ export default function AdminPortalPage() {
         return
       }
 
-
+      console.log('[v0] Assignment inserted:', data)
 
       // Reload assignments
       const { data: newAssignments } = await supabase
         .from('teacher_assignments')
         .select('*')
         .eq('school_id', currentSchool?.id)
+
+      console.log('[v0] Reloaded assignments:', newAssignments)
 
       if (newAssignments) {
         setTeacherAssignments(newAssignments)
@@ -834,10 +837,14 @@ export default function AdminPortalPage() {
             lastName: teacher?.last_name,
             pin: teacher?.pin,
             schoolName: currentSchool?.name,
-            assignments: teacherAllAssignments.map(a => ({
-              className: a.classes?.name,
-              subjectName: a.subjects?.name || 'All Subjects'
-            }))
+            assignments: teacherAllAssignments.map(a => {
+              const classData = classes.find(c => c.id === a.class_id)
+              const subjectData = a.subject_id ? subjects.find(s => s.id === a.subject_id) : null
+              return {
+                className: classData?.name || 'Unknown Class',
+                subjectName: a.subject_id ? (subjectData?.name || 'Unknown Subject') : 'All Subjects'
+              }
+            })
           })
         })
       } catch (emailError) {
@@ -1076,8 +1083,8 @@ export default function AdminPortalPage() {
                   <div className="space-y-2">
                     <h3 className="font-medium text-gray-700">All Exam Sessions</h3>
                     <p className="text-sm text-gray-500">These are exam sessions created by teachers. Set deadlines and lock/unlock as needed.</p>
-                    <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-sm">
+                    <div className="border rounded-lg overflow-x-auto">
+                      <table className="w-full text-sm min-w-max">
                         <thead className="bg-gray-100">
                           <tr>
                             <th className="p-3 text-left font-medium text-gray-600">Class</th>
@@ -1402,8 +1409,8 @@ export default function AdminPortalPage() {
                       <GraduationCap className="w-4 h-4" />
                       Class Passwords
                     </h3>
-                    <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-sm">
+                    <div className="border rounded-lg overflow-x-auto">
+                      <table className="w-full text-sm min-w-max">
                         <thead className="bg-gray-100">
                           <tr>
                             <th className="p-3 text-left">Class</th>
@@ -1511,8 +1518,8 @@ export default function AdminPortalPage() {
                     </div>
                   )}
                   
-                  <div className="border rounded-lg overflow-hidden">
-                    <table className="w-full text-sm">
+                  <div className="border rounded-lg overflow-x-auto">
+                    <table className="w-full text-sm min-w-max">
                       <thead className="bg-gray-100">
                         <tr>
                           <th className="p-3 text-left">Class</th>
