@@ -38,7 +38,7 @@ export async function verifyTeacherPassword(classId: string, password: string): 
   // Get class info
   const { data: classData, error } = await supabase
     .from("classes")
-    .select("*, schools(enable_pin_login)")
+    .select("*")
     .eq("id", classId)
     .single()
   
@@ -54,8 +54,15 @@ export async function verifyTeacherPassword(classId: string, password: string): 
     return { success: false, needsSetup: true }
   }
   
-  // Check if PIN is enabled for this school
-  const pinEnabled = classData.schools?.enable_pin_login || false
+  // Get school info to check if PIN is enabled
+  const { data: schoolData } = await supabase
+    .from("schools")
+    .select("enable_pin_login")
+    .eq("id", classData.school_id)
+    .single()
+  
+  const pinEnabled = schoolData?.enable_pin_login || false
+  console.log('[v0] PIN check:', { classId, schoolId: classData.school_id, pinEnabled })
   
   // Try plain text comparison first (for passwords set via admin portal like "welcome")
   if (password === storedPassword) {
