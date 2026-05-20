@@ -26,6 +26,7 @@ interface School {
   feature_sms: boolean
   feature_bulk_sms: boolean
   feature_certificates: boolean
+  feature_pin_management?: boolean
   subscription_plan: string
   subscription_expires_at: string | null
 }
@@ -131,7 +132,8 @@ export default function SuperAdminPage() {
         feature_whatsapp_reports: 'WhatsApp Reports',
         feature_sms: 'SMS Communications',
         feature_bulk_sms: 'Bulk SMS',
-        feature_certificates: 'Certificates'
+        feature_certificates: 'Certificates',
+        feature_pin_management: 'PIN Management'
       }
       
       await supabase.from('activity_logs').insert({
@@ -275,6 +277,7 @@ export default function SuperAdminPage() {
     if (school.feature_whatsapp_reports) count++
     if (school.feature_certificates) count++
     if (school.feature_bulk_sms) count++
+    if (school.feature_pin_management) count++
     return count
   }
 
@@ -734,6 +737,41 @@ export default function SuperAdminPage() {
                           </button>
                         </div>
                       </div>
+
+                      {/* PIN Management */}
+                      {school.feature_pin_management !== undefined && (
+                        <div className={`p-4 rounded-lg border-2 transition-all ${
+                          school.feature_pin_management 
+                            ? 'bg-cyan-50 border-cyan-200' 
+                            : 'bg-white border-gray-200'
+                        }`}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                                school.feature_pin_management ? 'bg-cyan-100' : 'bg-gray-100'
+                              }`}>
+                                <Shield className={`w-5 h-5 ${
+                                  school.feature_pin_management ? 'text-cyan-600' : 'text-gray-400'
+                                }`} />
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-900">PIN Management</p>
+                                <p className="text-xs text-gray-500">Teacher PIN tracking & audit logs</p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => toggleFeature(school.id, 'feature_pin_management', school.feature_pin_management)}
+                              className="focus:outline-none"
+                            >
+                              {school.feature_pin_management ? (
+                                <ToggleRight className="w-10 h-10 text-cyan-600" />
+                              ) : (
+                                <ToggleLeft className="w-10 h-10 text-gray-300" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Subscription Settings */}
