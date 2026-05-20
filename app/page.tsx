@@ -24,49 +24,6 @@ const CURRENT_YEAR = new Date().getFullYear()
 const TERMS = ['Term 1', 'Term 2', 'Term 3']
 
 // Helper to sort classes: PP1, PP2, then Grade 1, 2, 3... with streams alphabetically
-function sortClasses(classes: Class[]): Class[] {
-  const getClassOrder = (name: string) => {
-    // Extract base class and stream (e.g., "Grade 5 RED" -> "Grade 5", "RED")
-    const match = name.match(/^(PP\s*\d+|Grade\s+\d+|Form\s+\d+)(?:\s+(.+))?$/i)
-    if (!match) return { order: 999, streamOrder: name }
-    
-    const baseName = match[1].toUpperCase().replace(/\s+/g, '')
-    const stream = match[2] || ''
-    
-    // PP classes come first (PP1=1, PP2=2)
-    if (baseName.startsWith('PP')) {
-      const num = parseInt(baseName.replace('PP', '')) || 0
-      return { order: num, streamOrder: stream }
-    }
-    
-    // Grade classes (Grade 1=11, Grade 2=12, etc.)
-    if (baseName.includes('GRADE')) {
-      const num = parseInt(baseName.replace(/GRADE/i, '')) || 0
-      return { order: 10 + num, streamOrder: stream }
-    }
-    
-    // Form classes (Form 1=101, Form 2=102, etc.)
-    if (baseName.includes('FORM')) {
-      const num = parseInt(baseName.replace(/FORM/i, '')) || 0
-      return { order: 100 + num, streamOrder: stream }
-    }
-    
-    return { order: 999, streamOrder: name }
-  }
-  
-  return [...classes].sort((a, b) => {
-    const orderA = getClassOrder(a.name)
-    const orderB = getClassOrder(b.name)
-    
-    // First sort by class order (PP1, PP2, Grade 1, etc.)
-    if (orderA.order !== orderB.order) {
-      return orderA.order - orderB.order
-    }
-    
-    // Then sort streams alphabetically (A, B, East, West)
-    return orderA.streamOrder.localeCompare(orderB.streamOrder)
-  })
-}
 
 function HomePageContent() {
   const [classes, setClasses] = useState<Class[]>([])
@@ -84,9 +41,9 @@ function HomePageContent() {
     const groups: { [key: string]: Class[] } = {}
     const standalone: Class[] = []
     
-    sortClasses(classes).forEach(cls => {
+    sortClassesByLevel(classes).forEach(cls => {
       // Check if this class has a stream suffix (e.g., "Grade 5 RED", "PP1 East")
-      const match = cls.name.match(/^(PP\s*\d+|Grade\s+\d+|Form\s+\d+)\s+(.+)$/i)
+      const match = cls.name.match(/^(PP\s*\d+|Grade\s+\d+|Form\s+\d+|PLAYGROUP)\s+(.+)$/i)
       if (match) {
         const baseClass = match[1].replace(/\s+/g, ' ').trim() // Normalize spacing
         if (!groups[baseClass]) groups[baseClass] = []
@@ -94,6 +51,13 @@ function HomePageContent() {
       } else {
         standalone.push(cls)
       }
+    })
+    
+    // Sort standalone classes too
+    standalone.sort((a, b) => {
+      const aIndex = sortClassesByLevel([a]).findIndex(c => c.id === a.id)
+      const bIndex = sortClassesByLevel([b]).findIndex(c => c.id === b.id)
+      return aIndex - bIndex
     })
     
     return { groups, standalone }
@@ -409,12 +373,19 @@ function HomePageContent() {
                             {cls.name}
                           </SelectItem>
                         ))}
-                        {/* Then grouped base classes */}
-                        {Object.keys(classGroups).map((baseClass) => (
-                          <SelectItem key={baseClass} value={baseClass}>
-                            {baseClass} ({classGroups[baseClass].length} streams)
-                          </SelectItem>
-                        ))}
+                        {/* Then grouped base classes - sorted with PLAYGROUP/PP first */}
+                        {Object.keys(classGroups)
+                          .sort((a, b) => {
+                            const aOrder = a.toUpperCase().includes('PLAYGROUP') ? 0 : a.toUpperCase().includes('PP1') ? 1 : a.toUpperCase().includes('PP2') ? 2 : 999
+                            const bOrder = b.toUpperCase().includes('PLAYGROUP') ? 0 : b.toUpperCase().includes('PP1') ? 1 : b.toUpperCase().includes('PP2') ? 2 : 999
+                            if (aOrder !== bOrder) return aOrder - bOrder
+                            return a.localeCompare(b)
+                          })
+                          .map((baseClass) => (
+                            <SelectItem key={baseClass} value={baseClass}>
+                              {baseClass} ({classGroups[baseClass].length} streams)
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -451,7 +422,7 @@ function HomePageContent() {
                       <SelectValue placeholder="-- Choose a class --" />
                     </SelectTrigger>
                     <SelectContent className="bg-white">
-                      {sortClasses(classes).map((cls) => (
+                      {sortClassesByLevel(classes).map((cls) => (
                         <SelectItem key={cls.id} value={cls.id}>
                           {cls.name}
                         </SelectItem>
