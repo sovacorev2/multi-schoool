@@ -1,13 +1,14 @@
 /**
- * ShuleTech pilot features
- * These features are only enabled for ShuleTech school
+ * Pilot school features
+ * These features are enabled for pilot schools (ShuleTech + St James Koteko Primary)
  * Other schools will continue with original functionality
  */
 
-export const SHULETECH_SCHOOL_NAME = 'SHULE TECH'
+export const PILOT_SCHOOLS = ['SHULE TECH', 'ST JAMES KOTEKO PRIMARY SCHOOL']
 
 /**
- * Check if a school is ShuleTech (pilot school for new features)
+ * Check if a school is a pilot school (ShuleTech or St James Koteko Primary)
+ * Pilot schools get all advanced features: modern UI, PIN tracking, advanced audit logs
  */
 export function isShuleTechSchool(schoolName?: string): boolean {
   if (!schoolName) {
@@ -15,13 +16,5 @@ export function isShuleTechSchool(schoolName?: string): boolean {
   }
   
   const normalized = schoolName.toLowerCase().trim()
-  return normalized === SHULETECH_SCHOOL_NAME.toLowerCase()
-}
-
-/**
- * Check if a school is ShuleTech by ID and school data
- */
-export function isShuleTechSchoolById(schoolId: string, schools: Array<{ id: string; name: string }>): boolean {
-  const school = schools.find(s => s.id === schoolId)
-  return isShuleTechSchool(school?.name)
+  return PILOT_SCHOOLS.some(school => normalized === school.toLowerCase())
 }
