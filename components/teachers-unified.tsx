@@ -152,6 +152,7 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
         email: newTeacher.email.trim(),
         first_name: newTeacher.first_name.trim(),
         last_name: newTeacher.last_name.trim(),
+        phone_number: newTeacher.phone_number.trim() || null,
         pin: pin,
         is_active: true,
       })
@@ -238,6 +239,7 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
           first_name: editFormData.first_name,
           last_name: editFormData.last_name,
           email: editFormData.email,
+          phone_number: editFormData.phone_number || null,
         })
         .eq('id', editingTeacher.id)
         .eq('school_id', schoolId)
@@ -449,8 +451,6 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
               className="border border-gray-300 rounded px-3 py-2"
             />
           </div>
-          {/* Phone number field temporarily hidden - waiting for database schema update */}
-          {/* 
           <div>
             <input
               type="tel"
@@ -461,7 +461,6 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
             />
             <p className="text-xs text-gray-500 mt-1">Optional: Include country code for WhatsApp notifications (ShuleTech only)</p>
           </div>
-          */}
           <div className="flex gap-2">
             <button
               onClick={createTeacher}
@@ -514,10 +513,9 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
                         ))}
                       </div>
                       <p className="text-sm text-gray-600">{teacher.email}</p>
-                      {/* Phone number display temporarily hidden - waiting for database schema update */}
-                      {/* {teacher.phone_number && (
+                      {teacher.phone_number && (
                         <p className="text-sm text-gray-600">📱 {teacher.phone_number}</p>
-                      )} */}
+                      )}
                       {/* PIN display - ShuleTech only */}
                       {isShuleTechSchool(schoolName) && (
                         <div className="mt-2 bg-blue-50 border border-blue-200 rounded px-3 py-2 inline-block">
@@ -565,8 +563,7 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
                       >
                         Email
                       </button>
-                      {/* WhatsApp button temporarily hidden - waiting for database schema update */}
-                      {/* {isShuleTechSchool(schoolName) && (
+                      {isShuleTechSchool(schoolName) && (
                         <button
                           onClick={() => notifyTeacherWhatsApp(teacher)}
                           disabled={loading || teacherAssignments.length === 0 || !teacher.phone_number}
@@ -575,7 +572,7 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
                         >
                           WhatsApp
                         </button>
-                      )} */}
+                      )}
                       <button
                         onClick={() => {
                           setEditingTeacher(teacher)
@@ -735,8 +732,6 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
                 />
               </div>
 
-              {/* Phone number field temporarily hidden - waiting for database schema update */}
-              {/*
               <div>
                 <label className="block text-sm font-medium mb-1">Phone Number (WhatsApp)</label>
                 <input
@@ -748,7 +743,6 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
                 />
                 <p className="text-xs text-gray-500 mt-1">Include country code (e.g., +254 for Kenya)</p>
               </div>
-              */}
             </div>
 
             <div className="flex gap-2 pt-4">
