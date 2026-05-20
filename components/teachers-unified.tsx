@@ -77,6 +77,13 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
       .eq('school_id', schoolId)
       .order('display_order')
 
+    // Load all subjects
+    const { data: subjectsRes } = await supabase
+      .from('subjects')
+      .select('*')
+      .eq('school_id', schoolId)
+      .order('name')
+
     setTeachers(teachersRes || [])
     setAssignments(assignmentsRes || [])
     setClasses(sortClassesByLevel(classesRes || []))
