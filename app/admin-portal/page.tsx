@@ -168,6 +168,7 @@ export default function AdminPortalPage() {
   const [classes, setClasses] = useState<Class[]>([])
   const [examTypes, setExamTypes] = useState<ExamType[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
+  const [classSubjects, setClassSubjects] = useState<Subject[]>([])
   const [deadlines, setDeadlines] = useState<Deadline[]>([])
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -310,7 +311,7 @@ export default function AdminPortalPage() {
         supabase.from('subjects').select('*').eq('school_id', currentSchool.id).order('name'),
         supabase.from('schools').select('enable_pin_login').eq('id', currentSchool.id).single(),
         supabase.from('teacher_accounts').select('*').eq('school_id', currentSchool.id),
-        supabase.from('teacher_assignments').select('*, classes(name), subjects(name), teacher_accounts(first_name, last_name)').eq('school_id', currentSchool.id),
+        supabase.from('teacher_assignments').select('*').eq('school_id', currentSchool.id),
       ])
 
       if (classesRes.data) setClasses(classesRes.data)
@@ -1814,8 +1815,25 @@ export default function AdminPortalPage() {
                               <select
                                 className="w-full border border-gray-300 rounded-lg px-3 py-2"
                                 value={assignFormData.classId}
-                                onChange={(e) => {
-                                  setAssignFormData({...assignFormData, classId: e.target.value, subjectId: ''})
+                                onChange={async (e) => {
+                                  const newClassId = e.target.value
+                                  setAssignFormData({...assignFormData, classId: newClassId, subjectId: ''})
+                                  
+                                  // Load subjects for this class
+                                  if (newClassId) {
+                                    const supabase = createClient()
+                                    const { data } = await supabase
+                                      .from('subjects')
+                                      .select('*')
+                                      .eq('class_id', newClassId)
+                                      .order('name')
+                                    
+                                    if (data) {
+                                      setClassSubjects(data as Subject[])
+                                    }
+                                  } else {
+                                    setClassSubjects([])
+                                  }
                                 }}
                               >
                                 <option value="">-- Choose a class --</option>
@@ -1836,12 +1854,7 @@ export default function AdminPortalPage() {
                               >
                                 <option value="">-- All Subjects (Class Teacher) --</option>
                                 {(() => {
-                                  // Filter subjects that belong to the selected class
-                                  const classSubjects = assignFormData.classId 
-                                    ? subjects.filter(s => s.class_id === assignFormData.classId)
-                                    : []
-                                  
-                                  // Further filter to exclude already-assigned subjects
+                                  // Filter to exclude already-assigned subjects
                                   const availableSubjects = classSubjects.filter(subject => {
                                     const alreadyAssigned = teacherAssignments.some(
                                       a => a.teacher_id === assignFormData.teacherId && 
@@ -1850,8 +1863,6 @@ export default function AdminPortalPage() {
                                     )
                                     return !alreadyAssigned
                                   })
-                                  
-
                                   
                                   return availableSubjects
                                 })()
