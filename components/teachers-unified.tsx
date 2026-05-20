@@ -78,11 +78,13 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
       .order('display_order')
 
     // Load all subjects
-    const { data: subjectsRes } = await supabase
+    const { data: subjectsRes, error: subjectsError } = await supabase
       .from('subjects')
       .select('*')
       .eq('school_id', schoolId)
       .order('name')
+
+    console.log('[v0] Subjects loaded:', { subjectsRes, subjectsError, schoolId })
 
     setTeachers(teachersRes || [])
     setAssignments(assignmentsRes || [])
