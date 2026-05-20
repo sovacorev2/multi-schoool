@@ -31,7 +31,7 @@ import {
   Clock, FileText, Plus, Trash2, Save, ArrowLeft, Lock, Unlock,
   GraduationCap, ClipboardList, History, Edit, Users, X, Key, Copy, Check
 } from 'lucide-react'
-import type { Class, ExamType } from '@/lib/types'
+import type { Class, ExamType, Subject } from '@/lib/types'
 import SchoolLogoUploader from '@/components/admin/SchoolLogoUploader'
 
 const TERMS = ['Term 1', 'Term 2', 'Term 3']
@@ -167,7 +167,7 @@ export default function AdminPortalPage() {
   const [school, setSchool] = useState<School | null>(null)
   const [classes, setClasses] = useState<Class[]>([])
   const [examTypes, setExamTypes] = useState<ExamType[]>([])
-  const [subjects, setSubjects] = useState<any[]>([])
+  const [subjects, setSubjects] = useState<Subject[]>([])
   const [deadlines, setDeadlines] = useState<Deadline[]>([])
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -808,13 +808,6 @@ export default function AdminPortalPage() {
     try {
       const supabase = createClient()
 
-      console.log('[v0] Creating assignment:', {
-        school_id: currentSchool?.id,
-        teacher_id: assignFormData.teacherId,
-        class_id: assignFormData.classId,
-        subject_id: assignFormData.subjectId || null,
-      })
-
       const { data, error } = await supabase
         .from('teacher_assignments')
         .insert({
@@ -837,7 +830,7 @@ export default function AdminPortalPage() {
         return
       }
 
-      console.log('[v0] Assignment created:', data)
+
 
       // Reload assignments
       const { data: newAssignments } = await supabase
@@ -1858,12 +1851,7 @@ export default function AdminPortalPage() {
                                     return !alreadyAssigned
                                   })
                                   
-                                  if (assignFormData.classId) {
-                                    console.log('[v0] Selected Class:', assignFormData.classId)
-                                    console.log('[v0] All Subjects in School:', subjects.map(s => ({ id: s.id, name: s.name, class_id: s.class_id })))
-                                    console.log('[v0] Subjects for this class:', classSubjects.map(s => ({ id: s.id, name: s.name })))
-                                    console.log('[v0] Available (not assigned):', availableSubjects.map(s => ({ id: s.id, name: s.name })))
-                                  }
+
                                   
                                   return availableSubjects
                                 })()
