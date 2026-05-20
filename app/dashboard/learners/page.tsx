@@ -237,13 +237,16 @@ export default function LearnersPage() {
 
       if (error) throw error
 
-      // Log activity and track recently promoted learners
+      // Log activity with teacher PIN and track recently promoted learners
       const now = new Date().toISOString()
+      const teacherPin = typeof window !== 'undefined' ? localStorage.getItem('teacher_pin') : null
       await supabase.from('activity_logs').insert({
         school_id: currentSchool?.id,
+        class_id: currentClass?.id,
+        teacher_pin: teacherPin,
         action: 'promote_students',
         details: `Promoted ${selectedLearners.length} students from ${currentClass?.name} to ${targetClass.name}. Learners: ${selectedLearners.join(', ')}`,
-        performed_by: currentClass?.name || 'Teacher'
+        performed_by: teacherPin || 'Teacher'
       })
 
       // Update recent promotions state to show badges for 15 days

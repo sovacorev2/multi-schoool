@@ -149,12 +149,15 @@ const { currentSchool } = useSchool();
       })
       .eq("id", session.id);
 
-    // Log the action
+    // Log the action with teacher PIN
+    const teacherPin = typeof window !== 'undefined' ? localStorage.getItem('teacher_pin') : null
     await supabase.from("activity_logs").insert({
       school_id: currentSchool?.id,
+      class_id: session.class_id,
+      teacher_pin: teacherPin,
       action: newLockState ? "exam_locked" : "exam_unlocked",
       details: `${newLockState ? 'Locked' : 'Unlocked'} exam: ${session.exam_types?.name} - ${session.term} ${session.year} for ${session.classes?.name}`,
-      performed_by: currentClass?.name || "Admin",
+      performed_by: teacherPin || "Admin",
     });
 
     setToggleLoading(null);
@@ -186,12 +189,15 @@ const { currentSchool } = useSchool();
 
     console.log("[v0] Session unlocked successfully");
 
-    // Log the action
+    // Log the action with teacher PIN
+    const teacherPin = typeof window !== 'undefined' ? localStorage.getItem('teacher_pin') : null
     await supabase.from("activity_logs").insert({
       school_id: currentSchool?.id,
+      class_id: selectedSession.class_id,
+      teacher_pin: teacherPin,
       action: "exam_unlocked",
       details: `Unlocked exam after deadline: ${selectedSession.exam_types?.name} - ${selectedSession.term} ${selectedSession.year} for ${selectedSession.classes?.name}`,
-      performed_by: currentClass?.name || "Admin",
+      performed_by: teacherPin || "Admin",
     });
 
     setToggleLoading(null);
