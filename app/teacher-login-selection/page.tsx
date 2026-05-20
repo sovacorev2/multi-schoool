@@ -12,7 +12,7 @@ import { Lock, Key } from 'lucide-react'
 export default function TeacherLoginSelection() {
   const router = useRouter()
   const supabase = createClient()
-  const [schools, setSchools] = useState<Array<{ id: string; name: string; enable_pin_login: boolean }>>([])
+  const [schools, setSchools] = useState<Array<{ id: string; name: string; feature_pin_management: boolean }>>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -24,7 +24,7 @@ export default function TeacherLoginSelection() {
       setIsLoading(true)
       const { data, error } = await supabase
         .from('schools')
-        .select('id, name, enable_pin_login')
+        .select('id, name, feature_pin_management')
         .order('name')
 
       if (error) throw error
@@ -36,8 +36,8 @@ export default function TeacherLoginSelection() {
     }
   }
 
-  const shuleTechSchool = schools.find(s => s.enable_pin_login)
-  const otherSchools = schools.filter(s => !s.enable_pin_login)
+  const shuleTechSchool = schools.find(s => s.feature_pin_management)
+  const otherSchools = schools.filter(s => !s.feature_pin_management)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
@@ -51,12 +51,12 @@ export default function TeacherLoginSelection() {
           <div className="text-center py-8 text-gray-600">Loading schools...</div>
         ) : (
           <div className="space-y-6">
-            {/* ShuleTech - PIN Login */}
+            {/* PIN-based Schools */}
             {shuleTechSchool && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2 px-4">
                   <div className="h-px flex-1 bg-gradient-to-r from-blue-300 to-transparent"></div>
-                  <span className="text-sm font-semibold text-blue-600">PIN-BASED LOGIN (NEW)</span>
+                  <span className="text-sm font-semibold text-blue-600">PIN-BASED LOGIN</span>
                   <div className="h-px flex-1 bg-gradient-to-l from-blue-300 to-transparent"></div>
                 </div>
                 <Card className="border-2 border-blue-200 bg-blue-50 hover:border-blue-400 transition-colors cursor-pointer"
@@ -72,7 +72,6 @@ export default function TeacherLoginSelection() {
                           Login with 4-digit PIN + Welcome Password
                         </CardDescription>
                       </div>
-                      <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-semibold">PILOT</span>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -123,7 +122,7 @@ export default function TeacherLoginSelection() {
             {/* Footer Info */}
             <div className="mt-8 p-4 bg-white rounded-lg border border-gray-200 text-center">
               <p className="text-sm text-gray-600">
-                <span className="font-semibold">Note:</span> PIN-based login is currently a pilot feature for SHULE TECH. Other schools use standard class-based authentication.
+                <span className="font-semibold">Note:</span> PIN-based login is available for schools where it has been enabled by administration.
               </p>
             </div>
           </div>

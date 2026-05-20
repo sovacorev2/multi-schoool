@@ -36,7 +36,7 @@ export default function TeacherPINLogin() {
       const { data, error } = await supabase
         .from('schools')
         .select('id, name')
-        .eq('enable_pin_login', true)
+        .eq('feature_pin_management', true)
         .order('name')
 
       if (error) throw error
