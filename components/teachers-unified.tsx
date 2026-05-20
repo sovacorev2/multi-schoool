@@ -488,78 +488,113 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
 
       {/* Teachers List */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Teachers & Assignments ({teachers.length})</h3>
+        <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Teachers & Assignments</h3>
 
         {teachers.length === 0 ? (
           <p className="text-gray-600">No teachers yet. Create one to get started.</p>
         ) : (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {teachers.map((teacher) => {
               const teacherAssignments = assignments.filter((a) => a.user_id === teacher.id && a.is_active)
 
               return (
-                <div key={teacher.id} className="bg-white p-4 rounded-lg border border-gray-200">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-semibold text-base">
-                          {teacher.first_name} {teacher.last_name}
-                        </h4>
-                        {/* Class Teacher Badges - ShuleTech only */}
-                        {isShuleTechSchool(schoolName) && getTeacherClassTeacherFor(teacher.id).map((className) => (
-                          <span key={className} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-medium">
-                            Class Teacher: {className}
-                          </span>
-                        ))}
-                      </div>
-                      <p className="text-sm text-gray-600">{teacher.email}</p>
-                      {teacher.phone_number && (
-                        <p className="text-sm text-gray-600">{teacher.phone_number}</p>
-                      )}
-                      {/* PIN display - ShuleTech only */}
-                      {isShuleTechSchool(schoolName) && (
-                        <div className="mt-2 bg-blue-50 border border-blue-200 rounded px-3 py-2 inline-block">
-                          <p className="text-xs font-semibold text-blue-900">PIN: <span className="font-mono text-sm tracking-widest">{teacher.pin}</span></p>
-                        </div>
-                      )}
+                <div key={teacher.id} className="group bg-white rounded-2xl border-2 border-gray-200 overflow-hidden hover:border-blue-400 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+                  {/* Gradient Header Bar */}
+                  <div className="h-1.5 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600"></div>
 
-                      {/* Assignments list */}
-                      {teacherAssignments.length > 0 && (
-                        <div className="mt-3 bg-gray-50 p-3 rounded text-sm">
-                          <p className="font-medium text-gray-700 mb-2">Assignments ({teacherAssignments.length}):</p>
-                          <ul className="space-y-1 text-gray-600">
-                            {teacherAssignments.map((a) => {
-                              const classData = classes.find((c) => c.id === a.class_id)
-                              // Find subject name from allSubjects (need to load all subjects)
-                              const subjectData = subjects.find((s) => s.id === a.subject_id)
-                              return (
-                                <li key={a.id}>
-                                  {classData?.name || 'Unknown Class'}
-                                  {a.subject_id && ` - ${subjectData?.name || 'Unknown Subject'}`}
-                                  {!a.subject_id && ' - All Subjects'}
-                                </li>
-                              )
-                            })}
-                          </ul>
+                  {/* Card Content */}
+                  <div className="p-6">
+                    {/* Teacher Header */}
+                    <div className="mb-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <h4 className="text-xl font-bold text-gray-900">
+                            {teacher.first_name} {teacher.last_name}
+                          </h4>
+                          <p className="text-sm text-gray-600 mt-1">{teacher.email}</p>
+                          {teacher.phone_number && (
+                            <p className="text-sm text-gray-600">{teacher.phone_number}</p>
+                          )}
+                        </div>
+                        {/* Class Teacher Badge */}
+                        {isShuleTechSchool(schoolName) && getTeacherClassTeacherFor(teacher.id).length > 0 && (
+                          <div className="flex flex-wrap gap-1 justify-end">
+                            {getTeacherClassTeacherFor(teacher.id).map((className) => (
+                              <span key={className} className="bg-gradient-to-r from-blue-100 to-blue-50 text-blue-700 text-xs px-3 py-1 rounded-full font-bold border border-blue-300">
+                                Class Teacher
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* PIN Badge - ShuleTech only */}
+                      {isShuleTechSchool(schoolName) && (
+                        <div className="mt-3 inline-block bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg px-4 py-2 shadow-md">
+                          <p className="text-xs font-bold tracking-wide">PIN: <span className="font-mono text-sm tracking-widest ml-1">{teacher.pin}</span></p>
                         </div>
                       )}
                     </div>
 
+                    {/* Assignments Section */}
+                    <div className="mt-4 pt-4 border-t-2 border-gray-100">
+                      <div className="flex items-center justify-between mb-3">
+                        <h5 className="font-bold text-gray-900 flex items-center gap-2">
+                          <span className="flex items-center justify-center w-6 h-6 bg-gradient-to-br from-green-500 to-emerald-600 text-white text-xs rounded-full font-bold shadow-lg">
+                            {teacherAssignments.length}
+                          </span>
+                          Assignments
+                        </h5>
+                      </div>
+
+                      {teacherAssignments.length > 0 ? (
+                        <div className="space-y-2">
+                          {teacherAssignments.map((a) => {
+                            const classData = classes.find((c) => c.id === a.class_id)
+                            const subjectData = subjects.find((s) => s.id === a.subject_id)
+                            return (
+                              <div
+                                key={a.id}
+                                className="flex items-center gap-3 p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border border-gray-200 hover:border-green-400 hover:shadow-md transition-all group/assignment"
+                              >
+                                <div className="w-1 h-full bg-gradient-to-b from-green-500 to-emerald-600 rounded-full"></div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-semibold text-sm text-gray-900">{classData?.name}</p>
+                                  <p className="text-xs text-gray-600">
+                                    {a.subject_id ? (subjectData?.name || 'Unknown Subject') : 'All Subjects'}
+                                  </p>
+                                </div>
+                                <button
+                                  onClick={() => deleteAssignment(a.id)}
+                                  className="opacity-0 group-hover/assignment:opacity-100 transition-opacity p-1 hover:bg-red-100 rounded text-red-600 text-sm font-bold"
+                                  title="Delete assignment"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-500 italic">No assignments yet</p>
+                      )}
+                    </div>
+
                     {/* Action Buttons */}
-                    <div className="flex flex-col gap-2 min-w-fit">
+                    <div className="mt-4 grid grid-cols-2 gap-2">
                       <button
                         onClick={() => {
                           setSelectedTeacher(teacher)
                           setShowEditModal(true)
                         }}
-                        className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600"
+                        className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-3 py-2 rounded-lg text-sm font-semibold hover:shadow-lg transition-all duration-200 hover:scale-105 active:scale-95"
                       >
-                        Edit Assignments
+                        Add Assignment
                       </button>
                       <button
                         onClick={() => notifyTeacher(teacher)}
                         disabled={loading || teacherAssignments.length === 0}
-                        className="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600 disabled:opacity-50"
+                        className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-3 py-2 rounded-lg text-sm font-semibold hover:shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Email
                       </button>
@@ -567,7 +602,7 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
                         <button
                           onClick={() => notifyTeacherWhatsApp(teacher)}
                           disabled={loading || teacherAssignments.length === 0 || !teacher.phone_number}
-                          className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 disabled:opacity-50"
+                          className="bg-gradient-to-r from-teal-600 to-cyan-600 text-white px-3 py-2 rounded-lg text-sm font-semibold hover:shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed col-span-2"
                           title={!teacher.phone_number ? 'Phone number not set' : 'Send WhatsApp notification'}
                         >
                           WhatsApp
@@ -584,14 +619,14 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
                           })
                           setShowEditTeacherModal(true)
                         }}
-                        className="bg-yellow-500 text-white px-3 py-1 rounded text-sm hover:bg-yellow-600"
+                        className="bg-gradient-to-r from-amber-600 to-orange-600 text-white px-3 py-2 rounded-lg text-sm font-semibold hover:shadow-lg transition-all duration-200 hover:scale-105 active:scale-95"
                       >
                         Edit Details
                       </button>
                       <button
                         onClick={() => deleteTeacher(teacher.id)}
                         disabled={loading}
-                        className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 disabled:opacity-50"
+                        className="bg-gradient-to-r from-red-600 to-rose-600 text-white px-3 py-2 rounded-lg text-sm font-semibold hover:shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50"
                       >
                         Delete
                       </button>
