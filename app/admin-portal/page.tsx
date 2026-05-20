@@ -813,7 +813,7 @@ export default function AdminPortalPage() {
         .from('teacher_assignments')
         .insert({
           school_id: currentSchool?.id,
-          teacher_id: assignFormData.teacherId,
+          user_id: assignFormData.teacherId,
           class_id: assignFormData.classId,
           subject_id: assignFormData.subjectId || null,
           is_active: true
@@ -836,7 +836,7 @@ export default function AdminPortalPage() {
       // Reload assignments
       const { data: newAssignments } = await supabase
         .from('teacher_assignments')
-        .select('*, classes(name), subjects(name), teacher_accounts(first_name, last_name)')
+        .select('*')
         .eq('school_id', currentSchool?.id)
 
       if (newAssignments) {
@@ -849,7 +849,7 @@ export default function AdminPortalPage() {
       const selectedSubject = assignFormData.subjectId ? subjects.find(s => s.id === assignFormData.subjectId) : null
       
       // Get all assignments for this teacher
-      const teacherAllAssignments = newAssignments?.filter(a => a.teacher_id === assignFormData.teacherId) || []
+      const teacherAllAssignments = newAssignments?.filter(a => a.user_id === assignFormData.teacherId) || []
 
       // Send email with assignment details
       try {
@@ -1857,7 +1857,7 @@ export default function AdminPortalPage() {
                                   // Filter to exclude already-assigned subjects
                                   const availableSubjects = classSubjects.filter(subject => {
                                     const alreadyAssigned = teacherAssignments.some(
-                                      a => a.teacher_id === assignFormData.teacherId && 
+                                      a => a.user_id === assignFormData.teacherId && 
                                            a.class_id === assignFormData.classId && 
                                            a.subject_id === subject.id
                                     )
