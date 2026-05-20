@@ -38,44 +38,14 @@ import { TeachersUnified } from '@/components/teachers-unified'
 
 const TERMS = ['Term 1', 'Term 2', 'Term 3']
 
-// Helper to sort classes: PP1, PP2, then Grade 1, 2, 3... with streams alphabetically
+// Helper to sort classes: PLAYGROUP, PP1, PP2, then Grade 1, 2, 3... with streams alphabetically
 function sortClasses(classes: Class[]): Class[] {
-  const getClassOrder = (name: string) => {
-    const match = name.match(/^(PP\d+|Grade\s*\d+|Form\s*\d+)(?:\s+(.+))?$/i)
-    if (!match) return { order: 999, streamOrder: name }
-    
-    const baseName = match[1].toUpperCase()
-    const stream = match[2] || ''
-    
-    if (baseName.startsWith('PP')) {
-      const num = parseInt(baseName.replace('PP', '')) || 0
-      return { order: num, streamOrder: stream }
-    }
-    
-    if (baseName.includes('GRADE')) {
-      const num = parseInt(baseName.replace(/GRADE\s*/i, '')) || 0
-      return { order: 10 + num, streamOrder: stream }
-    }
-    
-    if (baseName.includes('FORM')) {
-      const num = parseInt(baseName.replace(/FORM\s*/i, '')) || 0
-      return { order: 100 + num, streamOrder: stream }
-    }
-    
-    return { order: 999, streamOrder: name }
-  }
-  
-  return [...classes].sort((a, b) => {
-    const orderA = getClassOrder(a.name)
-    const orderB = getClassOrder(b.name)
-    if (orderA.order !== orderB.order) return orderA.order - orderB.order
-    return orderA.streamOrder.localeCompare(orderB.streamOrder)
-  })
+  return sortClassesByLevel(classes)
 }
 
 // Helper to extract base class name (e.g., "Grade 7" from "Grade 7 EAST")
 function getBaseClassName(className: string): string {
-  const match = className.match(/^(PP\d+|Grade\s*\d+|Form\s*\d+)(?:\s+(.+))?$/i)
+  const match = className.match(/^(PLAYGROUP|PP\d+|Grade\s*\d+|Form\s*\d+)(?:\s+(.+))?$/i)
   return match ? match[1] : className
 }
 
@@ -994,16 +964,16 @@ export default function AdminPortalPage() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header 
-        className="text-white py-4 px-6 shadow-lg"
+        className="text-white py-3 md:py-4 px-4 md:px-6 shadow-lg"
         style={{ backgroundColor: currentSchool.primary_color || '#2563eb' }}
       >
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-0">
+          <div className="flex items-center gap-2 md:gap-3">
             {/* School Logo */}
             <img 
               src={currentSchool.logo_url || `/logos/${currentSchool.code}.png`}
               alt={`${currentSchool.name} logo`}
-              className="w-12 h-12 object-contain bg-white rounded-lg p-1"
+              className="w-10 md:w-12 h-10 md:h-12 object-contain bg-white rounded-lg p-1"
               onError={(e) => {
                 const target = e.currentTarget as HTMLImageElement
                 target.style.display = 'none'
@@ -1011,17 +981,17 @@ export default function AdminPortalPage() {
               }}
             />
             <Shield className="w-8 h-8 hidden" />
-            <div>
-              <h1 className="text-xl font-bold">{currentSchool.name}</h1>
-              <p className="text-sm opacity-90">Admin Portal</p>
+            <div className="flex-1">
+              <h1 className="text-lg md:text-xl font-bold">{currentSchool.name}</h1>
+              <p className="text-xs md:text-sm opacity-90">Admin Portal</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 md:gap-3 justify-start md:justify-end">
             <Button
               variant="outline"
               size="sm"
               onClick={() => router.push(`/?school=${currentSchool.code}`)}
-              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20 text-xs md:text-sm"
             >
               Main Portal
             </Button>
@@ -1044,33 +1014,34 @@ export default function AdminPortalPage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto p-6">
+      <main className="max-w-7xl mx-auto p-3 md:p-6">
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
             <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full"></div>
           </div>
         ) : (
-          <Tabs defaultValue="deadlines" className="space-y-6">
-            <TabsList className="grid grid-cols-9 w-full max-w-full">
-              <TabsTrigger value="deadlines" className="flex items-center gap-2">
-                <Clock className="w-4 h-4" />
-                Deadlines
+          <Tabs defaultValue="deadlines" className="space-y-3 md:space-y-6">
+            <TabsList className="grid grid-cols-2 md:grid-cols-9 w-full max-w-full gap-1 md:gap-0 h-auto md:h-10 p-1 md:p-1"
+            >
+              <TabsTrigger value="deadlines" className="flex flex-col md:flex-row md:items-center gap-1 md:gap-2 text-xs md:text-sm px-1 md:px-3 py-2 md:py-0">
+                <Clock className="w-3 h-3 md:w-4 md:h-4" />
+                <span className="hidden sm:inline">Deadlines</span>
               </TabsTrigger>
-              <TabsTrigger value="classes" className="flex items-center gap-2">
-                <GraduationCap className="w-4 h-4" />
-                Classes
+              <TabsTrigger value="classes" className="flex flex-col md:flex-row md:items-center gap-1 md:gap-2 text-xs md:text-sm px-1 md:px-3 py-2 md:py-0">
+                <GraduationCap className="w-3 h-3 md:w-4 md:h-4" />
+                <span className="hidden sm:inline">Classes</span>
               </TabsTrigger>
-              <TabsTrigger value="teachers" className="flex items-center gap-2">
-                <Users className="w-4 h-4" />
-                Teachers
+              <TabsTrigger value="teachers" className="flex flex-col md:flex-row md:items-center gap-1 md:gap-2 text-xs md:text-sm px-1 md:px-3 py-2 md:py-0">
+                <Users className="w-3 h-3 md:w-4 md:h-4" />
+                <span className="hidden sm:inline">Teachers</span>
               </TabsTrigger>
               {pinLoginEnabled && (
-                <TabsTrigger value="pin-accounts" className="flex items-center gap-2 bg-purple-50 text-purple-700">
-                  <Users className="w-4 h-4" />
-                  Teachers & Assignments
+                <TabsTrigger value="pin-accounts" className="flex flex-col md:flex-row md:items-center gap-1 md:gap-2 text-xs md:text-sm px-1 md:px-3 py-2 md:py-0 bg-purple-50 text-purple-700">
+                  <Users className="w-3 h-3 md:w-4 md:h-4" />
+                  <span className="hidden md:inline">T&A</span><span className="md:hidden">T&A</span>
                 </TabsTrigger>
               )}
-              <TabsTrigger value="passwords" className="flex items-center gap-2">
+              <TabsTrigger value="passwords" className="flex flex-col md:flex-row md:items-center gap-1 md:gap-2 text-xs md:text-sm px-1 md:px-3 py-2 md:py-0">
                 <Lock className="w-4 h-4" />
                 Passwords
               </TabsTrigger>
