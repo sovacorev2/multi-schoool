@@ -4,6 +4,7 @@ import React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { createClient } from "@/lib/supabase/client"
 import { useClass } from "@/lib/class-context"
 import { verifyTeacherPassword, setupTeacherPassword } from "@/app/actions/auth"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -89,18 +90,39 @@ export default function TeacherAuthPage() {
     setIsLoading(true)
 
     try {
-      // Store teacher context in session/context for the dashboard
-      // PIN is already sent to teacher via email, just verify they can access this class
-      if (pin && teacherId) {
-        // Store in localStorage or context that this teacher has authenticated
-        localStorage.setItem('teacher_authenticated', 'true')
-        localStorage.setItem('teacher_id', teacherId)
-        localStorage.setItem('class_id', classId!)
-        router.push("/dashboard")
-      } else {
-        setError("Please enter a valid PIN")
+      if (!pin || !teacherId) {
+        setError("Please enter your PIN")
+        setIsLoading(false)
+        return
       }
-    } catch {
+
+      // Verify PIN against teacher account
+      const supabase = createClient()
+      const { data: teacher, error } = await supabase
+        .from('teacher_accounts')
+        .select('id, pin')
+        .eq('id', teacherId)
+        .single()
+
+      if (error || !teacher) {
+        setError("Teacher account not found")
+        setIsLoading(false)
+        return
+      }
+
+      // Check if PIN matches (compare as strings since both are 4-digit codes)
+      if (teacher.pin !== pin) {
+        setError("Incorrect PIN. Check the email sent to you.")
+        setIsLoading(false)
+        return
+      }
+
+      // PIN verified - store in session and redirect to dashboard
+      localStorage.setItem('teacher_authenticated', 'true')
+      localStorage.setItem('teacher_id', teacherId)
+      localStorage.setItem('class_id', classId!)
+      router.push("/dashboard")
+    } catch (err) {
       setError("An error occurred. Please try again.")
     } finally {
       setIsLoading(false)
@@ -155,17 +177,17 @@ export default function TeacherAuthPage() {
                   type="text"
                   value={pin}
                   onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-                  placeholder="Enter your 6-digit PIN"
-                  maxLength={6}
+                  placeholder="Enter your 4-digit PIN"
+                  maxLength={4}
                   className="text-center text-2xl tracking-widest"
                   required
                 />
-                <p className="text-xs text-gray-500">You received this PIN in your welcome email</p>
+                <p className="text-xs text-gray-500">You received this 4-digit PIN in your welcome email</p>
               </div>
 
               <Button
                 type="submit"
-                disabled={isLoading || pin.length !== 6}
+                disabled={isLoading || pin.length !== 4}
                 className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg"
               >
                 {isLoading ? "Verifying..." : "Access Subjects"}
