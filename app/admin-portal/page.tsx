@@ -280,7 +280,8 @@ export default function AdminPortalPage() {
       const [classesRes, examTypesRes, subjectsRes, schoolRes, teachersRes, assignmentsRes] = await Promise.all([
         supabase.from('classes').select('*').eq('school_id', currentSchool.id).order('display_order'),
         supabase.from('exam_types').select('*').eq('school_id', currentSchool.id).order('name'),
-        supabase.from('subjects').select('*').eq('school_id', currentSchool.id).order('name'),
+        // Subjects don't have school_id - they belong to classes. Query without school filter.
+        supabase.from('subjects').select('*').order('name'),
         supabase.from('schools').select('enable_pin_login').eq('id', currentSchool.id).single(),
         supabase.from('teacher_accounts').select('*').eq('school_id', currentSchool.id),
         supabase.from('teacher_assignments').select('*').eq('school_id', currentSchool.id),
