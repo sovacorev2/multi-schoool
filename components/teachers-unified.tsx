@@ -88,18 +88,26 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
       .eq('school_id', schoolId)
       .order('display_order')
 
-    // Load all subjects (no school_id filter - subjects belong to classes)
-    const { data: subjectsRes, error: subjectsError } = await supabase
-      .from('subjects')
-      .select('*')
-      .order('name')
+    // Load all subjects from all classes in this school
+    // Get all class IDs first
+    const classIds = classesRes?.map(c => c.id) || []
+    
+    let subjectsRes = []
+    if (classIds.length > 0) {
+      const { data } = await supabase
+        .from('subjects')
+        .select('*')
+        .in('class_id', classIds)
+        .order('name')
+      subjectsRes = data || []
+    }
 
-    console.log('[v0] Subjects loaded:', { subjectsRes, subjectsError, schoolId })
+    console.log('[v0] Subjects loaded:', { subjectsRes, classIds, schoolId })
 
     setTeachers(teachersRes || [])
     setAssignments(assignmentsRes || [])
     setClasses(sortClassesByLevel(classesRes || []))
-    setSubjects(subjectsRes || [])
+    setSubjects(subjectsRes)
   }
 
   // Load subjects when class is selected
