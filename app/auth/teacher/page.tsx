@@ -22,7 +22,6 @@ export default function TeacherAuthPage() {
   const [error, setError] = useState("")
   const [needsSetup, setNeedsSetup] = useState(false)
   const [showPinScreen, setShowPinScreen] = useState(false)
-  const [teacherId, setTeacherId] = useState<string | null>(null)
   
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -65,8 +64,8 @@ export default function TeacherAuthPage() {
         // Verifying existing password
         const result = await verifyTeacherPassword(classId!, password)
         if (result.success) {
-          // Password verified - show PIN screen instead of redirecting
-          setTeacherId(result.teacher_id || null)
+          // Password verified - show PIN screen
+          // (We don't store teacherId yet - will get it from PIN)
           setShowPinScreen(true)
           setPassword("")
         } else if (result.needsSetup) {
@@ -90,39 +89,41 @@ export default function TeacherAuthPage() {
     setIsLoading(true)
 
     try {
-      if (!pin || !teacherId) {
+      if (!pin) {
         setError("Please enter your PIN")
         setIsLoading(false)
         return
       }
 
-      // Verify PIN against teacher account
+      // Find teacher account by PIN - the PIN is what identifies the teacher
       const supabase = createClient()
       const { data: teacher, error } = await supabase
         .from('teacher_accounts')
-        .select('id, pin')
-        .eq('id', teacherId)
+        .select('id, pin, first_name, email')
+        .eq('pin', pin)
         .single()
 
       if (error || !teacher) {
-        setError("Teacher account not found")
+        setError("PIN not found. Check the email sent to you.")
         setIsLoading(false)
         return
       }
 
-      // Check if PIN matches (compare as strings since both are 4-digit codes)
+      // Verify PIN matches (should always match since we queried by PIN, but double-check)
       if (teacher.pin !== pin) {
         setError("Incorrect PIN. Check the email sent to you.")
         setIsLoading(false)
         return
       }
 
-      // PIN verified - store in session and redirect to dashboard
+      // PIN verified - store teacher in session and redirect to dashboard
       localStorage.setItem('teacher_authenticated', 'true')
-      localStorage.setItem('teacher_id', teacherId)
+      localStorage.setItem('teacher_id', teacher.id)
       localStorage.setItem('class_id', classId!)
+      localStorage.setItem('teacher_name', teacher.first_name || 'Teacher')
       router.push("/dashboard")
     } catch (err) {
+      console.error('[v0] PIN verification error:', err)
       setError("An error occurred. Please try again.")
     } finally {
       setIsLoading(false)
@@ -199,7 +200,6 @@ export default function TeacherAuthPage() {
                 onClick={() => {
                   setShowPinScreen(false)
                   setPin("")
-                  setTeacherId(null)
                   setError("")
                 }}
                 className="w-full text-gray-600"
