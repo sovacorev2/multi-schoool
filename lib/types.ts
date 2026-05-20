@@ -63,6 +63,7 @@ export interface AuditLog {
   action: string
   details: Record<string, unknown> | null
   performed_by: string | null
+  teacher_pin: string | null
   created_at: string
   class?: Class
   session?: Session
