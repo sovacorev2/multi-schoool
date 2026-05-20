@@ -514,7 +514,7 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
                       </div>
                       <p className="text-sm text-gray-600">{teacher.email}</p>
                       {teacher.phone_number && (
-                        <p className="text-sm text-gray-600">📱 {teacher.phone_number}</p>
+                        <p className="text-sm text-gray-600">{teacher.phone_number}</p>
                       )}
                       {/* PIN display - ShuleTech only */}
                       {isShuleTechSchool(schoolName) && (
