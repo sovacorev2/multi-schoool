@@ -5,6 +5,7 @@ import React from "react"
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useClass } from '@/lib/class-context'
+import { isShuleTechSchool } from '@/lib/shuletech-features'
 import { Plus, Trash2, Edit2 } from 'lucide-react'
 import type { Subject } from '@/lib/types'
 
@@ -13,6 +14,7 @@ export default function SubjectsPage() {
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [assignedSubjectIds, setAssignedSubjectIds] = useState<Set<string>>(new Set())
   const [isClassTeacher, setIsClassTeacher] = useState(false)
+  const [isShuletech, setIsShuletech] = useState(false)
   const [subjectName, setSubjectName] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -27,7 +29,23 @@ export default function SubjectsPage() {
   useEffect(() => {
     fetchSubjects()
     fetchAssignedSubjects()
+    fetchSchoolInfo()
   }, [currentClass?.id])
+
+  const fetchSchoolInfo = async () => {
+    if (!currentClass?.school_id) return
+    try {
+      const { data: school } = await supabase
+        .from('schools')
+        .select('name')
+        .eq('id', currentClass.school_id)
+        .single()
+      
+      setIsShuletech(isShuleTechSchool(school?.name))
+    } catch (error) {
+      console.error('Error fetching school info:', error)
+    }
+  }
 
   async function fetchAssignedSubjects() {
     if (!currentClass) return
@@ -214,8 +232,21 @@ export default function SubjectsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-8">
             {subjects.map((subject) => {
               const isAssigned = assignedSubjectIds.has(subject.id)
-              // Class teachers can edit all subjects, others can only edit assigned ones
-              const canEdit = isClassTeacher || isAssigned
+              
+              // Only apply access control for ShuleTech (pilot school)
+              // Other schools can edit all subjects
+              let canEdit = true
+              let statusText = ''
+              
+              if (isShuletech) {
+                // ShuleTech: Class teachers can edit all subjects, others can only edit assigned ones
+                canEdit = isClassTeacher || isAssigned
+                statusText = isClassTeacher ? 'Class teacher - can edit all' : isAssigned ? 'Assigned to you' : 'Not assigned'
+              } else {
+                // Other schools: All teachers can edit all subjects
+                canEdit = true
+                statusText = ''
+              }
               
               return (
                 <div
@@ -228,9 +259,11 @@ export default function SubjectsPage() {
                     <h3 className={`font-semibold ${canEdit ? 'text-gray-900' : 'text-gray-500'}`}>
                       {subject.name}
                     </h3>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {isClassTeacher ? 'Class teacher - can edit all' : isAssigned ? 'Assigned to you' : 'Not assigned'}
-                    </p>
+                    {statusText && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {statusText}
+                      </p>
+                    )}
                   </div>
                   <div className="flex gap-2">
                     <button

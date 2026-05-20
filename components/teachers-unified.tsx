@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { sendTeacherWelcomeEmail } from '@/lib/email-service'
 import { sortClassesByLevel } from '@/lib/class-sort-utils'
+import { isShuleTechSchool } from '@/lib/shuletech-features'
 import type { Subject } from '@/lib/types'
 
 interface Teacher {
@@ -287,8 +288,14 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
     }
   }
 
-  // Send email to teacher
+  // Send email to teacher (ShuleTech only)
   const notifyTeacher = async (teacher: Teacher) => {
+    // Only send emails for ShuleTech school
+    if (!isShuleTechSchool(schoolName)) {
+      setMessage({ type: 'error', text: 'Email notifications are only available for ShuleTech at this time' })
+      return
+    }
+
     setLoading(true)
     try {
       const teacherAssignments = assignments.filter(a => a.user_id === teacher.id && a.is_active)
@@ -426,15 +433,18 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
                         <h4 className="font-semibold text-base">
                           {teacher.first_name} {teacher.last_name}
                         </h4>
-                        {/* Class Teacher Badges */}
-                        {getTeacherClassTeacherFor(teacher.id).map((className) => (
+                        {/* Class Teacher Badges - ShuleTech only */}
+                        {isShuleTechSchool(schoolName) && getTeacherClassTeacherFor(teacher.id).map((className) => (
                           <span key={className} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-medium">
                             Class Teacher: {className}
                           </span>
                         ))}
                       </div>
                       <p className="text-sm text-gray-600">{teacher.email}</p>
-                      <p className="text-xs text-gray-500 mt-1">PIN: {teacher.pin}</p>
+                      {/* PIN display - ShuleTech only */}
+                      {isShuleTechSchool(schoolName) && (
+                        <p className="text-xs text-gray-500 mt-1">PIN: {teacher.pin}</p>
+                      )}
 
                       {/* Assignments list */}
                       {teacherAssignments.length > 0 && (
