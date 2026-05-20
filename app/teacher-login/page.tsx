@@ -11,10 +11,12 @@ export default function TeacherLoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [pin, setPin] = useState('')
   const [schoolId, setSchoolId] = useState('')
-  const [schools, setSchools] = useState<Array<{ id: string; name: string }>>([])
+  const [schools, setSchools] = useState<Array<{ id: string; name: string; feature_pin_management: boolean }>>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [showPin, setShowPin] = useState(false)
 
   const supabase = createClient()
 
@@ -23,7 +25,7 @@ export default function TeacherLoginPage() {
     const fetchSchools = async () => {
       const { data } = await supabase
         .from('schools')
-        .select('id, name')
+        .select('id, name, feature_pin_management')
         .eq('is_active', true)
         .order('name')
 
@@ -35,28 +37,103 @@ export default function TeacherLoginPage() {
     fetchSchools()
   }, [])
 
+  // Get selected school's PIN management status
+  const selectedSchool = schools.find(s => s.id === schoolId)
+  const hasPinManagement = selectedSchool?.feature_pin_management === true
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setIsLoading(true)
 
     try {
-      const response = await fetch('/api/teacher-login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, schoolId }),
-      })
+      // If school has PIN management, validate PIN
+      if (hasPinManagement) {
+        if (!pin || pin.length !== 4) {
+          setError('Please enter your 4-digit PIN')
+          setIsLoading(false)
+          return
+        }
 
-      const data = await response.json()
+        // Verify welcome password (stored as admin_password)
+        const { data: schoolData } = await supabase
+          .from('schools')
+          .select('admin_password')
+          .eq('id', schoolId)
+          .single()
 
-      if (!response.ok) {
-        setError(data.error || 'Login failed')
-        setIsLoading(false)
-        return
+        if (!schoolData || schoolData.admin_password !== password) {
+          setError('Invalid welcome password. Please try again.')
+          setIsLoading(false)
+          return
+        }
+
+        // Verify PIN and get teacher details
+        const { data: teacher, error: teacherError } = await supabase
+          .from('teacher_accounts')
+          .select(
+            `
+            id,
+            first_name,
+            last_name,
+            email,
+            school_id,
+            is_active,
+            teacher_assignments(
+              id,
+              class_id,
+              subject_id,
+              classes:class_id(id, name),
+              subjects:subject_id(id, name)
+            )
+          `,
+          )
+          .eq('pin', pin)
+          .eq('school_id', schoolId)
+          .eq('is_active', true)
+          .single()
+
+        if (teacherError || !teacher) {
+          setError('Invalid PIN or teacher not found. Please check and try again.')
+          setIsLoading(false)
+          return
+        }
+
+        // Store session in localStorage
+        const session = {
+          teacherId: teacher.id,
+          name: `${teacher.first_name} ${teacher.last_name}`,
+          email: teacher.email,
+          schoolId: schoolId,
+          pin: pin,
+          assignments: teacher.teacher_assignments || [],
+          loginTime: new Date().toISOString(),
+        }
+
+        localStorage.setItem('teacher_session', JSON.stringify(session))
+        localStorage.setItem('teacher_pin', pin)
+
+        // Redirect to teacher dashboard
+        router.push('/teacher/dashboard')
+      } else {
+        // Standard login (email + password)
+        const response = await fetch('/api/teacher-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password, schoolId }),
+        })
+
+        const data = await response.json()
+
+        if (!response.ok) {
+          setError(data.error || 'Login failed')
+          setIsLoading(false)
+          return
+        }
+
+        // Redirect to teacher dashboard
+        router.push('/teacher/dashboard')
       }
-
-      // Redirect to teacher dashboard
-      router.push('/teacher/dashboard')
     } catch (err) {
       setError('An error occurred. Please try again.')
       console.error('[v0] Login error:', err)
@@ -92,26 +169,28 @@ export default function TeacherLoginPage() {
             </select>
           </div>
 
-          {/* Email */}
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="your@email.com"
-              required
-            />
-          </div>
+          {/* Email - only show for non-PIN schools */}
+          {!hasPinManagement && (
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="your@email.com"
+                required={!hasPinManagement}
+              />
+            </div>
+          )}
 
           {/* Password */}
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-              Password
+              {hasPinManagement ? 'Welcome Password' : 'Password'}
             </label>
             <input
               id="password"
@@ -119,10 +198,30 @@ export default function TeacherLoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="••••••••"
+              placeholder={hasPinManagement ? 'Enter welcome password' : '••••••••'}
               required
             />
           </div>
+
+          {/* PIN - only show for PIN-enabled schools */}
+          {hasPinManagement && (
+            <div>
+              <label htmlFor="pin" className="block text-sm font-medium text-gray-700 mb-2">
+                Your 4-Digit PIN
+              </label>
+              <input
+                id="pin"
+                type={showPin ? 'text' : 'password'}
+                value={pin}
+                onChange={(e) => setPin(e.target.value.slice(0, 4))}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-2xl font-mono"
+                placeholder="0000"
+                maxLength={4}
+                inputMode="numeric"
+              />
+              <p className="text-xs text-gray-500 mt-1">Check your email for your PIN</p>
+            </div>
+          )}
 
           {/* Error Message */}
           {error && (
