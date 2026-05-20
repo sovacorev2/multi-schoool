@@ -4,6 +4,7 @@ import React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { createClient } from "@/lib/supabase/client"
 import { useClass } from "@/lib/class-context"
 import { verifyTeacherPassword, setupTeacherPassword } from "@/app/actions/auth"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,11 +15,14 @@ import { Lock, Eye, EyeOff, KeyRound } from "lucide-react"
 export default function TeacherAuthPage() {
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [pin, setPin] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const [needsSetup, setNeedsSetup] = useState(false)
+  const [showPinScreen, setShowPinScreen] = useState(false)
+  const [teacherId, setTeacherId] = useState<string | null>(null)
   
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -61,7 +65,10 @@ export default function TeacherAuthPage() {
         // Verifying existing password
         const result = await verifyTeacherPassword(classId!, password)
         if (result.success) {
-          router.push("/dashboard")
+          // Password verified - show PIN screen instead of redirecting
+          setTeacherId(result.teacher_id || null)
+          setShowPinScreen(true)
+          setPassword("")
         } else if (result.needsSetup) {
           setNeedsSetup(true)
           setPassword("")
@@ -71,6 +78,51 @@ export default function TeacherAuthPage() {
         }
       }
     } catch {
+      setError("An error occurred. Please try again.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handlePinSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError("")
+    setIsLoading(true)
+
+    try {
+      if (!pin || !teacherId) {
+        setError("Please enter your PIN")
+        setIsLoading(false)
+        return
+      }
+
+      // Verify PIN against teacher account
+      const supabase = createClient()
+      const { data: teacher, error } = await supabase
+        .from('teacher_accounts')
+        .select('id, pin')
+        .eq('id', teacherId)
+        .single()
+
+      if (error || !teacher) {
+        setError("Teacher account not found")
+        setIsLoading(false)
+        return
+      }
+
+      // Check if PIN matches (compare as strings since both are 4-digit codes)
+      if (teacher.pin !== pin) {
+        setError("Incorrect PIN. Check the email sent to you.")
+        setIsLoading(false)
+        return
+      }
+
+      // PIN verified - store in session and redirect to dashboard
+      localStorage.setItem('teacher_authenticated', 'true')
+      localStorage.setItem('teacher_id', teacherId)
+      localStorage.setItem('class_id', classId!)
+      router.push("/dashboard")
+    } catch (err) {
       setError("An error occurred. Please try again.")
     } finally {
       setIsLoading(false)
@@ -87,16 +139,21 @@ export default function TeacherAuthPage() {
         <CardHeader className="text-center space-y-4 pb-6">
           <div className="flex justify-center mb-4">
             <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center">
-              {needsSetup ? <KeyRound className="w-8 h-8 text-white" /> : <Lock className="w-8 h-8 text-white" />}
+              {showPinScreen ? <KeyRound className="w-8 h-8 text-white" /> : needsSetup ? <KeyRound className="w-8 h-8 text-white" /> : <Lock className="w-8 h-8 text-white" />}
             </div>
           </div>
           <div>
             <CardTitle className="text-2xl font-bold mb-2">
-              {needsSetup ? "Set Up Password" : "Enter Password"}
+              {showPinScreen ? "Enter PIN" : needsSetup ? "Set Up Password" : "Enter Password"}
             </CardTitle>
             <CardDescription className="text-base text-gray-600">
               {className || "Class"}
             </CardDescription>
+            {showPinScreen && (
+              <p className="text-sm text-gray-500 mt-2">
+                Enter the PIN sent to your email to access your assigned subjects.
+              </p>
+            )}
             {needsSetup && (
               <p className="text-sm text-gray-500 mt-2">
                 Create a password for your class. You will use this password to access your class in the future.
@@ -106,78 +163,124 @@ export default function TeacherAuthPage() {
         </CardHeader>
 
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                {error}
-              </div>
-            )}
+          {showPinScreen ? (
+            <form onSubmit={handlePinSubmit} className="space-y-5">
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                  {error}
+                </div>
+              )}
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">
-                {needsSetup ? "New Password" : "Password"}
-              </label>
-              <div className="relative">
-                <Input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder={needsSetup ? "Create a password" : "Enter your password"}
-                  className="pr-10"
-                  required
-                  minLength={needsSetup ? 6 : 1}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            {needsSetup && (
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Confirm Password</label>
+                <label className="text-sm font-medium text-gray-700">PIN</label>
+                <Input
+                  type="text"
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+                  placeholder="Enter your 4-digit PIN"
+                  maxLength={4}
+                  className="text-center text-2xl tracking-widest"
+                  required
+                />
+                <p className="text-xs text-gray-500">You received this 4-digit PIN in your welcome email</p>
+              </div>
+
+              <Button
+                type="submit"
+                disabled={isLoading || pin.length !== 4}
+                className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg"
+              >
+                {isLoading ? "Verifying..." : "Access Subjects"}
+              </Button>
+
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setShowPinScreen(false)
+                  setPin("")
+                  setTeacherId(null)
+                  setError("")
+                }}
+                className="w-full text-gray-600"
+              >
+                Back to Password
+              </Button>
+            </form>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                  {error}
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">
+                  {needsSetup ? "New Password" : "Password"}
+                </label>
                 <div className="relative">
                   <Input
-                    type={showConfirmPassword ? "text" : "password"}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Confirm your password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder={needsSetup ? "Create a password" : "Enter your password"}
                     className="pr-10"
                     required
-                    minLength={6}
+                    minLength={needsSetup ? 6 : 1}
                   />
                   <button
                     type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
                   >
-                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
-            )}
 
-            <Button
-              type="submit"
-              disabled={isLoading || !password || (needsSetup && !confirmPassword)}
-              className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg"
-            >
-              {isLoading ? "Please wait..." : needsSetup ? "Set Password & Continue" : "Login"}
-            </Button>
+              {needsSetup && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Confirm Password</label>
+                  <div className="relative">
+                    <Input
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Confirm your password"
+                      className="pr-10"
+                      required
+                      minLength={6}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+              )}
 
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => router.push("/")}
-              className="w-full text-gray-600"
-            >
-              Back to Class Selection
-            </Button>
-          </form>
+              <Button
+                type="submit"
+                disabled={isLoading || !password || (needsSetup && !confirmPassword)}
+                className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg"
+              >
+                {isLoading ? "Please wait..." : needsSetup ? "Set Password & Continue" : "Login"}
+              </Button>
+
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => router.push("/")}
+                className="w-full text-gray-600"
+              >
+                Back to Class Selection
+              </Button>
+            </form>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -32,7 +32,7 @@ async function getAdminPassword(): Promise<string> {
   return data?.value || "admin26"
 }
 
-export async function verifyTeacherPassword(classId: string, password: string): Promise<{ success: boolean; error?: string; needsSetup?: boolean }> {
+export async function verifyTeacherPassword(classId: string, password: string): Promise<{ success: boolean; error?: string; needsSetup?: boolean; teacher_id?: string }> {
   const supabase = await createClient()
   
   // Get class info
@@ -63,7 +63,7 @@ export async function verifyTeacherPassword(classId: string, password: string): 
       sameSite: "lax",
       maxAge: 60 * 60 * 8, // 8 hours
     })
-    return { success: true }
+    return { success: true, teacher_id: classId }
   }
   
   // Also try hashed password (for backwards compatibility with passwords set by teachers)
@@ -75,7 +75,7 @@ export async function verifyTeacherPassword(classId: string, password: string): 
       sameSite: "lax",
       maxAge: 60 * 60 * 8,
     })
-    return { success: true }
+    return { success: true, teacher_id: classId }
   }
   
   return { success: false, error: "Incorrect password" }

@@ -11,6 +11,7 @@ import type { Subject } from '@/lib/types'
 export default function SubjectsPage() {
   const { currentClass } = useClass()
   const [subjects, setSubjects] = useState<Subject[]>([])
+  const [assignedSubjectIds, setAssignedSubjectIds] = useState<Set<string>>(new Set())
   const [subjectName, setSubjectName] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -24,7 +25,31 @@ export default function SubjectsPage() {
 
   useEffect(() => {
     fetchSubjects()
+    fetchAssignedSubjects()
   }, [currentClass?.id])
+
+  async function fetchAssignedSubjects() {
+    if (!currentClass) return
+
+    try {
+      // Get teacher context from localStorage (set during PIN auth)
+      const teacherId = localStorage.getItem('teacher_id')
+      if (!teacherId) return
+
+      // Get assignments for this teacher in this class
+      const { data, error } = await supabase
+        .from('teacher_assignments')
+        .select('subject_id')
+        .eq('user_id', teacherId)
+        .eq('class_id', currentClass.id)
+
+      if (error) throw error
+      const assignedIds = new Set(data?.map(a => a.subject_id).filter(Boolean) || [])
+      setAssignedSubjectIds(assignedIds)
+    } catch (error) {
+      console.error('Error fetching assigned subjects:', error)
+    }
+  }
 
   async function fetchSubjects() {
     if (!currentClass) return
@@ -181,33 +206,54 @@ export default function SubjectsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-8">
-            {subjects.map((subject) => (
-              <div
-                key={subject.id}
-                className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
-              >
-                <div>
-                  <h3 className="font-semibold text-gray-900">{subject.name}</h3>
-                  <p className="text-xs text-gray-500 mt-1">Custom</p>
+            {subjects.map((subject) => {
+              const isAssigned = assignedSubjectIds.has(subject.id)
+              const canEdit = isAssigned
+              
+              return (
+                <div
+                  key={subject.id}
+                  className={`flex items-center justify-between p-4 border border-gray-200 rounded-lg transition-all ${
+                    canEdit ? 'hover:bg-gray-50' : 'opacity-40 cursor-not-allowed'
+                  }`}
+                >
+                  <div>
+                    <h3 className={`font-semibold ${canEdit ? 'text-gray-900' : 'text-gray-500'}`}>
+                      {subject.name}
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {canEdit ? 'Assigned to you' : 'Not assigned'}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => canEdit && handleEditSubject(subject)}
+                      disabled={!canEdit}
+                      className={`p-2 rounded-lg transition-colors ${
+                        canEdit
+                          ? 'text-blue-600 hover:bg-blue-50 cursor-pointer'
+                          : 'text-gray-300 cursor-not-allowed'
+                      }`}
+                      title={canEdit ? 'Edit subject' : 'Not assigned to you'}
+                    >
+                      <Edit2 className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => canEdit && handleDeleteSubject(subject.id)}
+                      disabled={!canEdit}
+                      className={`p-2 rounded-lg transition-colors ${
+                        canEdit
+                          ? 'text-red-600 hover:bg-red-50 cursor-pointer'
+                          : 'text-gray-300 cursor-not-allowed'
+                      }`}
+                      title={canEdit ? 'Delete subject' : 'Not assigned to you'}
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleEditSubject(subject)}
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                    title="Edit subject"
-                  >
-                    <Edit2 className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteSubject(subject.id)}
-                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    title="Delete subject"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
