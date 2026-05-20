@@ -134,16 +134,18 @@ export async function POST(req: NextRequest) {
     </html>
     `
 
-    // Initialize Resend with API key from server environment
+    console.log('[v0] Initializing Resend with API key')
+
+    // Initialize Resend with API key
     const resend = new Resend(process.env.RESEND_API_KEY)
 
     console.log('[v0] Sending email via Resend...')
+    console.log('[v0] From: hello@shuletechsolutions.co.ke')
+    console.log('[v0] To:', email)
 
-    // Send email via Resend
-    // Using account owner email as sender - this is allowed in Resend's test mode
-    // Once you have more senders verified, you can add hello@shuletechsolutions.co.ke
+    // Send email via Resend - using noreply which is auto-verified with verified domain
     const response = await resend.emails.send({
-      from: 'ShuleTech <onboarding@resend.dev>',
+      from: 'ShuleTech <noreply@shuletechsolutions.co.ke>',
       to: email,
       subject: `Welcome to ShuleTech ${schoolName} - Your PIN: ${pin}`,
       html: emailHTML,
@@ -160,7 +162,7 @@ export async function POST(req: NextRequest) {
     }
 
     console.log('[v0] Email sent successfully!')
-    console.log('[v0] From: onboarding@resend.dev')
+    console.log('[v0] From: noreply@shuletechsolutions.co.ke')
     console.log('[v0] Message ID:', response.id)
     console.log('[v0] To:', email)
     console.log('[v0] PIN:', pin)
