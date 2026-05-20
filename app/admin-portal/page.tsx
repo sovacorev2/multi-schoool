@@ -341,6 +341,8 @@ export default function AdminPortalPage() {
           action: log.action,
           details: log.details,
           performed_by: log.performed_by,
+          teacher_pin: log.teacher_pin,
+          class_id: log.class_id,
           class_name: '',
           session_info: '',
           created_at: log.created_at
@@ -1746,7 +1748,7 @@ export default function AdminPortalPage() {
                     <History className="w-5 h-5" />
                     Audit Logs
                   </CardTitle>
-                  <CardDescription>View all actions performed in the system</CardDescription>
+                  <CardDescription>View all actions performed in the system with precise PIN identification</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {auditLogs.length === 0 ? (
@@ -1754,38 +1756,59 @@ export default function AdminPortalPage() {
                   ) : (
                     <div className="space-y-3 max-h-[600px] overflow-y-auto">
                       {auditLogs.map((log: any) => (
-                        <div key={log.id} className="border rounded-lg p-4 bg-gray-50">
-                          <div className="flex items-start justify-between">
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium text-sm capitalize">
+                        <div key={log.id} className="border rounded-lg p-4 bg-gradient-to-r from-gray-50 to-white hover:shadow-md transition-shadow">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1 space-y-2">
+                              {/* Action and Class */}
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-bold text-sm capitalize bg-gradient-to-r from-blue-600 to-blue-700 text-white px-3 py-1 rounded-full">
                                   {log.action?.replace(/_/g, ' ')}
                                 </span>
+                                {log.class_id && (
+                                  <span className="text-xs bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full font-semibold">
+                                    Class ID: {log.class_id}
+                                  </span>
+                                )}
                                 {log.class_name && (
-                                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
+                                  <span className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-semibold">
                                     {log.class_name}
                                   </span>
                                 )}
-                                {log.session_info && (
-                                  <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">
-                                    {log.session_info}
-                                  </span>
-                                )}
                               </div>
+
+                              {/* Teacher PIN - Prominently displayed */}
+                              {log.teacher_pin && (
+                                <div className="bg-yellow-50 border-l-4 border-yellow-500 p-2 rounded">
+                                  <p className="text-sm font-bold text-yellow-900">
+                                    Teacher PIN: <span className="font-mono text-base tracking-widest text-yellow-700">{log.teacher_pin}</span>
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* Details */}
                               {log.details && (
-                                <p className="text-xs text-gray-600">
-                                  {typeof log.details === 'object' 
+                                <p className="text-xs text-gray-700 bg-gray-100 p-2 rounded">
+                                  <span className="font-semibold">Details:</span> {typeof log.details === 'object' 
                                     ? JSON.stringify(log.details) 
                                     : log.details}
                                 </p>
                               )}
-                              <p className="text-xs text-gray-400">
-                                By: {log.performed_by || 'Unknown'}
+
+                              {/* Performed By */}
+                              <p className="text-xs text-gray-600">
+                                <span className="font-semibold">Performed By:</span> {log.performed_by || 'Unknown'}
                               </p>
                             </div>
-                            <span className="text-xs text-gray-400">
-                              {new Date(log.created_at).toLocaleString()}
-                            </span>
+
+                            {/* Timestamp */}
+                            <div className="text-right">
+                              <p className="text-xs text-gray-500 font-mono">
+                                {new Date(log.created_at).toLocaleDateString()}
+                              </p>
+                              <p className="text-xs text-gray-500 font-mono">
+                                {new Date(log.created_at).toLocaleTimeString()}
+                              </p>
+                            </div>
                           </div>
                         </div>
                       ))}

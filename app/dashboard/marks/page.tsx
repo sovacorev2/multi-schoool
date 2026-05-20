@@ -109,9 +109,12 @@ async function autoLockExpiredSessions(
         .eq("id", session.id);
 
       if (!error) {
-        // Log the auto-lock
+        // Log the auto-lock with teacher PIN and class ID
+        const teacherPin = typeof window !== 'undefined' ? localStorage.getItem('teacher_pin') : null
         await supabase.from("activity_logs").insert({
           school_id: currentSchool?.id,
+          class_id: session.class_id,
+          teacher_pin: teacherPin,
           action: "deadline_auto_locked",
           details: `Session auto-locked: ${session.exam_types?.name} - Deadline: ${session.deadline_datetime}`,
           performed_by: "System",
@@ -303,9 +306,12 @@ export default function MarksPage() {
       return;
     }
 
-    // Log the action
+    // Log the action with teacher PIN and class ID
+    const teacherPin = typeof window !== 'undefined' ? localStorage.getItem('teacher_pin') : null
     await supabase.from("activity_logs").insert({
       school_id: currentSchool?.id,
+      class_id: currentClass?.id,
+      teacher_pin: teacherPin,
       action: "session_created",
       details: `Created session: ${examTypes.find(e => e.id === newSession.exam_type_id)?.name} - ${newSession.term} ${newSession.year} for ${currentClass.name}`,
       performed_by: currentClass.name,
@@ -384,9 +390,12 @@ export default function MarksPage() {
       console.error("[v0] Error saving marks:", error);
     }
 
-    // Log the action
+    // Log the action with teacher PIN and class ID for audit trail
+    const teacherPin = typeof window !== 'undefined' ? localStorage.getItem('teacher_pin') : null
     await supabase.from("activity_logs").insert({
       school_id: currentSchool?.id,
+      class_id: currentClass?.id,
+      teacher_pin: teacherPin,
       action: "marks_submitted",
       details: `Submitted marks for ${learners.length} learners in ${subjects.length} subjects - ${currentClass.name}`,
       performed_by: currentClass.name,
