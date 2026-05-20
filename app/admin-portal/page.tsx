@@ -1076,8 +1076,8 @@ export default function AdminPortalPage() {
                   <div className="space-y-2">
                     <h3 className="font-medium text-gray-700">All Exam Sessions</h3>
                     <p className="text-sm text-gray-500">These are exam sessions created by teachers. Set deadlines and lock/unlock as needed.</p>
-                    <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-sm">
+                    <div className="border rounded-lg overflow-x-auto">
+                      <table className="w-full text-sm min-w-max">
                         <thead className="bg-gray-100">
                           <tr>
                             <th className="p-3 text-left font-medium text-gray-600">Class</th>
@@ -1402,8 +1402,8 @@ export default function AdminPortalPage() {
                       <GraduationCap className="w-4 h-4" />
                       Class Passwords
                     </h3>
-                    <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-sm">
+                    <div className="border rounded-lg overflow-x-auto">
+                      <table className="w-full text-sm min-w-max">
                         <thead className="bg-gray-100">
                           <tr>
                             <th className="p-3 text-left">Class</th>
@@ -1511,8 +1511,8 @@ export default function AdminPortalPage() {
                     </div>
                   )}
                   
-                  <div className="border rounded-lg overflow-hidden">
-                    <table className="w-full text-sm">
+                  <div className="border rounded-lg overflow-x-auto">
+                    <table className="w-full text-sm min-w-max">
                       <thead className="bg-gray-100">
                         <tr>
                           <th className="p-3 text-left">Class</th>
