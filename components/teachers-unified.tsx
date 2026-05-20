@@ -41,6 +41,11 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [newTeacher, setNewTeacher] = useState({ first_name: '', last_name: '', email: '' })
 
+  // Edit teacher details modal
+  const [showEditTeacherModal, setShowEditTeacherModal] = useState(false)
+  const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null)
+  const [editFormData, setEditFormData] = useState({ first_name: '', last_name: '', email: '' })
+
   // Edit assignment modal
   const [showEditModal, setShowEditModal] = useState(false)
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null)
@@ -185,6 +190,74 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
       if (error) throw error
 
       setMessage({ type: 'success', text: 'Assignment deleted' })
+      loadData()
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Update teacher details
+  const updateTeacher = async () => {
+    if (!editingTeacher) return
+    if (!editFormData.first_name || !editFormData.last_name || !editFormData.email) {
+      setMessage({ type: 'error', text: 'All fields are required' })
+      return
+    }
+
+    setLoading(true)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('teacher_accounts')
+        .update({
+          first_name: editFormData.first_name,
+          last_name: editFormData.last_name,
+          email: editFormData.email,
+        })
+        .eq('id', editingTeacher.id)
+        .eq('school_id', schoolId)
+
+      if (error) throw error
+
+      setMessage({ type: 'success', text: 'Teacher updated successfully' })
+      setShowEditTeacherModal(false)
+      setEditingTeacher(null)
+      setEditFormData({ first_name: '', last_name: '', email: '' })
+      loadData()
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Delete teacher
+  const deleteTeacher = async (teacherId: string) => {
+    if (!confirm('Are you sure you want to delete this teacher? This will also delete all their assignments.')) return
+
+    setLoading(true)
+    try {
+      const supabase = createClient()
+
+      // Delete all assignments first
+      await supabase
+        .from('teacher_assignments')
+        .delete()
+        .eq('user_id', teacherId)
+        .eq('school_id', schoolId)
+
+      // Delete teacher
+      const { error } = await supabase
+        .from('teacher_accounts')
+        .delete()
+        .eq('id', teacherId)
+        .eq('school_id', schoolId)
+
+      if (error) throw error
+
+      setMessage({ type: 'success', text: 'Teacher deleted successfully' })
       loadData()
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message })
@@ -374,7 +447,25 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
                       >
                         Notify Teacher
                       </button>
-                      <button className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600">
+                      <button
+                        onClick={() => {
+                          setEditingTeacher(teacher)
+                          setEditFormData({
+                            first_name: teacher.first_name,
+                            last_name: teacher.last_name,
+                            email: teacher.email,
+                          })
+                          setShowEditTeacherModal(true)
+                        }}
+                        className="bg-yellow-500 text-white px-3 py-1 rounded text-sm hover:bg-yellow-600"
+                      >
+                        Edit Details
+                      </button>
+                      <button
+                        onClick={() => deleteTeacher(teacher.id)}
+                        disabled={loading}
+                        className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 disabled:opacity-50"
+                      >
                         Delete
                       </button>
                     </div>
@@ -470,6 +561,70 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Edit Teacher Details Modal */}
+      {showEditTeacherModal && editingTeacher && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full space-y-4">
+            <h3 className="text-lg font-semibold">Edit Teacher Details</h3>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium mb-1">First Name</label>
+                <input
+                  type="text"
+                  value={editFormData.first_name}
+                  onChange={(e) => setEditFormData({ ...editFormData, first_name: e.target.value })}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  placeholder="First name"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Last Name</label>
+                <input
+                  type="text"
+                  value={editFormData.last_name}
+                  onChange={(e) => setEditFormData({ ...editFormData, last_name: e.target.value })}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  placeholder="Last name"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Email</label>
+                <input
+                  type="email"
+                  value={editFormData.email}
+                  onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  placeholder="Email address"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-4">
+              <button
+                onClick={() => {
+                  setShowEditTeacherModal(false)
+                  setEditingTeacher(null)
+                  setEditFormData({ first_name: '', last_name: '', email: '' })
+                }}
+                className="flex-1 bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={updateTeacher}
+                disabled={loading}
+                className="flex-1 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
+              >
+                {loading ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
           </div>
         </div>
       )}
