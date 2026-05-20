@@ -26,7 +26,7 @@ interface School {
   feature_sms: boolean
   feature_bulk_sms: boolean
   feature_certificates: boolean
-  feature_pin_management: boolean
+  feature_pin_management?: boolean
   subscription_plan: string
   subscription_expires_at: string | null
 }
@@ -132,7 +132,8 @@ export default function SuperAdminPage() {
         feature_whatsapp_reports: 'WhatsApp Reports',
         feature_sms: 'SMS Communications',
         feature_bulk_sms: 'Bulk SMS',
-        feature_certificates: 'Certificates'
+        feature_certificates: 'Certificates',
+        feature_pin_management: 'PIN Management'
       }
       
       await supabase.from('activity_logs').insert({
@@ -215,7 +216,6 @@ export default function SuperAdminPage() {
         feature_sms: true,
         feature_bulk_sms: true,
         feature_certificates: true,
-        feature_pin_management: true,
         subscription_plan: 'premium'
       })
       .eq('id', schoolId)
@@ -229,7 +229,6 @@ export default function SuperAdminPage() {
           feature_sms: true,
           feature_bulk_sms: true,
           feature_certificates: true,
-          feature_pin_management: true,
           subscription_plan: 'premium'
         } : s
       ))
@@ -247,7 +246,6 @@ export default function SuperAdminPage() {
         feature_sms: false,
         feature_bulk_sms: false,
         feature_certificates: false,
-        feature_pin_management: false,
         subscription_plan: 'basic'
       })
       .eq('id', schoolId)
@@ -261,7 +259,6 @@ export default function SuperAdminPage() {
           feature_sms: false,
           feature_bulk_sms: false,
           feature_certificates: false,
-          feature_pin_management: false,
           subscription_plan: 'basic'
         } : s
       ))
@@ -567,7 +564,7 @@ export default function SuperAdminPage() {
                           {school.subscription_plan.toUpperCase()}
                         </span>
                         <span className="text-gray-400">|</span>
-                        <span>{getFeatureCount(school)}/5 features</span>
+                        <span>{getFeatureCount(school)}/4 features</span>
                       </div>
                     </div>
                   </div>
@@ -742,37 +739,39 @@ export default function SuperAdminPage() {
                       </div>
 
                       {/* PIN Management */}
-                      <div className={`p-4 rounded-lg border-2 transition-all ${
-                        school.feature_pin_management 
-                          ? 'bg-cyan-50 border-cyan-200' 
-                          : 'bg-white border-gray-200'
-                      }`}>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                              school.feature_pin_management ? 'bg-cyan-100' : 'bg-gray-100'
-                            }`}>
-                              <Shield className={`w-5 h-5 ${
-                                school.feature_pin_management ? 'text-cyan-600' : 'text-gray-400'
-                              }`} />
+                      {school.feature_pin_management !== undefined && (
+                        <div className={`p-4 rounded-lg border-2 transition-all ${
+                          school.feature_pin_management 
+                            ? 'bg-cyan-50 border-cyan-200' 
+                            : 'bg-white border-gray-200'
+                        }`}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                                school.feature_pin_management ? 'bg-cyan-100' : 'bg-gray-100'
+                              }`}>
+                                <Shield className={`w-5 h-5 ${
+                                  school.feature_pin_management ? 'text-cyan-600' : 'text-gray-400'
+                                }`} />
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-900">PIN Management</p>
+                                <p className="text-xs text-gray-500">Teacher PIN tracking & audit logs</p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="font-medium text-gray-900">PIN Management</p>
-                              <p className="text-xs text-gray-500">Teacher PIN tracking & audit logs</p>
-                            </div>
+                            <button
+                              onClick={() => toggleFeature(school.id, 'feature_pin_management', school.feature_pin_management)}
+                              className="focus:outline-none"
+                            >
+                              {school.feature_pin_management ? (
+                                <ToggleRight className="w-10 h-10 text-cyan-600" />
+                              ) : (
+                                <ToggleLeft className="w-10 h-10 text-gray-300" />
+                              )}
+                            </button>
                           </div>
-                          <button
-                            onClick={() => toggleFeature(school.id, 'feature_pin_management', school.feature_pin_management)}
-                            className="focus:outline-none"
-                          >
-                            {school.feature_pin_management ? (
-                              <ToggleRight className="w-10 h-10 text-cyan-600" />
-                            ) : (
-                              <ToggleLeft className="w-10 h-10 text-gray-300" />
-                            )}
-                          </button>
                         </div>
-                      </div>
+                      )}
                     </div>
 
                     {/* Subscription Settings */}
