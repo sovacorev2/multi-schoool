@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { sendTeacherWelcomeEmail } from '@/lib/email-service'
+import { sortClassesByLevel } from '@/lib/class-sort-utils'
 import type { Subject } from '@/lib/types'
 
 interface Teacher {
@@ -74,18 +75,11 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
       .from('classes')
       .select('*')
       .eq('school_id', schoolId)
-      .order('name')
-
-    // Load all subjects
-    const { data: subjectsRes } = await supabase
-      .from('subjects')
-      .select('*')
-      .eq('school_id', schoolId)
-      .order('name')
+      .order('display_order')
 
     setTeachers(teachersRes || [])
     setAssignments(assignmentsRes || [])
-    setClasses(classesRes || [])
+    setClasses(sortClassesByLevel(classesRes || []))
     setSubjects(subjectsRes || [])
   }
 
@@ -213,14 +207,19 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
         }
       })
 
-      const result = await sendTeacherWelcomeEmail(
-        teacher.email,
-        teacher.pin || '',
+      console.log('[v0] Notifying teacher:', teacher.email)
+      console.log('[v0] Enriched assignments:', enrichedAssignments)
+
+      const result = await sendTeacherWelcomeEmail({
+        email: teacher.email,
+        firstName: teacher.first_name || '',
+        lastName: teacher.last_name || '',
+        pin: teacher.pin || '',
         schoolName,
-        teacher.first_name,
-        teacher.last_name,
-        enrichedAssignments
-      )
+        assignments: enrichedAssignments,
+      })
+
+      console.log('[v0] Email result:', result)
 
       if (result.success) {
         setMessage({ type: 'success', text: `Email sent to ${teacher.email}` })
@@ -228,7 +227,8 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
         setMessage({ type: 'error', text: `Failed to send email: ${result.error}` })
       }
     } catch (err: any) {
-      setMessage({ type: 'error', text: err.message })
+      console.error('[v0] Email error:', err)
+      setMessage({ type: 'error', text: `Error: ${err.message}` })
     } finally {
       setLoading(false)
     }
