@@ -139,9 +139,9 @@ export async function POST(req: NextRequest) {
 
     console.log('[v0] Sending email via Resend...')
 
-    // Send email via Resend using verified domain
+    // Send email via Resend using verified custom domain
     const response = await resend.emails.send({
-      from: 'ShuleTech <onboarding@resend.dev>',
+      from: 'ShuleTech <hello@shuletechsolutions.co.ke>',
       to: email,
       subject: `Welcome to ShuleTech ${schoolName} - Your PIN: ${pin}`,
       html: emailHTML,
@@ -158,7 +158,7 @@ export async function POST(req: NextRequest) {
     }
 
     console.log('[v0] Email sent successfully!')
-    console.log('[v0] From: onboarding@resend.dev')
+    console.log('[v0] From: hello@shuletechsolutions.co.ke')
     console.log('[v0] Message ID:', response.id)
     console.log('[v0] To:', email)
     console.log('[v0] PIN:', pin)
