@@ -13,6 +13,7 @@ interface Teacher {
   first_name: string
   last_name: string
   pin?: string
+  phone_number?: string | null
 }
 
 interface ClassTeacherAssignment {
@@ -46,12 +47,12 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
 
   // Create new teacher form
   const [showCreateForm, setShowCreateForm] = useState(false)
-  const [newTeacher, setNewTeacher] = useState({ first_name: '', last_name: '', email: '' })
+  const [newTeacher, setNewTeacher] = useState({ first_name: '', last_name: '', email: '', phone_number: '' })
 
   // Edit teacher details modal
   const [showEditTeacherModal, setShowEditTeacherModal] = useState(false)
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null)
-  const [editFormData, setEditFormData] = useState({ first_name: '', last_name: '', email: '' })
+  const [editFormData, setEditFormData] = useState({ first_name: '', last_name: '', email: '', phone_number: '' })
 
   // Edit assignment modal
   const [showEditModal, setShowEditModal] = useState(false)
@@ -151,6 +152,7 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
         email: newTeacher.email.trim(),
         first_name: newTeacher.first_name.trim(),
         last_name: newTeacher.last_name.trim(),
+        phone_number: newTeacher.phone_number.trim() || null,
         pin: pin,
         is_active: true,
       })
@@ -158,7 +160,7 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
       if (error) throw error
 
       setMessage({ type: 'success', text: `Teacher ${newTeacher.first_name} ${newTeacher.last_name} created with PIN: ${pin}` })
-      setNewTeacher({ first_name: '', last_name: '', email: '' })
+      setNewTeacher({ first_name: '', last_name: '', email: '', phone_number: '' })
       setShowCreateForm(false)
       loadData()
     } catch (err: any) {
@@ -237,6 +239,7 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
           first_name: editFormData.first_name,
           last_name: editFormData.last_name,
           email: editFormData.email,
+          phone_number: editFormData.phone_number || null,
         })
         .eq('id', editingTeacher.id)
         .eq('school_id', schoolId)
@@ -246,7 +249,7 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
       setMessage({ type: 'success', text: 'Teacher updated successfully' })
       setShowEditTeacherModal(false)
       setEditingTeacher(null)
-      setEditFormData({ first_name: '', last_name: '', email: '' })
+      setEditFormData({ first_name: '', last_name: '', email: '', phone_number: '' })
       loadData()
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message })
@@ -353,6 +356,65 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
     }
   }
 
+  // Send WhatsApp to teacher (ShuleTech only)
+  const notifyTeacherWhatsApp = async (teacher: Teacher) => {
+    // Only send WhatsApp for ShuleTech school
+    if (!isShuleTechSchool(schoolName)) {
+      setMessage({ type: 'error', text: 'WhatsApp notifications are only available for ShuleTech at this time' })
+      return
+    }
+
+    // Check if phone number exists
+    if (!teacher.phone_number) {
+      setMessage({ type: 'error', text: 'Teacher phone number not set. Please add phone number in Edit Details.' })
+      return
+    }
+
+    setLoading(true)
+    try {
+      const teacherAssignments = assignments.filter(a => a.user_id === teacher.id && a.is_active)
+
+      if (teacherAssignments.length === 0) {
+        setMessage({ type: 'error', text: 'Teacher has no active assignments to notify about' })
+        setLoading(false)
+        return
+      }
+
+      // Enrich assignments with class and subject names
+      const enrichedAssignments = teacherAssignments.map(a => {
+        const classData = classes.find(c => c.id === a.class_id)
+        const subjectData = subjects.find(s => s.id === a.subject_id)
+
+        return {
+          className: classData?.name || 'Unknown Class',
+          subjectName: a.subject_id ? (subjectData?.name || 'Unknown Subject') : 'All Subjects',
+        }
+      })
+
+      // Create WhatsApp message
+      const assignmentsList = enrichedAssignments
+        .map(a => `• ${a.className} - ${a.subjectName}`)
+        .join('\n')
+
+      const message = `Hello ${teacher.first_name},\n\nYou have been assigned to the following classes at ${schoolName}:\n\n${assignmentsList}\n\nYour PIN: ${teacher.pin}\n\nPlease log in to the system to manage your subjects and marks.`
+
+      // Encode message for WhatsApp
+      const encodedMessage = encodeURIComponent(message)
+      const phoneNumber = teacher.phone_number.replace(/\D/g, '') // Remove non-digits
+
+      // Open WhatsApp Web or WhatsApp app
+      const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`
+      window.open(whatsappUrl, '_blank')
+
+      setMessage({ type: 'success', text: `WhatsApp message opened for ${teacher.first_name}. Please send the message.` })
+    } catch (err: any) {
+      console.error('[v0] WhatsApp error:', err)
+      setMessage({ type: 'error', text: `Error: ${err.message}` })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Message */}
@@ -388,6 +450,16 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
               onChange={(e) => setNewTeacher({ ...newTeacher, email: e.target.value })}
               className="border border-gray-300 rounded px-3 py-2"
             />
+          </div>
+          <div>
+            <input
+              type="tel"
+              placeholder="Phone Number (e.g., +254123456789)"
+              value={newTeacher.phone_number}
+              onChange={(e) => setNewTeacher({ ...newTeacher, phone_number: e.target.value })}
+              className="w-full border border-gray-300 rounded px-3 py-2"
+            />
+            <p className="text-xs text-gray-500 mt-1">Optional: Include country code for WhatsApp notifications (ShuleTech only)</p>
           </div>
           <div className="flex gap-2">
             <button
@@ -441,6 +513,9 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
                         ))}
                       </div>
                       <p className="text-sm text-gray-600">{teacher.email}</p>
+                      {teacher.phone_number && (
+                        <p className="text-sm text-gray-600">📱 {teacher.phone_number}</p>
+                      )}
                       {/* PIN display - ShuleTech only */}
                       {isShuleTechSchool(schoolName) && (
                         <div className="mt-2 bg-blue-50 border border-blue-200 rounded px-3 py-2 inline-block">
@@ -486,8 +561,18 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
                         disabled={loading || teacherAssignments.length === 0}
                         className="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600 disabled:opacity-50"
                       >
-                        Notify Teacher
+                        📧 Email
                       </button>
+                      {isShuleTechSchool(schoolName) && (
+                        <button
+                          onClick={() => notifyTeacherWhatsApp(teacher)}
+                          disabled={loading || teacherAssignments.length === 0 || !teacher.phone_number}
+                          className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 disabled:opacity-50"
+                          title={!teacher.phone_number ? 'Phone number not set' : 'Send WhatsApp notification'}
+                        >
+                          💬 WhatsApp
+                        </button>
+                      )}
                       <button
                         onClick={() => {
                           setEditingTeacher(teacher)
@@ -495,6 +580,7 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
                             first_name: teacher.first_name,
                             last_name: teacher.last_name,
                             email: teacher.email,
+                            phone_number: teacher.phone_number || '',
                           })
                           setShowEditTeacherModal(true)
                         }}
@@ -645,6 +731,18 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
                   placeholder="Email address"
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Phone Number (WhatsApp)</label>
+                <input
+                  type="tel"
+                  value={editFormData.phone_number}
+                  onChange={(e) => setEditFormData({ ...editFormData, phone_number: e.target.value })}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  placeholder="e.g., +254123456789"
+                />
+                <p className="text-xs text-gray-500 mt-1">Include country code (e.g., +254 for Kenya)</p>
+              </div>
             </div>
 
             <div className="flex gap-2 pt-4">
@@ -652,7 +750,7 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
                 onClick={() => {
                   setShowEditTeacherModal(false)
                   setEditingTeacher(null)
-                  setEditFormData({ first_name: '', last_name: '', email: '' })
+      setEditFormData({ first_name: '', last_name: '', email: '', phone_number: '' })
                 }}
                 className="flex-1 bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
               >
