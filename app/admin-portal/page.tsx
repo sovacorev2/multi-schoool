@@ -327,10 +327,10 @@ export default function AdminPortalPage() {
         })))
       }
 
-      // Load audit logs
+      // Load audit logs with class information
       const { data: logsData } = await supabase
         .from('activity_logs')
-        .select('*')
+        .select('*, classes(id, name)')
         .eq('school_id', currentSchool.id)
         .order('created_at', { ascending: false })
         .limit(100)
@@ -340,10 +340,10 @@ export default function AdminPortalPage() {
           id: log.id,
           action: log.action,
           details: log.details,
-          performed_by: log.performed_by,
-          teacher_pin: log.teacher_pin,
+          performed_by: log.performed_by || 'Unknown',
+          teacher_pin: log.teacher_pin || 'Unknown',
           class_id: log.class_id,
-          class_name: '',
+          class_name: log.classes?.name || 'Unknown Class',
           session_info: '',
           created_at: log.created_at
         })))
@@ -1764,26 +1764,18 @@ export default function AdminPortalPage() {
                                 <span className="font-bold text-sm capitalize bg-gradient-to-r from-blue-600 to-blue-700 text-white px-3 py-1 rounded-full">
                                   {log.action?.replace(/_/g, ' ')}
                                 </span>
-                                {log.class_id && (
-                                  <span className="text-xs bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full font-semibold">
-                                    Class ID: {log.class_id}
-                                  </span>
-                                )}
-                                {log.class_name && (
-                                  <span className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-semibold">
+                                {log.class_name && log.class_name !== 'Unknown Class' && (
+                                  <span className="text-sm font-bold bg-gradient-to-r from-green-100 to-green-50 text-green-800 px-4 py-1 rounded-full border border-green-300">
                                     {log.class_name}
                                   </span>
                                 )}
                               </div>
 
                               {/* Teacher PIN - Prominently displayed */}
-                              {log.teacher_pin && (
-                                <div className="bg-yellow-50 border-l-4 border-yellow-500 p-2 rounded">
-                                  <p className="text-sm font-bold text-yellow-900">
-                                    Teacher PIN: <span className="font-mono text-base tracking-widest text-yellow-700">{log.teacher_pin}</span>
-                                  </p>
-                                </div>
-                              )}
+                              <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 border-2 border-yellow-400 p-3 rounded-lg">
+                                <p className="text-xs font-semibold text-gray-600 mb-1">Teacher PIN (Performed By):</p>
+                                <p className="text-lg font-bold font-mono text-yellow-700 tracking-widest">{log.teacher_pin}</p>
+                              </div>
 
                               {/* Details */}
                               {log.details && (
@@ -1793,11 +1785,6 @@ export default function AdminPortalPage() {
                                     : log.details}
                                 </p>
                               )}
-
-                              {/* Performed By */}
-                              <p className="text-xs text-gray-600">
-                                <span className="font-semibold">Performed By:</span> {log.performed_by || 'Unknown'}
-                              </p>
                             </div>
 
                             {/* Timestamp */}
