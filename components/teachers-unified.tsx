@@ -443,7 +443,9 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
                       <p className="text-sm text-gray-600">{teacher.email}</p>
                       {/* PIN display - ShuleTech only */}
                       {isShuleTechSchool(schoolName) && (
-                        <p className="text-xs text-gray-500 mt-1">PIN: {teacher.pin}</p>
+                        <div className="mt-2 bg-blue-50 border border-blue-200 rounded px-3 py-2 inline-block">
+                          <p className="text-xs font-semibold text-blue-900">PIN: <span className="font-mono text-sm tracking-widest">{teacher.pin}</span></p>
+                        </div>
                       )}
 
                       {/* Assignments list */}
