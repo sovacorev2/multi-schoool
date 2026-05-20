@@ -176,7 +176,7 @@ export default function MarksPage() {
       .order("year", { ascending: false })
       .order("term");
 
-    const [examTypesRes, sessionsRes, subjectsRes, learnersRes] = await Promise.all([
+    const [examTypesRes, sessionsRes, subjectsRes, learnersRes, schoolRes] = await Promise.all([
       supabase.from("exam_types").select("*").eq("school_id", currentSchool.id).order("display_order", { ascending: true }),
       sessionsQuery,
       supabase
@@ -188,8 +188,35 @@ export default function MarksPage() {
         .from("learners")
         .select("*")
         .eq("class_id", currentClass.id)
-        .order("name")
+        .order("name"),
+      supabase
+        .from("schools")
+        .select("name")
+        .eq("id", currentSchool.id)
+        .single()
     ]);
+
+    // Check if this is ShuleTech
+    const isShuleTechSchool_ = isShuleTechSchool(schoolRes.data?.name);
+    setIsShuletech(isShuleTechSchool_);
+
+    // For ShuleTech, fetch assigned subjects
+    if (isShuleTechSchool_) {
+      const teacherId = localStorage.getItem('teacher_id');
+      if (teacherId) {
+        const { data: assignments } = await supabase
+          .from('teacher_assignments')
+          .select('subject_id')
+          .eq('user_id', teacherId)
+          .eq('class_id', currentClass.id);
+        
+        const isClassTeacherAssignment = assignments?.some(a => !a.subject_id) || false;
+        setIsClassTeacher(isClassTeacherAssignment);
+        
+        const assignedIds = new Set(assignments?.map(a => a.subject_id).filter(Boolean) || []);
+        setAssignedSubjectIds(assignedIds);
+      }
+    }
 
     // Filter to only show sessions with exam_type_id (actual exam sessions)
     let fetchedSessions = (sessionsRes.data || []).filter(s => s.exam_type_id !== null);
@@ -578,14 +605,28 @@ export default function MarksPage() {
                       <TableHead className="min-w-[180px] sticky left-12 bg-card">
                         Learner Name
                       </TableHead>
-                      {subjects.map((subject) => (
-                        <TableHead
-                          key={subject.id}
-                          className="min-w-[100px] text-center"
-                        >
-                          {subject.name}
-                        </TableHead>
-                      ))}
+                      {subjects.map((subject) => {
+                        const isAssigned = assignedSubjectIds.has(subject.id);
+                        // For ShuleTech: only show assigned subjects (or all if class teacher)
+                        // For other schools: show all subjects
+                        let showColumn = true;
+                        let columnOpacity = 'opacity-100';
+                        
+                        if (isShuletech) {
+                          showColumn = isClassTeacher || isAssigned;
+                          columnOpacity = (isClassTeacher || isAssigned) ? 'opacity-100' : 'opacity-40';
+                        }
+                        
+                        return showColumn ? (
+                          <TableHead
+                            key={subject.id}
+                            className={`min-w-[100px] text-center ${columnOpacity}`}
+                            title={!isAssigned && isShuletech ? 'Not assigned to you' : ''}
+                          >
+                            {subject.name}
+                          </TableHead>
+                        ) : null;
+                      })}
                       <TableHead className="min-w-[80px] text-center">Total</TableHead>
                       <TableHead className="min-w-[80px] text-center">Avg</TableHead>
                     </TableRow>
@@ -613,26 +654,40 @@ export default function MarksPage() {
                           <TableCell className="sticky left-12 bg-card font-medium">
                             {learner.name}
                           </TableCell>
-                          {subjects.map((subject) => (
-                            <TableCell key={subject.id} className="p-1">
-                              <Input
-                                type="number"
-                                min="0"
-                                max="100"
-                                className="w-full text-center h-9"
-                                value={learnerMarks[subject.id] ?? ""}
-                                onChange={(e) =>
-                                  handleMarkChange(
-                                    learner.id,
-                                    subject.id,
-                                    e.target.value
-                                  )
-                                }
-                                placeholder="-"
-                                disabled={!editStatus.editable}
-                              />
-                            </TableCell>
-                          ))}
+                          {subjects.map((subject) => {
+                            const isAssigned = assignedSubjectIds.has(subject.id);
+                            // For ShuleTech: only show cells for assigned subjects
+                            // For other schools: show all cells
+                            let showCell = true;
+                            let canEdit = !editStatus.editable;
+                            
+                            if (isShuletech) {
+                              showCell = isClassTeacher || isAssigned;
+                              canEdit = !editStatus.editable || (!isClassTeacher && !isAssigned);
+                            }
+                            
+                            return showCell ? (
+                              <TableCell key={subject.id} className="p-1 opacity-100">
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  className="w-full text-center h-9"
+                                  value={learnerMarks[subject.id] ?? ""}
+                                  onChange={(e) =>
+                                    handleMarkChange(
+                                      learner.id,
+                                      subject.id,
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="-"
+                                  disabled={canEdit}
+                                  title={!isAssigned && isShuletech ? 'Not assigned to you' : ''}
+                                />
+                              </TableCell>
+                            ) : null;
+                          })}
                           <TableCell className="text-center font-medium">
                             {subjectsWithMarks > 0 ? totalMarks : "-"}
                           </TableCell>
