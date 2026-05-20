@@ -561,7 +561,7 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
                         disabled={loading || teacherAssignments.length === 0}
                         className="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600 disabled:opacity-50"
                       >
-                        📧 Email
+                        Email
                       </button>
                       {isShuleTechSchool(schoolName) && (
                         <button
@@ -570,7 +570,7 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
                           className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 disabled:opacity-50"
                           title={!teacher.phone_number ? 'Phone number not set' : 'Send WhatsApp notification'}
                         >
-                          💬 WhatsApp
+                          WhatsApp
                         </button>
                       )}
                       <button
