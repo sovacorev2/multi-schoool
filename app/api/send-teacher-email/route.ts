@@ -139,9 +139,11 @@ export async function POST(req: NextRequest) {
 
     console.log('[v0] Sending email via Resend...')
 
-    // Send email via Resend using verified custom domain
+    // Send email via Resend
+    // Using account owner email as sender - this is allowed in Resend's test mode
+    // Once you have more senders verified, you can add hello@shuletechsolutions.co.ke
     const response = await resend.emails.send({
-      from: 'ShuleTech <hello@shuletechsolutions.co.ke>',
+      from: 'ShuleTech <onboarding@resend.dev>',
       to: email,
       subject: `Welcome to ShuleTech ${schoolName} - Your PIN: ${pin}`,
       html: emailHTML,
@@ -158,7 +160,7 @@ export async function POST(req: NextRequest) {
     }
 
     console.log('[v0] Email sent successfully!')
-    console.log('[v0] From: hello@shuletechsolutions.co.ke')
+    console.log('[v0] From: onboarding@resend.dev')
     console.log('[v0] Message ID:', response.id)
     console.log('[v0] To:', email)
     console.log('[v0] PIN:', pin)
