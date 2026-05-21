@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useClass } from "@/lib/class-context";
 import { useSchool } from "@/lib/school-context";
-import { isShuleTechSchool } from "@/lib/shuletech-features";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -153,7 +152,7 @@ export default function MarksPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [assignedSubjectIds, setAssignedSubjectIds] = useState<Set<string>>(new Set());
-  const [isShuletech, setIsShuletech] = useState(false);
+  const [pinManagementEnabled, setPinManagementEnabled] = useState(false);
   const [isClassTeacher, setIsClassTeacher] = useState(false);
 
   // Session selection
@@ -197,17 +196,17 @@ export default function MarksPage() {
         .order("name"),
       supabase
         .from("schools")
-        .select("name")
+        .select("feature_pin_management")
         .eq("id", currentSchool.id)
         .single()
     ]);
 
-    // Check if this is ShuleTech
-    const isShuleTechSchool_ = isShuleTechSchool(schoolRes.data?.name);
-    setIsShuletech(isShuleTechSchool_);
+    // Check if PIN management is enabled for this school
+    const pinManagementEnabled_ = schoolRes.data?.feature_pin_management === true;
+    setPinManagementEnabled(pinManagementEnabled_);
 
-    // For ShuleTech, fetch assigned subjects
-    if (isShuleTechSchool_) {
+    // If PIN management is enabled, fetch assigned subjects
+    if (pinManagementEnabled_) {
       const teacherId = localStorage.getItem('teacher_id');
       if (teacherId) {
         const { data: assignments } = await supabase
@@ -647,12 +646,12 @@ export default function MarksPage() {
                       </TableHead>
                       {subjects.map((subject) => {
                         const isAssigned = assignedSubjectIds.has(subject.id);
-                        // For ShuleTech: only show assigned subjects (or all if class teacher)
-                        // For other schools: show all subjects
+                        // If PIN management is enabled: only show assigned subjects (or all if class teacher)
+                        // If PIN management is disabled: show all subjects
                         let showColumn = true;
                         let columnOpacity = 'opacity-100';
                         
-                        if (isShuletech) {
+                        if (pinManagementEnabled) {
                           showColumn = isClassTeacher || isAssigned;
                           columnOpacity = (isClassTeacher || isAssigned) ? 'opacity-100' : 'opacity-40';
                         }
@@ -661,7 +660,7 @@ export default function MarksPage() {
                           <TableHead
                             key={subject.id}
                             className={`min-w-[100px] text-center ${columnOpacity}`}
-                            title={!isAssigned && isShuletech ? 'Not assigned to you' : ''}
+                            title={!isAssigned && pinManagementEnabled ? 'Not assigned to you' : ''}
                           >
                             {subject.name}
                           </TableHead>
@@ -697,11 +696,11 @@ export default function MarksPage() {
                           {subjects.map((subject) => {
                             const isAssigned = assignedSubjectIds.has(subject.id);
                             // For ShuleTech: only show cells for assigned subjects
-                            // For other schools: show all cells
+                            // If PIN management is disabled: show all cells
                             let showCell = true;
                             let canEdit = !editStatus.editable;
                             
-                            if (isShuletech) {
+                            if (pinManagementEnabled) {
                               showCell = isClassTeacher || isAssigned;
                               canEdit = !editStatus.editable || (!isClassTeacher && !isAssigned);
                             }
@@ -723,7 +722,7 @@ export default function MarksPage() {
                                   }
                                   placeholder="-"
                                   disabled={canEdit}
-                                  title={!isAssigned && isShuletech ? 'Not assigned to you' : ''}
+                                  title={!isAssigned && pinManagementEnabled ? 'Not assigned to you' : ''}
                                 />
                               </TableCell>
                             ) : null;
