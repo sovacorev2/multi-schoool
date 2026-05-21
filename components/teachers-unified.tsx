@@ -292,14 +292,9 @@ export function TeachersUnified({ schoolId, schoolName, whatsappEnabled = false 
     }
   }
 
-  // Send email to teacher (ShuleTech only)
+  // Send email to teacher (if PIN management enabled)
   const notifyTeacher = async (teacher: Teacher) => {
-    // Only send emails for ShuleTech school
-    if (!isShuleTechSchool(schoolName)) {
-      setMessage({ type: 'error', text: 'Email notifications are only available for ShuleTech at this time' })
-      return
-    }
-
+    // Email should work for any school with PIN management enabled
     setLoading(true)
     try {
       const teacherAssignments = assignments.filter(a => a.user_id === teacher.id && a.is_active)
@@ -460,7 +455,7 @@ export function TeachersUnified({ schoolId, schoolName, whatsappEnabled = false 
               onChange={(e) => setNewTeacher({ ...newTeacher, phone_number: e.target.value })}
               className="w-full border border-gray-300 rounded px-3 py-2"
             />
-            <p className="text-xs text-gray-500 mt-1">Optional: Include country code for WhatsApp notifications (ShuleTech only)</p>
+            <p className="text-xs text-gray-500 mt-1">Optional: Include country code for WhatsApp notifications</p>
           </div>
           <div className="flex gap-2">
             <button
@@ -529,8 +524,8 @@ export function TeachersUnified({ schoolId, schoolName, whatsappEnabled = false 
                         )}
                       </div>
 
-                      {/* PIN Badge - ShuleTech only */}
-                      {isShuleTechSchool(schoolName) && (
+                      {/* PIN Badge - Show for all schools with PIN management */}
+                      {teacher.pin && (
                         <div className="mt-3 inline-block bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg px-4 py-2 shadow-md">
                           <p className="text-xs font-bold tracking-wide">PIN: <span className="font-mono text-sm tracking-widest ml-1">{teacher.pin}</span></p>
                         </div>
