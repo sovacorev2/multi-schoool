@@ -99,6 +99,13 @@ export default function TeacherLoginPage() {
           return
         }
 
+        // Get school name for PWA
+        const { data: schoolInfo } = await supabase
+          .from('schools')
+          .select('name')
+          .eq('id', schoolId)
+          .single()
+
         // Store session in localStorage
         const session = {
           teacherId: teacher.id,
@@ -112,6 +119,8 @@ export default function TeacherLoginPage() {
 
         localStorage.setItem('teacher_session', JSON.stringify(session))
         localStorage.setItem('teacher_pin', pin)
+        localStorage.setItem('current_school_id', schoolId)
+        localStorage.setItem('current_school_name', schoolInfo?.name || 'Shuletech')
 
         // Redirect to teacher dashboard
         router.push('/teacher/dashboard')
