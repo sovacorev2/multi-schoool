@@ -35,9 +35,10 @@ interface Assignment {
 interface TeachersUnifiedProps {
   schoolId: string
   schoolName: string
+  whatsappEnabled?: boolean
 }
 
-export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) {
+export function TeachersUnified({ schoolId, schoolName, whatsappEnabled = false }: TeachersUnifiedProps) {
   const [teachers, setTeachers] = useState<Teacher[]>([])
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [classes, setClasses] = useState<any[]>([])
@@ -356,11 +357,11 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
     }
   }
 
-  // Send WhatsApp to teacher (ShuleTech only)
+  // Send WhatsApp to teacher (if enabled for school)
   const notifyTeacherWhatsApp = async (teacher: Teacher) => {
-    // Only send WhatsApp for ShuleTech school
-    if (!isShuleTechSchool(schoolName)) {
-      setMessage({ type: 'error', text: 'WhatsApp notifications are only available for ShuleTech at this time' })
+    // Check if WhatsApp is enabled for this school
+    if (!whatsappEnabled) {
+      setMessage({ type: 'error', text: 'WhatsApp notifications are not enabled for your school' })
       return
     }
 
@@ -598,7 +599,7 @@ export function TeachersUnified({ schoolId, schoolName }: TeachersUnifiedProps) 
                       >
                         Email
                       </button>
-                      {isShuleTechSchool(schoolName) && (
+                      {whatsappEnabled && (
                         <button
                           onClick={() => notifyTeacherWhatsApp(teacher)}
                           disabled={loading || teacherAssignments.length === 0 || !teacher.phone_number}

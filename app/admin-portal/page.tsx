@@ -1575,7 +1575,11 @@ export default function AdminPortalPage() {
             {/* Teachers & Assignments Tab - Unified */}
             {pinLoginEnabled && (
               <TabsContent value="pin-accounts">
-                <TeachersUnified schoolId={currentSchool?.id || ''} schoolName={currentSchool?.name || ''} />
+                <TeachersUnified 
+                  schoolId={currentSchool?.id || ''} 
+                  schoolName={currentSchool?.name || ''} 
+                  whatsappEnabled={currentSchool?.feature_whatsapp_reports === true}
+                />
               </TabsContent>
             )}
 
