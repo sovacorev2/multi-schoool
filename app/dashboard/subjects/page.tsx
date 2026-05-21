@@ -5,7 +5,6 @@ import React from "react"
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useClass } from '@/lib/class-context'
-import { isShuleTechSchool } from '@/lib/shuletech-features'
 import { Plus, Trash2, Edit2 } from 'lucide-react'
 import type { Subject } from '@/lib/types'
 
@@ -14,7 +13,7 @@ export default function SubjectsPage() {
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [assignedSubjectIds, setAssignedSubjectIds] = useState<Set<string>>(new Set())
   const [isClassTeacher, setIsClassTeacher] = useState(false)
-  const [isShuletech, setIsShuletech] = useState(false)
+  const [pinManagementEnabled, setPinManagementEnabled] = useState(false)
   const [subjectName, setSubjectName] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -37,11 +36,11 @@ export default function SubjectsPage() {
     try {
       const { data: school } = await supabase
         .from('schools')
-        .select('name')
+        .select('feature_pin_management')
         .eq('id', currentClass.school_id)
         .single()
       
-      setIsShuletech(isShuleTechSchool(school?.name))
+      setPinManagementEnabled(school?.feature_pin_management === true)
     } catch (error) {
       console.error('Error fetching school info:', error)
     }
@@ -233,17 +232,17 @@ export default function SubjectsPage() {
             {subjects.map((subject) => {
               const isAssigned = assignedSubjectIds.has(subject.id)
               
-              // Only apply access control for ShuleTech (pilot school)
-              // Other schools can edit all subjects
+              // If PIN management is enabled (pilot feature active), restrict access
+              // Class teachers can edit all subjects, others can only edit assigned ones
               let canEdit = true
               let statusText = ''
               
-              if (isShuletech) {
-                // ShuleTech: Class teachers can edit all subjects, others can only edit assigned ones
+              if (pinManagementEnabled) {
+                // PIN Management enabled: Class teachers can edit all, others only assigned
                 canEdit = isClassTeacher || isAssigned
                 statusText = isClassTeacher ? 'Class teacher - can edit all' : isAssigned ? 'Assigned to you' : 'Not assigned'
               } else {
-                // Other schools: All teachers can edit all subjects
+                // PIN Management disabled: All teachers can edit all subjects
                 canEdit = true
                 statusText = ''
               }
