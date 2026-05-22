@@ -60,9 +60,24 @@ export default function DashboardLayout({
       // Simple admin bypass: check for adminBypass param and admin session
       const searchParams = new URLSearchParams(window.location.search)
       const adminBypass = searchParams.get('adminBypass') === 'true'
+      const classIdParam = searchParams.get('classId')
       
       if (adminBypass && currentSession?.admin_id) {
         // Admin from admin portal - skip all password/PIN checks
+        // If classId is in URL, load that class
+        if (classIdParam && !currentClass) {
+          const supabase = createClient()
+          const { data: cls } = await supabase
+            .from('classes')
+            .select('*')
+            .eq('id', classIdParam)
+            .single()
+          
+          if (cls) {
+            setCurrentClass(cls)
+          }
+        }
+        
         setIsAdmin(false)
         setIsAuthenticated(true)
         return
