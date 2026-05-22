@@ -462,10 +462,24 @@ export default function AdminPortalPage() {
   }
 
   // Access class as admin (without password)
-  const handleAccessClassAsAdmin = (classId: string, className: string) => {
-    // Store class in localStorage like teachers do
-    localStorage.setItem('teacher_class_id', classId)
-    localStorage.setItem('teacher_class_name', className)
+  const handleAccessClassAsAdmin = async (classId: string, className: string) => {
+    try {
+      // Fetch full class object from database
+      const supabase = createClient()
+      const { data: cls } = await supabase
+        .from('classes')
+        .select('*')
+        .eq('id', classId)
+        .single()
+      
+      if (cls) {
+        // Store using the correct context keys (success_academy_class)
+        localStorage.setItem('success_academy_class', JSON.stringify(cls))
+      }
+    } catch (error) {
+      console.log('[v0] Error fetching class:', error)
+    }
+    
     // Redirect to dashboard with admin bypass flag
     router.push(`/dashboard?adminBypass=true`)
   }
