@@ -7,6 +7,7 @@ import React, { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useSchool } from '@/lib/school-context'
+import { useClass } from '@/lib/class-context'
 import { sortClassesByLevel } from '@/lib/class-sort-utils'
 import {
   Select,
@@ -128,6 +129,7 @@ export default function AdminPortalPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { currentSchool, setCurrentSchool } = useSchool()
+  const { setCurrentClass } = useClass()
 
   // Auth state
   const [password, setPassword] = useState('')
@@ -473,8 +475,8 @@ export default function AdminPortalPage() {
         .single()
       
       if (cls) {
-        // Store using the correct context keys (success_academy_class)
-        localStorage.setItem('success_academy_class', JSON.stringify(cls))
+        // Use setCurrentClass to update context AND localStorage
+        setCurrentClass(cls)
       }
     } catch (error) {
       console.log('[v0] Error fetching class:', error)
