@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Lock, Eye, EyeOff, KeyRound } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 
 export default function TeacherAuthPage() {
   const [password, setPassword] = useState("")
@@ -22,6 +23,7 @@ export default function TeacherAuthPage() {
   const [needsSetup, setNeedsSetup] = useState(false)
   const [showPinScreen, setShowPinScreen] = useState(false)
   const [pinEnabled, setPinEnabled] = useState(false)
+  const [classExists, setClassExists] = useState<boolean | null>(null)
   
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -33,7 +35,6 @@ export default function TeacherAuthPage() {
   
   useEffect(() => {
     // Clear any existing session when entering teacher auth
-    // Teachers should never have a session set
     setCurrentSession(null)
     if (setup) {
       setNeedsSetup(true)
@@ -44,17 +45,40 @@ export default function TeacherAuthPage() {
     if (!classId) {
       router.push("/")
     } else {
-      // Fetch school's PIN setting based on class
-      fetchPinSetting()
+      // Verify class exists
+      verifyClassExists()
     }
   }, [classId, router])
 
-  const fetchPinSetting = async () => {
+  const verifyClassExists = async () => {
     try {
-      // This will be fetched when verifying password via the auth action
-      // For now, we'll check after password verification
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from("classes")
+        .select("id, school_id")
+        .eq("id", classId!)
+        .single()
+      
+      if (error || !data) {
+        console.error('[v0] Class not found:', error)
+        setClassExists(false)
+        setError("Class not found. Please check the link and try again.")
+        return
+      }
+      
+      setClassExists(true)
+      // Fetch PIN setting
+      const { data: school } = await supabase
+        .from("schools")
+        .select("feature_pin_management")
+        .eq("id", data.school_id)
+        .single()
+      
+      setPinEnabled(school?.feature_pin_management === true)
     } catch (err) {
-      console.error('[v0] Error fetching PIN setting:', err)
+      console.error('[v0] Error verifying class:', err)
+      setClassExists(false)
+      setError("Unable to load class. Please try again.")
     }
   }
 
@@ -140,6 +164,49 @@ export default function TeacherAuthPage() {
 
   if (!classId) {
     return null
+  }
+
+  // Show loading state while verifying class
+  if (classExists === null) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md shadow-lg">
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+            <p className="text-gray-600">Loading...</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // Show error if class doesn't exist
+  if (classExists === false) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md shadow-lg">
+          <CardHeader className="text-center space-y-4 pb-6">
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                <Lock className="w-8 h-8 text-red-600" />
+              </div>
+            </div>
+            <CardTitle className="text-2xl font-bold">Invalid Class</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">
+              {error}
+            </div>
+            <Button
+              onClick={() => router.push("/")}
+              className="w-full bg-blue-600 hover:bg-blue-700"
+            >
+              Back to Class Selection
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (

@@ -15,81 +15,10 @@ export function AdminPWARegistration({ schoolId, schoolName }: { schoolId?: stri
   const [isInstalled, setIsInstalled] = useState(false)
 
   useEffect(() => {
-    // Get school info for manifest
-    const updateManifest = async () => {
-      try {
-        let manifestUrl = '/api/admin-manifest'
-        if (schoolId || schoolName) {
-          const params = new URLSearchParams()
-          if (schoolId) params.append('schoolId', schoolId)
-          if (schoolName) params.append('schoolName', schoolName)
-          manifestUrl += `?${params.toString()}`
-        }
-
-        // Create or update manifest link in head
-        let link = document.querySelector('link[rel="manifest"]')
-        if (!link) {
-          link = document.createElement('link')
-          link.rel = 'manifest'
-          document.head.appendChild(link)
-        }
-        link.href = manifestUrl
-
-        console.log('[v0] Admin manifest updated:', manifestUrl)
-      } catch (error) {
-        console.log('[v0] Error updating admin manifest:', error)
-      }
-    }
-
-    // Register service worker
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker
-        .register('/sw.js')
-        .then((registration) => {
-          console.log('[v0] SW registered for admin:', registration.scope)
-        })
-        .catch((error) => {
-          console.log('[v0] SW registration failed for admin:', error)
-        })
-    }
-
-    updateManifest()
-
-    // Check if already installed
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      console.log('[v0] Admin app already installed (standalone mode)')
-      setIsInstalled(true)
-      return
-    }
-
-    // Listen for install prompt
-    const handleBeforeInstallPrompt = (e: Event) => {
-      console.log('[v0] beforeinstallprompt fired for admin!')
-      e.preventDefault()
-      setDeferredPrompt(e as BeforeInstallPromptEvent)
-
-      // Check if user dismissed before
-      const dismissed = localStorage.getItem('admin-pwa-install-dismissed')
-      if (!dismissed) {
-        setShowInstallBanner(true)
-      }
-    }
-
-    console.log('[v0] Adding beforeinstallprompt listener for admin')
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
-
-    // Listen for app installed
-    window.addEventListener('appinstalled', () => {
-      setIsInstalled(true)
-      setShowInstallBanner(false)
-      setDeferredPrompt(null)
-      localStorage.setItem('admin-pwa-installed', 'true')
-      console.log('[v0] Admin app installed')
-    })
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
-    }
+    // Temporarily disabled: Admin PWA manifest API causing 500 errors
+    // This will be re-enabled once icon files are properly set up
+    console.log('[v0] Admin PWA registration disabled temporarily')
+    return
   }, [schoolId, schoolName])
 
   const handleInstall = async () => {
