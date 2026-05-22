@@ -10,6 +10,8 @@ interface ClassContextType {
   setCurrentSession: (session: Session | null) => void;
   logout: () => void;
   isLoading: boolean;
+  isAdminBypass: boolean;
+  setIsAdminBypass: (isAdmin: boolean) => void;
 }
 
 const ClassContext = createContext<ClassContextType | undefined>(undefined);
@@ -18,6 +20,7 @@ export function ClassProvider({ children }: { children: ReactNode }) {
   const [currentClass, setCurrentClassState] = useState<Class | null>(null);
   const [currentSession, setCurrentSessionState] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAdminBypass, setIsAdminBypassState] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem("success_academy_session");
@@ -62,8 +65,13 @@ export function ClassProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setCurrentClassState(null);
     setCurrentSessionState(null);
+    setIsAdminBypassState(false);
     localStorage.removeItem("success_academy_class");
     localStorage.removeItem("success_academy_session");
+  };
+
+  const setIsAdminBypass = (isAdmin: boolean) => {
+    setIsAdminBypassState(isAdmin);
   };
 
   return (
@@ -75,6 +83,8 @@ export function ClassProvider({ children }: { children: ReactNode }) {
         setCurrentSession,
         logout,
         isLoading,
+        isAdminBypass,
+        setIsAdminBypass,
       }}
     >
       {children}

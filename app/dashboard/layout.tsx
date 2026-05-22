@@ -27,7 +27,7 @@ export default function DashboardLayout({
   } | null>(null)
   const router = useRouter()
   const pathname = usePathname()
-  const { currentClass, currentSession, setCurrentClass, setCurrentSession } = useClass()
+  const { currentClass, currentSession, setCurrentClass, setCurrentSession, setIsAdminBypass } = useClass()
   const { currentSchool, clearSchool } = useSchool()
 
   const handleLogout = async () => {
@@ -64,6 +64,7 @@ export default function DashboardLayout({
       // Admin bypass takes priority over everything
       if (adminBypass) {
         // Admin is accessing from admin portal - class is in localStorage, just authenticate
+        setIsAdminBypass(true)
         setIsAdmin(false)
         setIsAuthenticated(true)
         return

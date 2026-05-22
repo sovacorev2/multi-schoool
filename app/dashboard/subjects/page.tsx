@@ -9,7 +9,7 @@ import { Plus, Trash2, Edit2 } from 'lucide-react'
 import type { Subject } from '@/lib/types'
 
 export default function SubjectsPage() {
-  const { currentClass } = useClass()
+  const { currentClass, isAdminBypass } = useClass()
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [assignedSubjectIds, setAssignedSubjectIds] = useState<Set<string>>(new Set())
   const [isClassTeacher, setIsClassTeacher] = useState(false)
@@ -48,6 +48,13 @@ export default function SubjectsPage() {
 
   async function fetchAssignedSubjects() {
     if (!currentClass) return
+    
+    // Admin bypass: show all subjects with no teacher filtering
+    if (isAdminBypass) {
+      setIsClassTeacher(true)  // Admin can edit all
+      setAssignedSubjectIds(new Set())  // No filtering
+      return
+    }
 
     try {
       // Get teacher context from localStorage (set during PIN auth)
