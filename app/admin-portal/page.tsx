@@ -35,6 +35,7 @@ import {
 import type { Class, ExamType, Subject } from '@/lib/types'
 import SchoolLogoUploader from '@/components/admin/SchoolLogoUploader'
 import { TeachersUnified } from '@/components/teachers-unified'
+import { AdminPWARegistration } from '@/components/admin-pwa-registration'
 
 const TERMS = ['Term 1', 'Term 2', 'Term 3']
 
@@ -171,6 +172,10 @@ export default function AdminPortalPage() {
   const [classToDelete, setClassToDelete] = useState<{ id: string; name: string } | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
+
+  // Admin access to classes
+  const [showAccessClassesMenu, setShowAccessClassesMenu] = useState(false)
+  const [selectedClassForAccess, setSelectedClassForAccess] = useState<string | null>(null)
 
   // Edit class name
   const [editingClassId, setEditingClassId] = useState<string | null>(null)
@@ -454,6 +459,12 @@ export default function AdminPortalPage() {
     setClassToDelete({ id: classId, name: className })
     setDeleteConfirmOpen(true)
     setDeleteError('')
+  }
+
+  // Access class as admin (without password)
+  const handleAccessClassAsAdmin = (classId: string) => {
+    // Redirect to dashboard with admin access parameter
+    router.push(`/dashboard?classId=${classId}&adminAccess=true`)
   }
 
   const confirmDeleteClass = async () => {
@@ -998,6 +1009,15 @@ export default function AdminPortalPage() {
             <Button
               variant="outline"
               size="sm"
+              onClick={() => setShowAccessClassesMenu(!showAccessClassesMenu)}
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20 text-xs md:text-sm"
+              title="Access any class without password"
+            >
+              📚 Access Classes
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => router.push(`/?school=${currentSchool.code}`)}
               className="bg-white/10 border-white/20 text-white hover:bg-white/20 text-xs md:text-sm"
             >
@@ -1021,6 +1041,33 @@ export default function AdminPortalPage() {
           </div>
         </div>
       </header>
+
+      {/* Access Classes Menu */}
+      {showAccessClassesMenu && (
+        <div className="bg-blue-50 border-b border-blue-200 p-4">
+          <div className="max-w-7xl mx-auto">
+            <h3 className="font-semibold text-blue-900 mb-3">Select a Class to Access (Admin Mode)</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+              {classes.map((cls) => (
+                <button
+                  key={cls.id}
+                  onClick={() => handleAccessClassAsAdmin(cls.id)}
+                  className="p-3 text-left bg-white border border-blue-200 rounded-lg hover:bg-blue-50 hover:border-blue-400 transition-colors text-sm"
+                >
+                  <div className="font-medium text-gray-900">{cls.name}</div>
+                  <div className="text-xs text-gray-500 mt-1">Admin Access - No Password</div>
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setShowAccessClassesMenu(false)}
+              className="mt-3 text-sm text-blue-600 hover:text-blue-700"
+            >
+              ✕ Close
+            </button>
+          </div>
+        </div>
+      )}
 
       <main className="max-w-7xl mx-auto p-3 md:p-6">
         {isLoading ? (
@@ -1825,6 +1872,9 @@ export default function AdminPortalPage() {
             </div>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Admin PWA Installation Banner */}
+        <AdminPWARegistration schoolId={school?.id} schoolName={school?.name} />
       </main>
     </div>
   )
