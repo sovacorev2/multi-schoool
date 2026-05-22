@@ -54,9 +54,31 @@ export default function DashboardLayout({
   }
 
   useEffect(() => {
-    async function checkAuth() {
-      // If currentSession is set (along with currentClass), this is an ADMIN
-      if (currentClass && currentSession) {
+    if (isAuthenticated !== null) return
+
+    const checkAuth = async () => {
+      // Check if this is admin access from admin portal
+      const searchParams = new URLSearchParams(window.location.search)
+      const adminAccess = searchParams.get('adminAccess') === 'true'
+      const classIdFromUrl = searchParams.get('classId')
+      
+      if (adminAccess) {
+        // Admin accessing class without password - verify admin session first
+        const adminAuth = await checkAdminAuth()
+        if (adminAuth) {
+          // Admin is authenticated - skip password/PIN checks and allow access
+          setIsAdmin(false) // They're accessing as if they were a teacher
+          setIsAuthenticated(true)
+          return
+        } else {
+          // Not authenticated as admin - redirect to admin login
+          window.location.href = '/admin-login'
+          return
+        }
+      }
+      
+      // Normal teacher/admin flow
+      if (currentSession?.admin_id) {
         setIsAdmin(true)
         setIsAuthenticated(true)
         return
