@@ -57,44 +57,29 @@ export default function DashboardLayout({
     if (isAuthenticated !== null) return
 
     const checkAuth = async () => {
-      // Simple admin bypass: check for adminBypass param and admin session
+      // Check for admin bypass from admin portal
       const searchParams = new URLSearchParams(window.location.search)
       const adminBypass = searchParams.get('adminBypass') === 'true'
-      const classIdParam = searchParams.get('classId')
       
       if (adminBypass && currentSession?.admin_id) {
-        // Admin from admin portal - skip all password/PIN checks
-        // If classId is in URL, load that class
-        if (classIdParam && !currentClass) {
-          const supabase = createClient()
-          const { data: cls } = await supabase
-            .from('classes')
-            .select('*')
-            .eq('id', classIdParam)
-            .single()
-          
-          if (cls) {
-            setCurrentClass(cls)
-          }
-        }
-        
+        // Admin from admin portal - skip all checks, class is in localStorage
         setIsAdmin(false)
         setIsAuthenticated(true)
         return
       }
       
-      // Normal teacher/admin flow
+      // Normal flow: check if admin accessing own portal
       if (currentSession?.admin_id) {
         setIsAdmin(true)
         setIsAuthenticated(true)
         return
       }
       
-      // If only currentClass is set (no session), this is a TEACHER
+      // Teacher flow: must have currentClass set
       if (currentClass) {
         setIsAdmin(false)
         
-        // Check teacher auth - REQUIRED for teachers
+        // Check teacher auth
         const isAuth = await checkTeacherAuth(currentClass.id)
         if (!isAuth) {
           const className = encodeURIComponent(currentClass.name)
@@ -106,14 +91,7 @@ export default function DashboardLayout({
         return
       }
       
-      // If no currentClass, check if this is an admin trying to access /dashboard
-      const adminAuth = await checkAdminAuth()
-      if (adminAuth) {
-        window.location.href = '/admin-portal'
-        return
-      }
-      
-      // Neither teacher nor admin - redirect to home
+      // Fallback: redirect to home
       router.push('/')
     }
     checkAuth()
