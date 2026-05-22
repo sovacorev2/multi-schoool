@@ -63,16 +63,16 @@ export default function DashboardLayout({
       const classIdFromUrl = searchParams.get('classId')
       
       if (adminAccess) {
-        // Admin accessing class without password - verify admin session first
-        const adminAuth = await checkAdminAuth()
-        if (adminAuth) {
+        // Admin accessing class without password - check if admin session exists
+        // Since we're coming from admin portal, check currentSession for admin_id
+        if (currentSession?.admin_id) {
           // Admin is authenticated - skip password/PIN checks and allow access
           setIsAdmin(false) // They're accessing as if they were a teacher
           setIsAuthenticated(true)
           return
         } else {
-          // Not authenticated as admin - redirect to admin login
-          window.location.href = '/admin-login'
+          // Not authenticated as admin - redirect back to admin portal to login
+          window.location.href = '/admin-portal'
           return
         }
       }
