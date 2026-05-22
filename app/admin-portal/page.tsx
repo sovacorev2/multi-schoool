@@ -462,9 +462,12 @@ export default function AdminPortalPage() {
   }
 
   // Access class as admin (without password)
-  const handleAccessClassAsAdmin = (classId: string) => {
-    // Simple redirect - admin is already authenticated, just bypass password
-    router.push(`/dashboard?classId=${classId}&adminBypass=true`)
+  const handleAccessClassAsAdmin = (classId: string, className: string) => {
+    // Store class in localStorage like teachers do
+    localStorage.setItem('teacher_class_id', classId)
+    localStorage.setItem('teacher_class_name', className)
+    // Redirect to dashboard with admin bypass flag
+    router.push(`/dashboard?adminBypass=true`)
   }
 
   const confirmDeleteClass = async () => {
@@ -1051,7 +1054,7 @@ export default function AdminPortalPage() {
               {classes.map((cls) => (
                 <button
                   key={cls.id}
-                  onClick={() => handleAccessClassAsAdmin(cls.id)}
+                  onClick={() => handleAccessClassAsAdmin(cls.id, cls.name)}
                   className="p-3 text-left bg-white border border-blue-200 rounded-lg hover:bg-blue-50 hover:border-blue-400 transition-colors text-sm"
                 >
                   <div className="font-medium text-gray-900">{cls.name}</div>
