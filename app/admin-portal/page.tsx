@@ -463,8 +463,8 @@ export default function AdminPortalPage() {
 
   // Access class as admin (without password)
   const handleAccessClassAsAdmin = (classId: string) => {
-    // Redirect to dashboard with admin access parameter
-    router.push(`/dashboard?classId=${classId}&adminAccess=true`)
+    // Simple redirect - admin is already authenticated, just bypass password
+    router.push(`/dashboard?classId=${classId}&adminBypass=true`)
   }
 
   const confirmDeleteClass = async () => {

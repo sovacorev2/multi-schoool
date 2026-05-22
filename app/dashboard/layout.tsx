@@ -57,24 +57,15 @@ export default function DashboardLayout({
     if (isAuthenticated !== null) return
 
     const checkAuth = async () => {
-      // Check if this is admin access from admin portal
+      // Simple admin bypass: check for adminBypass param and admin session
       const searchParams = new URLSearchParams(window.location.search)
-      const adminAccess = searchParams.get('adminAccess') === 'true'
-      const classIdFromUrl = searchParams.get('classId')
+      const adminBypass = searchParams.get('adminBypass') === 'true'
       
-      if (adminAccess) {
-        // Admin accessing class without password - check if admin session exists
-        // Since we're coming from admin portal, check currentSession for admin_id
-        if (currentSession?.admin_id) {
-          // Admin is authenticated - skip password/PIN checks and allow access
-          setIsAdmin(false) // They're accessing as if they were a teacher
-          setIsAuthenticated(true)
-          return
-        } else {
-          // Not authenticated as admin - redirect back to admin portal to login
-          window.location.href = '/admin-portal'
-          return
-        }
+      if (adminBypass && currentSession?.admin_id) {
+        // Admin from admin portal - skip all password/PIN checks
+        setIsAdmin(false)
+        setIsAuthenticated(true)
+        return
       }
       
       // Normal teacher/admin flow
@@ -88,10 +79,9 @@ export default function DashboardLayout({
       if (currentClass) {
         setIsAdmin(false)
         
-        // Check teacher auth
+        // Check teacher auth - REQUIRED for teachers
         const isAuth = await checkTeacherAuth(currentClass.id)
         if (!isAuth) {
-          // Redirect to password page - REQUIRED for security
           const className = encodeURIComponent(currentClass.name)
           router.push(`/auth/teacher?classId=${currentClass.id}&className=${className}`)
           return
@@ -104,7 +94,6 @@ export default function DashboardLayout({
       // If no currentClass, check if this is an admin trying to access /dashboard
       const adminAuth = await checkAdminAuth()
       if (adminAuth) {
-        // Admins should not access /dashboard - redirect to admin portal
         window.location.href = '/admin-portal'
         return
       }
