@@ -141,7 +141,7 @@ async function autoLockExpiredSessions(
 }
 
 export default function MarksPage() {
-  const { currentClass, currentSession: loggedInSession } = useClass();
+  const { currentClass, currentSession: loggedInSession, isAdminBypass } = useClass();
   const { currentSchool } = useSchool();
   const [examTypes, setExamTypes] = useState<ExamType[]>([]);
   const [sessions, setSessions] = useState<SessionWithExamType[]>([]);
@@ -207,19 +207,26 @@ export default function MarksPage() {
 
     // If PIN management is enabled, fetch assigned subjects
     if (pinManagementEnabled_) {
-      const teacherId = localStorage.getItem('teacher_id');
-      if (teacherId) {
-        const { data: assignments } = await supabase
-          .from('teacher_assignments')
-          .select('subject_id')
-          .eq('user_id', teacherId)
-          .eq('class_id', currentClass.id);
-        
-        const isClassTeacherAssignment = assignments?.some(a => !a.subject_id) || false;
-        setIsClassTeacher(isClassTeacherAssignment);
-        
-        const assignedIds = new Set(assignments?.map(a => a.subject_id).filter(Boolean) || []);
-        setAssignedSubjectIds(assignedIds);
+      // Admin bypass: show all subjects
+      if (isAdminBypass) {
+        setIsClassTeacher(true);
+        setAssignedSubjectIds(new Set());
+      } else {
+        // Regular teacher: fetch their assignments
+        const teacherId = localStorage.getItem('teacher_id');
+        if (teacherId) {
+          const { data: assignments } = await supabase
+            .from('teacher_assignments')
+            .select('subject_id')
+            .eq('user_id', teacherId)
+            .eq('class_id', currentClass.id);
+          
+          const isClassTeacherAssignment = assignments?.some(a => !a.subject_id) || false;
+          setIsClassTeacher(isClassTeacherAssignment);
+          
+          const assignedIds = new Set(assignments?.map(a => a.subject_id).filter(Boolean) || []);
+          setAssignedSubjectIds(assignedIds);
+        }
       }
     }
 
