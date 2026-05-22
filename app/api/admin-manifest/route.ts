@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     let schoolShortName = 'Admin'
 
     if (schoolId) {
-      const supabase = createClient()
+      const supabase = await createClient()
       const { data: school } = await supabase
         .from('schools')
         .select('primary_color, short_name')
@@ -35,32 +35,19 @@ export async function GET(request: Request) {
       orientation: 'portrait-primary',
       theme_color: primaryColor,
       background_color: '#ffffff',
+      // Use main app icons (already exist in public/icon-*.png)
       icons: [
         {
-          src: '/icons/admin-icon-192.png',
+          src: '/icon-192.png',
           sizes: '192x192',
           type: 'image/png',
-          purpose: 'any',
+          purpose: 'any maskable',
         },
         {
-          src: '/icons/admin-icon-512.png',
+          src: '/icon-512.png',
           sizes: '512x512',
           type: 'image/png',
-          purpose: 'any',
-        },
-        {
-          src: '/icons/admin-icon-maskable-192.png',
-          sizes: '192x192',
-          type: 'image/png',
-          purpose: 'maskable',
-        },
-      ],
-      screenshots: [
-        {
-          src: '/screenshots/admin-portal.png',
-          sizes: '540x720',
-          type: 'image/png',
-          form_factor: 'narrow',
+          purpose: 'any maskable',
         },
       ],
       categories: ['education', 'productivity'],
@@ -70,14 +57,14 @@ export async function GET(request: Request) {
           short_name: 'Classes',
           description: 'View and manage classes',
           url: '/admin-portal?tab=classes',
-          icons: [{ src: '/icons/classes-icon.png', sizes: '192x192' }],
+          icons: [{ src: '/icon-192.png', sizes: '192x192' }],
         },
         {
           name: 'Teachers',
           short_name: 'Teachers',
           description: 'Manage teachers and assignments',
           url: '/admin-portal?tab=teachers',
-          icons: [{ src: '/icons/teachers-icon.png', sizes: '192x192' }],
+          icons: [{ src: '/icon-192.png', sizes: '192x192' }],
         },
       ],
     }
