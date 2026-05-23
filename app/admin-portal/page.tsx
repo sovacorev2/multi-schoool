@@ -169,6 +169,13 @@ export default function AdminPortalPage() {
   const [editingDeadlineId, setEditingDeadlineId] = useState<string | null>(null)
   const [editingDeadlineValue, setEditingDeadlineValue] = useState('')
 
+  // Deadline filters
+  const [deadlineFilters, setDeadlineFilters] = useState({
+    className: '',
+    examType: '',
+    status: '', // 'all', 'open', 'deadline-set', 'locked'
+  })
+
   // Delete confirmation
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [classToDelete, setClassToDelete] = useState<{ id: string; name: string } | null>(null)
@@ -997,6 +1004,40 @@ export default function AdminPortalPage() {
     )
   }
 
+  // Filter deadlines based on selected filters
+  const getFilteredDeadlines = () => {
+    return deadlines.filter(d => {
+      // Filter by class name
+      if (deadlineFilters.className && d.class_name !== deadlineFilters.className) {
+        return false
+      }
+      
+      // Filter by exam type
+      if (deadlineFilters.examType && d.exam_type !== deadlineFilters.examType) {
+        return false
+      }
+      
+      // Filter by status
+      if (deadlineFilters.status === 'open' && (d.is_locked || d.deadline_date)) {
+        return false
+      }
+      if (deadlineFilters.status === 'deadline-set' && (!d.deadline_date || d.is_locked)) {
+        return false
+      }
+      if (deadlineFilters.status === 'locked' && !d.is_locked) {
+        return false
+      }
+      
+      return true
+    })
+  }
+
+  const filteredDeadlines = getFilteredDeadlines()
+  
+  // Get unique class names and exam types for filter dropdowns
+  const uniqueClasses = Array.from(new Set(deadlines.map(d => d.class_name))).sort()
+  const uniqueExamTypes = Array.from(new Set(deadlines.map(d => d.exam_type))).sort()
+
   // Admin Dashboard
   return (
     <div className="min-h-screen bg-gray-50">
@@ -1146,6 +1187,72 @@ export default function AdminPortalPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                  {/* Filter section */}
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 space-y-3">
+                    <h3 className="font-medium text-gray-700">Filter Sessions</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                      {/* Class filter */}
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium text-gray-600">Class</label>
+                        <select
+                          value={deadlineFilters.className}
+                          onChange={(e) => setDeadlineFilters({ ...deadlineFilters, className: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">All Classes</option>
+                          {uniqueClasses.map(className => (
+                            <option key={className} value={className}>{className}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Exam type filter */}
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium text-gray-600">Exam Type</label>
+                        <select
+                          value={deadlineFilters.examType}
+                          onChange={(e) => setDeadlineFilters({ ...deadlineFilters, examType: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">All Types</option>
+                          {uniqueExamTypes.map(examType => (
+                            <option key={examType} value={examType}>{examType}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Status filter */}
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium text-gray-600">Status</label>
+                        <select
+                          value={deadlineFilters.status}
+                          onChange={(e) => setDeadlineFilters({ ...deadlineFilters, status: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">All Statuses</option>
+                          <option value="open">Open</option>
+                          <option value="deadline-set">Deadline Set</option>
+                          <option value="locked">Locked</option>
+                        </select>
+                      </div>
+
+                      {/* Clear filters */}
+                      <div className="flex items-end">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDeadlineFilters({ className: '', examType: '', status: '' })}
+                          className="w-full"
+                        >
+                          Clear Filters
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="text-xs text-gray-600">
+                      Showing {filteredDeadlines.length} of {deadlines.length} sessions
+                    </div>
+                  </div>
+
                   {/* Exam sessions list - shows sessions created by teachers */}
                   <div className="space-y-2">
                     <h3 className="font-medium text-gray-700">All Exam Sessions</h3>
@@ -1163,7 +1270,7 @@ export default function AdminPortalPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {deadlines.map((d: any) => (
+                          {filteredDeadlines.map((d: any) => (
                             <tr key={d.id} className="border-t hover:bg-gray-50">
                               <td className="p-3 font-medium">{d.class_name || 'Unknown'}</td>
                               <td className="p-3">{d.exam_type || '-'}</td>
@@ -1248,6 +1355,13 @@ export default function AdminPortalPage() {
                               </td>
                             </tr>
                           ))}
+                          {filteredDeadlines.length === 0 && deadlines.length > 0 && (
+                            <tr>
+                              <td colSpan={6} className="p-8 text-center text-gray-500">
+                                No exam sessions match your filters. Try adjusting your filter criteria.
+                              </td>
+                            </tr>
+                          )}
                           {deadlines.length === 0 && (
                             <tr>
                               <td colSpan={6} className="p-8 text-center text-gray-500">
