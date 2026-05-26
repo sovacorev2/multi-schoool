@@ -481,7 +481,10 @@ export function ReportStareheStyle({
                         <th style={{ border: '1px solid #666', padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>SCORE (%)</th>
                         <th style={{ border: '1px solid #666', padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>LEVEL</th>
                         <th style={{ border: '1px solid #666', padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>PTS</th>
-                        <th style={{ border: '1px solid #666', padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>CLASS POS</th>
+                        {/* Hide CLASS POS column for individual reports */}
+                        {reports.length > 1 && (
+                          <th style={{ border: '1px solid #666', padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>CLASS POS</th>
+                        )}
                         <th style={{ border: '1px solid #666', padding: '6px', textAlign: 'left', fontWeight: 'bold' }}>REMARKS</th>
                         <th style={{ border: '1px solid #666', padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>INITIALS</th>
                       </tr>
@@ -493,7 +496,10 @@ export function ReportStareheStyle({
                           <td style={{ border: '1px solid #666', padding: '6px', textAlign: 'center' }}>{item.score ?? '-'}</td>
                           <td style={{ border: '1px solid #666', padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>{item.level}</td>
                           <td style={{ border: '1px solid #666', padding: '6px', textAlign: 'center' }}>{item.points}</td>
-                          <td style={{ border: '1px solid #666', padding: '6px', textAlign: 'center' }}>{report.subjectPositions?.[item.subject.id] || '-'}/{totalStudents}</td>
+                          {/* Hide CLASS POS cell for individual reports */}
+                          {reports.length > 1 && (
+                            <td style={{ border: '1px solid #666', padding: '6px', textAlign: 'center' }}>{report.subjectPositions?.[item.subject.id] || '-'}/{totalStudents}</td>
+                          )}
                           <td style={{ border: '1px solid #666', padding: '6px', textAlign: 'left', fontSize: '9px' }}>{item.remarks}</td>
                           <td style={{ border: '1px solid #666', padding: '6px', textAlign: 'center' }}></td>
                         </tr>
@@ -503,7 +509,10 @@ export function ReportStareheStyle({
                         <td style={{ border: '1px solid #666', padding: '6px', textAlign: 'center' }}>{report.total}</td>
                         <td style={{ border: '1px solid #666', padding: '6px' }}></td>
                         <td style={{ border: '1px solid #666', padding: '6px', textAlign: 'center' }}>{totalPoints}</td>
-                        <td style={{ border: '1px solid #666', padding: '6px' }}></td>
+                        {/* Hide CLASS POS column for individual reports */}
+                        {reports.length > 1 && (
+                          <td style={{ border: '1px solid #666', padding: '6px' }}></td>
+                        )}
                         <td style={{ border: '1px solid #666', padding: '6px' }}></td>
                         <td style={{ border: '1px solid #666', padding: '6px' }}></td>
                       </tr>
