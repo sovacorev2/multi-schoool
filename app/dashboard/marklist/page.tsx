@@ -2017,6 +2017,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                   size="sm" 
                                   variant="outline"
                                   onClick={() => {
+                                    // Pass the result with its correct rank that's already calculated in the results array
                                     setReportModalData([result])
                                     setReportModalOpen(true)
                                   }}
