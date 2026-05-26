@@ -389,9 +389,28 @@ export default function AdminPortalPage() {
   // Delete exam type
   const deleteExamType = async (id: string) => {
     try {
-      // Confirmation
       const examTypeName = examTypes.find(e => e.id === id)?.name || 'Unknown'
-      if (!confirm(`Are you sure you want to delete "${examTypeName}"? This action cannot be undone.`)) {
+      const supabase = createClient()
+      
+      // Check if there are any sessions using this exam type
+      const { data: sessions, error: checkError } = await supabase
+        .from('sessions')
+        .select('id')
+        .eq('exam_type_id', id)
+
+      if (checkError) {
+        console.error('[v0] Error checking sessions:', checkError)
+        alert(`Error: ${checkError.message}`)
+        return
+      }
+
+      // Build confirmation message based on whether sessions exist
+      let confirmMessage = `Are you sure you want to delete "${examTypeName}"? This action cannot be undone.`
+      if (sessions && sessions.length > 0) {
+        confirmMessage = `Warning: This exam type is being referenced by ${sessions.length} exam session(s).\n\nAre you sure you want to delete "${examTypeName}"?`
+      }
+
+      if (!confirm(confirmMessage)) {
         console.log('[v0] Delete exam type cancelled by user')
         return
       }
@@ -399,7 +418,7 @@ export default function AdminPortalPage() {
       setDeletingExamTypeId(id)
       console.log('[v0] Deleting exam type:', id)
 
-      const supabase = createClient()
+      // Proceed with deletion
       const { error } = await supabase.from('exam_types').delete().eq('id', id)
 
       if (error) {
