@@ -151,6 +151,7 @@ export default function AdminPortalPage() {
   // Form state
   const [newExamType, setNewExamType] = useState('')
   const [newClassName, setNewClassName] = useState('')
+  const [deletingExamTypeId, setDeletingExamTypeId] = useState<string | null>(null)
   
   // Stream management
   const [streamBaseClass, setStreamBaseClass] = useState('')
@@ -387,10 +388,34 @@ export default function AdminPortalPage() {
 
   // Delete exam type
   const deleteExamType = async (id: string) => {
-    const supabase = createClient()
-    const { error } = await supabase.from('exam_types').delete().eq('id', id)
-    if (!error) {
+    try {
+      // Confirmation
+      const examTypeName = examTypes.find(e => e.id === id)?.name || 'Unknown'
+      if (!confirm(`Are you sure you want to delete "${examTypeName}"? This action cannot be undone.`)) {
+        console.log('[v0] Delete exam type cancelled by user')
+        return
+      }
+
+      setDeletingExamTypeId(id)
+      console.log('[v0] Deleting exam type:', id)
+
+      const supabase = createClient()
+      const { error } = await supabase.from('exam_types').delete().eq('id', id)
+
+      if (error) {
+        console.error('[v0] Error deleting exam type:', error)
+        alert(`Failed to delete exam type: ${error.message}`)
+        setDeletingExamTypeId(null)
+        return
+      }
+
+      console.log('[v0] Exam type deleted successfully')
       setExamTypes(examTypes.filter(e => e.id !== id))
+      setDeletingExamTypeId(null)
+    } catch (error) {
+      console.error('[v0] Delete exam type error:', error)
+      alert('An error occurred while deleting the exam type')
+      setDeletingExamTypeId(null)
     }
   }
 
@@ -1797,9 +1822,15 @@ export default function AdminPortalPage() {
                           size="sm"
                           variant="ghost"
                           onClick={() => deleteExamType(e.id)}
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                          disabled={deletingExamTypeId === e.id}
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Delete exam type"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          {deletingExamTypeId === e.id ? (
+                            <span className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
                         </Button>
                       </div>
                     ))}
