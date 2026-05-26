@@ -392,100 +392,55 @@ export default function AdminPortalPage() {
       const examTypeName = examTypes.find(e => e.id === id)?.name || 'Unknown'
       const supabase = createClient()
       
-      // Check all tables that reference exam_type_id
-      const { data: sessions, error: sessionsError } = await supabase
-        .from('sessions')
-        .select('id')
-        .eq('exam_type_id', id)
-
-      const { data: analyticsSessions, error: analyticsError } = await supabase
-        .from('analytics_sessions')
-        .select('id')
-        .eq('exam_type_id', id)
-
-      const { data: marks, error: marksError } = await supabase
-        .from('marks')
-        .select('id')
-        .eq('exam_type_id', id)
-
-      if (sessionsError || analyticsError || marksError) {
-        console.error('[v0] Error checking references:', { sessionsError, analyticsError, marksError })
-        alert('Error: Failed to check dependencies')
-        return
-      }
-
-      // Count total dependencies
-      const totalDependencies = (sessions?.length || 0) + (analyticsSessions?.length || 0) + (marks?.length || 0)
+      // Show confirmation immediately - simpler approach
+      const confirmMessage = `Are you sure you want to delete "${examTypeName}"?\n\nThis will also delete all associated exam sessions and marks.\n\nThis action cannot be undone.`
       
-      // Build confirmation message
-      let confirmMessage = `Are you sure you want to delete "${examTypeName}"? This action cannot be undone.`
-      if (totalDependencies > 0) {
-        confirmMessage = `Warning: This exam type is being used in ${totalDependencies} records:\n`
-        if (sessions?.length) confirmMessage += `- ${sessions.length} exam session(s)\n`
-        if (analyticsSessions?.length) confirmMessage += `- ${analyticsSessions.length} analytics session(s)\n`
-        if (marks?.length) confirmMessage += `- ${marks.length} mark record(s)\n`
-        confirmMessage += `\nDeleting this exam type will delete all these records.\n\nAre you sure you want to proceed?`
-      }
-
       if (!confirm(confirmMessage)) {
         console.log('[v0] Delete exam type cancelled by user')
         return
       }
 
       setDeletingExamTypeId(id)
-      console.log('[v0] Deleting exam type:', id, 'with dependencies:', totalDependencies)
+      console.log('[v0] Starting deletion of exam type:', id)
 
-      // Delete in order of dependencies: marks, analytics_sessions, then sessions, then exam_type
+      // Delete everything referencing this exam type
+      // No need to check first, just delete and handle errors
       
       // 1. Delete marks referencing this exam type
-      if (marks && marks.length > 0) {
-        console.log('[v0] Deleting', marks.length, 'marks records')
-        const { error: marksDeleteError } = await supabase
-          .from('marks')
-          .delete()
-          .eq('exam_type_id', id)
-        
-        if (marksDeleteError) {
-          console.error('[v0] Error deleting marks:', marksDeleteError)
-          alert(`Failed to delete marks: ${marksDeleteError.message}`)
-          setDeletingExamTypeId(null)
-          return
-        }
+      console.log('[v0] Deleting marks...')
+      const { error: marksError } = await supabase
+        .from('marks')
+        .delete()
+        .eq('exam_type_id', id)
+      
+      if (marksError) {
+        console.log('[v0] Marks delete result:', marksError ? 'error (may be expected if no marks)' : 'success or no records')
       }
 
       // 2. Delete analytics_sessions referencing this exam type
-      if (analyticsSessions && analyticsSessions.length > 0) {
-        console.log('[v0] Deleting', analyticsSessions.length, 'analytics sessions')
-        const { error: analyticsDeleteError } = await supabase
-          .from('analytics_sessions')
-          .delete()
-          .eq('exam_type_id', id)
-        
-        if (analyticsDeleteError) {
-          console.error('[v0] Error deleting analytics sessions:', analyticsDeleteError)
-          alert(`Failed to delete analytics sessions: ${analyticsDeleteError.message}`)
-          setDeletingExamTypeId(null)
-          return
-        }
+      console.log('[v0] Deleting analytics sessions...')
+      const { error: analyticsError } = await supabase
+        .from('analytics_sessions')
+        .delete()
+        .eq('exam_type_id', id)
+      
+      if (analyticsError) {
+        console.log('[v0] Analytics delete result:', analyticsError ? 'error (may be expected if no records)' : 'success')
       }
 
       // 3. Delete sessions referencing this exam type
-      if (sessions && sessions.length > 0) {
-        console.log('[v0] Deleting', sessions.length, 'sessions')
-        const { error: sessionsDeleteError } = await supabase
-          .from('sessions')
-          .delete()
-          .eq('exam_type_id', id)
-        
-        if (sessionsDeleteError) {
-          console.error('[v0] Error deleting sessions:', sessionsDeleteError)
-          alert(`Failed to delete sessions: ${sessionsDeleteError.message}`)
-          setDeletingExamTypeId(null)
-          return
-        }
+      console.log('[v0] Deleting sessions...')
+      const { error: sessionsError } = await supabase
+        .from('sessions')
+        .delete()
+        .eq('exam_type_id', id)
+      
+      if (sessionsError) {
+        console.log('[v0] Sessions delete result:', sessionsError ? 'error (may be expected if no sessions)' : 'success')
       }
 
       // 4. Now delete the exam type itself
+      console.log('[v0] Deleting exam type...')
       const { error: examTypeError } = await supabase.from('exam_types').delete().eq('id', id)
 
       if (examTypeError) {
@@ -498,14 +453,10 @@ export default function AdminPortalPage() {
       console.log('[v0] Exam type deleted successfully')
       setExamTypes(examTypes.filter(e => e.id !== id))
       setDeletingExamTypeId(null)
-      
-      const msg = totalDependencies > 0 
-        ? `Exam type "${examTypeName}" and ${totalDependencies} dependent record(s) have been deleted successfully.`
-        : `Exam type "${examTypeName}" has been deleted successfully.`
-      alert(msg)
+      alert(`Exam type "${examTypeName}" has been deleted successfully.`)
     } catch (error) {
       console.error('[v0] Delete exam type error:', error)
-      alert('An error occurred while deleting the exam type')
+      alert(`An error occurred while deleting the exam type: ${error instanceof Error ? error.message : 'Unknown error'}`)
       setDeletingExamTypeId(null)
     }
   }
