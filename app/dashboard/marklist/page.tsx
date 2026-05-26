@@ -959,6 +959,8 @@ export default function MarklistPage() {
 
 // Calculate additional class statistics
 const classAverage = results.length > 0 ? (results.reduce((sum, r) => sum + r.average, 0) / results.length).toFixed(1) : '0'
+const classAverageRounded = Math.round(parseFloat(classAverage))
+const classAveragePerformanceLevel = getGradeLevelByClass(classAverageRounded, currentClass?.name)
 const totalScores = results.map(r => r.total)
 const classMedian = totalScores.length > 0 ? totalScores.sort((a, b) => a - b)[Math.floor(totalScores.length / 2)] : 0
 const classPassRate = results.length > 0 ? ((results.filter(r => r.average >= 50).length / results.length) * 100).toFixed(1) : '0'
@@ -1038,12 +1040,13 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                 <td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; color: #d97706; font-weight: bold;">${performanceLevel ? performanceLevel.points : '-'}</td>`
       }).join('')
       
+      const avgPerformanceLevel = getGradeLevelByClass(Math.round(result.average), currentClass?.name)
       return `<tr style="background: ${idx % 2 === 0 ? '#fff' : '#f3f4f6'};">
         <td style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9px;">${idx + 1}</td>
         <td style="border: 1px solid #333; padding: 4px; text-align: left; font-size: 9px; font-weight: 500;">${result.learner.name}</td>
         ${subjectCells}
         <td style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9px; font-weight: bold;">${result.total}</td>
-        <td style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9px;">${result.average.toFixed(1)}</td>
+        <td style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9px; font-weight: bold; color: #1a3a52;">${avgPerformanceLevel ? avgPerformanceLevel.level : '-'}</td>
       </tr>`
     }).join('')
     
@@ -1106,7 +1109,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
               <td colspan="2" style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9px;">MEAN</td>
               ${meanCells}
               <td style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9px;"></td>
-              <td style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9px;">${classAverage}</td>
+              <td style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9px; color: #1a3a52;">${classAveragePerformanceLevel ? classAveragePerformanceLevel.level : '-'}</td>
             </tr>
           </tbody>
         </table>
