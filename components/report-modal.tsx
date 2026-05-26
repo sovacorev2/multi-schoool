@@ -238,16 +238,18 @@ export function ReportModal({
                     </tbody>
                   </table>
 
-                  {/* Position and Rubric */}
-                  <div className="position-rubric" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '10px' }}>
-                    <div className="position">
-                      <p style={{ marginBottom: '5px', fontWeight: 'bold' }}>CLASS POSITION: <u>{report.rank}</u></p>
-                      <p style={{ marginBottom: '5px', fontWeight: 'bold' }}>OUT OF: <u>{totalStudents}</u></p>
-                      <p style={{ fontWeight: 'bold' }}>AVERAGE: {report.average.toFixed(1)}%</p>
+                  {/* Position and Rubric - Only show when printing multiple reports */}
+                  {reports.length > 1 && (
+                    <div className="position-rubric" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '10px' }}>
+                      <div className="position">
+                        <p style={{ marginBottom: '5px', fontWeight: 'bold' }}>CLASS POSITION: <u>{report.rank}</u></p>
+                        <p style={{ marginBottom: '5px', fontWeight: 'bold' }}>OUT OF: <u>{totalStudents}</u></p>
+                        <p style={{ fontWeight: 'bold' }}>AVERAGE: {report.average.toFixed(1)}%</p>
+                      </div>
+                      <div className="rubric-legend" style={{ textAlign: 'right', fontSize: '9px', color: '#666' }}>
+                      </div>
                     </div>
-                    <div className="rubric-legend" style={{ textAlign: 'right', fontSize: '9px', color: '#666' }}>
-                    </div>
-                  </div>
+                  )}
 
                   {/* Comments - Auto-generated based on performance level (except St James) */}
                   <div className="comments" style={{ marginBottom: '10px' }}>
