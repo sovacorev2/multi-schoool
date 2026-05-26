@@ -1878,7 +1878,12 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                       )
                     })}
                     <td className="border border-gray-500 p-2 text-center font-bold">{result.total}</td>
-                    <td className="border border-gray-500 p-2 text-center">{result.average.toFixed(1)}</td>
+                    <td className="border border-gray-500 p-2 text-center font-bold" style={{ color: '#1a3a52' }}>
+                      {(() => {
+                        const avgPerformanceLevel = getGradeLevelByClass(Math.round(result.average), currentClass?.name)
+                        return avgPerformanceLevel ? avgPerformanceLevel.level : '-'
+                      })()}
+                    </td>
                   </tr>
                 ))}
                 {/* Subject Means Row */}
@@ -2010,7 +2015,12 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                               )
                             })}
                             <td className="border border-gray-500 p-2 text-center font-bold">{result.total}</td>
-                            <td className="border border-gray-500 p-2 text-center">{result.average.toFixed(1)}</td>
+                            <td className="border border-gray-500 p-2 text-center font-bold" style={{ color: '#1a3a52' }}>
+                              {(() => {
+                                const avgPerformanceLevel = getGradeLevelByClass(Math.round(result.average), currentClass?.name)
+                                return avgPerformanceLevel ? avgPerformanceLevel.level : '-'
+                              })()}
+                            </td>
                             <td className="border border-gray-500 p-2 text-center no-print">
                               <div className="flex gap-1 justify-center">
                                 <Button 
