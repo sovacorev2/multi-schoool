@@ -392,7 +392,7 @@ export default function AdminPortalPage() {
       const examTypeName = examTypes.find(e => e.id === id)?.name || 'Unknown'
       const supabase = createClient()
       
-      // Show confirmation immediately - simpler approach
+      // Show confirmation immediately
       const confirmMessage = `Are you sure you want to delete "${examTypeName}"?\n\nThis will also delete all associated exam sessions and marks.\n\nThis action cannot be undone.`
       
       if (!confirm(confirmMessage)) {
@@ -404,42 +404,42 @@ export default function AdminPortalPage() {
       console.log('[v0] Starting deletion of exam type:', id)
 
       // Delete everything referencing this exam type
-      // No need to check first, just delete and handle errors
+      // Proceed with deletion even if dependencies don't exist
       
-      // 1. Delete marks referencing this exam type
-      console.log('[v0] Deleting marks...')
-      const { error: marksError } = await supabase
-        .from('marks')
-        .delete()
-        .eq('exam_type_id', id)
-      
-      if (marksError) {
-        console.log('[v0] Marks delete result:', marksError ? 'error (may be expected if no marks)' : 'success or no records')
+      try {
+        console.log('[v0] Deleting marks...')
+        await supabase
+          .from('marks')
+          .delete()
+          .eq('exam_type_id', id)
+        console.log('[v0] Marks deleted')
+      } catch (e) {
+        console.log('[v0] Marks deletion error (continuing):', e)
       }
 
-      // 2. Delete analytics_sessions referencing this exam type
-      console.log('[v0] Deleting analytics sessions...')
-      const { error: analyticsError } = await supabase
-        .from('analytics_sessions')
-        .delete()
-        .eq('exam_type_id', id)
-      
-      if (analyticsError) {
-        console.log('[v0] Analytics delete result:', analyticsError ? 'error (may be expected if no records)' : 'success')
+      try {
+        console.log('[v0] Deleting analytics sessions...')
+        await supabase
+          .from('analytics_sessions')
+          .delete()
+          .eq('exam_type_id', id)
+        console.log('[v0] Analytics sessions deleted')
+      } catch (e) {
+        console.log('[v0] Analytics deletion error (continuing):', e)
       }
 
-      // 3. Delete sessions referencing this exam type
-      console.log('[v0] Deleting sessions...')
-      const { error: sessionsError } = await supabase
-        .from('sessions')
-        .delete()
-        .eq('exam_type_id', id)
-      
-      if (sessionsError) {
-        console.log('[v0] Sessions delete result:', sessionsError ? 'error (may be expected if no sessions)' : 'success')
+      try {
+        console.log('[v0] Deleting sessions...')
+        await supabase
+          .from('sessions')
+          .delete()
+          .eq('exam_type_id', id)
+        console.log('[v0] Sessions deleted')
+      } catch (e) {
+        console.log('[v0] Sessions deletion error (continuing):', e)
       }
 
-      // 4. Now delete the exam type itself
+      // Now delete the exam type itself
       console.log('[v0] Deleting exam type...')
       const { error: examTypeError } = await supabase.from('exam_types').delete().eq('id', id)
 
@@ -456,7 +456,7 @@ export default function AdminPortalPage() {
       alert(`Exam type "${examTypeName}" has been deleted successfully.`)
     } catch (error) {
       console.error('[v0] Delete exam type error:', error)
-      alert(`An error occurred while deleting the exam type: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      alert(`An error occurred: ${error instanceof Error ? error.message : String(error)}`)
       setDeletingExamTypeId(null)
     }
   }
