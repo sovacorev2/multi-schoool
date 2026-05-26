@@ -400,6 +400,29 @@ export default function AdminPortalPage() {
       console.log('[v0] Deleting exam type:', id)
 
       const supabase = createClient()
+      
+      // First check if there are any sessions using this exam type
+      const { data: sessions, error: checkError } = await supabase
+        .from('sessions')
+        .select('id')
+        .eq('exam_type_id', id)
+
+      if (checkError) {
+        console.error('[v0] Error checking sessions:', checkError)
+        alert(`Cannot check if exam type is in use: ${checkError.message}`)
+        setDeletingExamTypeId(null)
+        return
+      }
+
+      // If there are sessions using this exam type, prevent deletion
+      if (sessions && sessions.length > 0) {
+        console.log('[v0] Exam type has active sessions, cannot delete:', sessions.length)
+        alert(`Cannot delete "${examTypeName}" because ${sessions.length} exam session(s) are using this type.\n\nPlease delete or modify those sessions first before deleting this exam type.`)
+        setDeletingExamTypeId(null)
+        return
+      }
+
+      // Proceed with deletion
       const { error } = await supabase.from('exam_types').delete().eq('id', id)
 
       if (error) {
