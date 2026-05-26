@@ -407,7 +407,7 @@ export default function AdminPortalPage() {
       // Build confirmation message based on whether sessions exist
       let confirmMessage = `Are you sure you want to delete "${examTypeName}"? This action cannot be undone.`
       if (sessions && sessions.length > 0) {
-        confirmMessage = `Warning: This exam type is being referenced by ${sessions.length} exam session(s).\n\nAre you sure you want to delete "${examTypeName}"?`
+        confirmMessage = `Warning: This exam type is being referenced by ${sessions.length} exam session(s).\n\nDeleting this exam type will also delete all associated exam sessions.\n\nAre you sure you want to proceed?`
       }
 
       if (!confirm(confirmMessage)) {
@@ -418,7 +418,26 @@ export default function AdminPortalPage() {
       setDeletingExamTypeId(id)
       console.log('[v0] Deleting exam type:', id)
 
-      // Proceed with deletion
+      // If there are sessions, delete them first to avoid foreign key constraint
+      if (sessions && sessions.length > 0) {
+        console.log('[v0] Deleting', sessions.length, 'dependent sessions first')
+        for (const session of sessions) {
+          const { error: sessionError } = await supabase
+            .from('sessions')
+            .delete()
+            .eq('id', session.id)
+          
+          if (sessionError) {
+            console.error('[v0] Error deleting session:', sessionError)
+            alert(`Failed to delete dependent session: ${sessionError.message}`)
+            setDeletingExamTypeId(null)
+            return
+          }
+        }
+        console.log('[v0] All dependent sessions deleted')
+      }
+
+      // Now delete the exam type
       const { error } = await supabase.from('exam_types').delete().eq('id', id)
 
       if (error) {
@@ -431,6 +450,7 @@ export default function AdminPortalPage() {
       console.log('[v0] Exam type deleted successfully')
       setExamTypes(examTypes.filter(e => e.id !== id))
       setDeletingExamTypeId(null)
+      alert(`Exam type "${examTypeName}" and all associated sessions have been deleted successfully.`)
     } catch (error) {
       console.error('[v0] Delete exam type error:', error)
       alert('An error occurred while deleting the exam type')
