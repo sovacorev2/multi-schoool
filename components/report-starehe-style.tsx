@@ -202,22 +202,22 @@ export function ReportStareheStyle({
                     <style>
                       * { margin: 0; padding: 0; box-sizing: border-box; }
                       html, body { margin: 0; padding: 0; height: 100%; }
-                      body { font-family: 'Times New Roman', serif; font-size: 12px; line-height: 1.4; background: white; }
-                      @page { size: A4; margin: 5mm; }
+                      body { font-family: 'Times New Roman', serif; font-size: 14px; line-height: 1.5; background: white; }
+                      @page { size: A4; margin: 8mm; }
                       .page-break { page-break-after: always; page-break-inside: avoid; }
                       .hidden { display: none; }
                       .print\\:table { display: table; }
                       img { max-width: 100%; height: auto; display: block; }
-                      table { width: 100%; border-collapse: collapse; font-size: inherit; margin-bottom: 10px; }
-                      th, td { border: 1px solid #333; padding: 6px; word-break: break-word; }
+                      table { width: 100%; border-collapse: collapse; font-size: inherit; margin-bottom: 8px; }
+                      th, td { border: 1px solid #333; padding: 7px; word-break: break-word; }
                       th { background-color: #ddd; font-weight: bold; }
                       tr { orphans: 2; widows: 2; }
                       svg { display: block; margin: 0 auto; max-width: 100%; }
                       .text-center { text-align: center; }
                       .text-left { text-align: left; }
-                      .text-xs { font-size: 11px; }
-                      .text-sm { font-size: 12px; }
-                      .text-lg { font-size: 14px; }
+                      .text-xs { font-size: 13px; }
+                      .text-sm { font-size: 14px; }
+                      .text-lg { font-size: 16px; }
                       .font-bold { font-weight: bold; }
                       .italic { font-style: italic; }
                       .uppercase { text-transform: uppercase; }
@@ -231,14 +231,14 @@ export function ReportStareheStyle({
                       .p-2 { padding: 8px; }
                       .p-3 { padding: 12px; }
                       .p-4 { padding: 16px; }
-                      .mb-1 { margin-bottom: 4px; }
-                      .mb-2 { margin-bottom: 8px; }
-                      .mb-3 { margin-bottom: 12px; }
-                      .mb-4 { margin-bottom: 16px; }
-                      .mt-1 { margin-top: 4px; }
-                      .mt-2 { margin-top: 8px; }
-                      .mt-0\.5 { margin-top: 2px; }
-                      .gap-3 { gap: 12px; }
+                      .mb-1 { margin-bottom: 2px; }
+                      .mb-2 { margin-bottom: 4px; }
+                      .mb-3 { margin-bottom: 6px; }
+                      .mb-4 { margin-bottom: 8px; }
+                      .mt-1 { margin-top: 2px; }
+                      .mt-2 { margin-top: 4px; }
+                      .mt-0\.5 { margin-top: 1px; }
+                      .gap-3 { gap: 8px; }
                       .bg-white { background-color: white; }
                       .bg-gray-50 { background-color: #f9f9f9; }
                       .bg-gray-100 { background-color: #f3f3f3; }
@@ -259,21 +259,21 @@ export function ReportStareheStyle({
                       .justify-between { justify-content: space-between; }
                       .items-center { align-items: center; }
                       .flex-col { flex-direction: column; }
-                      .pb-3 { padding-bottom: 12px; }
-                      .pb-1 { padding-bottom: 3px; }
-                      .pb-2 { padding-bottom: 8px; }
-                      .min-h-6 { min-height: 24px; }
-                      .min-h-12 { min-height: 48px; }
-                      .min-h-14 { min-height: 56px; }
-                      .w-20 { width: 80px; }
-                      .h-20 { height: 80px; }
-                      .w-32 { width: 128px; }
-                      .h-32 { height: 128px; }
-                      .space-y-1 > * + * { margin-top: 4px; }
-                      .space-y-2 > * + * { margin-top: 8px; }
-                      .space-y-0\.5 > * + * { margin-top: 2px; }
+                      .pb-3 { padding-bottom: 8px; }
+                      .pb-1 { padding-bottom: 2px; }
+                      .pb-2 { padding-bottom: 4px; }
+                      .min-h-6 { min-height: 20px; }
+                      .min-h-12 { min-height: 32px; }
+                      .min-h-14 { min-height: 40px; }
+                      .w-20 { width: 60px; }
+                      .h-20 { height: 60px; }
+                      .w-32 { width: 100px; }
+                      .h-32 { height: 100px; }
+                      .space-y-1 > * + * { margin-top: 2px; }
+                      .space-y-2 > * + * { margin-top: 4px; }
+                      .space-y-0\.5 > * + * { margin-top: 1px; }
                       @media print {
-                        body { margin: 0; padding: 0; font-size: 12px; min-height: 100vh; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                        body { margin: 0; padding: 0; font-size: 14px; min-height: 100vh; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                         * { orphans: 3; widows: 3; }
                         img { page-break-inside: avoid; display: block !important; visibility: visible !important; }
                         table { page-break-inside: avoid; }
@@ -301,22 +301,22 @@ export function ReportStareheStyle({
                     <style>
                       * { margin: 0; padding: 0; box-sizing: border-box; }
                       html, body { margin: 0; padding: 0; height: 100%; }
-                      body { font-family: 'Times New Roman', serif; font-size: 12px; line-height: 1.4; background: white; }
-                      @page { size: A4; margin: 5mm; }
+                      body { font-family: 'Times New Roman', serif; font-size: 14px; line-height: 1.5; background: white; }
+                      @page { size: A4; margin: 8mm; }
                       .page-break { page-break-after: always; page-break-inside: avoid; }
                       .hidden { display: none; }
                       .print\\:table { display: table; }
                       img { max-width: 100%; height: auto; display: block; }
-                      table { width: 100%; border-collapse: collapse; font-size: inherit; margin-bottom: 10px; }
-                      th, td { border: 1px solid #333; padding: 6px; word-break: break-word; }
+                      table { width: 100%; border-collapse: collapse; font-size: inherit; margin-bottom: 8px; }
+                      th, td { border: 1px solid #333; padding: 7px; word-break: break-word; }
                       th { background-color: #ddd; font-weight: bold; }
                       tr { orphans: 2; widows: 2; }
                       svg { display: block; margin: 0 auto; max-width: 100%; }
                       .text-center { text-align: center; }
                       .text-left { text-align: left; }
-                      .text-xs { font-size: 11px; }
-                      .text-sm { font-size: 12px; }
-                      .text-lg { font-size: 14px; }
+                      .text-xs { font-size: 13px; }
+                      .text-sm { font-size: 14px; }
+                      .text-lg { font-size: 16px; }
                       .font-bold { font-weight: bold; }
                       .italic { font-style: italic; }
                       .uppercase { text-transform: uppercase; }
@@ -330,14 +330,14 @@ export function ReportStareheStyle({
                       .p-2 { padding: 8px; }
                       .p-3 { padding: 12px; }
                       .p-4 { padding: 16px; }
-                      .mb-1 { margin-bottom: 4px; }
-                      .mb-2 { margin-bottom: 8px; }
-                      .mb-3 { margin-bottom: 12px; }
-                      .mb-4 { margin-bottom: 16px; }
-                      .mt-1 { margin-top: 4px; }
-                      .mt-2 { margin-top: 8px; }
-                      .mt-0\.5 { margin-top: 2px; }
-                      .gap-3 { gap: 12px; }
+                      .mb-1 { margin-bottom: 2px; }
+                      .mb-2 { margin-bottom: 4px; }
+                      .mb-3 { margin-bottom: 6px; }
+                      .mb-4 { margin-bottom: 8px; }
+                      .mt-1 { margin-top: 2px; }
+                      .mt-2 { margin-top: 4px; }
+                      .mt-0\.5 { margin-top: 1px; }
+                      .gap-3 { gap: 8px; }
                       .bg-white { background-color: white; }
                       .bg-gray-50 { background-color: #f9f9f9; }
                       .bg-gray-100 { background-color: #f3f3f3; }
@@ -467,89 +467,89 @@ export function ReportStareheStyle({
                   </div>
 
                   {/* Student Info Row */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '8px', fontSize: '11px', fontWeight: 'bold' }}>
-                    <div><strong>NAME:</strong> <span style={{ fontWeight: 'bold', fontSize: '12px' }}>{report.learner.name}</span></div>
-                    <div><strong>ASSESSMENT NO:</strong> <span style={{ fontSize: '11px' }}>{report.learner.admission_number || '-'}</span></div>
-                    <div><strong>CLASS:</strong> <span style={{ fontSize: '11px' }}>{className}</span></div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '8px', fontSize: '13px', fontWeight: 'bold' }}>
+                    <div><strong>NAME:</strong> <span style={{ fontWeight: 'bold', fontSize: '14px' }}>{report.learner.name}</span></div>
+                    <div><strong>ASSESSMENT NO:</strong> <span style={{ fontSize: '13px' }}>{report.learner.admission_number || '-'}</span></div>
+                    <div><strong>CLASS:</strong> <span style={{ fontSize: '13px' }}>{className}</span></div>
                   </div>
 
                   {/* Main Marks Table */}
-                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '6px', fontSize: '9px' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '6px', fontSize: '12px' }}>
                     <thead>
                       <tr style={{ backgroundColor: '#ddd' }}>
-                        <th style={{ border: '1px solid #666', padding: '6px', textAlign: 'left', fontWeight: 'bold' }}>SUBJECT</th>
-                        <th style={{ border: '1px solid #666', padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>SCORE (%)</th>
-                        <th style={{ border: '1px solid #666', padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>LEVEL</th>
-                        <th style={{ border: '1px solid #666', padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>PTS</th>
+                        <th style={{ border: '1px solid #666', padding: '7px', textAlign: 'left', fontWeight: 'bold', fontSize: '12px' }}>SUBJECT</th>
+                        <th style={{ border: '1px solid #666', padding: '7px', textAlign: 'center', fontWeight: 'bold', fontSize: '12px' }}>SCORE (%)</th>
+                        <th style={{ border: '1px solid #666', padding: '7px', textAlign: 'center', fontWeight: 'bold', fontSize: '12px' }}>LEVEL</th>
+                        <th style={{ border: '1px solid #666', padding: '7px', textAlign: 'center', fontWeight: 'bold', fontSize: '12px' }}>PTS</th>
                         {/* Hide CLASS POS column for individual reports */}
                         {reports.length > 1 && (
-                          <th style={{ border: '1px solid #666', padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>CLASS POS</th>
+                          <th style={{ border: '1px solid #666', padding: '7px', textAlign: 'center', fontWeight: 'bold', fontSize: '12px' }}>CLASS POS</th>
                         )}
-                        <th style={{ border: '1px solid #666', padding: '6px', textAlign: 'left', fontWeight: 'bold' }}>REMARKS</th>
-                        <th style={{ border: '1px solid #666', padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>INITIALS</th>
+                        <th style={{ border: '1px solid #666', padding: '7px', textAlign: 'left', fontWeight: 'bold', fontSize: '12px' }}>REMARKS</th>
+                        <th style={{ border: '1px solid #666', padding: '7px', textAlign: 'center', fontWeight: 'bold', fontSize: '12px' }}>INITIALS</th>
                       </tr>
                     </thead>
                     <tbody>
                       {subjectData.map((item, i) => (
                         <tr key={item.subject.id} style={{ backgroundColor: i % 2 === 0 ? '#fff' : '#f9f9f9' }}>
-                          <td style={{ border: '1px solid #666', padding: '6px', textAlign: 'left', fontWeight: 'bold' }}>{item.subject.name.toUpperCase()}</td>
-                          <td style={{ border: '1px solid #666', padding: '6px', textAlign: 'center' }}>{item.score ?? '-'}</td>
-                          <td style={{ border: '1px solid #666', padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>{item.level}</td>
-                          <td style={{ border: '1px solid #666', padding: '6px', textAlign: 'center' }}>{item.points}</td>
+                          <td style={{ border: '1px solid #666', padding: '7px', textAlign: 'left', fontWeight: 'bold', fontSize: '12px' }}>{item.subject.name.toUpperCase()}</td>
+                          <td style={{ border: '1px solid #666', padding: '7px', textAlign: 'center', fontSize: '12px' }}>{item.score ?? '-'}</td>
+                          <td style={{ border: '1px solid #666', padding: '7px', textAlign: 'center', fontWeight: 'bold', fontSize: '12px' }}>{item.level}</td>
+                          <td style={{ border: '1px solid #666', padding: '7px', textAlign: 'center', fontSize: '12px' }}>{item.points}</td>
                           {/* Hide CLASS POS cell for individual reports */}
                           {reports.length > 1 && (
-                            <td style={{ border: '1px solid #666', padding: '6px', textAlign: 'center' }}>{report.subjectPositions?.[item.subject.id] || '-'}/{totalStudents}</td>
+                            <td style={{ border: '1px solid #666', padding: '7px', textAlign: 'center', fontSize: '12px' }}>{report.subjectPositions?.[item.subject.id] || '-'}/{totalStudents}</td>
                           )}
-                          <td style={{ border: '1px solid #666', padding: '6px', textAlign: 'left', fontSize: '9px' }}>{item.remarks}</td>
-                          <td style={{ border: '1px solid #666', padding: '6px', textAlign: 'center' }}></td>
+                          <td style={{ border: '1px solid #666', padding: '7px', textAlign: 'left', fontSize: '11px' }}>{item.remarks}</td>
+                          <td style={{ border: '1px solid #666', padding: '7px', textAlign: 'center', fontSize: '12px' }}></td>
                         </tr>
                       ))}
                       <tr style={{ backgroundColor: '#ffeb3b', fontWeight: 'bold' }}>
-                        <td style={{ border: '1px solid #666', padding: '6px', textAlign: 'left' }}>TOTAL</td>
-                        <td style={{ border: '1px solid #666', padding: '6px', textAlign: 'center' }}>{report.total}</td>
-                        <td style={{ border: '1px solid #666', padding: '6px' }}></td>
-                        <td style={{ border: '1px solid #666', padding: '6px', textAlign: 'center' }}>{totalPoints}</td>
+                        <td style={{ border: '1px solid #666', padding: '7px', textAlign: 'left', fontSize: '12px' }}>TOTAL</td>
+                        <td style={{ border: '1px solid #666', padding: '7px', textAlign: 'center', fontSize: '12px' }}>{report.total}</td>
+                        <td style={{ border: '1px solid #666', padding: '7px', fontSize: '12px' }}></td>
+                        <td style={{ border: '1px solid #666', padding: '7px', textAlign: 'center', fontSize: '12px' }}>{totalPoints}</td>
                         {/* Hide CLASS POS column for individual reports */}
                         {reports.length > 1 && (
-                          <td style={{ border: '1px solid #666', padding: '6px' }}></td>
+                          <td style={{ border: '1px solid #666', padding: '7px', fontSize: '12px' }}></td>
                         )}
-                        <td style={{ border: '1px solid #666', padding: '6px' }}></td>
-                        <td style={{ border: '1px solid #666', padding: '6px' }}></td>
+                        <td style={{ border: '1px solid #666', padding: '7px', fontSize: '12px' }}></td>
+                        <td style={{ border: '1px solid #666', padding: '7px', fontSize: '12px' }}></td>
                       </tr>
                     </tbody>
                   </table>
 
                   {/* Mean Marks and Summary Row */}
-                  <div style={{ marginBottom: '6px', fontSize: '9px' }}>
+                  <div style={{ marginBottom: '6px', fontSize: '11px' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: isStreamedClass ? '1fr 1fr 1fr' : '1fr 1fr', gap: '8px' }}>
-                      <div style={{ border: '1px solid #666', padding: '5px' }}>
+                      <div style={{ border: '1px solid #666', padding: '6px', fontSize: '11px' }}>
                         <div><strong>MEAN MARKS:</strong> {meanMark.toFixed(1)}</div>
-                        <div style={{ marginTop: '2px' }}><strong>PERF LEVEL:</strong> {meanPerf.level}</div>
+                        <div style={{ marginTop: '3px' }}><strong>PERF LEVEL:</strong> {meanPerf.level}</div>
                       </div>
-                      <div style={{ border: '1px solid #666', padding: '5px' }}>
+                      <div style={{ border: '1px solid #666', padding: '6px', fontSize: '11px' }}>
                         <div><strong>TOTAL PTS:</strong> {totalPoints}/{maxPoints}</div>
-                        <div style={{ marginTop: '2px' }}><strong>{isStreamedClass ? 'STREAM POS' : 'POSITION'}:</strong> {report.rank}/{totalStudents}</div>
+                        <div style={{ marginTop: '3px' }}><strong>{isStreamedClass ? 'STREAM POS' : 'POSITION'}:</strong> {report.rank}/{totalStudents}</div>
                       </div>
                       {isStreamedClass && (
-                        <div style={{ border: '1px solid #666', padding: '5px' }}>
+                        <div style={{ border: '1px solid #666', padding: '6px', fontSize: '11px' }}>
                           <div><strong>OVERALL POS:</strong> {report.overall_rank || report.rank}/{report.total_in_grade || totalStudents}</div>
-                          <div style={{ marginTop: '2px' }}><strong>STREAM:</strong> {streamName}</div>
+                          <div style={{ marginTop: '3px' }}><strong>STREAM:</strong> {streamName}</div>
                         </div>
                       )}
                     </div>
                   </div>
 
                   {/* Charts Row - Side by Side */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '8px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '6px' }}>
                     {/* Pie Chart - Subject Distribution with Legend */}
                     <div style={{ border: '1px solid #666', padding: '6px' }}>
-                      <div style={{ fontWeight: 'bold', marginBottom: '4px', fontSize: '9px', textAlign: 'center' }}>SUBJECT DISTRIBUTION</div>
+                      <div style={{ fontWeight: 'bold', marginBottom: '3px', fontSize: '11px', textAlign: 'center' }}>SUBJECT DISTRIBUTION</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <svg viewBox="0 0 80 80" style={{ width: '50px', height: '50px', flexShrink: 0 }}>
+                        <svg viewBox="0 0 80 80" style={{ width: '55px', height: '55px', flexShrink: 0 }}>
                           {(() => {
                             const scores = subjectData.map(s => s.score || 0)
                             const total = scores.reduce((a, b) => a + b, 0)
-                            if (total === 0) return <text x="40" y="45" textAnchor="middle" fontSize="6">No Data</text>
+                            if (total === 0) return <text x="40" y="45" textAnchor="middle" fontSize="7">No Data</text>
                             
                             const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#14b8a6']
                             
@@ -579,7 +579,7 @@ export function ReportStareheStyle({
                           })()}
                         </svg>
                         {/* Legend with percentages */}
-                        <div style={{ fontSize: '6px', lineHeight: '1.2', flex: 1 }}>
+                        <div style={{ fontSize: '8px', lineHeight: '1.3', flex: 1 }}>
                           {(() => {
                             const scores = subjectData.map(s => s.score || 0)
                             const total = scores.reduce((a, b) => a + b, 0)
@@ -587,8 +587,8 @@ export function ReportStareheStyle({
                             return subjectData.slice(0, 8).map((subject, i) => {
                               const percentage = total > 0 ? ((scores[i] / total) * 100).toFixed(0) : 0
                               return (
-                                <div key={subject.subject.id} style={{ display: 'flex', alignItems: 'center', marginBottom: '1px' }}>
-                                  <span style={{ width: '5px', height: '5px', backgroundColor: colors[i % colors.length], marginRight: '2px', flexShrink: 0 }}></span>
+                                <div key={subject.subject.id} style={{ display: 'flex', alignItems: 'center', marginBottom: '2px' }}>
+                                  <span style={{ width: '6px', height: '6px', backgroundColor: colors[i % colors.length], marginRight: '3px', flexShrink: 0 }}></span>
                                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{getSubjectDisplay(subject.subject.name)} {percentage}%</span>
                                 </div>
                               )
@@ -600,18 +600,18 @@ export function ReportStareheStyle({
 
                     {/* Bar Chart - Performance Trend (Accumulates all exams) */}
                     <div style={{ border: '1px solid #666', padding: '6px', textAlign: 'center' }}>
-                      <div style={{ fontWeight: 'bold', marginBottom: '4px', fontSize: '9px' }}>PERFORMANCE TREND</div>
-                      <svg viewBox="0 0 140 95" style={{ width: '100%', maxWidth: '120px', margin: '0 auto', display: 'block', height: 'auto' }}>
+                      <div style={{ fontWeight: 'bold', marginBottom: '3px', fontSize: '11px' }}>PERFORMANCE TREND</div>
+                      <svg viewBox="0 0 140 95" style={{ width: '100%', maxWidth: '130px', margin: '0 auto', display: 'block', height: 'auto' }}>
                         {/* Y-axis */}
                         <line x1="20" y1="10" x2="20" y2="70" stroke="#999" strokeWidth="0.5" />
                         {/* X-axis */}
                         <line x1="20" y1="70" x2="135" y2="70" stroke="#999" strokeWidth="0.5" />
                         {/* Y-axis labels */}
-                        <text x="18" y="12" fontSize="5" textAnchor="end">100</text>
-                        <text x="18" y="32" fontSize="5" textAnchor="end">75</text>
-                        <text x="18" y="42" fontSize="5" textAnchor="end">50</text>
-                        <text x="18" y="62" fontSize="5" textAnchor="end">25</text>
-                        <text x="18" y="72" fontSize="5" textAnchor="end">0</text>
+                        <text x="18" y="12" fontSize="6" textAnchor="end">100</text>
+                        <text x="18" y="32" fontSize="6" textAnchor="end">75</text>
+                        <text x="18" y="42" fontSize="6" textAnchor="end">50</text>
+                        <text x="18" y="62" fontSize="6" textAnchor="end">25</text>
+                        <text x="18" y="72" fontSize="6" textAnchor="end">0</text>
                         {/* Horizontal gridlines */}
                         <line x1="20" y1="25" x2="135" y2="25" stroke="#eee" strokeWidth="0.3" strokeDasharray="1,1" />
                         <line x1="20" y1="40" x2="135" y2="40" stroke="#eee" strokeWidth="0.3" strokeDasharray="1,1" />
@@ -702,48 +702,48 @@ export function ReportStareheStyle({
                         })()}
                         {/* Legend */}
                         <rect x="30" y="86" width="3" height="3" fill="#1e40af" />
-                        <text x="35" y="89" fontSize="5">Previous</text>
+                        <text x="35" y="89" fontSize="6">Previous</text>
                         <rect x="75" y="86" width="3" height="3" fill="#f97316" />
-                        <text x="80" y="89" fontSize="5">Current</text>
+                        <text x="80" y="89" fontSize="6">Current</text>
                       </svg>
                     </div>
                   </div>
 
                   {/* Grading Legend */}
-                  <div style={{ marginBottom: '8px', padding: '6px', border: '1px solid #999', backgroundColor: '#fff' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '3px', fontSize: '9px' }}>CBE LEVELS:</div>
-                    <div style={{ fontSize: '8px', lineHeight: '1.4' }}>
+                  <div style={{ marginBottom: '6px', padding: '7px', border: '1px solid #999', backgroundColor: '#fff' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '2px', fontSize: '11px' }}>CBE LEVELS:</div>
+                    <div style={{ fontSize: '10px', lineHeight: '1.4' }}>
                       EE=Exceeding-4 | ME=Meeting-3 | AE=Approaching-2 | BE=Below-1
                     </div>
                   </div>
 
                   {/* Remarks Sections */}
-                  <div style={{ marginBottom: '6px' }}>
+                  <div style={{ marginBottom: '4px' }}>
                     {/* Class Teacher Remarks - Auto-generated based on performance level (except St James) */}
-                    <div style={{ border: '1px solid #666', marginBottom: '5px' }}>
-                      <div style={{ backgroundColor: '#ddd', fontWeight: 'bold', padding: '4px', borderBottom: '1px solid #666', fontSize: '9px' }}>CLASS TEACHER&apos;S REMARKS:</div>
-                      <div style={{ padding: '5px', minHeight: '30px', fontSize: '9px', lineHeight: '1.4' }}>
+                    <div style={{ border: '1px solid #666', marginBottom: '4px' }}>
+                      <div style={{ backgroundColor: '#ddd', fontWeight: 'bold', padding: '5px', borderBottom: '1px solid #666', fontSize: '11px' }}>CLASS TEACHER&apos;S REMARKS:</div>
+                      <div style={{ padding: '6px', minHeight: '28px', fontSize: '10px', lineHeight: '1.4' }}>
                         {/* Show auto comment for all schools except St James */}
                         {currentSchool?.code?.toLowerCase() !== 'stjames' && currentSchool?.name?.toLowerCase()?.includes('st james') !== true
                           ? getAutoTeacherComment(meanPerf.level)
                           : ''}
                       </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', padding: '4px', borderTop: '1px solid #666', fontSize: '8px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', padding: '5px', borderTop: '1px solid #666', fontSize: '10px' }}>
                         <div>NAME: ________________</div>
                         <div>SIGN: ________________</div>
                       </div>
-                      <div style={{ padding: '4px', fontSize: '8px' }}>DATE: ________________</div>
+                      <div style={{ padding: '5px', fontSize: '10px' }}>DATE: ________________</div>
                     </div>
 
                     {/* Parent/Guardian Remarks */}
                     <div style={{ border: '1px solid #666' }}>
-                      <div style={{ backgroundColor: '#ddd', fontWeight: 'bold', padding: '4px', borderBottom: '1px solid #666', fontSize: '9px' }}>PARENT/GUARDIAN'S REMARKS:</div>
-                      <div style={{ padding: '5px', minHeight: '30px' }}></div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', padding: '4px', borderTop: '1px solid #666', fontSize: '8px' }}>
+                      <div style={{ backgroundColor: '#ddd', fontWeight: 'bold', padding: '5px', borderBottom: '1px solid #666', fontSize: '11px' }}>PARENT/GUARDIAN&apos;S REMARKS:</div>
+                      <div style={{ padding: '6px', minHeight: '28px' }}></div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', padding: '5px', borderTop: '1px solid #666', fontSize: '10px' }}>
                         <div>NAME: ________________</div>
                         <div>SIGN: ________________</div>
                       </div>
-                      <div style={{ padding: '4px', fontSize: '8px' }}>DATE: ________________</div>
+                      <div style={{ padding: '5px', fontSize: '10px' }}>DATE: ________________</div>
                     </div>
                   </div>
 
