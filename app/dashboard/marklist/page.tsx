@@ -224,11 +224,60 @@ export default function MarklistPage() {
       const { data: allClasses } = await supabase.from('classes').select('*').eq('school_id', currentSchool?.id).order('display_order')
       if (!allClasses) return
 
+      // Get ALL matching sessions at once instead of per-class
+      const { data: allSessions } = await supabase
+        .from('sessions')
+        .select('*, exam_types(*)')
+        .eq('term', selectedSession.term)
+        .eq('year', selectedSession.year)
+        .eq('exam_type_id', selectedSession.exam_type_id)
+      
+      // Get ALL subjects and learners for all classes at once
+      const classIds = allClasses.map(c => c.id)
+      const { data: allSubjects } = await supabase
+        .from('subjects')
+        .select('*')
+        .in('class_id', classIds)
+      
+      const { data: allLearners } = await supabase
+        .from('learners')
+        .select('*')
+        .in('class_id', classIds)
+      
+      // Get ALL marks for the selected exam sessions
+      const sessionIds = allSessions?.map(s => s.id) || []
+      const { data: allMarks } = await supabase
+        .from('marks')
+        .select('*')
+        .in('session_id', sessionIds)
+
+      // Create lookup maps for fast access
+      const sessionsByClassId = new Map()
+      allSessions?.forEach(s => {
+        sessionsByClassId.set(s.class_id, s)
+      })
+      
+      const subjectsByClassId = new Map()
+      allSubjects?.forEach(s => {
+        if (!subjectsByClassId.has(s.class_id)) subjectsByClassId.set(s.class_id, [])
+        subjectsByClassId.get(s.class_id).push(s)
+      })
+      
+      const learnersByClassId = new Map()
+      allLearners?.forEach(l => {
+        if (!learnersByClassId.has(l.class_id)) learnersByClassId.set(l.class_id, [])
+        learnersByClassId.get(l.class_id).push(l)
+      })
+      
+      const marksBySessionId = new Map()
+      allMarks?.forEach(m => {
+        if (!marksBySessionId.has(m.session_id)) marksBySessionId.set(m.session_id, [])
+        marksBySessionId.get(m.session_id).push(m)
+      })
+
       const categoryResults = []
 
       for (const category of CATEGORIES) {
-        // Filter classes by checking if they start with any of the category class names
-        // This handles both non-streamed classes (e.g., "Grade 9") and streamed classes (e.g., "Grade 9 WEST", "Grade 9 EAST")
         const catClasses = allClasses.filter(c => {
           const className = c.name.trim()
           return category.classNames.some(catName => 
@@ -238,16 +287,10 @@ export default function MarklistPage() {
         const classResults = []
 
         for (const cls of catClasses) {
-          // Get matching session for this class (same term, year, exam type)
-          const { data: classSessions } = await supabase
-            .from('sessions')
-            .select('*, exam_types(*)')
-            .eq('class_id', cls.id)
-            .eq('term', selectedSession.term)
-            .eq('year', selectedSession.year)
-            .eq('exam_type_id', selectedSession.exam_type_id)
+          // Get session from map instead of querying
+          const classSession = sessionsByClassId.get(cls.id)
 
-          if (!classSessions || classSessions.length === 0) {
+          if (!classSession) {
             classResults.push({
               name: cls.name,
               classId: cls.id,
@@ -261,18 +304,12 @@ export default function MarklistPage() {
             continue
           }
 
-          const sessionId = classSessions[0].id
-
-  // Fetch subjects, learners, marks for this class
-  const [subjectsRes, learnersRes, marksRes] = await Promise.all([
-    supabase.from('subjects').select('*').eq('class_id', cls.id),
-            supabase.from('learners').select('*').eq('class_id', cls.id),
-            supabase.from('marks').select('*').eq('session_id', sessionId),
-          ])
-
-          const clsSubjects = subjectsRes.data || []
-          const clsLearners = learnersRes.data || []
-          const clsMarks = marksRes.data || []
+          const sessionId = classSession.id
+          
+          // Get data from maps instead of querying
+          const clsSubjects = subjectsByClassId.get(cls.id) || []
+          const clsLearners = learnersByClassId.get(cls.id) || []
+          const clsMarks = marksBySessionId.get(sessionId) || []
           const isPreschoolClass = PRESCHOOL.includes(cls.name)
 
           // Calculate averages per subject
@@ -350,7 +387,7 @@ export default function MarklistPage() {
     const supabase = createClient()
 
     try {
-      // Find all classes that start with the base class name (e.g., "Grade 3" matches "Grade 3 RED", "Grade 3 GREEN")
+      // Find all classes that start with the base class name
       const { data: allClasses } = await supabase
         .from('classes')
         .select('*')
@@ -370,19 +407,65 @@ export default function MarklistPage() {
         return
       }
 
+      // Batch fetch all sessions for stream classes at once
+      const streamClassIds = streamClasses.map(c => c.id)
+      const { data: allSessions } = await supabase
+        .from('sessions')
+        .select('*, exam_types(*)')
+        .in('class_id', streamClassIds)
+        .eq('term', selectedSession.term)
+        .eq('year', selectedSession.year)
+        .eq('exam_type_id', selectedSession.exam_type_id)
+
+      // Batch fetch all subjects and learners
+      const { data: allSubjects } = await supabase
+        .from('subjects')
+        .select('*')
+        .in('class_id', streamClassIds)
+      
+      const { data: allLearners } = await supabase
+        .from('learners')
+        .select('*')
+        .in('class_id', streamClassIds)
+      
+      // Batch fetch all marks for matching sessions
+      const sessionIds = allSessions?.map(s => s.id) || []
+      const { data: allMarks } = await supabase
+        .from('marks')
+        .select('*')
+        .in('session_id', sessionIds)
+
+      // Create lookup maps
+      const sessionsByClassId = new Map()
+      allSessions?.forEach(s => {
+        sessionsByClassId.set(s.class_id, s)
+      })
+      
+      const subjectsByClassId = new Map()
+      allSubjects?.forEach(s => {
+        if (!subjectsByClassId.has(s.class_id)) subjectsByClassId.set(s.class_id, [])
+        subjectsByClassId.get(s.class_id).push(s)
+      })
+      
+      const learnersByClassId = new Map()
+      allLearners?.forEach(l => {
+        if (!learnersByClassId.has(l.class_id)) learnersByClassId.set(l.class_id, [])
+        learnersByClassId.get(l.class_id).push(l)
+      })
+      
+      const marksBySessionId = new Map()
+      allMarks?.forEach(m => {
+        if (!marksBySessionId.has(m.session_id)) marksBySessionId.set(m.session_id, [])
+        marksBySessionId.get(m.session_id).push(m)
+      })
+
       const streamsData = []
 
       for (const cls of streamClasses) {
-        // Get matching session for this class
-        const { data: classSessions } = await supabase
-          .from('sessions')
-          .select('*, exam_types(*)')
-          .eq('class_id', cls.id)
-          .eq('term', selectedSession.term)
-          .eq('year', selectedSession.year)
-          .eq('exam_type_id', selectedSession.exam_type_id)
+        // Get session from map
+        const classSession = sessionsByClassId.get(cls.id)
 
-        if (!classSessions || classSessions.length === 0) {
+        if (!classSession) {
           streamsData.push({
             name: cls.name,
             streamName: cls.name.replace(new RegExp(`^${baseClassName}\\s*`, 'i'), '') || 'Main',
@@ -397,18 +480,12 @@ export default function MarklistPage() {
           continue
         }
 
-        const sessionId = classSessions[0].id
+        const sessionId = classSession.id
 
-        // Fetch all data for this stream
-        const [subjectsRes, learnersRes, marksRes] = await Promise.all([
-          supabase.from('subjects').select('*').eq('class_id', cls.id),
-          supabase.from('learners').select('*').eq('class_id', cls.id),
-          supabase.from('marks').select('*').eq('session_id', sessionId),
-        ])
-
-        const clsSubjects = subjectsRes.data || []
-        const clsLearners = learnersRes.data || []
-        const clsMarks = marksRes.data || []
+        // Get all data from maps (no more queries!)
+        const clsSubjects = subjectsByClassId.get(cls.id) || []
+        const clsLearners = learnersByClassId.get(cls.id) || []
+        const clsMarks = marksBySessionId.get(sessionId) || []
 
         // Calculate per-subject stats
         const subjectStats = clsSubjects.map(subj => {
