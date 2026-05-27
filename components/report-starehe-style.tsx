@@ -202,14 +202,14 @@ export function ReportStareheStyle({
                     <style>
                       * { margin: 0; padding: 0; box-sizing: border-box; }
                       html, body { margin: 0; padding: 0; height: 100%; }
-                      body { font-family: 'Times New Roman', serif; font-size: 14px; line-height: 1.5; background: white; }
-                      @page { size: A4; margin: 8mm; }
+                      body { font-family: 'Times New Roman', serif; font-size: 14px; line-height: 1.3; background: white; }
+                      @page { size: A4; margin: 5mm; }
                       .page-break { page-break-after: always; page-break-inside: avoid; }
                       .hidden { display: none; }
                       .print\\:table { display: table; }
                       img { max-width: 100%; height: auto; display: block; }
-                      table { width: 100%; border-collapse: collapse; font-size: inherit; margin-bottom: 8px; }
-                      th, td { border: 1px solid #333; padding: 7px; word-break: break-word; }
+                      table { width: 100%; border-collapse: collapse; font-size: inherit; margin-bottom: 4px; }
+                      th, td { border: 1px solid #333; padding: 5px; word-break: break-word; }
                       th { background-color: #ddd; font-weight: bold; }
                       tr { orphans: 2; widows: 2; }
                       svg { display: block; margin: 0 auto; max-width: 100%; }
@@ -227,18 +227,18 @@ export function ReportStareheStyle({
                       .border-r-2 { border-right: 2px solid #333; }
                       .border-b { border-bottom: 1px solid #333; }
                       .border-t { border-top: 1px solid #333; }
-                      .p-1 { padding: 4px; }
-                      .p-2 { padding: 8px; }
-                      .p-3 { padding: 12px; }
-                      .p-4 { padding: 16px; }
-                      .mb-1 { margin-bottom: 2px; }
-                      .mb-2 { margin-bottom: 4px; }
-                      .mb-3 { margin-bottom: 6px; }
-                      .mb-4 { margin-bottom: 8px; }
-                      .mt-1 { margin-top: 2px; }
-                      .mt-2 { margin-top: 4px; }
+                      .p-1 { padding: 3px; }
+                      .p-2 { padding: 5px; }
+                      .p-3 { padding: 8px; }
+                      .p-4 { padding: 10px; }
+                      .mb-1 { margin-bottom: 1px; }
+                      .mb-2 { margin-bottom: 2px; }
+                      .mb-3 { margin-bottom: 3px; }
+                      .mb-4 { margin-bottom: 4px; }
+                      .mt-1 { margin-top: 1px; }
+                      .mt-2 { margin-top: 2px; }
                       .mt-0\.5 { margin-top: 1px; }
-                      .gap-3 { gap: 8px; }
+                      .gap-3 { gap: 4px; }
                       .bg-white { background-color: white; }
                       .bg-gray-50 { background-color: #f9f9f9; }
                       .bg-gray-100 { background-color: #f3f3f3; }
@@ -259,18 +259,18 @@ export function ReportStareheStyle({
                       .justify-between { justify-content: space-between; }
                       .items-center { align-items: center; }
                       .flex-col { flex-direction: column; }
-                      .pb-3 { padding-bottom: 8px; }
-                      .pb-1 { padding-bottom: 2px; }
-                      .pb-2 { padding-bottom: 4px; }
-                      .min-h-6 { min-height: 20px; }
-                      .min-h-12 { min-height: 32px; }
-                      .min-h-14 { min-height: 40px; }
-                      .w-20 { width: 60px; }
-                      .h-20 { height: 60px; }
-                      .w-32 { width: 100px; }
-                      .h-32 { height: 100px; }
-                      .space-y-1 > * + * { margin-top: 2px; }
-                      .space-y-2 > * + * { margin-top: 4px; }
+                      .pb-3 { padding-bottom: 5px; }
+                      .pb-1 { padding-bottom: 1px; }
+                      .pb-2 { padding-bottom: 3px; }
+                      .min-h-6 { min-height: 18px; }
+                      .min-h-12 { min-height: 28px; }
+                      .min-h-14 { min-height: 35px; }
+                      .w-20 { width: 50px; }
+                      .h-20 { height: 50px; }
+                      .w-32 { width: 90px; }
+                      .h-32 { height: 90px; }
+                      .space-y-1 > * + * { margin-top: 1px; }
+                      .space-y-2 > * + * { margin-top: 2px; }
                       .space-y-0\.5 > * + * { margin-top: 1px; }
                       @media print {
                         body { margin: 0; padding: 0; font-size: 14px; min-height: 100vh; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -540,12 +540,12 @@ export function ReportStareheStyle({
                   </div>
 
                   {/* Charts Row - Side by Side */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '6px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px', marginBottom: '3px' }}>
                     {/* Pie Chart - Subject Distribution with Legend */}
-                    <div style={{ border: '1px solid #666', padding: '6px' }}>
-                      <div style={{ fontWeight: 'bold', marginBottom: '3px', fontSize: '11px', textAlign: 'center' }}>SUBJECT DISTRIBUTION</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <svg viewBox="0 0 80 80" style={{ width: '55px', height: '55px', flexShrink: 0 }}>
+                    <div style={{ border: '1px solid #666', padding: '4px' }}>
+                      <div style={{ fontWeight: 'bold', marginBottom: '2px', fontSize: '10px', textAlign: 'center' }}>SUBJECT DISTRIBUTION</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <svg viewBox="0 0 80 80" style={{ width: '50px', height: '50px', flexShrink: 0 }}>
                           {(() => {
                             const scores = subjectData.map(s => s.score || 0)
                             const total = scores.reduce((a, b) => a + b, 0)
@@ -710,53 +710,45 @@ export function ReportStareheStyle({
                   </div>
 
                   {/* Grading Legend */}
-                  <div style={{ marginBottom: '6px', padding: '7px', border: '1px solid #999', backgroundColor: '#fff' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '2px', fontSize: '11px' }}>CBE LEVELS:</div>
-                    <div style={{ fontSize: '10px', lineHeight: '1.4' }}>
+                  <div style={{ marginBottom: '3px', padding: '4px', border: '1px solid #999', backgroundColor: '#fff' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '1px', fontSize: '10px' }}>CBE LEVELS:</div>
+                    <div style={{ fontSize: '9px', lineHeight: '1.2' }}>
                       EE=Exceeding-4 | ME=Meeting-3 | AE=Approaching-2 | BE=Below-1
                     </div>
                   </div>
 
                   {/* Remarks Sections */}
-                  <div style={{ marginBottom: '4px' }}>
+                  <div style={{ marginBottom: '2px' }}>
                     {/* Class Teacher Remarks - Auto-generated based on performance level (except St James) */}
-                    <div style={{ border: '1px solid #666', marginBottom: '4px' }}>
-                      <div style={{ backgroundColor: '#ddd', fontWeight: 'bold', padding: '5px', borderBottom: '1px solid #666', fontSize: '11px' }}>CLASS TEACHER&apos;S REMARKS:</div>
-                      <div style={{ padding: '6px', minHeight: '28px', fontSize: '10px', lineHeight: '1.4' }}>
+                    <div style={{ border: '1px solid #666', marginBottom: '2px' }}>
+                      <div style={{ backgroundColor: '#ddd', fontWeight: 'bold', padding: '4px', borderBottom: '1px solid #666', fontSize: '10px' }}>CLASS TEACHER&apos;S REMARKS:</div>
+                      <div style={{ padding: '4px', minHeight: '18px', fontSize: '9px', lineHeight: '1.2', overflow: 'hidden' }}>
                         {/* Show auto comment for all schools except St James */}
                         {currentSchool?.code?.toLowerCase() !== 'stjames' && currentSchool?.name?.toLowerCase()?.includes('st james') !== true
                           ? getAutoTeacherComment(meanPerf.level)
                           : ''}
                       </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', padding: '5px', borderTop: '1px solid #666', fontSize: '10px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', padding: '3px', borderTop: '1px solid #666', fontSize: '9px' }}>
                         <div>NAME: ________________</div>
                         <div>SIGN: ________________</div>
                       </div>
-                      <div style={{ padding: '5px', fontSize: '10px' }}>DATE: ________________</div>
+                      <div style={{ padding: '3px', fontSize: '9px' }}>DATE: ________________</div>
                     </div>
 
                     {/* Parent/Guardian Remarks */}
                     <div style={{ border: '1px solid #666' }}>
-                      <div style={{ backgroundColor: '#ddd', fontWeight: 'bold', padding: '5px', borderBottom: '1px solid #666', fontSize: '11px' }}>PARENT/GUARDIAN&apos;S REMARKS:</div>
-                      <div style={{ padding: '6px', minHeight: '28px' }}></div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', padding: '5px', borderTop: '1px solid #666', fontSize: '10px' }}>
+                      <div style={{ backgroundColor: '#ddd', fontWeight: 'bold', padding: '4px', borderBottom: '1px solid #666', fontSize: '10px' }}>PARENT/GUARDIAN&apos;S REMARKS:</div>
+                      <div style={{ padding: '4px', minHeight: '18px' }}></div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', padding: '3px', borderTop: '1px solid #666', fontSize: '9px' }}>
                         <div>NAME: ________________</div>
                         <div>SIGN: ________________</div>
                       </div>
-                      <div style={{ padding: '5px', fontSize: '10px' }}>DATE: ________________</div>
-                    </div>
-                  </div>
-
-                  {/* CBE Performance Levels Legend */}
-                  <div style={{ border: '1px solid #666', padding: '4px', marginBottom: '4px', fontSize: '8px' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '1px' }}>CBE LEVELS:</div>
-                    <div style={{ fontSize: '7px', lineHeight: '1.2' }}>
-                      <strong>EE</strong>=Exceeding-4 | <strong>ME</strong>=Meeting-3 | <strong>AE</strong>=Approaching-2 | <strong>BE</strong>=Below-1
+                      <div style={{ padding: '3px', fontSize: '9px' }}>DATE: ________________</div>
                     </div>
                   </div>
 
                   {/* Next Term Info */}
-                  <div style={{ border: '1px solid #666', padding: '4px', fontSize: '8px' }}>
+                  <div style={{ border: '1px solid #666', padding: '3px', fontSize: '9px' }}>
                     <div style={{ fontWeight: 'bold' }}>NEXT TERM FROM: ________ TO: ________</div>
                   </div>
                 </div>
