@@ -51,19 +51,52 @@ export function MarksAttemptsManager({ school }: MarksAttemptsManagerProps) {
   const setupTable = async () => {
     setIsSettingUp(true)
     try {
-      // Call migration API to create the table
-      const response = await fetch('/api/migrations/marks-attempts', {
+      console.log('[v0] Setting up marks_entry_attempts table...')
+      
+      // Call the setup API endpoint
+      const response = await fetch('/api/admin/setup-marks-attempts', {
         method: 'POST'
       })
       const result = await response.json()
       
       if (result.success) {
-        console.log('[v0] Table created successfully')
+        console.log('[v0] Table setup successful, waiting for schema cache refresh...')
         setError(null)
-        // Retry loading data
-        loadData()
+        
+        // Wait a moment for the schema cache to refresh in Supabase
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        
+        // Retry loading data with additional retries
+        let retries = 0
+        let dataLoaded = false
+        
+        while (retries < 3 && !dataLoaded) {
+          try {
+            const { data, error } = await supabase
+              .from('marks_entry_attempts')
+              .select('id')
+              .limit(1)
+            
+            if (!error) {
+              console.log('[v0] Table is now accessible')
+              dataLoaded = true
+              // Reload all data
+              await loadData()
+            } else if (retries < 2) {
+              console.log(`[v0] Retry ${retries + 1}/3 for table access...`)
+              await new Promise(resolve => setTimeout(resolve, 1500))
+            }
+          } catch (err) {
+            console.error('[v0] Retry error:', err)
+          }
+          retries++
+        }
+        
+        if (!dataLoaded) {
+          setError('Table created but still initializing. Please refresh the page in a few seconds.')
+        }
       } else {
-        setError('Failed to create table: ' + result.error?.message)
+        setError(result.message || 'Failed to create table')
       }
     } catch (err) {
       console.error('[v0] Setup error:', err)
@@ -203,14 +236,19 @@ export function MarksAttemptsManager({ school }: MarksAttemptsManagerProps) {
         <AlertCircle className="h-4 w-4" />
         <AlertTitle>Setup Required</AlertTitle>
         <AlertDescription className="space-y-3">
-          <p>{error}</p>
-          <Button 
-            onClick={setupTable} 
-            disabled={isSettingUp}
-            className="mt-2"
-          >
-            {isSettingUp ? 'Setting up...' : 'Initialize Marks Attempts Table'}
-          </Button>
+          <p className="text-sm">{error}</p>
+          <div className="flex flex-col gap-2">
+            <Button 
+              onClick={setupTable} 
+              disabled={isSettingUp}
+              className="w-fit"
+            >
+              {isSettingUp ? 'Setting up... (please wait)' : 'Initialize Marks Attempts Table'}
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Clicking the button will create the required database table and polling for confirmation. This may take 10-15 seconds.
+            </p>
+          </div>
         </AlertDescription>
       </Alert>
     )
