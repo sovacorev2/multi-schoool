@@ -154,6 +154,11 @@ export default function MarksPage() {
   const [assignedSubjectIds, setAssignedSubjectIds] = useState<Set<string>>(new Set());
   const [pinManagementEnabled, setPinManagementEnabled] = useState(false);
   const [isClassTeacher, setIsClassTeacher] = useState(false);
+  
+  // Attempts tracking state (Amagoro only)
+  const [attemptsRemaining, setAttemptsRemaining] = useState<number>(3);
+  const [isEntryLocked, setIsEntryLocked] = useState<boolean>(false);
+  const [attemptsInfo, setAttemptsInfo] = useState<{ remaining: number; locked: boolean; school_name?: string } | null>(null);
 
   // Session selection
   const [selectedSessionId, setSelectedSessionId] = useState<string>("");
@@ -285,10 +290,41 @@ export default function MarksPage() {
 
       setMarks(marksMap);
       setHasChanges(false);
+      
+      // Check if this is Amagoro school and fetch attempts information
+      if (currentSchool && currentSchool.name && currentSchool.name.toLowerCase().includes('amagoro')) {
+        const { data: attemptsData, error: attemptsError } = await supabase
+          .from('marks_entry_attempts')
+          .select('attempts_remaining, is_locked')
+          .eq('session_id', selectedSessionId)
+          .eq('school_id', currentSchool.id)
+          .single();
+        
+        if (attemptsData) {
+          setAttemptsRemaining(attemptsData.attempts_remaining || 3);
+          setIsEntryLocked(attemptsData.is_locked || false);
+          setAttemptsInfo({
+            remaining: attemptsData.attempts_remaining || 3,
+            locked: attemptsData.is_locked || false,
+            school_name: currentSchool.name
+          });
+        } else if (attemptsError?.code === 'PGRST116') {
+          // Record doesn't exist, create it
+          await supabase.from('marks_entry_attempts').insert({
+            session_id: selectedSessionId,
+            school_id: currentSchool.id,
+            attempts_remaining: 3,
+            is_locked: false
+          });
+          setAttemptsRemaining(3);
+          setIsEntryLocked(false);
+          setAttemptsInfo({ remaining: 3, locked: false, school_name: currentSchool.name });
+        }
+      }
     }
 
     fetchMarks();
-  }, [selectedSessionId, currentClass]);
+  }, [selectedSessionId, currentClass, currentSchool]);
 
   const handleCreateSession = async () => {
     if (!currentClass || !currentSchool || !newSession.exam_type_id || !newSession.term || !newSession.year) return;
@@ -368,6 +404,27 @@ export default function MarksPage() {
       alert(`Cannot save marks: ${reason}`);
       return;
     }
+    
+    // Check if this is Amagoro and if attempts are exceeded
+    if (currentSchool && currentSchool.name && currentSchool.name.toLowerCase().includes('amagoro')) {
+      if (isEntryLocked) {
+        alert('Marks entry is locked. Admin must unlock it to allow further entries.');
+        return;
+      }
+      
+      if (attemptsRemaining <= 0) {
+        alert('Maximum marks entry attempts (3) have been exceeded. The entry is now locked. Please contact the admin to unlock.');
+        // Auto-lock if attempts are exhausted
+        const supabase = createClient();
+        await supabase
+          .from('marks_entry_attempts')
+          .update({ is_locked: true, locked_at: new Date().toISOString(), locked_by: 'System - Max Attempts' })
+          .eq('session_id', selectedSessionId)
+          .eq('school_id', currentSchool.id);
+        setIsEntryLocked(true);
+        return;
+      }
+    }
 
     setIsSaving(true);
 
@@ -408,6 +465,33 @@ export default function MarksPage() {
 
     if (error) {
       console.error("[v0] Error saving marks:", error);
+      setIsSaving(false);
+      return;
+    }
+    
+    // Decrement attempts for Amagoro school
+    if (currentSchool && currentSchool.name && currentSchool.name.toLowerCase().includes('amagoro')) {
+      const newAttempts = attemptsRemaining - 1;
+      const shouldLock = newAttempts === 0;
+      
+      await supabase
+        .from('marks_entry_attempts')
+        .update({
+          attempts_remaining: newAttempts,
+          is_locked: shouldLock,
+          locked_at: shouldLock ? new Date().toISOString() : null,
+          locked_by: shouldLock ? 'System - Max Attempts Reached' : null
+        })
+        .eq('session_id', selectedSessionId)
+        .eq('school_id', currentSchool.id);
+      
+      setAttemptsRemaining(newAttempts);
+      setIsEntryLocked(shouldLock);
+      setAttemptsInfo({
+        remaining: newAttempts,
+        locked: shouldLock,
+        school_name: currentSchool.name
+      });
     }
 
     // Log the action with teacher PIN and class ID for audit trail
@@ -479,6 +563,24 @@ export default function MarksPage() {
       {/* Deadline Timer Notification */}
       {selectedSession && selectedSession.deadline_datetime && (
         <DeadlineTimer deadline={new Date(selectedSession.deadline_datetime)} sessionName={selectedSession.exam_types?.name || 'Exam'} />
+      )}
+
+      {/* Amagoro Attempts Warning */}
+      {attemptsInfo && attemptsInfo.school_name && attemptsInfo.school_name.toLowerCase().includes('amagoro') && (
+        <Alert variant={attemptsInfo.locked ? "destructive" : attemptsInfo.remaining === 1 ? "default" : "secondary"} className={attemptsInfo.remaining === 1 ? "border-yellow-500 bg-yellow-50" : ""}>
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>
+            {attemptsInfo.locked ? "Marks Entry Locked" : `Marks Entry Attempts: ${attemptsInfo.remaining} Remaining`}
+          </AlertTitle>
+          <AlertDescription>
+            {attemptsInfo.locked 
+              ? "This marks entry is locked. You have exceeded the maximum 3 entry attempts. Please contact the admin to unlock and reset attempts."
+              : attemptsInfo.remaining === 1
+              ? "⚠️ WARNING: You have only 1 attempt remaining! After this entry, the marks will be locked. Please review your entries carefully before saving."
+              : `You have ${attemptsInfo.remaining} attempts remaining to enter marks. After each save, attempts will decrease by 1.`
+            }
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* Session Selection */}
