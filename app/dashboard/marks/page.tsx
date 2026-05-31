@@ -551,11 +551,18 @@ export default function MarksPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {hasChanges && editStatus.editable && (
+          {hasChanges && editStatus.editable && !isEntryLocked && attemptsRemaining > 0 && (
             <Button onClick={handleSaveMarks} disabled={isSaving}>
               <Save className="w-4 h-4 mr-2" />
               {isSaving ? "Saving..." : "Save Marks"}
             </Button>
+          )}
+          {/* Show locked state for Amagoro */}
+          {(isEntryLocked || attemptsRemaining === 0) && (
+            <div className="flex items-center gap-2 text-sm text-destructive">
+              <Lock className="w-4 h-4" />
+              <span>Entry is read-only</span>
+            </div>
           )}
         </div>
       </div>
@@ -809,9 +816,19 @@ export default function MarksPage() {
                             let showCell = true;
                             let canEdit = !editStatus.editable;
                             
+                            // For Amagoro: also disable if entry is locked or attempts exhausted
+                            if (currentSchool && currentSchool.name && currentSchool.name.toLowerCase().includes('amagoro')) {
+                              canEdit = canEdit || isEntryLocked || attemptsRemaining === 0;
+                            }
+                            
                             if (pinManagementEnabled) {
                               showCell = isClassTeacher || isAssigned;
                               canEdit = !editStatus.editable || (!isClassTeacher && !isAssigned);
+                              
+                              // Also check Amagoro lock for PIN-managed subjects
+                              if (currentSchool && currentSchool.name && currentSchool.name.toLowerCase().includes('amagoro')) {
+                                canEdit = canEdit || isEntryLocked || attemptsRemaining === 0;
+                              }
                             }
                             
                             return showCell ? (
@@ -831,7 +848,7 @@ export default function MarksPage() {
                                   }
                                   placeholder="-"
                                   disabled={canEdit}
-                                  title={!isAssigned && pinManagementEnabled ? 'Not assigned to you' : ''}
+                                  title={!isAssigned && pinManagementEnabled ? 'Not assigned to you' : isEntryLocked ? 'Entry locked - contact admin' : attemptsRemaining === 0 ? 'Maximum attempts reached - entry is read-only' : ''}
                                 />
                               </TableCell>
                             ) : null;
