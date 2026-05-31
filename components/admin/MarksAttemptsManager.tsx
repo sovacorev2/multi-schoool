@@ -205,7 +205,7 @@ export function MarksAttemptsManager({ school }: MarksAttemptsManagerProps) {
             {attempts.map((attempt) => (
               <TableRow key={attempt.id}>
                 <TableCell className="font-medium">
-                  {attempt.session?.class_id ? `Class ${attempt.session.class_id}` : 'Unknown Class'}
+                  {attempt.session?.classes?.name || 'Unknown Class'}
                 </TableCell>
                 <TableCell>
                   {attempt.session?.exam_types?.name || 'Unknown Exam'}
