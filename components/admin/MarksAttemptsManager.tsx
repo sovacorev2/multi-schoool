@@ -40,8 +40,7 @@ interface MarksAttemptsManagerProps {
 }
 
 export function MarksAttemptsManager({ school }: MarksAttemptsManagerProps) {
-  const [attempts, setAttempts] = useState<(MarksAttempt & { session?: Session })[]>([])
-  const [sessions, setSessions] = useState<Session[]>([])
+  const [attempts, setAttempts] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [actionInProgress, setActionInProgress] = useState<string | null>(null)
 
@@ -51,47 +50,33 @@ export function MarksAttemptsManager({ school }: MarksAttemptsManagerProps) {
     const loadData = async () => {
       setIsLoading(true)
       try {
-        // Fetch all sessions for this school (via all classes in the school)
-        const { data: classesData } = await supabase
-          .from('classes')
-          .select('id')
-          .eq('school_id', school.id)
-
-        if (!classesData || classesData.length === 0) {
-          setSessions([])
-          setAttempts([])
-          setIsLoading(false)
-          return
-        }
-
-        const classIds = classesData.map(c => c.id)
-
-        // Fetch sessions for these classes with exam details
-        const { data: sessionsData } = await supabase
-          .from('sessions')
-          .select('*, exam_types(*), classes(*)')
-          .in('class_id', classIds)
-          .order('year', { ascending: false })
-          .order('term', { ascending: false })
-
-        setSessions(sessionsData || [])
-
-        // Fetch attempts records for this school
-        const { data: attemptsData } = await supabase
+        // Fetch attempts records for this school with full session and exam details
+        const { data: attemptsData, error: attemptsError } = await supabase
           .from('marks_entry_attempts')
-          .select('*')
+          .select(`
+            *,
+            sessions (
+              id,
+              class_id,
+              exam_type_id,
+              term,
+              year,
+              exam_types (name),
+              classes (name)
+            )
+          `)
           .eq('school_id', school.id)
           .order('created_at', { ascending: false })
 
-        // Merge attempts with session details
-        const attemptsWithSessions = (attemptsData || []).map(attempt => {
-          const session = sessionsData?.find(s => s.id === attempt.session_id)
-          return { ...attempt, session }
-        })
-
-        setAttempts(attemptsWithSessions)
+        if (attemptsError) {
+          console.error('Error fetching attempts:', attemptsError)
+          setAttempts([])
+        } else {
+          setAttempts(attemptsData || [])
+        }
       } catch (error) {
         console.error('Error loading marks attempts data:', error)
+        setAttempts([])
       } finally {
         setIsLoading(false)
       }
@@ -202,13 +187,13 @@ export function MarksAttemptsManager({ school }: MarksAttemptsManagerProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {attempts.map((attempt) => (
+            {attempts.map((attempt: any) => (
               <TableRow key={attempt.id}>
                 <TableCell className="font-medium">
-                  {attempt.session?.classes?.name || 'Unknown Class'}
+                  {attempt.sessions?.classes?.name || 'Unknown Class'}
                 </TableCell>
                 <TableCell>
-                  {attempt.session?.exam_types?.name || 'Unknown Exam'}
+                  {attempt.sessions?.exam_types?.name || 'Unknown Exam'}
                 </TableCell>
                 <TableCell>
                   <Badge variant={attempt.attempts_remaining === 0 ? 'destructive' : 'default'}>
