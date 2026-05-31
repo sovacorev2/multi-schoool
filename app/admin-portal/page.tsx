@@ -37,6 +37,7 @@ import type { Class, ExamType, Subject } from '@/lib/types'
 import SchoolLogoUploader from '@/components/admin/SchoolLogoUploader'
 import { TeachersUnified } from '@/components/teachers-unified'
 import { AdminPWARegistration } from '@/components/admin-pwa-registration'
+import { MarksAttemptsManager } from '@/components/admin/MarksAttemptsManager'
 
 const TERMS = ['Term 1', 'Term 2', 'Term 3']
 
@@ -1231,6 +1232,10 @@ export default function AdminPortalPage() {
                 <ClipboardList className="w-4 h-4" />
                 Exam Types
               </TabsTrigger>
+              <TabsTrigger value="attempts" className="flex items-center gap-2">
+                <Unlock className="w-4 h-4" />
+                <span className="hidden md:inline">Marks Attempts</span><span className="md:hidden">M-Attempts</span>
+              </TabsTrigger>
               <TabsTrigger value="settings" className="flex items-center gap-2">
                 <Settings className="w-4 h-4" />
                 Settings
@@ -1880,6 +1885,24 @@ export default function AdminPortalPage() {
                 </CardContent>
               </Card>
             </TabsContent>
+
+            {/* Marks Entry Attempts Tab (Amagoro Only) */}
+            {school && school.name && school.name.toLowerCase().includes('amagoro') && (
+              <TabsContent value="attempts">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Unlock className="w-5 h-5" />
+                      Marks Entry Attempts Management
+                    </CardTitle>
+                    <CardDescription>Unlock and reset entry attempts for Amagoro School marks sessions</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <MarksAttemptsManager school={school} />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
 
             {/* Settings Tab */}
             <TabsContent value="settings">
