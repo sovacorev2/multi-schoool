@@ -102,8 +102,10 @@ export function MarksAttemptsManager({ school }: MarksAttemptsManagerProps) {
       if (attemptsError) {
         console.error('[v0] Error fetching attempts:', attemptsError.message, attemptsError.code)
         
-        // Check if it's a "relation does not exist" error
-        if (attemptsError.code === 'PGRST116' || attemptsError.message?.includes('does not exist')) {
+        // Check if it's a "relation does not exist" or "table not found" error
+        // PGRST116 = relation does not exist
+        // PGRST09 = table not found in schema cache
+        if (attemptsError.code === 'PGRST116' || attemptsError.code === 'PGRST09' || attemptsError.message?.includes('does not exist') || attemptsError.message?.includes('Could not find')) {
           setError('marks_entry_attempts table not found. Please initialize it first.')
         } else {
           setError(attemptsError.message || 'Failed to load attempts')
