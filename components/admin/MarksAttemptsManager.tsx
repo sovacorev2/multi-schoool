@@ -43,45 +43,87 @@ export function MarksAttemptsManager({ school }: MarksAttemptsManagerProps) {
   const [attempts, setAttempts] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [actionInProgress, setActionInProgress] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [isSettingUp, setIsSettingUp] = useState(false)
 
   const supabase = createClient()
 
-  useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true)
-      try {
-        // Fetch attempts records for this school with full session and exam details
-        const { data: attemptsData, error: attemptsError } = await supabase
-          .from('marks_entry_attempts')
-          .select(`
-            *,
-            sessions (
-              id,
-              class_id,
-              exam_type_id,
-              term,
-              year,
-              exam_types (name),
-              classes (name)
-            )
-          `)
-          .eq('school_id', school.id)
-          .order('created_at', { ascending: false })
-
-        if (attemptsError) {
-          console.error('Error fetching attempts:', attemptsError)
-          setAttempts([])
-        } else {
-          setAttempts(attemptsData || [])
-        }
-      } catch (error) {
-        console.error('Error loading marks attempts data:', error)
-        setAttempts([])
-      } finally {
-        setIsLoading(false)
+  const setupTable = async () => {
+    setIsSettingUp(true)
+    try {
+      // Call migration API to create the table
+      const response = await fetch('/api/migrations/marks-attempts', {
+        method: 'POST'
+      })
+      const result = await response.json()
+      
+      if (result.success) {
+        console.log('[v0] Table created successfully')
+        setError(null)
+        // Retry loading data
+        loadData()
+      } else {
+        setError('Failed to create table: ' + result.error?.message)
       }
+    } catch (err) {
+      console.error('[v0] Setup error:', err)
+      setError('Setup failed. Please try again.')
+    } finally {
+      setIsSettingUp(false)
     }
+  }
 
+  const loadData = async () => {
+    setIsLoading(true)
+    try {
+      console.log('[v0] Loading marks attempts for school:', school.id)
+      
+      // Fetch attempts records for this school with full session and exam details
+      const { data: attemptsData, error: attemptsError } = await supabase
+        .from('marks_entry_attempts')
+        .select(`
+          *,
+          sessions (
+            id,
+            class_id,
+            exam_type_id,
+            term,
+            year,
+            exam_types (name),
+            classes (name)
+          )
+        `)
+        .eq('school_id', school.id)
+        .order('created_at', { ascending: false })
+
+      console.log('[v0] Fetch result - Error:', attemptsError)
+      console.log('[v0] Data received:', attemptsData)
+
+      if (attemptsError) {
+        console.error('[v0] Error fetching attempts:', attemptsError.message, attemptsError.code)
+        
+        // Check if it's a "relation does not exist" error
+        if (attemptsError.code === 'PGRST116' || attemptsError.message?.includes('does not exist')) {
+          setError('marks_entry_attempts table not found. Please initialize it first.')
+        } else {
+          setError(attemptsError.message || 'Failed to load attempts')
+        }
+        setAttempts([])
+      } else {
+        console.log('[v0] Successfully fetched attempts:', attemptsData?.length || 0, 'records')
+        setAttempts(attemptsData || [])
+        setError(null)
+      }
+    } catch (error) {
+      console.error('[v0] Error loading marks attempts data:', error)
+      setError(String(error))
+      setAttempts([])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
     if (school?.id) {
       loadData()
     }
@@ -150,6 +192,25 @@ export function MarksAttemptsManager({ school }: MarksAttemptsManagerProps) {
       <div className="flex items-center justify-center py-20">
         <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full"></div>
       </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Setup Required</AlertTitle>
+        <AlertDescription className="space-y-3">
+          <p>{error}</p>
+          <Button 
+            onClick={setupTable} 
+            disabled={isSettingUp}
+            className="mt-2"
+          >
+            {isSettingUp ? 'Setting up...' : 'Initialize Marks Attempts Table'}
+          </Button>
+        </AlertDescription>
+      </Alert>
     )
   }
 
