@@ -45,6 +45,11 @@ export function MarksAttemptsManager({ school }: MarksAttemptsManagerProps) {
   const [actionInProgress, setActionInProgress] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isSettingUp, setIsSettingUp] = useState(false)
+  const [filters, setFilters] = useState({
+    className: '',
+    examType: '',
+    status: ''
+  })
 
   const supabase = createClient()
 
@@ -266,6 +271,37 @@ export function MarksAttemptsManager({ school }: MarksAttemptsManagerProps) {
     )
   }
 
+  // Get unique classes and exam types for filters
+  const uniqueClasses = Array.from(new Set(attempts.map(a => a.sessions?.classes?.name).filter(Boolean))).sort()
+  const uniqueExamTypes = Array.from(new Set(attempts.map(a => a.sessions?.exam_types?.name).filter(Boolean))).sort()
+
+  // Filter attempts based on selected filters
+  const getFilteredAttempts = () => {
+    return attempts.filter(a => {
+      if (filters.className && a.sessions?.classes?.name !== filters.className) {
+        return false
+      }
+      if (filters.examType && a.sessions?.exam_types?.name !== filters.examType) {
+        return false
+      }
+      if (filters.status === 'open' && (a.is_locked || a.attempts_remaining === 0)) {
+        return false
+      }
+      if (filters.status === 'warning' && a.attempts_remaining !== 1) {
+        return false
+      }
+      if (filters.status === 'exhausted' && a.attempts_remaining !== 0) {
+        return false
+      }
+      if (filters.status === 'locked' && !a.is_locked) {
+        return false
+      }
+      return true
+    })
+  }
+
+  const filteredAttempts = getFilteredAttempts()
+
   return (
     <div className="space-y-4">
       <Alert className="border-blue-200 bg-blue-50">
@@ -275,6 +311,73 @@ export function MarksAttemptsManager({ school }: MarksAttemptsManagerProps) {
           Teachers at Amagoro School have a maximum of 3 attempts to enter marks for each exam session. After the 3rd save, the entry will automatically lock unless unlocked by an admin.
         </AlertDescription>
       </Alert>
+
+      {/* Filter section */}
+      <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 space-y-3">
+        <h3 className="font-medium text-gray-700">Filter Attempts</h3>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          {/* Class filter */}
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-600">Class</label>
+            <select
+              value={filters.className}
+              onChange={(e) => setFilters({ ...filters, className: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Classes</option>
+              {uniqueClasses.map(className => (
+                <option key={className} value={className}>{className}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Exam type filter */}
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-600">Exam Type</label>
+            <select
+              value={filters.examType}
+              onChange={(e) => setFilters({ ...filters, examType: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Types</option>
+              {uniqueExamTypes.map(examType => (
+                <option key={examType} value={examType}>{examType}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Status filter */}
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-600">Status</label>
+            <select
+              value={filters.status}
+              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Statuses</option>
+              <option value="open">Open</option>
+              <option value="warning">Warning (1 Attempt)</option>
+              <option value="exhausted">Exhausted (0 Attempts)</option>
+              <option value="locked">Locked</option>
+            </select>
+          </div>
+
+          {/* Clear filters */}
+          <div className="flex items-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setFilters({ className: '', examType: '', status: '' })}
+              className="w-full"
+            >
+              Clear Filters
+            </Button>
+          </div>
+        </div>
+        <div className="text-xs text-gray-600">
+          Showing {filteredAttempts.length} of {attempts.length} records
+        </div>
+      </div>
 
       <div className="rounded-lg border overflow-x-auto">
         <Table>
@@ -288,7 +391,7 @@ export function MarksAttemptsManager({ school }: MarksAttemptsManagerProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {attempts.map((attempt: any) => (
+            {filteredAttempts.map((attempt: any) => (
               <TableRow key={attempt.id}>
                 <TableCell className="font-medium">
                   {attempt.sessions?.classes?.name || 'Unknown Class'}
