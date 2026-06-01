@@ -44,12 +44,18 @@ export default function PrintReportPage() {
   return (
     <div className="bg-white">
       <ReportStareheStyle
-        reportModalData={reportData.results}
-        termHistory={reportData.termHistory}
-        className={reportData.className}
-        examType={reportData.examType}
+        isOpen={true}
+        onClose={() => {}}
+        reports={reportData.results}
         subjects={reportData.subjects}
-        term={reportData.term}
+        sessionInfo={{
+          year: reportData.year,
+          term: reportData.term
+        }}
+        className={reportData.className}
+        totalStudents={reportData.results?.length || 0}
+        termHistory={reportData.termHistory}
+        classTeacherName={reportData.classTeacherName}
       />
     </div>
   )
