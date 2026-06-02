@@ -157,6 +157,8 @@ export default function MarksPage() {
   
   // Attempts tracking state (Amagoro only)
   const [attemptsRemaining, setAttemptsRemaining] = useState<number>(3);
+  const [attemptsPerSubject, setAttemptsPerSubject] = useState<Record<string, number>>({}); // Track per subject
+  const [lockedSubjects, setLockedSubjects] = useState<Set<string>>(new Set()); // Track locked subjects
   const [isEntryLocked, setIsEntryLocked] = useState<boolean>(false);
   const [attemptsInfo, setAttemptsInfo] = useState<{ remaining: number; locked: boolean; school_name?: string } | null>(null);
 
@@ -291,34 +293,33 @@ export default function MarksPage() {
       setMarks(marksMap);
       setHasChanges(false);
       
-      // Check if this is Amagoro school and fetch attempts information
+      // Check if this is Amagoro school and fetch attempts information per subject
       if (currentSchool && currentSchool.name && currentSchool.name.toLowerCase().includes('amagoro')) {
         const { data: attemptsData, error: attemptsError } = await supabase
           .from('marks_entry_attempts')
-          .select('attempts_remaining, is_locked')
+          .select('subject_id, attempts_remaining, is_locked')
           .eq('session_id', selectedSessionId)
-          .eq('school_id', currentSchool.id)
-          .single();
+          .eq('school_id', currentSchool.id);
         
-        if (attemptsData) {
-          setAttemptsRemaining(attemptsData.attempts_remaining || 3);
-          setIsEntryLocked(attemptsData.is_locked || false);
-          setAttemptsInfo({
-            remaining: attemptsData.attempts_remaining || 3,
-            locked: attemptsData.is_locked || false,
-            school_name: currentSchool.name
+        // Build a map of subject_id to attempts
+        const subjectAttemptsMap: Record<string, number> = {};
+        const lockedSubjectsSet = new Set<string>();
+        
+        if (attemptsData && attemptsData.length > 0) {
+          attemptsData.forEach((record: any) => {
+            if (record.subject_id) {
+              subjectAttemptsMap[record.subject_id] = record.attempts_remaining || 3;
+              if (record.is_locked) {
+                lockedSubjectsSet.add(record.subject_id);
+              }
+            }
           });
-        } else if (attemptsError?.code === 'PGRST116') {
-          // Record doesn't exist, create it
-          await supabase.from('marks_entry_attempts').insert({
-            session_id: selectedSessionId,
-            school_id: currentSchool.id,
-            attempts_remaining: 3,
-            is_locked: false
-          });
-          setAttemptsRemaining(3);
-          setIsEntryLocked(false);
-          setAttemptsInfo({ remaining: 3, locked: false, school_name: currentSchool.name });
+          setAttemptsPerSubject(subjectAttemptsMap);
+          setLockedSubjects(lockedSubjectsSet);
+        } else if (attemptsError?.code === 'PGRST116' || !attemptsData) {
+          // No records exist, will be created on first save per subject
+          setAttemptsPerSubject({});
+          setLockedSubjects(new Set());
         }
       }
     }
@@ -405,24 +406,30 @@ export default function MarksPage() {
       return;
     }
     
-    // Check if this is Amagoro and if attempts are exceeded
+    // Check if this is Amagoro and if attempts are exceeded - per subject
     if (currentSchool && currentSchool.name && currentSchool.name.toLowerCase().includes('amagoro')) {
-      if (isEntryLocked) {
-        alert('Marks entry is locked. Admin must unlock it to allow further entries.');
-        return;
-      }
-      
-      if (attemptsRemaining <= 0) {
-        alert('Maximum marks entry attempts (3) have been exceeded. The entry is now locked. Please contact the admin to unlock.');
-        // Auto-lock if attempts are exhausted
-        const supabase = createClient();
-        await supabase
-          .from('marks_entry_attempts')
-          .update({ is_locked: true, locked_at: new Date().toISOString(), locked_by: 'System - Max Attempts' })
-          .eq('session_id', selectedSessionId)
-          .eq('school_id', currentSchool.id);
-        setIsEntryLocked(true);
-        return;
+      // Get the subjects being saved
+      const subjectsBeingSaved = new Set<string>();
+      Object.values(marks).forEach((subjectMarks) => {
+        Object.keys(subjectMarks).forEach(subjectId => {
+          if (subjectMarks[subjectId] !== null && subjectMarks[subjectId] !== undefined) {
+            subjectsBeingSaved.add(subjectId);
+          }
+        });
+      });
+
+      // Check if any subject is locked or out of attempts
+      for (const subjectId of subjectsBeingSaved) {
+        if (lockedSubjects.has(subjectId)) {
+          alert(`Subject is locked. Admin must unlock it to allow further entries.`);
+          return;
+        }
+        
+        const attempts = attemptsPerSubject[subjectId] || 3;
+        if (attempts <= 0) {
+          alert(`Maximum marks entry attempts (3) for this subject have been exceeded. The subject is now locked. Please contact the admin to unlock.`);
+          return;
+        }
       }
     }
 
@@ -445,19 +452,31 @@ export default function MarksPage() {
       exam_type_id: string | null;
     }> = [];
 
+    // Track which subjects have marks being saved
+    const subjectsBeingSaved = new Set<string>();
+
     Object.entries(marks).forEach(([learnerId, subjectMarks]) => {
       Object.entries(subjectMarks).forEach(([subjectId, score]) => {
-        marksToUpsert.push({
-          session_id: selectedSessionId,
-          learner_id: learnerId,
-          subject_id: subjectId,
-          score,
-          year: session.year,
-          term: session.term,
-          exam_type_id: session.exam_type_id || null,
-        });
+        if (score !== null && score !== undefined) {
+          marksToUpsert.push({
+            session_id: selectedSessionId,
+            learner_id: learnerId,
+            subject_id: subjectId,
+            score,
+            year: session.year,
+            term: session.term,
+            exam_type_id: session.exam_type_id || null,
+          });
+          subjectsBeingSaved.add(subjectId);
+        }
       });
     });
+
+    if (marksToUpsert.length === 0) {
+      alert('No marks to save');
+      setIsSaving(false);
+      return;
+    }
 
     const { error } = await supabase.from("marks").upsert(marksToUpsert, {
       onConflict: "session_id,learner_id,subject_id",
@@ -469,29 +488,65 @@ export default function MarksPage() {
       return;
     }
     
-    // Decrement attempts for Amagoro school
+    // Decrement attempts for Amagoro school - per subject
     if (currentSchool && currentSchool.name && currentSchool.name.toLowerCase().includes('amagoro')) {
-      const newAttempts = attemptsRemaining - 1;
-      const shouldLock = newAttempts === 0;
-      
-      await supabase
-        .from('marks_entry_attempts')
-        .update({
-          attempts_remaining: newAttempts,
-          is_locked: shouldLock,
-          locked_at: shouldLock ? new Date().toISOString() : null,
-          locked_by: shouldLock ? 'System - Max Attempts Reached' : null
-        })
-        .eq('session_id', selectedSessionId)
-        .eq('school_id', currentSchool.id);
-      
-      setAttemptsRemaining(newAttempts);
-      setIsEntryLocked(shouldLock);
-      setAttemptsInfo({
-        remaining: newAttempts,
-        locked: shouldLock,
-        school_name: currentSchool.name
-      });
+      for (const subjectId of subjectsBeingSaved) {
+        const currentAttempts = attemptsPerSubject[subjectId] || 3;
+        const newAttempts = currentAttempts - 1;
+        const shouldLock = newAttempts === 0;
+        
+        // Update or insert attempt record per subject
+        const { data: existingRecord } = await supabase
+          .from('marks_entry_attempts')
+          .select('id')
+          .eq('session_id', selectedSessionId)
+          .eq('subject_id', subjectId)
+          .eq('school_id', currentSchool.id)
+          .single();
+
+        if (existingRecord) {
+          // Update existing record
+          await supabase
+            .from('marks_entry_attempts')
+            .update({
+              attempts_remaining: newAttempts,
+              is_locked: shouldLock,
+              locked_at: shouldLock ? new Date().toISOString() : null,
+              locked_by: shouldLock ? 'System - Max Attempts Reached' : null
+            })
+            .eq('id', existingRecord.id);
+        } else {
+          // Insert new record
+          await supabase
+            .from('marks_entry_attempts')
+            .insert({
+              session_id: selectedSessionId,
+              subject_id: subjectId,
+              school_id: currentSchool.id,
+              attempts_remaining: newAttempts,
+              is_locked: shouldLock,
+              locked_at: shouldLock ? new Date().toISOString() : null,
+              locked_by: shouldLock ? 'System - Max Attempts Reached' : null
+            });
+        }
+
+        // Update local state
+        const newAttemptsMap = { ...attemptsPerSubject };
+        newAttemptsMap[subjectId] = newAttempts;
+        setAttemptsPerSubject(newAttemptsMap);
+
+        if (shouldLock) {
+          const newLockedSet = new Set(lockedSubjects);
+          newLockedSet.add(subjectId);
+          setLockedSubjects(newLockedSet);
+        }
+      }
+
+      // Set overall lock/attempt info for notifications
+      const allSubjectsAttempts = Object.values(attemptsPerSubject);
+      const minAttempts = allSubjectsAttempts.length > 0 ? Math.min(...allSubjectsAttempts) : 3;
+      setAttemptsRemaining(minAttempts);
+      setIsEntryLocked(lockedSubjects.size > 0);
     }
 
     // Log the action with teacher PIN and class ID for audit trail
@@ -515,7 +570,7 @@ export default function MarksPage() {
       class_id: currentClass?.id,
       teacher_pin: teacherPin,
       action: "marks_submitted",
-      details: `Submitted marks for ${learners.length} learners in ${subjects.length} subjects - ${currentClass.name}`,
+      details: `Submitted marks for ${learners.length} learners in ${subjectsBeingSaved.size} subjects - ${currentClass.name}`,
       performed_by: teacherPin || 'Unknown',
     });
 
@@ -816,20 +871,27 @@ export default function MarksPage() {
                             let showCell = true;
                             let canEdit = !editStatus.editable;
                             
-                            // For Amagoro: also disable if entry is locked or attempts exhausted
+                            // For Amagoro: also disable if this specific subject is locked or attempts exhausted
                             if (currentSchool && currentSchool.name && currentSchool.name.toLowerCase().includes('amagoro')) {
-                              canEdit = canEdit || isEntryLocked || attemptsRemaining === 0;
+                              const subjectAttempts = attemptsPerSubject[subject.id] || 3;
+                              const subjectLocked = lockedSubjects.has(subject.id);
+                              canEdit = canEdit || subjectLocked || subjectAttempts === 0;
                             }
                             
                             if (pinManagementEnabled) {
                               showCell = isClassTeacher || isAssigned;
                               canEdit = !editStatus.editable || (!isClassTeacher && !isAssigned);
                               
-                              // Also check Amagoro lock for PIN-managed subjects
+                              // Also check Amagoro lock for this specific subject
                               if (currentSchool && currentSchool.name && currentSchool.name.toLowerCase().includes('amagoro')) {
-                                canEdit = canEdit || isEntryLocked || attemptsRemaining === 0;
+                                const subjectAttempts = attemptsPerSubject[subject.id] || 3;
+                                const subjectLocked = lockedSubjects.has(subject.id);
+                                canEdit = canEdit || subjectLocked || subjectAttempts === 0;
                               }
                             }
+                            
+                            const subjectAttempts = attemptsPerSubject[subject.id] || 3;
+                            const subjectLocked = lockedSubjects.has(subject.id);
                             
                             return showCell ? (
                               <TableCell key={subject.id} className="p-1 opacity-100">
@@ -848,7 +910,7 @@ export default function MarksPage() {
                                   }
                                   placeholder="-"
                                   disabled={canEdit}
-                                  title={!isAssigned && pinManagementEnabled ? 'Not assigned to you' : isEntryLocked ? 'Entry locked - contact admin' : attemptsRemaining === 0 ? 'Maximum attempts reached - entry is read-only' : ''}
+                                  title={!isAssigned && pinManagementEnabled ? 'Not assigned to you' : subjectLocked ? 'This subject is locked - contact admin' : subjectAttempts === 0 ? `Max attempts reached for ${subject.name} - read-only` : ''}
                                 />
                               </TableCell>
                             ) : null;
