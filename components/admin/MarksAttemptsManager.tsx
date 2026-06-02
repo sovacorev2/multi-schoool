@@ -48,6 +48,7 @@ export function MarksAttemptsManager({ school }: MarksAttemptsManagerProps) {
   const [filters, setFilters] = useState({
     className: '',
     examType: '',
+    subjectName: '',
     status: ''
   })
 
@@ -116,23 +117,24 @@ export function MarksAttemptsManager({ school }: MarksAttemptsManagerProps) {
     try {
       console.log('[v0] Loading marks attempts for school:', school.id)
       
-      // Fetch attempts records for this school with full session and exam details
-      const { data: attemptsData, error: attemptsError } = await supabase
-        .from('marks_entry_attempts')
-        .select(`
-          *,
-          sessions (
-            id,
-            class_id,
-            exam_type_id,
-            term,
-            year,
-            exam_types (name),
-            classes (name)
-          )
-        `)
-        .eq('school_id', school.id)
-        .order('created_at', { ascending: false })
+        // Fetch attempts records for this school with full session and exam details
+        const { data: attemptsData, error: attemptsError } = await supabase
+          .from('marks_entry_attempts')
+          .select(`
+            *,
+            sessions (
+              id,
+              class_id,
+              exam_type_id,
+              term,
+              year,
+              exam_types (name),
+              classes (name)
+            ),
+            subjects (name)
+          `)
+          .eq('school_id', school.id)
+          .order('created_at', { ascending: false })
 
       console.log('[v0] Fetch result - Error:', attemptsError)
       console.log('[v0] Data received:', attemptsData)
@@ -271,9 +273,10 @@ export function MarksAttemptsManager({ school }: MarksAttemptsManagerProps) {
     )
   }
 
-  // Get unique classes and exam types for filters
+  // Get unique classes, exam types, and subjects for filters
   const uniqueClasses = Array.from(new Set(attempts.map(a => a.sessions?.classes?.name).filter(Boolean))).sort()
   const uniqueExamTypes = Array.from(new Set(attempts.map(a => a.sessions?.exam_types?.name).filter(Boolean))).sort()
+  const uniqueSubjects = Array.from(new Set(attempts.map(a => a.subjects?.name).filter(Boolean))).sort()
 
   // Filter attempts based on selected filters
   const getFilteredAttempts = () => {
@@ -282,6 +285,9 @@ export function MarksAttemptsManager({ school }: MarksAttemptsManagerProps) {
         return false
       }
       if (filters.examType && a.sessions?.exam_types?.name !== filters.examType) {
+        return false
+      }
+      if (filters.subjectName && a.subjects?.name !== filters.subjectName) {
         return false
       }
       if (filters.status === 'open' && (a.is_locked || a.attempts_remaining === 0)) {
@@ -315,7 +321,7 @@ export function MarksAttemptsManager({ school }: MarksAttemptsManagerProps) {
       {/* Filter section */}
       <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 space-y-3">
         <h3 className="font-medium text-gray-700">Filter Attempts</h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
           {/* Class filter */}
           <div className="space-y-1">
             <label className="text-sm font-medium text-gray-600">Class</label>
@@ -327,6 +333,21 @@ export function MarksAttemptsManager({ school }: MarksAttemptsManagerProps) {
               <option value="">All Classes</option>
               {uniqueClasses.map(className => (
                 <option key={className} value={className}>{className}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Subject filter */}
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-600">Subject</label>
+            <select
+              value={filters.subjectName}
+              onChange={(e) => setFilters({ ...filters, subjectName: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Subjects</option>
+              {uniqueSubjects.map(subjectName => (
+                <option key={subjectName} value={subjectName}>{subjectName}</option>
               ))}
             </select>
           </div>
@@ -367,7 +388,7 @@ export function MarksAttemptsManager({ school }: MarksAttemptsManagerProps) {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setFilters({ className: '', examType: '', status: '' })}
+              onClick={() => setFilters({ className: '', examType: '', subjectName: '', status: '' })}
               className="w-full"
             >
               Clear Filters
@@ -383,7 +404,8 @@ export function MarksAttemptsManager({ school }: MarksAttemptsManagerProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Session</TableHead>
+              <TableHead>Class</TableHead>
+              <TableHead>Subject</TableHead>
               <TableHead>Exam Type</TableHead>
               <TableHead>Attempts Remaining</TableHead>
               <TableHead>Status</TableHead>
@@ -395,6 +417,9 @@ export function MarksAttemptsManager({ school }: MarksAttemptsManagerProps) {
               <TableRow key={attempt.id}>
                 <TableCell className="font-medium">
                   {attempt.sessions?.classes?.name || 'Unknown Class'}
+                </TableCell>
+                <TableCell>
+                  {attempt.subjects?.name || 'Unknown Subject'}
                 </TableCell>
                 <TableCell>
                   {attempt.sessions?.exam_types?.name || 'Unknown Exam'}
