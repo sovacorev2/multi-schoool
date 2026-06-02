@@ -866,16 +866,19 @@ export default function MarksPage() {
                           </TableCell>
                           {subjects.map((subject) => {
                             const isAssigned = assignedSubjectIds.has(subject.id);
+                            const subjectAttempts = attemptsPerSubject[subject.id] || 3;
+                            const subjectLocked = lockedSubjects.has(subject.id);
+                            
                             // For ShuleTech: only show cells for assigned subjects
                             // If PIN management is disabled: show all cells
                             let showCell = true;
-                            let canEdit = !editStatus.editable;
+                            let canEdit = !editStatus.editable; // True = can't edit (disabled)
                             
-                            // For Amagoro: also disable if this specific subject is locked or attempts exhausted
+                            // For Amagoro: disable if this specific subject is locked or attempts exhausted
                             if (currentSchool && currentSchool.name && currentSchool.name.toLowerCase().includes('amagoro')) {
-                              const subjectAttempts = attemptsPerSubject[subject.id] || 3;
-                              const subjectLocked = lockedSubjects.has(subject.id);
-                              canEdit = canEdit || subjectLocked || subjectAttempts === 0;
+                              if (subjectLocked || subjectAttempts === 0) {
+                                canEdit = true; // Disable the field
+                              }
                             }
                             
                             if (pinManagementEnabled) {
@@ -884,14 +887,11 @@ export default function MarksPage() {
                               
                               // Also check Amagoro lock for this specific subject
                               if (currentSchool && currentSchool.name && currentSchool.name.toLowerCase().includes('amagoro')) {
-                                const subjectAttempts = attemptsPerSubject[subject.id] || 3;
-                                const subjectLocked = lockedSubjects.has(subject.id);
-                                canEdit = canEdit || subjectLocked || subjectAttempts === 0;
+                                if (subjectLocked || subjectAttempts === 0) {
+                                  canEdit = true; // Disable the field
+                                }
                               }
                             }
-                            
-                            const subjectAttempts = attemptsPerSubject[subject.id] || 3;
-                            const subjectLocked = lockedSubjects.has(subject.id);
                             
                             return showCell ? (
                               <TableCell key={subject.id} className="p-1 opacity-100">
@@ -899,18 +899,17 @@ export default function MarksPage() {
                                   type="number"
                                   min="0"
                                   max="100"
-                                  className="w-full text-center h-9"
+                                  className="w-full text-center h-9 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
                                   value={learnerMarks[subject.id] ?? ""}
-                                  onChange={(e) =>
-                                    handleMarkChange(
-                                      learner.id,
-                                      subject.id,
-                                      e.target.value
-                                    )
-                                  }
+                                  onChange={(e) => {
+                                    // Prevent input if disabled
+                                    if (!canEdit) {
+                                      handleMarkChange(learner.id, subject.id, e.target.value);
+                                    }
+                                  }}
                                   placeholder="-"
                                   disabled={canEdit}
-                                  title={!isAssigned && pinManagementEnabled ? 'Not assigned to you' : subjectLocked ? 'This subject is locked - contact admin' : subjectAttempts === 0 ? `Max attempts reached for ${subject.name} - read-only` : ''}
+                                  title={!isAssigned && pinManagementEnabled ? 'Not assigned to you' : subjectLocked ? 'Subject locked - contact admin to unlock' : subjectAttempts === 0 ? `Max attempts reached - read-only` : editStatus.editable ? 'Exam closed - cannot edit' : ''}
                                 />
                               </TableCell>
                             ) : null;
