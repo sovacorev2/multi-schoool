@@ -1881,7 +1881,6 @@ export default function AdminPortalPage() {
               </Card>
             </TabsContent>
 
-            {/* Marks Entry Attempts Tab (Amagoro Only) */}
             {/* Settings Tab */}
             <TabsContent value="settings">
               <div className="space-y-6">
