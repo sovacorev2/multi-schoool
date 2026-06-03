@@ -475,18 +475,11 @@ export default function MarksPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {hasChanges && editStatus.editable && !isEntryLocked && attemptsRemaining > 0 && (
+          {hasChanges && editStatus.editable && (
             <Button onClick={handleSaveMarks} disabled={isSaving}>
               <Save className="w-4 h-4 mr-2" />
               {isSaving ? "Saving..." : "Save Marks"}
             </Button>
-          )}
-          {/* Show locked state for Amagoro */}
-          {(isEntryLocked || attemptsRemaining === 0) && (
-            <div className="flex items-center gap-2 text-sm text-destructive">
-              <Lock className="w-4 h-4" />
-              <span>Entry is read-only</span>
-            </div>
           )}
         </div>
       </div>
@@ -494,24 +487,6 @@ export default function MarksPage() {
       {/* Deadline Timer Notification */}
       {selectedSession && selectedSession.deadline_datetime && (
         <DeadlineTimer deadline={new Date(selectedSession.deadline_datetime)} sessionName={selectedSession.exam_types?.name || 'Exam'} />
-      )}
-
-      {/* Amagoro Attempts Warning */}
-      {attemptsInfo && attemptsInfo.school_name && attemptsInfo.school_name.toLowerCase().includes('amagoro') && (
-        <Alert variant={attemptsInfo.locked ? "destructive" : attemptsInfo.remaining === 1 ? "default" : "secondary"} className={attemptsInfo.remaining === 1 ? "border-yellow-500 bg-yellow-50" : ""}>
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>
-            {attemptsInfo.locked ? "Marks Entry Locked" : `Marks Entry Attempts: ${attemptsInfo.remaining} Remaining`}
-          </AlertTitle>
-          <AlertDescription>
-            {attemptsInfo.locked 
-              ? "This marks entry is locked. You have exceeded the maximum 3 entry attempts. Please contact the admin to unlock and reset attempts."
-              : attemptsInfo.remaining === 1
-              ? "⚠️ WARNING: You have only 1 attempt remaining! After this entry, the marks will be locked. Please review your entries carefully before saving."
-              : `You have ${attemptsInfo.remaining} attempts remaining to enter marks. After each save, attempts will decrease by 1.`
-            }
-          </AlertDescription>
-        </Alert>
       )}
 
       {/* Session Selection */}
