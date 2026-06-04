@@ -2577,7 +2577,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                   {selectedSession && sessions.length > 1 && (
                     <div className="flex items-center gap-3">
                       <Label className="text-sm font-medium whitespace-nowrap">Compare With:</Label>
-                      <Select value={comparisonSessionId} onValueChange={(val) => setComparisonSessionId(val)}>
+                      <Select value={comparisonSessionId || ""} onValueChange={(val) => setComparisonSessionId(val)}>
                         <SelectTrigger className="max-w-xs h-9">
                           <SelectValue placeholder="Auto-select previous exam" />
                         </SelectTrigger>
