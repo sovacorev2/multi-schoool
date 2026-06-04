@@ -2573,28 +2573,31 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                       </Select>
                     </div>
                   )}
-                  {/* Teacher/Admin: previous exam selector */}
+                  {/* Teacher/Admin: previous exam selector using buttons */}
                   {selectedSession && sessions.length > 1 && (
-                    <div className="flex items-center gap-3">
-                      <Label className="text-sm font-medium whitespace-nowrap">Compare With:</Label>
-                      <Select value={comparisonSessionId || ""} onValueChange={(val) => setComparisonSessionId(val)}>
-                        <SelectTrigger className="max-w-xs h-9">
-                          <SelectValue placeholder="Auto-select previous exam" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="">Auto-select previous exam</SelectItem>
-                          {sessions
-                            .filter(s => {
-                              // Show all exams except the currently selected one
-                              return s.id !== selectedSession.id
-                            })
-                            .map((session) => (
-                              <SelectItem key={session.id} value={session.id}>
-                                {session.exam_types?.name} - {session.term} {session.year}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Compare With:</Label>
+                      <div className="flex flex-wrap gap-2">
+                        <Button 
+                          variant={comparisonSessionId === "" ? "default" : "outline"} 
+                          size="sm"
+                          onClick={() => setComparisonSessionId("")}
+                        >
+                          Auto-select Previous
+                        </Button>
+                        {sessions
+                          .filter(s => s.id !== selectedSession.id)
+                          .map((session) => (
+                            <Button
+                              key={session.id}
+                              variant={comparisonSessionId === session.id ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setComparisonSessionId(session.id)}
+                            >
+                              {session.exam_types?.name}
+                            </Button>
+                          ))}
+                      </div>
                     </div>
                   )}
                 </CardHeader>
