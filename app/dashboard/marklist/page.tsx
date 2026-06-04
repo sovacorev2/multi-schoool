@@ -88,6 +88,7 @@ export default function MarklistPage() {
   } | null>(null)
   const [isLoadingComparison, setIsLoadingComparison] = useState(false)
   const [comparisonClassId, setComparisonClassId] = useState<string>('')
+  const [comparisonSessionId, setComparisonSessionId] = useState<string>('') // Allow manual selection of comparison exam
   const [allClasses, setAllClasses] = useState<{ id: string; name: string }[]>([])
   const [streamComparisonData, setStreamComparisonData] = useState<{
     baseClassName: string
@@ -802,7 +803,21 @@ export default function MarklistPage() {
         return
       }
 
-      const previousSession = ordered[currentIdx - 1]
+      // If teacher selected a specific comparison exam, use that. Otherwise use previous exam.
+      let previousSession
+      if (comparisonSessionId) {
+        previousSession = ordered.find(s => s.id === comparisonSessionId)
+        if (!previousSession) {
+          console.log('[v0] Selected comparison session not found in ordered list')
+          setIsLoadingComparison(false)
+          return
+        }
+        console.log('[v0] Using teacher-selected comparison exam:', previousSession.exam_types?.name)
+      } else {
+        previousSession = ordered[currentIdx - 1]
+        console.log('[v0] Using previous exam (auto-select):', previousSession.exam_types?.name)
+      }
+      
       console.log('[v0] Comparing:', previousSession.exam_types?.name, 'vs', currentSessionForComparison.exam_types?.name)
 
   // Fetch subjects, learners, and marks for both sessions (for the target class)
@@ -877,7 +892,7 @@ export default function MarklistPage() {
     } finally {
       setIsLoadingComparison(false)
     }
-  }, [selectedSession, currentClass])
+  }, [selectedSession, currentClass, comparisonSessionId])
 
   // Auto-fetch comparison when session is selected or class changes
   useEffect(() => {
@@ -2554,6 +2569,30 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                           {allClasses.map((cls) => (
                             <SelectItem key={cls.id} value={cls.id}>{cls.name}</SelectItem>
                           ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {/* Teacher/Admin: previous exam selector */}
+                  {selectedSession && sessions.length > 1 && (
+                    <div className="flex items-center gap-3">
+                      <Label className="text-sm font-medium whitespace-nowrap">Compare With:</Label>
+                      <Select value={comparisonSessionId} onValueChange={(val) => setComparisonSessionId(val)}>
+                        <SelectTrigger className="max-w-xs h-9">
+                          <SelectValue placeholder="Auto-select previous exam" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Auto-select previous exam</SelectItem>
+                          {sessions
+                            .filter(s => {
+                              // Show all exams except the currently selected one
+                              return s.id !== selectedSession.id
+                            })
+                            .map((session) => (
+                              <SelectItem key={session.id} value={session.id}>
+                                {session.exam_types?.name} - {session.term} {session.year}
+                              </SelectItem>
+                            ))}
                         </SelectContent>
                       </Select>
                     </div>
