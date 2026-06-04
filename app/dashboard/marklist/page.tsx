@@ -1811,7 +1811,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
             {sessions.length > 0 && (
               <div className="space-y-1.5">
                 <Label className="text-xs">Filter by Year</Label>
-                <Select value={selectedYear} onValueChange={(value) => {
+                <Select value={selectedYear || ""} onValueChange={(value) => {
                   setSelectedYear(value);
                   setSelectedTerm("");
                   setSelectedSessionId("");
@@ -1855,7 +1855,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
             )}
             <div className="space-y-1.5">
               <Label className="text-xs">Exam Session</Label>
-              <Select value={selectedSessionId} onValueChange={setSelectedSessionId}>
+              <Select value={selectedSessionId || ""} onValueChange={setSelectedSessionId}>
                 <SelectTrigger className="h-8 text-sm">
                   <SelectValue placeholder="Select a session" />
                 </SelectTrigger>
