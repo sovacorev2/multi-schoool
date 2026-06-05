@@ -28,7 +28,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Workflow Steps */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Step 1 - Register Learners */}
         <Link href="/dashboard/learners">
           <div className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-8 rounded-lg cursor-pointer hover:from-blue-700 hover:to-blue-800 transition-all shadow-md h-full">
@@ -82,6 +82,20 @@ export default function DashboardPage() {
             </div>
             <h3 className="text-xl font-bold mb-2">Generate Marklist</h3>
             <p className="text-sm text-gray-600">Create and export reports</p>
+          </div>
+        </Link>
+
+        {/* Step 5 - Analysis */}
+        <Link href="/dashboard/marklist?tab=analysis">
+          <div className="bg-gradient-to-br from-purple-600 to-purple-700 text-white p-8 rounded-lg cursor-pointer hover:from-purple-700 hover:to-purple-800 transition-all shadow-md h-full">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                <ClipboardList className="w-6 h-6" />
+              </div>
+              <span className="text-sm font-bold bg-white bg-opacity-20 px-3 py-1 rounded-full">Step 5</span>
+            </div>
+            <h3 className="text-xl font-bold mb-2">Analysis</h3>
+            <p className="text-sm text-purple-100">View performance analytics</p>
           </div>
         </Link>
       </div>
