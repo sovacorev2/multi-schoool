@@ -25,6 +25,7 @@ export function ClassProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const stored = localStorage.getItem("success_academy_session");
     const storedClass = localStorage.getItem("success_academy_class");
+    const storedAdminBypass = localStorage.getItem("success_academy_admin_bypass");
     if (stored) {
       try {
         setCurrentSessionState(JSON.parse(stored));
@@ -38,6 +39,9 @@ export function ClassProvider({ children }: { children: ReactNode }) {
       } catch {
         localStorage.removeItem("success_academy_class");
       }
+    }
+    if (storedAdminBypass === "true") {
+      setIsAdminBypassState(true);
     }
     setIsLoading(false);
   }, []);
@@ -68,10 +72,16 @@ export function ClassProvider({ children }: { children: ReactNode }) {
     setIsAdminBypassState(false);
     localStorage.removeItem("success_academy_class");
     localStorage.removeItem("success_academy_session");
+    localStorage.removeItem("success_academy_admin_bypass");
   };
 
   const setIsAdminBypass = (isAdmin: boolean) => {
     setIsAdminBypassState(isAdmin);
+    if (isAdmin) {
+      localStorage.setItem("success_academy_admin_bypass", "true");
+    } else {
+      localStorage.removeItem("success_academy_admin_bypass");
+    }
   };
 
   return (
