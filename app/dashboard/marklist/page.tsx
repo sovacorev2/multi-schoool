@@ -2858,6 +2858,8 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                               
                               const subjectCells = combinedMarklistData.subjects.map(subj => {
                                 const score = learner.marks[subj.name]
+                                const level = score !== null ? getGradeLevelByClass(score, selectedBaseClass)?.level : '-'
+                                const points = score !== null ? getGradeLevelByClass(score, selectedBaseClass)?.points : '-'
                                 let scoreStyle = ''
                                 if (score !== null) {
                                   if (score >= 80) scoreStyle = 'color: #15803d; font-weight: bold;'
@@ -2865,8 +2867,14 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                   else if (score >= 30) scoreStyle = 'color: #b45309;'
                                   else scoreStyle = 'color: #dc2626;'
                                 }
-                                return `<td style="border: 1px solid #333; padding: 6px; text-align: center; ${scoreStyle}">${score !== null ? score : '-'}</td>`
+                                return `
+                                  <td style="border: 1px solid #333; padding: 4px; text-align: center; ${scoreStyle}">${score !== null ? score : '-'}</td>
+                                  <td style="border: 1px solid #333; padding: 4px; text-align: center; color: #1a3a52; font-weight: bold; font-size: 11px;">${level}</td>
+                                  <td style="border: 1px solid #333; padding: 4px; text-align: center; color: #d97706; font-weight: bold; font-size: 11px;">${points}</td>
+                                `
                               }).join('')
+                              
+                              const overallLevel = getGradeLevelByClass(Math.round(learner.average), selectedBaseClass)?.level || '-'
                               
                               return `
                                 <tr style="background: ${rowBg};">
@@ -2875,14 +2883,20 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                   <td style="border: 1px solid #333; padding: 6px; text-align: center; font-size: 12px;">${learner.stream}</td>
                                   ${subjectCells}
                                   <td style="border: 1px solid #333; padding: 6px; text-align: center; font-weight: bold;">${learner.total}</td>
-                                  <td style="border: 1px solid #333; padding: 6px; text-align: center; font-weight: 600;">${learner.average.toFixed(1)}%</td>
+                                  <td style="border: 1px solid #333; padding: 6px; text-align: center; font-weight: 600; color: #1a3a52;">${overallLevel}</td>
                                 </tr>
                               `
                             }).join('')
 
-                            // Build subject headers
+                            // Build subject headers with 3 columns per subject
                             const subjectHeaders = combinedMarklistData.subjects.map(subj => 
-                              `<th style="border: 1px solid #333; padding: 6px; text-align: center; background: #e5e7eb;">${subj.name}</th>`
+                              `<th colSpan="3" style="border: 1px solid #333; padding: 6px; text-align: center; background: #e5e7eb; font-size: 11px;">${subj.name}</th>`
+                            ).join('')
+                            
+                            const subjectSubHeaders = combinedMarklistData.subjects.map(() => 
+                              `<th style="border: 1px solid #333; padding: 4px; text-align: center; background: #f3f4f6; font-size: 10px;">MKS</th>
+                               <th style="border: 1px solid #333; padding: 4px; text-align: center; background: #f3f4f6; font-size: 10px;">LVL</th>
+                               <th style="border: 1px solid #333; padding: 4px; text-align: center; background: #f3f4f6; font-size: 10px;">PTS</th>`
                             ).join('')
 
                             const reportContent = `<!DOCTYPE html>
@@ -2891,15 +2905,15 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
   <title>${selectedBaseClass} Combined Marklist</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
-    body { padding: 20px; background: white; }
+    body { padding: 20px; background: white; font-size: 11px; }
     table { border-collapse: collapse; width: 100%; margin-top: 15px; }
-    th { background: #e5e7eb; font-weight: bold; padding: 8px; border: 1px solid #333; text-align: left; }
-    td { padding: 8px; border: 1px solid #333; }
+    th { background: #e5e7eb; font-weight: bold; padding: 6px; border: 1px solid #333; text-align: center; }
+    td { padding: 6px; border: 1px solid #333; }
     .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 15px; }
-    .header h1 { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
-    .header h2 { font-size: 14px; font-weight: 600; margin-bottom: 5px; }
-    .header p { font-size: 12px; color: #666; }
-    .footer { text-align: center; font-size: 10px; color: #999; margin-top: 20px; padding-top: 10px; border-top: 1px solid #ddd; }
+    .header h1 { font-size: 16px; font-weight: bold; margin-bottom: 5px; }
+    .header h2 { font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+    .header p { font-size: 11px; color: #666; }
+    .footer { text-align: center; font-size: 9px; color: #999; margin-top: 20px; padding-top: 10px; border-top: 1px solid #ddd; }
     @media print { body { padding: 10px; } @page { size: A4 landscape; margin: 10mm; } }
   </style>
 </head>
@@ -2913,12 +2927,15 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
   <table>
     <thead>
       <tr>
-        <th style="width: 40px; text-align: center;">Rank</th>
-        <th>Student Name</th>
-        <th style="text-align: center;">Stream</th>
+        <th rowSpan="2" style="width: 35px;">Rank</th>
+        <th rowSpan="2">Student Name</th>
+        <th rowSpan="2" style="width: 50px;">Stream</th>
         ${subjectHeaders}
-        <th style="width: 50px; text-align: center;">Total</th>
-        <th style="width: 60px; text-align: center;">Average</th>
+        <th rowSpan="2" style="width: 45px;">Total</th>
+        <th rowSpan="2" style="width: 60px;">Level</th>
+      </tr>
+      <tr>
+        ${subjectSubHeaders}
       </tr>
     </thead>
     <tbody>
@@ -2933,16 +2950,15 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
 </body>
 </html>`
 
-                            // Create blob and download
-                            const blob = new Blob([reportContent], { type: 'text/html' })
-                            const url = URL.createObjectURL(blob)
-                            const link = document.createElement('a')
-                            link.href = url
-                            link.download = `${selectedBaseClass}_Combined_Marklist_${new Date().toISOString().split('T')[0]}.html`
-                            document.body.appendChild(link)
-                            link.click()
-                            document.body.removeChild(link)
-                            URL.revokeObjectURL(url)
+                            // Create a new window for print preview
+                            const printWindow = window.open('', '_blank')
+                            if (!printWindow) {
+                              alert('Please allow popups to print the combined marklist')
+                              return
+                            }
+                            printWindow.document.write(reportContent)
+                            printWindow.document.close()
+                            printWindow.print()
                           } catch (error) {
                             console.error('Error generating combined marklist:', error)
                             alert('Failed to generate combined marklist. Please try again.')
