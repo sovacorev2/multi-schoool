@@ -5,6 +5,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useSchool } from '@/lib/school-context'
 import { getSubjectDisplay } from '@/lib/subject-utils'
+import { getGradeLevelByClass } from '@/lib/grading-utils'
 
 interface LearnerData {
   id: string
@@ -259,10 +260,19 @@ export default function PrintCombinedMarklistPage() {
           <div className="text-xs text-gray-500">Grade Average</div>
         </div>
         <div className="border p-2 rounded">
-          <div className="text-lg font-bold text-emerald-600">
-            {learners.length > 0 ? Math.round((learners.filter(l => l.average >= 50).length / learners.length) * 100) : 0}%
+          <div className="text-lg font-bold" style={{ color: '#1a3a52' }}>
+            {(() => {
+              if (learners.length === 0) return '-'
+              const levels = learners.map(l => getGradeLevelByClass(Math.round(l.average), baseClassName)?.level).filter(Boolean)
+              const levelCounts = levels.reduce((acc, level) => {
+                acc[level] = (acc[level] || 0) + 1
+                return acc
+              }, {} as Record<string, number>)
+              const mostCommon = Object.entries(levelCounts).sort((a, b) => b[1] - a[1])[0]
+              return mostCommon ? mostCommon[0] : '-'
+            })()}
           </div>
-          <div className="text-xs text-gray-500">Pass Rate</div>
+          <div className="text-xs text-gray-500">Average Performance Level</div>
         </div>
       </div>
 
@@ -290,7 +300,7 @@ export default function PrintCombinedMarklistPage() {
               </th>
             ))}
             <th className="border p-1 text-center w-12">Total</th>
-            <th className="border p-1 text-center w-10">Avg</th>
+            <th className="border p-1 text-center w-10">Level</th>
           </tr>
         </thead>
         <tbody>
@@ -318,7 +328,9 @@ export default function PrintCombinedMarklistPage() {
                   )
                 })}
                 <td className="border p-1 text-center font-bold">{learner.total}</td>
-                <td className="border p-1 text-center font-semibold">{learner.average}</td>
+                <td className="border p-1 text-center font-semibold" style={{ color: '#1a3a52' }}>
+                  {getGradeLevelByClass(Math.round(learner.average), baseClassName)?.level || '-'}
+                </td>
               </tr>
             )
           })}
