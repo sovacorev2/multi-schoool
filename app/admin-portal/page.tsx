@@ -556,8 +556,11 @@ export default function AdminPortalPage() {
       console.log('[v0] Error fetching class:', error)
     }
     
-    // Redirect to dashboard with admin bypass flag
-    router.push(`/dashboard?adminBypass=true`)
+    // Set admin bypass flag in localStorage so it persists
+    localStorage.setItem("success_academy_admin_bypass", "true")
+    
+    // Redirect to dashboard with admin bypass flag and classId
+    router.push(`/dashboard?adminBypass=true&classId=${classId}`)
   }
 
   const confirmDeleteClass = async () => {
