@@ -929,7 +929,8 @@ export default function MarklistPage() {
     const supabase = createClient()
     
     // Get unique learner IDs from marks for this session
-    const learnerIdsInSession = new Set(marks.map(m => m.learner_id))
+    const marksArray = Array.isArray(marks) ? marks : []
+    const learnerIdsInSession = new Set(marksArray.map(m => m.learner_id))
     
     if (learnerIdsInSession.size === 0) {
       setResults([])
@@ -954,7 +955,7 @@ export default function MarklistPage() {
             let subjectsWithMarks = 0
 
             subjects.forEach((subject) => {
-              const mark = marks.find((m) => m.learner_id === learner.id && m.subject_id === subject.id)
+              const mark = marksArray.find((m) => m.learner_id === learner.id && m.subject_id === subject.id)
               learnerMarks[subject.id] = mark?.score ?? null
               if (mark?.score !== null && mark?.score !== undefined) {
                 total += mark.score
