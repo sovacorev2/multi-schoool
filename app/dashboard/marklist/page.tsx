@@ -2028,9 +2028,8 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
       {selectedSessionId && (
         <div className="print:hidden">
           <Tabs defaultValue="marklist" className="space-y-4">
-            <TabsList className="flex flex-wrap h-auto gap-1 p-1 w-full max-w-6xl">
+            <TabsList className="flex flex-wrap h-auto gap-1 p-1 w-full max-w-4xl">
               <TabsTrigger value="marklist" className="flex-1 min-w-[80px] text-xs sm:text-sm">Marklist</TabsTrigger>
-              <TabsTrigger value="detailed-marklist" className="flex-1 min-w-[100px] text-xs sm:text-sm">Detailed Marklist</TabsTrigger>
               {(() => {
                 const className = currentClass?.name || ''
                 const classWords = className.trim().split(/\s+/)
@@ -2211,87 +2210,6 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                           </td>
                           <td className="border border-gray-600 p-2 no-print"></td>
                         </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Detailed Marklist Tab - Shows marks with performance levels side-by-side */}
-            <TabsContent value="detailed-marklist">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-base border-collapse border-2 border-gray-800">
-                      <thead>
-                        <tr className="bg-gray-200">
-                          <th className="border border-gray-600 p-2 text-left font-bold">No.</th>
-                          <th className="border border-gray-600 p-2 text-left font-bold">Name</th>
-                          {subjects.map((subject) => (
-                            <React.Fragment key={subject.id}>
-                              <th colSpan={3} className="border border-gray-600 p-2 font-bold text-center">
-                                {subject.name}
-                              </th>
-                            </React.Fragment>
-                          ))}
-                          <th className="border border-gray-600 p-2 font-bold">Total</th>
-                          <th className="border border-gray-600 p-2 font-bold">Average</th>
-                          <th className="border border-gray-600 p-2 font-bold">Overall Level</th>
-                        </tr>
-                        <tr className="bg-gray-200">
-                          <th className="border border-gray-600 p-2 text-left font-bold"></th>
-                          <th className="border border-gray-600 p-2 text-left font-bold"></th>
-                          {subjects.map((subject) => (
-                            <React.Fragment key={subject.id}>
-                              <th className="border border-gray-600 p-2 font-bold text-sm">Marks</th>
-                              <th className="border border-gray-600 p-2 font-bold text-xs" style={{ color: '#1a3a52' }}>Level</th>
-                              <th className="border border-gray-600 p-2 font-bold text-xs" style={{ color: '#d97706' }}>Points</th>
-                            </React.Fragment>
-                          ))}
-                          <th className="border border-gray-600 p-2 font-bold"></th>
-                          <th className="border border-gray-600 p-2 font-bold"></th>
-                          <th className="border border-gray-600 p-2 font-bold"></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {results.map((result, idx) => {
-                          const marks = Array.isArray(result.marks) ? result.marks : []
-                          const totalMarks = subjects.reduce((sum, subject) => {
-                            const mark = marks.find(m => m.subject_id === subject.id)
-                            return sum + (mark?.mark ?? 0)
-                          }, 0)
-                          const averageMarks = totalMarks / (subjects.length || 1)
-                          const overallLevel = getGradeLevelByClass(Math.round(averageMarks), currentClass?.name)
-                          
-                          return (
-                            <tr key={result.id} className="border-t border-gray-600">
-                              <td className="border border-gray-600 p-2">{idx + 1}</td>
-                              <td className="border border-gray-600 p-2">{result.learner.name}</td>
-                              {subjects.map((subject) => {
-                                const mark = marks.find(m => m.subject_id === subject.id)
-                                const markValue = mark?.mark ?? 0
-                                const level = getGradeLevelByClass(markValue, currentClass?.name)
-                                return (
-                                  <React.Fragment key={subject.id}>
-                                    <td className="border border-gray-600 p-2 text-center font-semibold">{markValue}</td>
-                                    <td className="border border-gray-600 p-2 text-center font-semibold text-sm" style={{ color: '#1a3a52' }}>
-                                      {level ? level.level : '-'}
-                                    </td>
-                                    <td className="border border-gray-600 p-2 text-center font-semibold text-sm" style={{ color: '#d97706' }}>
-                                      {level ? level.points : '-'}
-                                    </td>
-                                  </React.Fragment>
-                                )
-                              })}
-                              <td className="border border-gray-600 p-2 text-center font-bold">{totalMarks}</td>
-                              <td className="border border-gray-600 p-2 text-center">{averageMarks.toFixed(1)}</td>
-                              <td className="border border-gray-600 p-2 text-center font-bold" style={{ color: '#1a3a52' }}>
-                                {overallLevel ? overallLevel.level : '-'}
-                              </td>
-                            </tr>
-                          )
-                        })}
                       </tbody>
                     </table>
                   </div>
