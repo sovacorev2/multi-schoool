@@ -57,14 +57,15 @@ export default function DashboardLayout({
     if (isAuthenticated !== null) return
 
     const checkAuth = async () => {
-      // Check for admin bypass from admin portal FIRST
+      // Check for admin bypass from admin portal FIRST (from URL param or stored in context)
       const searchParams = new URLSearchParams(window.location.search)
       const adminBypass = searchParams.get('adminBypass') === 'true'
+      const isStoredAdminBypass = localStorage.getItem("success_academy_admin_bypass") === "true"
       
       // Admin bypass takes priority over everything
-      if (adminBypass) {
+      if (adminBypass || isStoredAdminBypass) {
         // Admin is accessing from admin portal - class is in localStorage, just authenticate
-        setIsAdminBypass(true)
+        if (adminBypass) setIsAdminBypass(true)
         setIsAdmin(false)
         setIsAuthenticated(true)
         return
