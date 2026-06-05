@@ -2038,11 +2038,8 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                   <TabsTrigger value="stream-transfers" className="flex-1 min-w-[80px] text-xs sm:text-sm">Stream Transfers</TabsTrigger>
                 ) : null
               })()}
-              <TabsTrigger value="class-performance" className="flex-1 min-w-[80px] text-xs sm:text-sm">Class Analysis</TabsTrigger>
-              <TabsTrigger value="subject-performance" className="flex-1 min-w-[80px] text-xs sm:text-sm">Subject Analysis</TabsTrigger>
-              <TabsTrigger value="exam-comparison" className="flex-1 min-w-[80px] text-xs sm:text-sm">Comparison</TabsTrigger>
-              <TabsTrigger value="stream-comparison" className="flex-1 min-w-[80px] text-xs sm:text-sm">Stream Analysis</TabsTrigger>
-              <TabsTrigger value="school-performance" className="flex-1 min-w-[80px] text-xs sm:text-sm">School Analysis</TabsTrigger>
+              {/* Analysis Tab - consolidates all analysis tabs for better mobile UX */}
+              <TabsTrigger value="analysis" className="flex-1 min-w-[80px] text-xs sm:text-sm font-semibold bg-blue-50">Analysis</TabsTrigger>
             </TabsList>
 
             {/* Marklist Tab */}
@@ -2247,8 +2244,19 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
               ) : null
             })()}
 
-            {/* Class Performance Tab */}
-            <TabsContent value="class-performance">
+            {/* Analysis Tab - Contains nested analysis tabs */}
+            <TabsContent value="analysis">
+              <Tabs defaultValue="class-performance" className="space-y-4">
+                <TabsList className="flex flex-wrap h-auto gap-1 p-1">
+                  <TabsTrigger value="class-performance" className="text-xs sm:text-sm">Class Analysis</TabsTrigger>
+                  <TabsTrigger value="subject-performance" className="text-xs sm:text-sm">Subject Analysis</TabsTrigger>
+                  <TabsTrigger value="exam-comparison" className="text-xs sm:text-sm">Comparison</TabsTrigger>
+                  <TabsTrigger value="stream-comparison" className="text-xs sm:text-sm">Stream Analysis</TabsTrigger>
+                  <TabsTrigger value="school-performance" className="text-xs sm:text-sm">School Analysis</TabsTrigger>
+                </TabsList>
+
+                {/* Class Performance Tab */}
+                <TabsContent value="class-performance">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
@@ -2345,18 +2353,21 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                               <th className="p-2 text-left">Rank</th>
                               <th className="p-2 text-left">Name</th>
                               <th className="p-2 text-center">Total</th>
-                              <th className="p-2 text-center">Avg</th>
+                              <th className="p-2 text-center">Level</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {topPerformers.map((r, i) => (
-                              <tr key={r.learner.id} className="border-t border-green-200">
-                                <td className="p-2">{i + 1}</td>
-                                <td className="p-2">{r.learner.name}</td>
-                                <td className="p-2 text-center font-semibold">{r.total}</td>
-                                <td className="p-2 text-center">{r.average.toFixed(1)}</td>
-                              </tr>
-                            ))}
+                            {topPerformers.map((r, i) => {
+                              const performanceLevel = getGradeLevelByClass(Math.round(r.average), currentClass?.name)
+                              return (
+                                <tr key={r.learner.id} className="border-t border-green-200">
+                                  <td className="p-2">{i + 1}</td>
+                                  <td className="p-2">{r.learner.name}</td>
+                                  <td className="p-2 text-center font-semibold">{r.total}</td>
+                                  <td className="p-2 text-center font-semibold" style={{ color: '#1a3a52' }}>{performanceLevel ? performanceLevel.level : '-'}</td>
+                                </tr>
+                              )
+                            })}
                           </tbody>
                         </table>
                       </div>
@@ -2370,18 +2381,21 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                               <th className="p-2 text-left">Rank</th>
                               <th className="p-2 text-left">Name</th>
                               <th className="p-2 text-center">Total</th>
-                              <th className="p-2 text-center">Avg</th>
+                              <th className="p-2 text-center">Level</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {bottomPerformers.map((r, i) => (
-                              <tr key={r.learner.id} className="border-t border-red-200">
-                                <td className="p-2">{results.length - 4 + i}</td>
-                                <td className="p-2">{r.learner.name}</td>
-                                <td className="p-2 text-center font-semibold">{r.total}</td>
-                                <td className="p-2 text-center">{r.average.toFixed(1)}</td>
-                              </tr>
-                            ))}
+                            {bottomPerformers.map((r, i) => {
+                              const performanceLevel = getGradeLevelByClass(Math.round(r.average), currentClass?.name)
+                              return (
+                                <tr key={r.learner.id} className="border-t border-red-200">
+                                  <td className="p-2">{results.length - 4 + i}</td>
+                                  <td className="p-2">{r.learner.name}</td>
+                                  <td className="p-2 text-center font-semibold">{r.total}</td>
+                                  <td className="p-2 text-center font-semibold" style={{ color: '#1a3a52' }}>{performanceLevel ? performanceLevel.level : '-'}</td>
+                                </tr>
+                              )
+                            })}
                           </tbody>
                         </table>
                       </div>
@@ -3501,6 +3515,8 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                   )}
                 </CardContent>
               </Card>
+            </TabsContent>
+              </Tabs>
             </TabsContent>
           </Tabs>
         </div>
