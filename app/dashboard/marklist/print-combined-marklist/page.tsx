@@ -264,6 +264,7 @@ export default function PrintCombinedMarklistPage() {
             {(() => {
               if (learners.length === 0) return '-'
               const levels = learners.map(l => getGradeLevelByClass(Math.round(l.average), baseClassName)?.level).filter(Boolean)
+              if (!Array.isArray(levels) || levels.length === 0) return '-'
               const levelCounts = levels.reduce((acc, level) => {
                 acc[level] = (acc[level] || 0) + 1
                 return acc
