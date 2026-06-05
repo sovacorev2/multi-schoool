@@ -296,9 +296,13 @@ export default function PrintCombinedMarklistPage() {
             <th className="border p-1 text-left">Name</th>
             <th className="border p-1 text-center w-16">Stream</th>
             {subjects.map(subj => (
-              <th key={subj.id} className="border p-1 text-center" style={{ minWidth: '60px' }} title={subj.name}>
-                {getSubjectDisplay(subj.name)}
-              </th>
+              <React.Fragment key={subj.id}>
+                <th className="border p-1 text-center" style={{ minWidth: '30px' }} title={subj.name}>
+                  {getSubjectDisplay(subj.name)}
+                </th>
+                <th className="border p-1 text-center w-12">Level</th>
+                <th className="border p-1 text-center w-12">Pts</th>
+              </React.Fragment>
             ))}
             <th className="border p-1 text-center w-12">Total</th>
             <th className="border p-1 text-center w-16">Level</th>
@@ -315,19 +319,26 @@ export default function PrintCombinedMarklistPage() {
                 <td className="border p-1 text-center text-xs">{learner.stream}</td>
                 {subjects.map(subj => {
                   const score = learner.marks[subj.name]
-                  const level = score !== null ? getGradeLevelByClass(score, baseClassName)?.level : '-'
+                  const performanceLevel = score !== null ? getGradeLevelByClass(score, baseClassName) : null
                   let scoreClass = ''
                   if (score !== null) {
-                    if (score >= 80) scoreClass = 'text-green-700'
-                    else if (score >= 50) scoreClass = 'text-blue-600'
+                    if (score >= 80) scoreClass = 'text-green-700 font-semibold'
+                    else if (score >= 50) scoreClass = 'text-blue-600 font-semibold'
                     else if (score >= 30) scoreClass = 'text-amber-600'
                     else scoreClass = 'text-red-600'
                   }
                   return (
-                    <td key={subj.id} className={`border p-1 text-center ${scoreClass}`}>
-                      <div className="font-semibold">{score !== null ? score : '-'}</div>
-                      <div style={{ color: '#1a3a52', fontSize: '9px', fontWeight: 'bold' }}>{level}</div>
-                    </td>
+                    <React.Fragment key={subj.id}>
+                      <td className={`border p-1 text-center ${scoreClass}`}>
+                        {score !== null ? score : '-'}
+                      </td>
+                      <td className="border p-1 text-center font-bold" style={{ color: '#1a3a52' }}>
+                        {performanceLevel ? performanceLevel.level : '-'}
+                      </td>
+                      <td className="border p-1 text-center font-bold" style={{ color: '#d97706' }}>
+                        {performanceLevel ? performanceLevel.points : '-'}
+                      </td>
+                    </React.Fragment>
                   )
                 })}
                 <td className="border p-1 text-center font-bold">{learner.total}</td>
