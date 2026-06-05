@@ -2256,8 +2256,9 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                       </thead>
                       <tbody>
                         {results.map((result, idx) => {
+                          const marks = Array.isArray(result.marks) ? result.marks : []
                           const totalMarks = subjects.reduce((sum, subject) => {
-                            const mark = result.marks.find(m => m.subject_id === subject.id)
+                            const mark = marks.find(m => m.subject_id === subject.id)
                             return sum + (mark?.mark ?? 0)
                           }, 0)
                           const averageMarks = totalMarks / (subjects.length || 1)
@@ -2268,7 +2269,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                               <td className="border border-gray-600 p-2">{idx + 1}</td>
                               <td className="border border-gray-600 p-2">{result.learner.name}</td>
                               {subjects.map((subject) => {
-                                const mark = result.marks.find(m => m.subject_id === subject.id)
+                                const mark = marks.find(m => m.subject_id === subject.id)
                                 const markValue = mark?.mark ?? 0
                                 const level = getGradeLevelByClass(markValue, currentClass?.name)
                                 return (
