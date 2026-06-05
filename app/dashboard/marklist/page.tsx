@@ -3354,7 +3354,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                 <th key={subject.id} className="border border-gray-300 px-3 py-2 text-center text-xs">{subject.name}</th>
                               ))}
                               <th className="border border-gray-300 px-3 py-2 text-center">Total</th>
-                              <th className="border border-gray-300 px-3 py-2 text-center">Average</th>
+                              <th className="border border-gray-300 px-3 py-2 text-center">Level</th>
                               <th className="border border-gray-300 px-3 py-2 text-center">Rank</th>
                             </tr>
                           </thead>
@@ -3370,7 +3370,9 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                   </td>
                                 ))}
                                 <td className="border border-gray-300 px-3 py-2 text-center font-semibold">{learner.total}</td>
-                                <td className="border border-gray-300 px-3 py-2 text-center">{learner.average.toFixed(1)}%</td>
+                                <td className="border border-gray-300 px-3 py-2 text-center font-semibold" style={{ color: '#1a3a52' }}>
+                                  {getGradeLevelByClass(Math.round(learner.average), currentClass?.name)?.level || '-'}
+                                </td>
                                 <td className="border border-gray-300 px-3 py-2 text-center font-semibold">{learner.rank}</td>
                               </tr>
                             ))}
