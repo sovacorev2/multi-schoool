@@ -675,25 +675,29 @@ export function ReportStareheStyle({
                                   fill={fill}
                                   opacity="0.85"
                                 />
-                                {/* Exam label below bar */}
-                                <text
-                                  x={x + barWidth / 2}
-                                  y="78"
-                                  fontSize="4"
-                                  textAnchor="middle"
-                                  fill="#000"
-                                >
-                                  {exam.label}
-                                </text>
+                                {/* Exam label below bar - ROTATED VERTICALLY */}
+                                <g transform={`translate(${x + barWidth / 2}, 78) rotate(45)`}>
+                                  <text
+                                    x="0"
+                                    y="0"
+                                    fontSize="3.5"
+                                    textAnchor="middle"
+                                    dominantBaseline="middle"
+                                    fill="#000"
+                                    fontWeight="500"
+                                  >
+                                    {exam.label}
+                                  </text>
+                                </g>
                               </g>
                             )
                           })
                         })()}
-                        {/* Legend */}
+                        {/* Legend - Updated to show exam progression */}
                         <rect x="30" y="86" width="3" height="3" fill="#1e40af" />
-                        <text x="35" y="89" fontSize="6">Previous</text>
+                        <text x="35" y="89" fontSize="6">Previous Exams</text>
                         <rect x="75" y="86" width="3" height="3" fill="#f97316" />
-                        <text x="80" y="89" fontSize="6">Current</text>
+                        <text x="80" y="89" fontSize="6">Latest Exam</text>
                       </svg>
                     </div>
                   </div>
