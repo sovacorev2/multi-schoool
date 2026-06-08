@@ -1222,12 +1222,12 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
     }
   }
 
-  const handleDownloadReport = (reportType: 'class' | 'subject') => {
+  const handleDownloadReport = (reportType: 'class' | 'subject' | 'comparison') => {
     const gradeName = currentClass?.name || 'Grade'
     const examType = selectedSession?.exam_types?.name || 'Session'
     const term = selectedSession?.term || 'Term'
     const year = selectedSession?.year || ''
-    const filename = `${gradeName}_${term}_${examType}_${reportType === 'class' ? 'Class_Analysis' : 'Subject_Analysis'}`
+    const filename = `${gradeName}_${term}_${examType}_${reportType === 'class' ? 'Class_Analysis' : reportType === 'subject' ? 'Subject_Analysis' : 'Exam_Comparison'}`
     
     // Create a new window with just the report content
     const printWindow = window.open('', '_blank')
@@ -1238,7 +1238,110 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
     
     let reportContent = ''
     
-    if (reportType === 'class') {
+    if (reportType === 'comparison' && comparisonData) {
+      reportContent = `
+        <html>
+        <head>
+          <title>${filename}</title>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+            body { padding: 20px; }
+            h1 { text-align: center; font-size: 18px; margin-bottom: 5px; }
+            h2 { text-align: center; font-size: 14px; margin-bottom: 5px; }
+            .info { text-align: center; font-size: 12px; margin-bottom: 15px; color: #555; }
+            h3 { font-size: 13px; margin: 15px 0 8px; border-bottom: 1px solid #333; padding-bottom: 3px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 11px; }
+            th, td { border: 1px solid #333; padding: 6px 8px; }
+            th { background-color: #e8e8e8; font-weight: bold; }
+            .header-box { background: #f0f8ff; border: 2px solid #333; padding: 12px; margin-bottom: 15px; }
+            .comparison-row { display: grid; grid-template-columns: 1fr auto 1fr; gap: 15px; align-items: center; margin-bottom: 10px; }
+            .exam-col { border: 1px solid #ccc; padding: 10px; }
+            .vs-col { text-align: center; font-weight: bold; font-size: 14px; }
+            .trend-up { color: #00aa00; font-weight: bold; }
+            .trend-down { color: #dd0000; font-weight: bold; }
+            .trend-neutral { color: #666; font-weight: bold; }
+            @media print { body { padding: 10px; } }
+          </style>
+        </head>
+        <body>
+          <h1>${currentSchool?.name || 'School'.toUpperCase()}</h1>
+          <h2>EXAM COMPARISON REPORT</h2>
+          <div class="info">
+            ${currentClass?.name} | Generated: ${new Date().toLocaleDateString()}
+          </div>
+          
+          <div class="header-box">
+            <div class="comparison-row">
+              <div class="exam-col">
+                <strong>${comparisonData.previousSession?.name}</strong><br/>
+                Term ${comparisonData.previousSession?.term} ${comparisonData.previousSession?.year}<br/>
+                <strong>Class Mean: ${comparisonData.previousClassAvg}</strong>
+              </div>
+              <div class="vs-col">VS</div>
+              <div class="exam-col">
+                <strong>${comparisonData.currentSession?.name}</strong><br/>
+                Term ${comparisonData.currentSession?.term} ${comparisonData.currentSession?.year}<br/>
+                <strong>Class Mean: ${comparisonData.currentClassAvg}</strong>
+              </div>
+            </div>
+            <div style="text-align: center; margin-top: 8px;">
+              <span class="${(comparisonData.currentClassAvg - comparisonData.previousClassAvg) > 0 ? 'trend-up' : (comparisonData.currentClassAvg - comparisonData.previousClassAvg) < 0 ? 'trend-down' : 'trend-neutral'}">
+                Change: ${(comparisonData.currentClassAvg - comparisonData.previousClassAvg) > 0 ? '+' : ''}${(comparisonData.currentClassAvg - comparisonData.previousClassAvg).toFixed(1)}
+              </span>
+            </div>
+          </div>
+          
+          <h3>Subject Performance Comparison</h3>
+          <table>
+            <tr>
+              <th>Subject</th>
+              <th>${comparisonData.previousSession?.name} Mean</th>
+              <th>${comparisonData.currentSession?.name} Mean</th>
+              <th>Change</th>
+              <th>Trend</th>
+            </tr>
+            ${comparisonData.subjectComparisons.map(s => `
+              <tr>
+                <td>${s.name}</td>
+                <td style="text-align:center">${s.previousMean}</td>
+                <td style="text-align:center">${s.currentMean}</td>
+                <td style="text-align:center ${s.change > 0 ? ';color:#00aa00' : s.change < 0 ? ';color:#dd0000' : ''}">${s.change > 0 ? '+' : ''}${s.change}</td>
+                <td style="text-align:center" class="${s.change > 0 ? 'trend-up' : s.change < 0 ? 'trend-down' : 'trend-neutral'}">${s.change > 0 ? '📈 Improved' : s.change < 0 ? '📉 Declined' : '— No Change'}</td>
+              </tr>
+            `).join('')}
+          </table>
+          
+          <h3>Top Improvers</h3>
+          <table>
+            <tr><th>Rank</th><th>Name</th><th>${comparisonData.previousSession?.name} Total</th><th>${comparisonData.currentSession?.name} Total</th><th>Improvement</th></tr>
+            ${comparisonData.topImprovers.map((s, i) => `
+              <tr>
+                <td style="text-align:center">${i + 1}</td>
+                <td>${s.name}</td>
+                <td style="text-align:center">${s.previousTotal}</td>
+                <td style="text-align:center">${s.currentTotal}</td>
+                <td style="text-align:center; color: #00aa00; font-weight: bold;">+${s.change}</td>
+              </tr>
+            `).join('')}
+          </table>
+          
+          <h3>Top Droppers</h3>
+          <table>
+            <tr><th>Rank</th><th>Name</th><th>${comparisonData.previousSession?.name} Total</th><th>${comparisonData.currentSession?.name} Total</th><th>Decline</th></tr>
+            ${comparisonData.topDroppers.map((s, i) => `
+              <tr>
+                <td style="text-align:center">${i + 1}</td>
+                <td>${s.name}</td>
+                <td style="text-align:center">${s.previousTotal}</td>
+                <td style="text-align:center">${s.currentTotal}</td>
+                <td style="text-align:center; color: #dd0000; font-weight: bold;">${s.change}</td>
+              </tr>
+            `).join('')}
+          </table>
+        </body>
+        </html>
+      `
+    } else if (reportType === 'class') {
       reportContent = `
         <html>
         <head>
@@ -2567,9 +2670,17 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                       <GitCompareArrows className="w-5 h-5" />
                       Exam Comparison
                     </CardTitle>
-                    <Button size="sm" onClick={() => fetchExamComparison(comparisonClassId || undefined)} disabled={isLoadingComparison}>
-                      {isLoadingComparison ? 'Loading...' : 'Refresh'}
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={() => fetchExamComparison(comparisonClassId || undefined)} disabled={isLoadingComparison}>
+                        {isLoadingComparison ? 'Loading...' : 'Refresh'}
+                      </Button>
+                      {comparisonData && (
+                        <Button size="sm" onClick={() => handleDownloadReport('comparison')}>
+                          <Download className="w-4 h-4 mr-1" />
+                          Download
+                        </Button>
+                      )}
+                    </div>
                   </div>
                   {/* Admin: class dropdown selector */}
                   {isAdminUser && allClasses.length > 0 && (
