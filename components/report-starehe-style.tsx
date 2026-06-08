@@ -675,17 +675,6 @@ export function ReportStareheStyle({
                                   fill={fill}
                                   opacity="0.85"
                                 />
-                                {/* Score label on top of bar */}
-                                <text
-                                  x={x + barWidth / 2}
-                                  y={y - 1}
-                                  fontSize="4.5"
-                                  textAnchor="middle"
-                                  fill="#000"
-                                  fontWeight="bold"
-                                >
-                                  {exam.average.toFixed(0)}
-                                </text>
                                 {/* Exam label below bar */}
                                 <text
                                   x={x + barWidth / 2}
