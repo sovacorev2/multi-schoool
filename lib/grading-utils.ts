@@ -26,7 +26,7 @@ export const GRADING_SCALE_KOLANYA_GIRLS: GradeLevel[] = [
   { level: 'ME2', minMark: 41, maxMark: 57, points: 5 },
   { level: 'AE1', minMark: 31, maxMark: 40, points: 4 },
   { level: 'AE2', minMark: 21, maxMark: 30, points: 3 },
-  { level: 'P.E1', minMark: 11, maxMark: 20, points: 2 },
+  { level: 'BE1', minMark: 11, maxMark: 20, points: 2 },
   { level: 'BE2', minMark: 0, maxMark: 10, points: 1 },
 ]
 
