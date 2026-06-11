@@ -263,7 +263,7 @@ export default function PrintCombinedMarklistPage() {
           <div className="text-lg font-bold" style={{ color: '#1a3a52' }}>
             {(() => {
               if (learners.length === 0) return '-'
-              const levels = learners.map(l => getGradeLevelByClass(Math.round(l.average), baseClassName)?.level).filter(Boolean)
+              const levels = learners.map(l => getGradeLevelByClass(Math.round(l.average), baseClassName, currentSchool?.name)?.level).filter(Boolean)
               if (!Array.isArray(levels) || levels.length === 0) return '-'
               const levelCounts = levels.reduce((acc, level) => {
                 acc[level] = (acc[level] || 0) + 1
@@ -319,7 +319,7 @@ export default function PrintCombinedMarklistPage() {
                 <td className="border p-1 text-center text-xs">{learner.stream}</td>
                 {subjects.map(subj => {
                   const score = learner.marks[subj.name]
-                  const performanceLevel = score !== null ? getGradeLevelByClass(score, baseClassName) : null
+                  const performanceLevel = score !== null ? getGradeLevelByClass(score, baseClassName, currentSchool?.name) : null
                   let scoreClass = ''
                   if (score !== null) {
                     if (score >= 80) scoreClass = 'text-green-700 font-semibold'
@@ -343,7 +343,7 @@ export default function PrintCombinedMarklistPage() {
                 })}
                 <td className="border p-1 text-center font-bold">{learner.total}</td>
                 <td className="border p-1 text-center font-semibold" style={{ color: '#1a3a52' }}>
-                  {getGradeLevelByClass(Math.round(learner.average), baseClassName)?.level || '-'}
+                  {getGradeLevelByClass(Math.round(learner.average), baseClassName, currentSchool?.name)?.level || '-'}
                 </td>
               </tr>
             )
