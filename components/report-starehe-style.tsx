@@ -55,8 +55,8 @@ interface ReportStareheStyleProps {
 }
 
 // CBC Performance Level helper
-function getCBCPerformanceLevel(score: number, className: string): { level: string; points: number } {
-  const result = getGradeLevelByClass(score, className)
+function getCBCPerformanceLevel(score: number, className: string, schoolName?: string): { level: string; points: number } {
+  const result = getGradeLevelByClass(score, className, schoolName)
   return result || { level: '-', points: 0 }
 }
 
@@ -70,9 +70,9 @@ function getCBCLevelDescription(level: string): string {
 }
 
 // Helper function to get CBC remarks based on performance level
-function getCBCRemarks(score: number | null, className: string): string {
+function getCBCRemarks(score: number | null, className: string, schoolName?: string): string {
   if (score === null || score === undefined) return 'No data'
-  const perf = getCBCPerformanceLevel(score, className)
+  const perf = getCBCPerformanceLevel(score, className, schoolName)
   if (perf.level.startsWith('EE')) return 'Exceptional performance'
   if (perf.level.startsWith('ME')) return 'Good performance'
   if (perf.level.startsWith('AE')) return 'Fair performance, continue practicing'
@@ -405,8 +405,8 @@ export function ReportStareheStyle({
 
               const subjectData = subjects.map(subject => {
                 const score = report.marks[subject.id]
-                const perf = getCBCPerformanceLevel(score || 0, className)
-                const remarks = getCBCRemarks(score, className)
+                const perf = getCBCPerformanceLevel(score || 0, className, currentSchool?.name)
+                const remarks = getCBCRemarks(score, className, currentSchool?.name)
                 return { subject, score, level: perf.level, points: perf.points, remarks }
               })
 
@@ -414,7 +414,7 @@ export function ReportStareheStyle({
               const maxPointsPerSubject = isUpperClass(className) ? 8 : 4
               const maxPoints = subjects.length * maxPointsPerSubject
               const meanMark = report.average
-              const meanPerf = getCBCPerformanceLevel(meanMark, className)
+              const meanPerf = getCBCPerformanceLevel(meanMark, className, currentSchool?.name)
 
               return (
                 <div key={report.learner.id || idx} className="bg-white page-break" style={{ padding: '12px', minHeight: '100vh', pageBreakInside: 'avoid', fontFamily: 'Times New Roman, serif' }}>
