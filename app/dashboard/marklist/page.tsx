@@ -1222,6 +1222,97 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
     }
   }
 
+  const downloadFullLearnerComparison = () => {
+    if (!comparisonData) {
+      alert('No comparison data available')
+      return
+    }
+
+    try {
+      const printWindow = window.open('', '_blank')
+      if (!printWindow) {
+        alert('Please allow popups to download the comparison')
+        return
+      }
+
+      const gradeName = currentClass?.name || 'Grade'
+      const examType = selectedSession?.exam_types?.name || 'Session'
+      const term = selectedSession?.term || 'Term'
+      const year = selectedSession?.year || ''
+
+      const reportContent = `
+        <html>
+        <head>
+          <title>${gradeName}_Full_Learner_Comparison</title>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+            body { padding: 20px; }
+            h1 { text-align: center; font-size: 18px; margin-bottom: 5px; }
+            h2 { text-align: center; font-size: 14px; margin-bottom: 5px; }
+            .info { text-align: center; font-size: 12px; margin-bottom: 15px; color: #555; }
+            table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 11px; }
+            th, td { border: 1px solid #333; padding: 8px; }
+            th { background-color: #e8e8e8; font-weight: bold; text-align: center; }
+            td { padding: 6px 8px; }
+            td:first-child { text-align: left; }
+            tr:nth-child(even) { background-color: #f9f9f9; }
+            .positive { color: #00aa00; font-weight: bold; }
+            .negative { color: #dd0000; font-weight: bold; }
+            .neutral { color: #666; }
+            @media print { body { padding: 10px; } }
+          </style>
+        </head>
+        <body>
+          <h1>${currentSchool?.name || 'School'}</h1>
+          <h2>FULL LEARNER COMPARISON</h2>
+          <div class="info">
+            ${gradeName} | ${examType} - Term ${term} ${year} | Generated: ${new Date().toLocaleDateString()}
+          </div>
+          
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Prev Total</th>
+                <th>Prev Rank</th>
+                <th>Curr Total</th>
+                <th>Curr Rank</th>
+                <th>Marks Change</th>
+                <th>Rank Change</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${comparisonData.learnerComparisons.map(l => {
+                const rankChange = l.previousRank - l.currentRank
+                const changeClass = l.change > 0 ? 'positive' : l.change < 0 ? 'negative' : 'neutral'
+                const rankChangeClass = rankChange > 0 ? 'positive' : rankChange < 0 ? 'negative' : 'neutral'
+                return `
+                  <tr>
+                    <td>${l.name}</td>
+                    <td style="text-align: center;">${l.previousTotal || '-'}</td>
+                    <td style="text-align: center;">${l.previousTotal > 0 ? l.previousRank : '-'}</td>
+                    <td style="text-align: center;">${l.currentTotal || '-'}</td>
+                    <td style="text-align: center;">${l.currentTotal > 0 ? l.currentRank : '-'}</td>
+                    <td style="text-align: center;" class="${changeClass}">${l.change > 0 ? '+' : ''}${l.change}</td>
+                    <td style="text-align: center;" class="${rankChangeClass}">${l.previousTotal > 0 && l.currentTotal > 0 ? (rankChange > 0 ? '+' : '') + rankChange : '-'}</td>
+                  </tr>
+                `
+              }).join('')}
+            </tbody>
+          </table>
+        </body>
+        </html>
+      `
+
+      printWindow.document.write(reportContent)
+      printWindow.document.close()
+      printWindow.print()
+    } catch (error) {
+      console.error('Error downloading learner comparison:', error)
+      alert('Failed to download comparison. Please try again.')
+    }
+  }
+
   const handleDownloadReport = (reportType: 'class' | 'subject' | 'comparison') => {
     const gradeName = currentClass?.name || 'Grade'
     const examType = selectedSession?.exam_types?.name || 'Session'
@@ -1311,7 +1402,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
             `).join('')}
           </table>
           
-          <h3>Top Improvers</h3>
+          <h3>Most Improved</h3>
           <table>
             <tr><th>Rank</th><th>Name</th><th>${comparisonData.previousSession?.name} Total</th><th>${comparisonData.currentSession?.name} Total</th><th>Improvement</th></tr>
             ${comparisonData.topImprovers.map((s, i) => `
@@ -1325,7 +1416,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
             `).join('')}
           </table>
           
-          <h3>Top Droppers</h3>
+          <h3>Most Dropped</h3>
           <table>
             <tr><th>Rank</th><th>Name</th><th>${comparisonData.previousSession?.name} Total</th><th>${comparisonData.currentSession?.name} Total</th><th>Decline</th></tr>
             ${comparisonData.topDroppers.map((s, i) => `
@@ -2879,7 +2970,13 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
 
                       {/* Full Learner Comparison Table */}
                       <div>
-                        <h3 className="font-semibold text-gray-800 mb-3">Full Learner Comparison</h3>
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="font-semibold text-gray-800">Full Learner Comparison</h3>
+                          <Button size="sm" onClick={() => downloadFullLearnerComparison()}>
+                            <Download className="w-4 h-4 mr-1" />
+                            Download
+                          </Button>
+                        </div>
                         <div className="overflow-x-auto">
                           <table className="w-full text-sm border-collapse">
                             <thead>
