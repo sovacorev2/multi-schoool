@@ -18,8 +18,8 @@ export const GRADING_SCALE_EXTENDED: GradeLevel[] = [
   { level: 'BE2', minMark: 0, maxMark: 10, points: 1 },
 ]
 
-// Kolanya Girls custom grading scale
-export const GRADING_SCALE_KOLANYA_GIRLS: GradeLevel[] = [
+// Kolanya Girls custom grading scale for JSS (Grade 7-9)
+export const GRADING_SCALE_KOLANYA_GIRLS_JSS: GradeLevel[] = [
   { level: 'EE1', minMark: 88, maxMark: 100, points: 8 },
   { level: 'EE2', minMark: 75, maxMark: 87, points: 7 },
   { level: 'ME1', minMark: 58, maxMark: 74, points: 6 },
@@ -29,6 +29,17 @@ export const GRADING_SCALE_KOLANYA_GIRLS: GradeLevel[] = [
   { level: 'BE1', minMark: 11, maxMark: 20, points: 2 },
   { level: 'BE2', minMark: 0, maxMark: 10, points: 1 },
 ]
+
+// Kolanya Girls custom grading scale for Primary (Grades 1-6) - 4 levels only
+export const GRADING_SCALE_KOLANYA_GIRLS_PRIMARY: GradeLevel[] = [
+  { level: 'EE', minMark: 75, maxMark: 100, points: 4 },
+  { level: 'ME', minMark: 50, maxMark: 74, points: 3 },
+  { level: 'AE', minMark: 25, maxMark: 49, points: 2 },
+  { level: 'BE', minMark: 0, maxMark: 24, points: 1 },
+]
+
+// Kolanya Girls custom grading scale (legacy - kept for compatibility)
+export const GRADING_SCALE_KOLANYA_GIRLS: GradeLevel[] = GRADING_SCALE_KOLANYA_GIRLS_JSS
 
 // Simple grading scale for lower classes (PP1, PP2, Grade 1-6) - 8 levels with 0.5 increments
 export const GRADING_SCALE_SIMPLE: GradeLevel[] = [
@@ -75,8 +86,17 @@ export function isUpperClass(className: string): boolean {
 export function getGradingScale(className?: string, schoolName?: string): GradeLevel[] {
   // Check if this is Kolanya Girls school
   if (schoolName && schoolName.toLowerCase().includes('kolanya')) {
-    console.log('[v0] Using Kolanya Girls custom grading scale')
-    return GRADING_SCALE_KOLANYA_GIRLS
+    // If it's Kolanya Girls, determine if it's primary or secondary
+    if (!className) return GRADING_SCALE_KOLANYA_GIRLS_JSS
+    
+    const isUpper = isUpperClass(className)
+    if (isUpper) {
+      console.log('[v0] Kolanya Girls JSS (Grade 7-9): Using 8-level scale')
+      return GRADING_SCALE_KOLANYA_GIRLS_JSS
+    } else {
+      console.log('[v0] Kolanya Girls Primary (Grade 1-6): Using 4-level scale')
+      return GRADING_SCALE_KOLANYA_GIRLS_PRIMARY
+    }
   }
   
   if (!className) return GRADING_SCALE_EXTENDED
