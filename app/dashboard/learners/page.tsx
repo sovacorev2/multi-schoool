@@ -1,11 +1,11 @@
 'use client'
 
 import React from "react"
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useClass } from '@/lib/class-context'
 import { useSchool } from '@/lib/school-context'
-import { Plus, Trash2, Edit2, X, Save, ArrowUpCircle, CheckSquare, Square } from 'lucide-react'
+import { Plus, Trash2, Edit2, X, Save, ArrowUpCircle, CheckSquare, Square, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 interface Class {
@@ -63,6 +63,13 @@ export default function LearnersPage() {
   const [promotedLearnersInTarget, setPromotedLearnersInTarget] = useState<Set<string>>(new Set())
   const [previouslyPromotedLearners, setPreviouslyPromotedLearners] = useState<Set<string>>(new Set())
   const [recentPromotions, setRecentPromotions] = useState<Map<string, string>>(new Map())
+  
+  // CSV Import state
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [csvFile, setCsvFile] = useState<File | null>(null)
+  const [isImporting, setIsImporting] = useState(false)
+  const [importMessage, setImportMessage] = useState<{ type: 'success' | 'error' | 'info', text: string } | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const supabase = createClient()
 
@@ -434,6 +441,105 @@ export default function LearnersPage() {
     }
   }
 
+  const handleImportCSV = async () => {
+    if (!csvFile) {
+      setImportMessage({ type: 'error', text: 'Please select a CSV file' })
+      return
+    }
+
+    setIsImporting(true)
+    setImportMessage(null)
+
+    try {
+      const text = await csvFile.text()
+      const lines = text.trim().split('\n')
+      
+      if (lines.length < 2) {
+        setImportMessage({ type: 'error', text: 'CSV file must have headers and at least one learner' })
+        setIsImporting(false)
+        return
+      }
+
+      // Parse CSV header
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
+      const nameIndex = headers.indexOf('name')
+      const admissionIndex = headers.indexOf('admission_number') || headers.indexOf('assessment_number')
+      const genderIndex = headers.indexOf('gender')
+      const parentPhoneIndex = headers.indexOf('parent_phone')
+      const birthCertIndex = headers.indexOf('birth_certificate_number') || headers.indexOf('birth_cert_number')
+
+      if (nameIndex === -1) {
+        setImportMessage({ type: 'error', text: 'CSV must have a "Name" column' })
+        setIsImporting(false)
+        return
+      }
+
+      const learnersToAdd = []
+      let skipped = 0
+
+      // Parse CSV rows
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim())
+        
+        if (values.length < 1 || !values[0]) continue
+
+        const learnerName = values[nameIndex]
+        const admissionNum = admissionIndex !== -1 ? values[admissionIndex] : null
+        const gender = genderIndex !== -1 ? values[genderIndex] : null
+        const parentPhone = parentPhoneIndex !== -1 ? values[parentPhoneIndex] : null
+        const birthCert = birthCertIndex !== -1 ? values[birthCertIndex] : null
+
+        // Check for duplicates locally
+        const isDuplicate = learners.some(l => 
+          l.name.toLowerCase() === learnerName.toLowerCase() ||
+          (admissionNum && l.admission_number === admissionNum)
+        )
+
+        if (isDuplicate) {
+          skipped++
+          continue
+        }
+
+        learnersToAdd.push({
+          name: learnerName,
+          admission_number: admissionNum || null,
+          gender: gender || null,
+          parent_phone: parentPhone || null,
+          birth_cert_number: birthCert || null,
+          class_id: currentClass?.id,
+          school_id: currentSchool?.id,
+        })
+      }
+
+      if (learnersToAdd.length === 0) {
+        setImportMessage({ type: 'info', text: `No new learners to add (${skipped} duplicates skipped)` })
+        setIsImporting(false)
+        return
+      }
+
+      // Insert all learners
+      const { data, error } = await supabase.from('learners').insert(learnersToAdd).select()
+
+      if (error) {
+        setImportMessage({ type: 'error', text: `Import failed: ${error.message}` })
+      } else if (data) {
+        setLearners([...learners, ...data])
+        setImportMessage({ type: 'success', text: `Successfully imported ${data.length} learner(s)${skipped > 0 ? ` (${skipped} duplicates skipped)` : ''}` })
+        setCsvFile(null)
+        if (fileInputRef.current) fileInputRef.current.value = ''
+        setTimeout(() => {
+          setShowImportModal(false)
+          setImportMessage(null)
+        }, 2000)
+      }
+    } catch (error) {
+      console.error('[v0] CSV import error:', error)
+      setImportMessage({ type: 'error', text: `Import error: ${error instanceof Error ? error.message : 'Unknown error'}` })
+    } finally {
+      setIsImporting(false)
+    }
+  }
+
   if (isLoading) {
     return <div className="text-center py-12">Loading...</div>
   }
@@ -446,27 +552,37 @@ export default function LearnersPage() {
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Manage Learners</h1>
           <p className="text-gray-600 mt-1">Add, edit, and manage learners for {currentClass?.name}</p>
         </div>
-        <Button
-          onClick={() => {
-            setShowPromotionMode(!showPromotionMode)
-            setSelectedLearners([])
-            setTargetClassId('')
-          }}
-          variant={showPromotionMode ? "destructive" : "outline"}
-          className="flex items-center gap-2"
-        >
-          {showPromotionMode ? (
-            <>
-              <X className="w-4 h-4" />
-              Cancel Promotion
-            </>
-          ) : (
-            <>
-              <ArrowUpCircle className="w-4 h-4" />
-              Promote Students
-            </>
-          )}
-        </Button>
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            onClick={() => setShowImportModal(true)}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <Upload className="w-4 h-4" />
+            Import CSV
+          </Button>
+          <Button
+            onClick={() => {
+              setShowPromotionMode(!showPromotionMode)
+              setSelectedLearners([])
+              setTargetClassId('')
+            }}
+            variant={showPromotionMode ? "destructive" : "outline"}
+            className="flex items-center gap-2"
+          >
+            {showPromotionMode ? (
+              <>
+                <X className="w-4 h-4" />
+                Cancel Promotion
+              </>
+            ) : (
+              <>
+                <ArrowUpCircle className="w-4 h-4" />
+                Promote Students
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Promotion Panel */}
@@ -511,6 +627,63 @@ export default function LearnersPage() {
               <strong>⚠️ Already Promoted:</strong> {promotedLearnersInTarget.size} student(s) are already in the target class and will be skipped.
             </div>
           )}
+        </div>
+      )}
+
+      {/* CSV Import Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Import Learners from CSV</h2>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Select CSV File
+              </label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv"
+                onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-xs text-gray-500 mt-2">
+                CSV must have columns: Name, and optionally: admission_number, gender, parent_phone, birth_certificate_number
+              </p>
+            </div>
+
+            {importMessage && (
+              <div className={`mb-4 p-3 rounded-lg text-sm ${
+                importMessage.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' :
+                importMessage.type === 'error' ? 'bg-red-50 text-red-800 border border-red-200' :
+                'bg-blue-50 text-blue-800 border border-blue-200'
+              }`}>
+                {importMessage.text}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <Button
+                onClick={() => {
+                  setShowImportModal(false)
+                  setCsvFile(null)
+                  setImportMessage(null)
+                  if (fileInputRef.current) fileInputRef.current.value = ''
+                }}
+                variant="outline"
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleImportCSV}
+                disabled={!csvFile || isImporting}
+                className="flex-1"
+              >
+                {isImporting ? 'Importing...' : 'Import'}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 
