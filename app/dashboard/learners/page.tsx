@@ -441,6 +441,26 @@ export default function LearnersPage() {
     }
   }
 
+  // Helper: Find column index with flexible matching
+  const findColumnIndex = (headers: string[], ...variations: string[]): number => {
+    for (const variation of variations) {
+      const normalized = variation.toLowerCase().replace(/[\s_-]/g, '')
+      const index = headers.findIndex(h => h.replace(/[\s_-]/g, '') === normalized)
+      if (index !== -1) return index
+    }
+    return -1
+  }
+
+  // Helper: Normalize and validate gender
+  const normalizeGender = (value: string | null): string | null => {
+    if (!value) return null
+    const normalized = value.trim().toUpperCase()
+    // Accept variations: M, Male, F, Female, etc.
+    if (normalized === 'M' || normalized === 'MALE') return 'M'
+    if (normalized === 'F' || normalized === 'FEMALE') return 'F'
+    return null // Invalid gender will be skipped
+  }
+
   const handleImportCSV = async () => {
     if (!csvFile) {
       setImportMessage({ type: 'error', text: 'Please select a CSV file' })
@@ -460,22 +480,23 @@ export default function LearnersPage() {
         return
       }
 
-      // Parse CSV header
+      // Parse CSV header with flexible column matching
       const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
-      const nameIndex = headers.indexOf('name')
-      const admissionIndex = headers.indexOf('admission_number') || headers.indexOf('assessment_number')
-      const genderIndex = headers.indexOf('gender')
-      const parentPhoneIndex = headers.indexOf('parent_phone')
-      const birthCertIndex = headers.indexOf('birth_certificate_number') || headers.indexOf('birth_cert_number')
+      const nameIndex = findColumnIndex(headers, 'name', 'full name', 'fullname', 'student name')
+      const admissionIndex = findColumnIndex(headers, 'admission_number', 'admission number', 'assessment_number', 'assessment number', 'admission_no', 'adm_no')
+      const genderIndex = findColumnIndex(headers, 'gender', 'sex')
+      const parentPhoneIndex = findColumnIndex(headers, 'parent_phone', 'parent phone', 'phone', 'contact')
+      const birthCertIndex = findColumnIndex(headers, 'birth_certificate_number', 'birth certificate', 'birth_cert_number', 'birth cert', 'dob')
 
       if (nameIndex === -1) {
-        setImportMessage({ type: 'error', text: 'CSV must have a "Name" column' })
+        setImportMessage({ type: 'error', text: 'CSV must have a "Name" column (also accepts "Full Name")' })
         setIsImporting(false)
         return
       }
 
       const learnersToAdd = []
       let skipped = 0
+      let errors: string[] = []
 
       // Parse CSV rows
       for (let i = 1; i < lines.length; i++) {
@@ -484,10 +505,18 @@ export default function LearnersPage() {
         if (values.length < 1 || !values[0]) continue
 
         const learnerName = values[nameIndex]
-        const admissionNum = admissionIndex !== -1 ? values[admissionIndex] : null
-        const gender = genderIndex !== -1 ? values[genderIndex] : null
-        const parentPhone = parentPhoneIndex !== -1 ? values[parentPhoneIndex] : null
-        const birthCert = birthCertIndex !== -1 ? values[birthCertIndex] : null
+        const admissionNum = admissionIndex !== -1 && values[admissionIndex] ? values[admissionIndex] : null
+        const genderRaw = genderIndex !== -1 ? values[genderIndex] : null
+        const parentPhone = parentPhoneIndex !== -1 && values[parentPhoneIndex] ? values[parentPhoneIndex] : null
+        const birthCert = birthCertIndex !== -1 && values[birthCertIndex] ? values[birthCertIndex] : null
+
+        // Normalize and validate gender
+        const gender = normalizeGender(genderRaw)
+        if (genderRaw && !gender) {
+          errors.push(`Row ${i + 1}: Invalid gender "${genderRaw}" (use M/Male or F/Female)`)
+          skipped++
+          continue
+        }
 
         // Check for duplicates locally
         const isDuplicate = learners.some(l => 
@@ -512,7 +541,8 @@ export default function LearnersPage() {
       }
 
       if (learnersToAdd.length === 0) {
-        setImportMessage({ type: 'info', text: `No new learners to add (${skipped} duplicates skipped)` })
+        const errorText = errors.length > 0 ? errors.slice(0, 3).join('\n') : `No new learners to add (${skipped} duplicates skipped)`
+        setImportMessage({ type: 'info', text: errorText })
         setIsImporting(false)
         return
       }
@@ -521,16 +551,19 @@ export default function LearnersPage() {
       const { data, error } = await supabase.from('learners').insert(learnersToAdd).select()
 
       if (error) {
-        setImportMessage({ type: 'error', text: `Import failed: ${error.message}` })
+        setImportMessage({ type: 'error', text: `Import failed: ${error.message}. Check gender values are M/F and other fields are valid.` })
       } else if (data) {
         setLearners([...learners, ...data])
-        setImportMessage({ type: 'success', text: `Successfully imported ${data.length} learner(s)${skipped > 0 ? ` (${skipped} duplicates skipped)` : ''}` })
+        let message = `Successfully imported ${data.length} learner(s)`
+        if (skipped > 0) message += ` (${skipped} skipped: duplicates or invalid data)`
+        if (errors.length > 0) message += ` - Issues: ${errors.length} rows had errors`
+        setImportMessage({ type: 'success', text: message })
         setCsvFile(null)
         if (fileInputRef.current) fileInputRef.current.value = ''
         setTimeout(() => {
           setShowImportModal(false)
           setImportMessage(null)
-        }, 2000)
+        }, 2500)
       }
     } catch (error) {
       console.error('[v0] CSV import error:', error)
@@ -648,7 +681,9 @@ export default function LearnersPage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <p className="text-xs text-gray-500 mt-2">
-                CSV must have columns: Name, and optionally: admission_number, gender, parent_phone, birth_certificate_number
+                <strong>Required:</strong> Name (also accepts "Full Name")<br/>
+                <strong>Optional:</strong> Admission Number, Gender (M/F/Male/Female), Parent Phone, Birth Certificate<br/>
+                Column names are flexible - spaces, dashes, underscores, and case don't matter.
               </p>
             </div>
 
