@@ -444,14 +444,14 @@ export default function LearnersPage() {
   // Export CSV template for new schools
   const exportCSVTemplate = () => {
     try {
-      const headers = ['Assessment Number', 'Surname', 'First Name', 'Other Names', 'Gender', 'Birth Certificate Number', 'Parent Phone']
-      const exampleRow = ['A001000001', 'SMITH', 'JOHN', 'PETER', 'M', '123456789', '0712345678']
+      const headers = ['Name', 'Gender', 'Assessment Number', 'Birth Certificate Number', 'Parent Phone']
+      const exampleRow = ['JOHN SMITH', 'M', 'A001000001', '123456789', '0712345678']
       
       // Create CSV content
       const csvContent = [
         headers.join(','),
         exampleRow.join(','),
-        ',,,,,,' // Empty row for users to fill
+        ',,,,' // Empty row for users to fill
       ].join('\n')
 
       // Create blob and download
@@ -469,6 +469,44 @@ export default function LearnersPage() {
     } catch (error) {
       console.error('[v0] CSV template export error:', error)
       alert('Failed to export CSV template. Please try again.')
+    }
+  }
+
+  // Export existing learners as CSV
+  const exportLearners = () => {
+    try {
+      const headers = ['Name', 'Gender', 'Assessment Number', 'Birth Certificate Number', 'Parent Phone']
+      
+      // Build CSV rows from current learners
+      const rows = learners.map(l => [
+        l.name || '',
+        l.gender || '',
+        l.admission_number || '',
+        l.birth_cert_number || '',
+        l.parent_phone || ''
+      ])
+      
+      // Create CSV content
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${cell}"`).join(',')) // Quote each cell for safety
+      ].join('\n')
+
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      const url = URL.createObjectURL(blob)
+      
+      link.setAttribute('href', url)
+      link.setAttribute('download', `learners_${currentClass?.name?.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`)
+      link.style.visibility = 'hidden'
+      
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    } catch (error) {
+      console.error('[v0] CSV learners export error:', error)
+      alert('Failed to export learners. Please try again.')
     }
   }
 
@@ -493,20 +531,6 @@ export default function LearnersPage() {
     }
     console.log(`[v0] Column "${variations.join('|')}" not found. Headers:`, headers.map(h => `"${h}"(norm: "${normalizeHeader(h)}")`))
     return -1
-  }
-
-  // Helper: Find multiple column indices (for name components)
-  const findAllColumnIndices = (headers: string[], ...variations: string[][]): number[] => {
-    return variations.map(varSet => findColumnIndex(headers, ...varSet)).filter(i => i !== -1)
-  }
-
-  // Helper: Combine name components
-  const combineName = (surname: string | null, firstName: string | null, otherNames: string | null): string => {
-    const parts = []
-    if (surname && surname.trim()) parts.push(surname.trim())
-    if (firstName && firstName.trim()) parts.push(firstName.trim())
-    if (otherNames && otherNames.trim()) parts.push(otherNames.trim())
-    return parts.join(' ') || 'Unknown'
   }
 
   // Helper: Normalize and validate gender
@@ -538,45 +562,29 @@ export default function LearnersPage() {
         return
       }
 
-      // Parse CSV header - KNEC format has specific column order
+      // Parse CSV header - look for simple columns
       const rawHeaders = lines[0].split(',')
       const headers = rawHeaders.map(h => h.trim())
       
-      // For KNEC CSV, the expected column order is typically:
-      // [0] Assessment/Admission Number, [1] Surname, [2] First Name, [3] Other Names, [4] Gender, [5+] other fields
-      // Use position-based detection for KNEC format
-      let assessmentIndex = -1
-      let surnameIndex = -1
-      let firstNameIndex = -1
-      let otherNamesIndex = -1
+      // Find columns by checking for specific keywords
+      let nameIndex = -1
       let genderIndex = -1
+      let assessmentIndex = -1
       let birthCertIndex = -1
       let parentPhoneIndex = -1
       
-      // Find columns by checking for specific keywords
       headers.forEach((header, idx) => {
         const norm = normalizeHeader(header)
-        if (norm.includes('assess')) assessmentIndex = idx
-        if (norm.includes('surname') || norm.includes('lastname') || norm.includes('familyname')) surnameIndex = idx
-        if (norm.includes('firstname') || norm.includes('givenname')) firstNameIndex = idx
-        if (norm.includes('othernames') || norm.includes('middlename')) otherNamesIndex = idx
+        if (norm === 'name' || norm === 'fullname' || norm === 'studentname') nameIndex = idx
         if (norm === 'gender' || norm === 'sex') genderIndex = idx
+        if (norm.includes('assess')) assessmentIndex = idx
         if (norm.includes('birthcert')) birthCertIndex = idx
         if (norm.includes('phone') || norm.includes('contact')) parentPhoneIndex = idx
       })
       
-      // Fallback: use findColumnIndex if not found
-      const admissionIndex = assessmentIndex !== -1 ? assessmentIndex : findColumnIndex(headers, 'assessment number', 'assessment_number', 'admission_number')
-      if (surnameIndex === -1) surnameIndex = findColumnIndex(headers, 'surname')
-      if (firstNameIndex === -1) firstNameIndex = findColumnIndex(headers, 'first name')
-      if (otherNamesIndex === -1) otherNamesIndex = findColumnIndex(headers, 'other names')
-      if (genderIndex === -1) genderIndex = findColumnIndex(headers, 'gender', 'sex')
-      if (birthCertIndex === -1) birthCertIndex = findColumnIndex(headers, 'birth certificate', 'birth certificate number')
-      if (parentPhoneIndex === -1) parentPhoneIndex = findColumnIndex(headers, 'parent phone', 'parent_phone')
-      
-      // Validate we have at least surname and first name OR a single name column
-      if (surnameIndex === -1 && firstNameIndex === -1) {
-        setImportMessage({ type: 'error', text: 'CSV headers not recognized. Expected columns: Assessment Number, Surname, First Name, Other Names, Gender, Birth Certificate, Parent Phone' })
+      // Validate we have a name column
+      if (nameIndex === -1) {
+        setImportMessage({ type: 'error', text: 'CSV must have a "Name" column. Expected columns: Name, Gender, Assessment Number, Birth Certificate Number, Parent Phone' })
         setIsImporting(false)
         return
       }
@@ -587,29 +595,24 @@ export default function LearnersPage() {
       let updated = 0
       let errors: string[] = []
 
-      // Parse CSV rows - Extract ONLY what we need
+      // Parse CSV rows
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim())
+        const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, '')) // Remove CSV quotes
         
         if (values.length < 1 || !values[0]) continue
 
-        // Combine name components from KNEC format
-        const surname = surnameIndex !== -1 ? values[surnameIndex] : null
-        const firstName = firstNameIndex !== -1 ? values[firstNameIndex] : null
-        const otherNames = otherNamesIndex !== -1 ? values[otherNamesIndex] : null
-        const learnerName = combineName(surname, firstName, otherNames)
-
-        if (!learnerName || learnerName === 'Unknown') {
-          errors.push(`Row ${i + 1}: No valid name data`)
+        const learnerName = values[nameIndex]
+        if (!learnerName) {
+          errors.push(`Row ${i + 1}: No name provided`)
           skipped++
           continue
         }
 
-        // Extract relevant fields
-        const admissionNum = admissionIndex !== -1 && values[admissionIndex] ? values[admissionIndex] : null
+        // Extract fields
         const genderRaw = genderIndex !== -1 ? values[genderIndex] : null
-        const birthCert = birthCertIndex !== -1 && values[birthCertIndex] ? values[birthCertIndex] : null
-        const parentPhone = parentPhoneIndex !== -1 && values[parentPhoneIndex] ? values[parentPhoneIndex] : null
+        const assessmentNum = assessmentIndex !== -1 ? values[assessmentIndex] : null
+        const birthCert = birthCertIndex !== -1 ? values[birthCertIndex] : null
+        const parentPhone = parentPhoneIndex !== -1 ? values[parentPhoneIndex] : null
 
         // Normalize and validate gender
         const gender = normalizeGender(genderRaw)
@@ -630,8 +633,8 @@ export default function LearnersPage() {
           let hasUpdates = false
 
           // Only update fields that are empty or missing
-          if (admissionNum && !existingLearner.admission_number) {
-            updateData.admission_number = admissionNum
+          if (assessmentNum && !existingLearner.admission_number) {
+            updateData.admission_number = assessmentNum
             hasUpdates = true
           }
           if (gender && !existingLearner.gender) {
@@ -657,7 +660,7 @@ export default function LearnersPage() {
           // New learner - add to insert list
           learnersToAdd.push({
             name: learnerName,
-            admission_number: admissionNum || null,
+            admission_number: assessmentNum || null,
             gender: gender || null,
             birth_cert_number: birthCert || null,
             parent_phone: parentPhone || null,
@@ -736,12 +739,12 @@ export default function LearnersPage() {
         </div>
         <div className="flex gap-2 flex-wrap">
           <Button
-            onClick={exportCSVTemplate}
+            onClick={learners.length > 0 ? exportLearners : exportCSVTemplate}
             variant="outline"
             className="flex items-center gap-2"
           >
             <Download className="w-4 h-4" />
-            Export Template
+            {learners.length > 0 ? 'Export Learners' : 'Export Template'}
           </Button>
           <Button
             onClick={() => setShowImportModal(true)}
@@ -838,12 +841,10 @@ export default function LearnersPage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <p className="text-xs text-gray-500 mt-2">
-                <strong>Name Options:</strong><br/>
-                • Single column: "Name" or "Full Name"<br/>
-                • KNEC Format: "Surname", "First Name", "Other Names" (combined into one name)<br/>
-                <strong>Imported Fields:</strong> Name, Gender (M/F), Assessment Number, Birth Certificate<br/>
-                <strong>Smart Updates:</strong> If learner exists by name+gender, missing fields are filled. No duplicates created.<br/>
-                Extra columns (disability, DOB, etc.) are ignored automatically.
+                <strong>Required Column:</strong> Name (or "Full Name")<br/>
+                <strong>Optional Columns:</strong> Gender (M/F), Assessment Number, Birth Certificate Number, Parent Phone<br/>
+                <strong>Smart Updates:</strong> If learner with same name exists, missing fields are filled. No duplicates created.<br/>
+                Extra columns are ignored automatically.
               </p>
             </div>
 
