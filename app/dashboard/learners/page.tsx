@@ -441,20 +441,26 @@ export default function LearnersPage() {
     }
   }
 
+  // Helper: Normalize header string - remove quotes, spaces, dashes, underscores
+  const normalizeHeader = (header: string): string => {
+    return header
+      .toLowerCase()
+      .replace(/^["'`]+|["'`]+$/g, '') // Remove leading/trailing quotes
+      .replace(/[\s_\-.,;:]/g, '') // Remove spaces, dashes, underscores, punctuation
+      .trim()
+  }
+
   // Helper: Find column index with flexible matching
   const findColumnIndex = (headers: string[], ...variations: string[]): number => {
     for (const variation of variations) {
-      const normalized = variation.toLowerCase().replace(/[\s_-]/g, '').trim()
-      const index = headers.findIndex(h => {
-        const headerNorm = h.toLowerCase().replace(/[\s_-]/g, '').trim()
-        return headerNorm === normalized
-      })
+      const normalized = normalizeHeader(variation)
+      const index = headers.findIndex(h => normalizeHeader(h) === normalized)
       if (index !== -1) {
         console.log(`[v0] Found "${variation}" at column ${index}`)
         return index
       }
     }
-    console.log(`[v0] Column "${variations.join('|')}" not found in headers:`, headers.map(h => h.toLowerCase()))
+    console.log(`[v0] Column "${variations.join('|')}" not found. Headers:`, headers.map(h => `"${h}"(norm: "${normalizeHeader(h)}")`))
     return -1
   }
 
