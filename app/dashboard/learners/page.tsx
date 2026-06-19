@@ -5,7 +5,7 @@ import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useClass } from '@/lib/class-context'
 import { useSchool } from '@/lib/school-context'
-import { Plus, Trash2, Edit2, X, Save, ArrowUpCircle, CheckSquare, Square, Upload } from 'lucide-react'
+import { Plus, Trash2, Edit2, X, Save, ArrowUpCircle, CheckSquare, Square, Upload, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 interface Class {
@@ -441,6 +441,37 @@ export default function LearnersPage() {
     }
   }
 
+  // Export CSV template for new schools
+  const exportCSVTemplate = () => {
+    try {
+      const headers = ['Assessment Number', 'Surname', 'First Name', 'Other Names', 'Gender', 'Birth Certificate Number', 'Parent Phone']
+      const exampleRow = ['A001000001', 'SMITH', 'JOHN', 'PETER', 'M', '123456789', '0712345678']
+      
+      // Create CSV content
+      const csvContent = [
+        headers.join(','),
+        exampleRow.join(','),
+        ',,,,,,' // Empty row for users to fill
+      ].join('\n')
+
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      const url = URL.createObjectURL(blob)
+      
+      link.setAttribute('href', url)
+      link.setAttribute('download', `learners_template_${currentClass?.name?.replace(/\s+/g, '_')}.csv`)
+      link.style.visibility = 'hidden'
+      
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    } catch (error) {
+      console.error('[v0] CSV template export error:', error)
+      alert('Failed to export CSV template. Please try again.')
+    }
+  }
+
   // Helper: Normalize header string - remove quotes, spaces, dashes, underscores
   const normalizeHeader = (header: string): string => {
     return header
@@ -704,6 +735,14 @@ export default function LearnersPage() {
           <p className="text-gray-600 mt-1">Add, edit, and manage learners for {currentClass?.name}</p>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <Button
+            onClick={exportCSVTemplate}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Export Template
+          </Button>
           <Button
             onClick={() => setShowImportModal(true)}
             variant="outline"
