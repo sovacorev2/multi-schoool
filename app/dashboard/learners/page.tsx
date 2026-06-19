@@ -451,6 +451,20 @@ export default function LearnersPage() {
     return -1
   }
 
+  // Helper: Find multiple column indices (for name components)
+  const findAllColumnIndices = (headers: string[], ...variations: string[][]): number[] => {
+    return variations.map(varSet => findColumnIndex(headers, ...varSet)).filter(i => i !== -1)
+  }
+
+  // Helper: Combine name components
+  const combineName = (surname: string | null, firstName: string | null, otherNames: string | null): string => {
+    const parts = []
+    if (surname && surname.trim()) parts.push(surname.trim())
+    if (firstName && firstName.trim()) parts.push(firstName.trim())
+    if (otherNames && otherNames.trim()) parts.push(otherNames.trim())
+    return parts.join(' ') || 'Unknown'
+  }
+
   // Helper: Normalize and validate gender
   const normalizeGender = (value: string | null): string | null => {
     if (!value) return null
@@ -482,17 +496,31 @@ export default function LearnersPage() {
 
       // Parse CSV header with flexible column matching
       const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
-      const nameIndex = findColumnIndex(headers, 'name', 'full name', 'fullname', 'student name')
-      const admissionIndex = findColumnIndex(headers, 'admission_number', 'admission number', 'assessment_number', 'assessment number', 'admission_no', 'adm_no')
+      
+      // Try single name column first
+      let nameIndex = findColumnIndex(headers, 'name', 'full name', 'fullname', 'student name')
+      
+      // If no single name column, look for KNEC format (surname, first name, other names)
+      let surnameIndex = -1, firstNameIndex = -1, otherNamesIndex = -1
+      if (nameIndex === -1) {
+        surnameIndex = findColumnIndex(headers, 'surname', 'last name', 'family name')
+        firstNameIndex = findColumnIndex(headers, 'first name', 'firstname', 'given name')
+        otherNamesIndex = findColumnIndex(headers, 'other names', 'othernames', 'middle name')
+        
+        if (surnameIndex === -1 && firstNameIndex === -1) {
+          setImportMessage({ type: 'error', text: 'CSV must have either "Name" column OR "Surname" and "First Name" columns' })
+          setIsImporting(false)
+          return
+        }
+      }
+      
+      // Assessment/Admission number - KNEC format may have different variations
+      const admissionIndex = findColumnIndex(headers, 'admission_number', 'admission number', 'assessment_number', 'assessment number', 'admission_no', 'adm_no', 'indexnumber', 'index number', 'admissionno')
       const genderIndex = findColumnIndex(headers, 'gender', 'sex')
       const parentPhoneIndex = findColumnIndex(headers, 'parent_phone', 'parent phone', 'phone', 'contact')
-      const birthCertIndex = findColumnIndex(headers, 'birth_certificate_number', 'birth certificate', 'birth_cert_number', 'birth cert', 'dob')
-
-      if (nameIndex === -1) {
-        setImportMessage({ type: 'error', text: 'CSV must have a "Name" column (also accepts "Full Name")' })
-        setIsImporting(false)
-        return
-      }
+      
+      // Birth certificate - multiple variations
+      const birthCertIndex = findColumnIndex(headers, 'birth_certificate_number', 'birth certificate', 'birth_cert_number', 'birth cert number', 'birthcert', 'birthcertnumber', 'dob')
 
       const learnersToAdd = []
       let skipped = 0
@@ -504,7 +532,25 @@ export default function LearnersPage() {
         
         if (values.length < 1 || !values[0]) continue
 
-        const learnerName = values[nameIndex]
+        // Handle name - either single column or combined from components
+        let learnerName = ''
+        if (nameIndex !== -1) {
+          learnerName = values[nameIndex]
+        } else {
+          // Combine name components from KNEC format
+          const surname = surnameIndex !== -1 ? values[surnameIndex] : null
+          const firstName = firstNameIndex !== -1 ? values[firstNameIndex] : null
+          const otherNames = otherNamesIndex !== -1 ? values[otherNamesIndex] : null
+          learnerName = combineName(surname, firstName, otherNames)
+        }
+
+        if (!learnerName || learnerName === 'Unknown') {
+          errors.push(`Row ${i + 1}: No valid name data`)
+          skipped++
+          continue
+        }
+
+        // Get other fields
         const admissionNum = admissionIndex !== -1 && values[admissionIndex] ? values[admissionIndex] : null
         const genderRaw = genderIndex !== -1 ? values[genderIndex] : null
         const parentPhone = parentPhoneIndex !== -1 && values[parentPhoneIndex] ? values[parentPhoneIndex] : null
@@ -681,8 +727,10 @@ export default function LearnersPage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <p className="text-xs text-gray-500 mt-2">
-                <strong>Required:</strong> Name (also accepts "Full Name")<br/>
-                <strong>Optional:</strong> Admission Number, Gender (M/F/Male/Female), Parent Phone, Birth Certificate<br/>
+                <strong>Name Options:</strong><br/>
+                • Single column: "Name" or "Full Name"<br/>
+                • KNEC Format: "Surname", "First Name", "Other Names" (all combined into one name)<br/>
+                <strong>Optional:</strong> Assessment Number, Gender (M/F/Male/Female), Parent Phone, Birth Certificate<br/>
                 Column names are flexible - spaces, dashes, underscores, and case don't matter.
               </p>
             </div>
