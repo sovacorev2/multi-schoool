@@ -523,10 +523,12 @@ export default function LearnersPage() {
       const birthCertIndex = findColumnIndex(headers, 'birth_certificate_number', 'birth certificate', 'birth_cert_number', 'birth cert number', 'birthcert', 'birthcertnumber', 'dob')
 
       const learnersToAdd = []
+      const learnersToUpdate: any[] = []
       let skipped = 0
+      let updated = 0
       let errors: string[] = []
 
-      // Parse CSV rows
+      // Parse CSV rows - Extract ONLY what we need (ignore extra KNEC columns)
       for (let i = 1; i < lines.length; i++) {
         const values = lines[i].split(',').map(v => v.trim())
         
@@ -550,10 +552,9 @@ export default function LearnersPage() {
           continue
         }
 
-        // Get other fields
+        // Extract ONLY relevant fields (ignore disability type, UPI, S/No, date of birth, etc.)
         const admissionNum = admissionIndex !== -1 && values[admissionIndex] ? values[admissionIndex] : null
         const genderRaw = genderIndex !== -1 ? values[genderIndex] : null
-        const parentPhone = parentPhoneIndex !== -1 && values[parentPhoneIndex] ? values[parentPhoneIndex] : null
         const birthCert = birthCertIndex !== -1 && values[birthCertIndex] ? values[birthCertIndex] : null
 
         // Normalize and validate gender
@@ -564,53 +565,97 @@ export default function LearnersPage() {
           continue
         }
 
-        // Check for duplicates locally
-        const isDuplicate = learners.some(l => 
-          l.name.toLowerCase() === learnerName.toLowerCase() ||
-          (admissionNum && l.admission_number === admissionNum)
+        // Check if learner already exists by name and gender match
+        const existingLearner = learners.find(l => 
+          l.name.toLowerCase() === learnerName.toLowerCase() && 
+          (!l.gender || !gender || l.gender === gender)
         )
 
-        if (isDuplicate) {
-          skipped++
-          continue
-        }
+        if (existingLearner) {
+          // Update existing learner with missing data
+          const updateData: any = { id: existingLearner.id }
+          let hasUpdates = false
 
-        learnersToAdd.push({
-          name: learnerName,
-          admission_number: admissionNum || null,
-          gender: gender || null,
-          parent_phone: parentPhone || null,
-          birth_cert_number: birthCert || null,
-          class_id: currentClass?.id,
-          school_id: currentSchool?.id,
-        })
+          // Only update fields that are empty or missing
+          if (admissionNum && !existingLearner.admission_number) {
+            updateData.admission_number = admissionNum
+            hasUpdates = true
+          }
+          if (gender && !existingLearner.gender) {
+            updateData.gender = gender
+            hasUpdates = true
+          }
+          if (birthCert && !existingLearner.birth_cert_number) {
+            updateData.birth_cert_number = birthCert
+            hasUpdates = true
+          }
+
+          if (hasUpdates) {
+            learnersToUpdate.push(updateData)
+            updated++
+          } else {
+            skipped++
+          }
+        } else {
+          // New learner - add to insert list
+          learnersToAdd.push({
+            name: learnerName,
+            admission_number: admissionNum || null,
+            gender: gender || null,
+            birth_cert_number: birthCert || null,
+            class_id: currentClass?.id,
+            school_id: currentSchool?.id,
+          })
+        }
       }
 
-      if (learnersToAdd.length === 0) {
-        const errorText = errors.length > 0 ? errors.slice(0, 3).join('\n') : `No new learners to add (${skipped} duplicates skipped)`
+      if (learnersToAdd.length === 0 && learnersToUpdate.length === 0) {
+        const errorText = errors.length > 0 ? errors.slice(0, 3).join('\n') : `No new learners to add or update (${skipped} already complete)`
         setImportMessage({ type: 'info', text: errorText })
         setIsImporting(false)
         return
       }
 
-      // Insert all learners
-      const { data, error } = await supabase.from('learners').insert(learnersToAdd).select()
+      let newCount = 0
+      let updateCount = 0
 
-      if (error) {
-        setImportMessage({ type: 'error', text: `Import failed: ${error.message}. Check gender values are M/F and other fields are valid.` })
-      } else if (data) {
-        setLearners([...learners, ...data])
-        let message = `Successfully imported ${data.length} learner(s)`
-        if (skipped > 0) message += ` (${skipped} skipped: duplicates or invalid data)`
-        if (errors.length > 0) message += ` - Issues: ${errors.length} rows had errors`
-        setImportMessage({ type: 'success', text: message })
-        setCsvFile(null)
-        if (fileInputRef.current) fileInputRef.current.value = ''
-        setTimeout(() => {
-          setShowImportModal(false)
-          setImportMessage(null)
-        }, 2500)
+      // Insert new learners
+      if (learnersToAdd.length > 0) {
+        const { data: newData, error: insertError } = await supabase.from('learners').insert(learnersToAdd).select()
+        if (insertError) {
+          setImportMessage({ type: 'error', text: `Insert failed: ${insertError.message}. Check gender values are M/F and other fields are valid.` })
+          setIsImporting(false)
+          return
+        }
+        if (newData) {
+          newCount = newData.length
+          setLearners([...learners.filter(l => !learnersToAdd.some(la => la.name === l.name)), ...newData])
+        }
       }
+
+      // Update existing learners with missing data
+      if (learnersToUpdate.length > 0) {
+        for (const updateData of learnersToUpdate) {
+          const { error: updateError } = await supabase.from('learners').update(updateData).eq('id', updateData.id)
+          if (!updateError) {
+            updateCount++
+            // Update local state
+            setLearners(prev => prev.map(l => l.id === updateData.id ? { ...l, ...updateData } : l))
+          }
+        }
+      }
+
+      let message = `Successfully imported: ${newCount} new learner(s)`
+      if (updateCount > 0) message += `, ${updateCount} updated with missing data`
+      if (skipped > 0) message += ` (${skipped} already complete)`
+      if (errors.length > 0) message += ` - ${errors.length} rows had errors`
+      setImportMessage({ type: 'success', text: message })
+      setCsvFile(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      setTimeout(() => {
+        setShowImportModal(false)
+        setImportMessage(null)
+      }, 3000)
     } catch (error) {
       console.error('[v0] CSV import error:', error)
       setImportMessage({ type: 'error', text: `Import error: ${error instanceof Error ? error.message : 'Unknown error'}` })
@@ -729,9 +774,10 @@ export default function LearnersPage() {
               <p className="text-xs text-gray-500 mt-2">
                 <strong>Name Options:</strong><br/>
                 • Single column: "Name" or "Full Name"<br/>
-                • KNEC Format: "Surname", "First Name", "Other Names" (all combined into one name)<br/>
-                <strong>Optional:</strong> Assessment Number, Gender (M/F/Male/Female), Parent Phone, Birth Certificate<br/>
-                Column names are flexible - spaces, dashes, underscores, and case don't matter.
+                • KNEC Format: "Surname", "First Name", "Other Names" (combined into one name)<br/>
+                <strong>Imported Fields:</strong> Name, Gender (M/F), Assessment Number, Birth Certificate<br/>
+                <strong>Smart Updates:</strong> If learner exists by name+gender, missing fields are filled. No duplicates created.<br/>
+                Extra columns (disability, DOB, etc.) are ignored automatically.
               </p>
             </div>
 
