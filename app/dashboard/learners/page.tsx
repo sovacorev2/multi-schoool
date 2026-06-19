@@ -444,10 +444,17 @@ export default function LearnersPage() {
   // Helper: Find column index with flexible matching
   const findColumnIndex = (headers: string[], ...variations: string[]): number => {
     for (const variation of variations) {
-      const normalized = variation.toLowerCase().replace(/[\s_-]/g, '')
-      const index = headers.findIndex(h => h.replace(/[\s_-]/g, '') === normalized)
-      if (index !== -1) return index
+      const normalized = variation.toLowerCase().replace(/[\s_-]/g, '').trim()
+      const index = headers.findIndex(h => {
+        const headerNorm = h.toLowerCase().replace(/[\s_-]/g, '').trim()
+        return headerNorm === normalized
+      })
+      if (index !== -1) {
+        console.log(`[v0] Found "${variation}" at column ${index}`)
+        return index
+      }
     }
+    console.log(`[v0] Column "${variations.join('|')}" not found in headers:`, headers.map(h => h.toLowerCase()))
     return -1
   }
 
@@ -495,7 +502,10 @@ export default function LearnersPage() {
       }
 
       // Parse CSV header with flexible column matching
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
+      // Clean headers: trim, convert to lowercase, keep as strings for matching
+      const rawHeaders = lines[0].split(',')
+      const headers = rawHeaders.map(h => h.trim())
+      console.log('[v0] Raw headers:', headers)
       
       // Try single name column first
       let nameIndex = findColumnIndex(headers, 'name', 'full name', 'fullname', 'student name')
@@ -507,20 +517,23 @@ export default function LearnersPage() {
         firstNameIndex = findColumnIndex(headers, 'first name', 'firstname', 'given name')
         otherNamesIndex = findColumnIndex(headers, 'other names', 'othernames', 'middle name')
         
+        console.log(`[v0] Surname: ${surnameIndex}, First Name: ${firstNameIndex}, Other Names: ${otherNamesIndex}`)
+        
         if (surnameIndex === -1 && firstNameIndex === -1) {
-          setImportMessage({ type: 'error', text: 'CSV must have either "Name" column OR "Surname" and "First Name" columns' })
+          console.log('[v0] CSV validation failed - no name columns found')
+          setImportMessage({ type: 'error', text: 'CSV must have either "Name" column OR "Surname" and "First Name" columns. Headers found: ' + headers.join(', ') })
           setIsImporting(false)
           return
         }
       }
       
       // Assessment/Admission number - KNEC format may have different variations
-      const admissionIndex = findColumnIndex(headers, 'admission_number', 'admission number', 'assessment_number', 'assessment number', 'admission_no', 'adm_no', 'indexnumber', 'index number', 'admissionno')
+      const admissionIndex = findColumnIndex(headers, 'assessment number', 'assessment_number', 'admission_number', 'admission number', 'admission_no', 'adm_no', 'indexnumber', 'index number', 'admissionno')
       const genderIndex = findColumnIndex(headers, 'gender', 'sex')
       const parentPhoneIndex = findColumnIndex(headers, 'parent_phone', 'parent phone', 'phone', 'contact')
       
       // Birth certificate - multiple variations
-      const birthCertIndex = findColumnIndex(headers, 'birth_certificate_number', 'birth certificate', 'birth_cert_number', 'birth cert number', 'birthcert', 'birthcertnumber', 'dob')
+      const birthCertIndex = findColumnIndex(headers, 'birth certificate', 'birth certificate number', 'birth_certificate_number', 'birth_cert_number', 'birth cert number', 'birthcert', 'birthcertnumber')
 
       const learnersToAdd = []
       const learnersToUpdate: any[] = []
