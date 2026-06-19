@@ -538,42 +538,48 @@ export default function LearnersPage() {
         return
       }
 
-      // Parse CSV header with flexible column matching
-      // Clean headers: trim, convert to lowercase, keep as strings for matching
+      // Parse CSV header - KNEC format has specific column order
       const rawHeaders = lines[0].split(',')
       const headers = rawHeaders.map(h => h.trim())
-      console.log('[v0] Raw headers:', headers)
-      console.log('[v0] Normalized headers:', headers.map(h => normalizeHeader(h)))
       
-      // Try single name column first
-      let nameIndex = findColumnIndex(headers, 'name', 'full name', 'fullname', 'student name')
+      // For KNEC CSV, the expected column order is typically:
+      // [0] Assessment/Admission Number, [1] Surname, [2] First Name, [3] Other Names, [4] Gender, [5+] other fields
+      // Use position-based detection for KNEC format
+      let assessmentIndex = -1
+      let surnameIndex = -1
+      let firstNameIndex = -1
+      let otherNamesIndex = -1
+      let genderIndex = -1
+      let birthCertIndex = -1
+      let parentPhoneIndex = -1
       
-      // If no single name column, look for KNEC format (surname, first name, other names)
-      let surnameIndex = -1, firstNameIndex = -1, otherNamesIndex = -1
-      if (nameIndex === -1) {
-        surnameIndex = findColumnIndex(headers, 'surname', 'last name', 'family name')
-        firstNameIndex = findColumnIndex(headers, 'first name', 'firstname', 'given name', 'first_name')
-        otherNamesIndex = findColumnIndex(headers, 'other names', 'othernames', 'middle name', 'other_names')
-        
-        console.log(`[v0] Surname: ${surnameIndex}, First Name: ${firstNameIndex}, Other Names: ${otherNamesIndex}`)
-        
-        if (surnameIndex === -1 && firstNameIndex === -1) {
-          console.log('[v0] CSV validation failed - no name columns found')
-          setImportMessage({ type: 'error', text: 'CSV must have either "Name" column OR "Surname" and "First Name" columns. Headers found: ' + headers.join(', ') })
-          setIsImporting(false)
-          return
-        }
+      // Find columns by checking for specific keywords
+      headers.forEach((header, idx) => {
+        const norm = normalizeHeader(header)
+        if (norm.includes('assess')) assessmentIndex = idx
+        if (norm.includes('surname') || norm.includes('lastname') || norm.includes('familyname')) surnameIndex = idx
+        if (norm.includes('firstname') || norm.includes('givenname')) firstNameIndex = idx
+        if (norm.includes('othernames') || norm.includes('middlename')) otherNamesIndex = idx
+        if (norm === 'gender' || norm === 'sex') genderIndex = idx
+        if (norm.includes('birthcert')) birthCertIndex = idx
+        if (norm.includes('phone') || norm.includes('contact')) parentPhoneIndex = idx
+      })
+      
+      // Fallback: use findColumnIndex if not found
+      const admissionIndex = assessmentIndex !== -1 ? assessmentIndex : findColumnIndex(headers, 'assessment number', 'assessment_number', 'admission_number')
+      if (surnameIndex === -1) surnameIndex = findColumnIndex(headers, 'surname')
+      if (firstNameIndex === -1) firstNameIndex = findColumnIndex(headers, 'first name')
+      if (otherNamesIndex === -1) otherNamesIndex = findColumnIndex(headers, 'other names')
+      if (genderIndex === -1) genderIndex = findColumnIndex(headers, 'gender', 'sex')
+      if (birthCertIndex === -1) birthCertIndex = findColumnIndex(headers, 'birth certificate', 'birth certificate number')
+      if (parentPhoneIndex === -1) parentPhoneIndex = findColumnIndex(headers, 'parent phone', 'parent_phone')
+      
+      // Validate we have at least surname and first name OR a single name column
+      if (surnameIndex === -1 && firstNameIndex === -1) {
+        setImportMessage({ type: 'error', text: 'CSV headers not recognized. Expected columns: Assessment Number, Surname, First Name, Other Names, Gender, Birth Certificate, Parent Phone' })
+        setIsImporting(false)
+        return
       }
-      
-      // Assessment/Admission number - KNEC format may have different variations
-      const admissionIndex = findColumnIndex(headers, 'assessment number', 'assessment_number', 'admission_number', 'admission number', 'admission_no', 'adm_no', 'indexnumber', 'index number', 'admissionno')
-      const genderIndex = findColumnIndex(headers, 'gender', 'sex')
-      const parentPhoneIndex = findColumnIndex(headers, 'parent_phone', 'parent phone', 'phone', 'contact')
-      
-      // Birth certificate - multiple variations
-      const birthCertIndex = findColumnIndex(headers, 'birth certificate', 'birth certificate number', 'birth_certificate_number', 'birth_cert_number', 'birth cert number', 'birthcert', 'birthcertnumber')
-      
-      console.log(`[v0] Column indices - Assessment: ${admissionIndex}, Gender: ${genderIndex}, Phone: ${parentPhoneIndex}, BirthCert: ${birthCertIndex}`)
 
       const learnersToAdd = []
       const learnersToUpdate: any[] = []
@@ -581,23 +587,17 @@ export default function LearnersPage() {
       let updated = 0
       let errors: string[] = []
 
-      // Parse CSV rows - Extract ONLY what we need (ignore extra KNEC columns)
+      // Parse CSV rows - Extract ONLY what we need
       for (let i = 1; i < lines.length; i++) {
         const values = lines[i].split(',').map(v => v.trim())
         
         if (values.length < 1 || !values[0]) continue
 
-        // Handle name - either single column or combined from components
-        let learnerName = ''
-        if (nameIndex !== -1) {
-          learnerName = values[nameIndex]
-        } else {
-          // Combine name components from KNEC format
-          const surname = surnameIndex !== -1 ? values[surnameIndex] : null
-          const firstName = firstNameIndex !== -1 ? values[firstNameIndex] : null
-          const otherNames = otherNamesIndex !== -1 ? values[otherNamesIndex] : null
-          learnerName = combineName(surname, firstName, otherNames)
-        }
+        // Combine name components from KNEC format
+        const surname = surnameIndex !== -1 ? values[surnameIndex] : null
+        const firstName = firstNameIndex !== -1 ? values[firstNameIndex] : null
+        const otherNames = otherNamesIndex !== -1 ? values[otherNamesIndex] : null
+        const learnerName = combineName(surname, firstName, otherNames)
 
         if (!learnerName || learnerName === 'Unknown') {
           errors.push(`Row ${i + 1}: No valid name data`)
@@ -605,29 +605,24 @@ export default function LearnersPage() {
           continue
         }
 
-        // Extract ONLY relevant fields (ignore disability type, UPI, S/No, date of birth, etc.)
+        // Extract relevant fields
         const admissionNum = admissionIndex !== -1 && values[admissionIndex] ? values[admissionIndex] : null
         const genderRaw = genderIndex !== -1 ? values[genderIndex] : null
         const birthCert = birthCertIndex !== -1 && values[birthCertIndex] ? values[birthCertIndex] : null
-
-        console.log(`[v0] Row ${i + 1} raw values - Admission: "${admissionNum}", Gender: "${genderRaw}", BirthCert: "${birthCert}"`)
+        const parentPhone = parentPhoneIndex !== -1 && values[parentPhoneIndex] ? values[parentPhoneIndex] : null
 
         // Normalize and validate gender
         const gender = normalizeGender(genderRaw)
-        console.log(`[v0] Row ${i + 1} normalized - Gender: "${gender}"`)
         if (genderRaw && !gender) {
           errors.push(`Row ${i + 1}: Invalid gender "${genderRaw}" (use M/Male or F/Female)`)
           skipped++
           continue
         }
 
-        // Check if learner already exists by name match (strict: only match if same name)
-        // We only update if the learner already has this exact name
+        // Check if learner already exists by name match
         const existingLearner = learners.find(l => 
           l.name.toLowerCase() === learnerName.toLowerCase()
         )
-        
-        console.log(`[v0] Row ${i + 1}: "${learnerName}" - Found existing: ${existingLearner ? 'yes' : 'no'}`)
 
         if (existingLearner) {
           // Update existing learner with missing data
@@ -647,6 +642,10 @@ export default function LearnersPage() {
             updateData.birth_cert_number = birthCert
             hasUpdates = true
           }
+          if (parentPhone && !existingLearner.parent_phone) {
+            updateData.parent_phone = parentPhone
+            hasUpdates = true
+          }
 
           if (hasUpdates) {
             learnersToUpdate.push(updateData)
@@ -661,6 +660,7 @@ export default function LearnersPage() {
             admission_number: admissionNum || null,
             gender: gender || null,
             birth_cert_number: birthCert || null,
+            parent_phone: parentPhone || null,
             class_id: currentClass?.id,
             school_id: currentSchool?.id,
           })
