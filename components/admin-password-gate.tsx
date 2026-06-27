@@ -16,9 +16,10 @@ interface AdminPasswordGateProps {
   onClose: () => void
   onVerified: () => void
   actionLabel?: string
+  schoolId?: string
 }
 
-export function AdminPasswordGate({ isOpen, onClose, onVerified, actionLabel = 'Print Report' }: AdminPasswordGateProps) {
+export function AdminPasswordGate({ isOpen, onClose, onVerified, actionLabel = 'Print Report', schoolId }: AdminPasswordGateProps) {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -42,7 +43,7 @@ export function AdminPasswordGate({ isOpen, onClose, onVerified, actionLabel = '
     setError('')
 
     try {
-      const result = await verifyAdminPassword(password)
+      const result = await verifyAdminPassword(password, schoolId)
       if (result.success) {
         // Cache verified state in sessionStorage for 10 minutes
         sessionStorage.setItem(SESSION_KEY, String(Date.now()))
