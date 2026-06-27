@@ -11,24 +11,25 @@ export function PathwayAnalysis({ scores, className = '' }: PathwayAnalysisProps
 
   return (
     <div className={`pathway-analysis ${className}`}>
-      {/* Summary Table */}
-      <div className="pathway-summary" style={{ marginTop: '20px', marginBottom: '15px' }}>
+      {/* Summary Table - Compact */}
+      <div className="pathway-summary" style={{ marginTop: '0', marginBottom: '8px' }}>
         <table
           style={{
             width: '100%',
             borderCollapse: 'collapse',
             border: '1px solid #ddd',
+            fontSize: '10px',
           }}
         >
           <thead>
             <tr style={{ backgroundColor: '#f5f5f5' }}>
-              <th style={{ padding: '10px', textAlign: 'left', border: '1px solid #ddd', fontSize: '12px', fontWeight: '600' }}>
+              <th style={{ padding: '6px 8px', textAlign: 'left', border: '1px solid #ddd', fontWeight: '600' }}>
                 Pathway
               </th>
-              <th style={{ padding: '10px', textAlign: 'center', border: '1px solid #ddd', fontSize: '12px', fontWeight: '600' }}>
+              <th style={{ padding: '6px 8px', textAlign: 'center', border: '1px solid #ddd', fontWeight: '600' }}>
                 Points
               </th>
-              <th style={{ padding: '10px', textAlign: 'center', border: '1px solid #ddd', fontSize: '12px', fontWeight: '600' }}>
+              <th style={{ padding: '6px 8px', textAlign: 'center', border: '1px solid #ddd', fontWeight: '600' }}>
                 Percentage
               </th>
             </tr>
@@ -40,10 +41,9 @@ export function PathwayAnalysis({ scores, className = '' }: PathwayAnalysisProps
                 <tr key={pathway.name} style={{ backgroundColor: config?.color.light }}>
                   <td
                     style={{
-                      padding: '10px',
+                      padding: '6px 8px',
                       border: '1px solid #ddd',
                       fontWeight: '500',
-                      fontSize: '12px',
                       color: config?.color.dark,
                     }}
                   >
@@ -51,22 +51,20 @@ export function PathwayAnalysis({ scores, className = '' }: PathwayAnalysisProps
                   </td>
                   <td
                     style={{
-                      padding: '10px',
+                      padding: '6px 8px',
                       border: '1px solid #ddd',
                       textAlign: 'center',
                       fontWeight: '600',
-                      fontSize: '12px',
                     }}
                   >
                     {pathway.score}/{pathway.maxPoints}
                   </td>
                   <td
                     style={{
-                      padding: '10px',
+                      padding: '6px 8px',
                       border: '1px solid #ddd',
                       textAlign: 'center',
                       fontWeight: '600',
-                      fontSize: '12px',
                     }}
                   >
                     {pathway.percentage.toFixed(1)}%
@@ -78,20 +76,21 @@ export function PathwayAnalysis({ scores, className = '' }: PathwayAnalysisProps
         </table>
       </div>
 
-      {/* Recommended Pathway */}
+      {/* Recommended Pathway - Compact */}
       <div
         style={{
-          padding: '15px',
+          padding: '8px 12px',
           backgroundColor: '#f0f9ff',
-          border: '2px solid #0284c7',
-          borderRadius: '8px',
+          border: '1px solid #0284c7',
+          borderRadius: '4px',
           textAlign: 'center',
+          fontSize: '9px',
         }}
       >
-        <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#666' }}>
+        <p style={{ margin: '0 0 4px 0', color: '#666', fontWeight: '500' }}>
           RECOMMENDED PATHWAY
         </p>
-        <p style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0284c7' }}>
+        <p style={{ margin: 0, fontSize: '11px', fontWeight: '700', color: '#0284c7' }}>
           {recommendedPathway}
         </p>
       </div>
