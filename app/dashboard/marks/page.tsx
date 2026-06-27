@@ -219,7 +219,25 @@ export default function MarksPage() {
         setAssignedSubjectIds(new Set());
       } else {
         // Regular teacher: fetch their assignments
-        const teacherId = localStorage.getItem('teacher_id');
+        let teacherId: string | null = null;
+        
+        // First check for PIN-authenticated teacher session
+        const teacherSessionStr = localStorage.getItem('teacher_session');
+        if (teacherSessionStr) {
+          try {
+            const teacherSession = JSON.parse(teacherSessionStr);
+            teacherId = teacherSession.teacherId;
+            console.log('[v0] Marks page using PIN session teacher ID:', teacherId);
+          } catch (e) {
+            console.error('[v0] Failed to parse teacher session:', e);
+          }
+        }
+        
+        // Fallback to old teacher_id if not found
+        if (!teacherId) {
+          teacherId = localStorage.getItem('teacher_id');
+        }
+        
         if (teacherId) {
           const { data: assignments } = await supabase
             .from('teacher_assignments')
@@ -227,10 +245,13 @@ export default function MarksPage() {
             .eq('user_id', teacherId)
             .eq('class_id', currentClass.id);
           
+          console.log('[v0] Marks page - teacher assignments fetched:', assignments?.length);
+          
           const isClassTeacherAssignment = assignments?.some(a => !a.subject_id) || false;
           setIsClassTeacher(isClassTeacherAssignment);
           
           const assignedIds = new Set(assignments?.map(a => a.subject_id).filter(Boolean) || []);
+          console.log('[v0] Marks page - assigned subject IDs:', Array.from(assignedIds));
           setAssignedSubjectIds(assignedIds);
         }
       }
