@@ -98,8 +98,9 @@ export default function TeacherPINLogin() {
         )
         .eq('pin', pin)
         .eq('school_id', schoolId)
-        .eq('is_active', true)
         .single()
+
+      console.log('[v0] PIN Login Debug:', { pin, schoolId, teacherError, teacher: teacher?.first_name })
 
       if (teacherError || !teacher) {
         throw new Error('Invalid PIN or teacher not found. Please check and try again.')
