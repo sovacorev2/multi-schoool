@@ -20,7 +20,7 @@ export async function getTeacherAssignedClasses(teacherId: string) {
       class_id,
       subject_id,
       classes:class_id ( id, name, school_id ),
-      subjects:subject_id ( id, code, name )
+      subjects:subject_id ( id, name )
     `)
     .eq('teacher_id', teacherId)
   
@@ -61,11 +61,10 @@ export async function getTeacherAssignedClasses(teacherId: string) {
       if (subjectInfo && !cls.subjects.find((s: any) => s.id === subjectInfo.id)) {
         cls.subjects.push({
           id: subjectInfo.id,
-          code: subjectInfo.code,
           name: subjectInfo.name
         })
         cls.allSubjects.push(subjectInfo.id)  // Store ID for comparison
-        console.log(`[v0] ${teacherId} assigned to ${subjectInfo.code} in ${classInfo?.name}`)
+        console.log(`[v0] ${teacherId} assigned to ${subjectInfo.name} in ${classInfo?.name}`)
       }
     }
   })
