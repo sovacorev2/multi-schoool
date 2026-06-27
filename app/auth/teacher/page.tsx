@@ -92,6 +92,10 @@ export default function TeacherAuthPage() {
         // Setting up new password
         const result = await setupTeacherPassword(classId!, password, confirmPassword)
         if (result.success) {
+          // Store teacher_id so subject restrictions work
+          localStorage.setItem('teacher_authenticated', 'true')
+          localStorage.setItem('teacher_id', result.teacher_id!)
+          localStorage.setItem('class_id', classId!)
           router.push("/dashboard")
         } else {
           setError(result.error || "Failed to set password")
@@ -108,7 +112,9 @@ export default function TeacherAuthPage() {
             setPassword("")
           } else {
             // PIN not enabled - go directly to dashboard
+            // CRITICAL: Store teacher_id so subject restrictions work
             localStorage.setItem('teacher_authenticated', 'true')
+            localStorage.setItem('teacher_id', result.teacher_id!)
             localStorage.setItem('class_id', classId!)
             router.push("/dashboard")
           }
