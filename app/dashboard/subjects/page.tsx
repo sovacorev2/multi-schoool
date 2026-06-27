@@ -54,7 +54,6 @@ export default function SubjectsPage() {
     if (isAdminBypass) {
       setIsClassTeacher(true)  // Admin can edit all
       setAssignedSubjectIds(new Set())  // No filtering
-      setPinManagementEnabled(false)  // Admin doesn't use PIN management
       return
     }
 
@@ -63,9 +62,7 @@ export default function SubjectsPage() {
       const teacherId = getStoredTeacherId()
       const isPinAuthenticated = !!teacherId
       
-      // Enable PIN management (subject restrictions) whenever a PIN teacher is logged in.
-      setPinManagementEnabled(isPinAuthenticated)
-      console.log('[v0] Subjects page - teacherId:', teacherId, 'PIN auth:', isPinAuthenticated)
+      console.log('[v0] Subjects page - fetchAssignedSubjects - teacherId:', teacherId, 'PIN auth:', isPinAuthenticated)
       
       if (!teacherId) {
         console.log('[v0] No teacher ID found in storage')
@@ -81,18 +78,25 @@ export default function SubjectsPage() {
 
       if (error) throw error
       
-      console.log('[v0] Teacher assignments:', data?.length, 'PIN auth:', isPinAuthenticated)
+      console.log('[v0] Teacher assignments found:', data?.length, 'assignments')
       
       // For PIN-authenticated teachers: NEVER allow class teacher status
       // PIN teachers can ONLY edit their specifically assigned subjects
       // Class teacher status is only for non-PIN teachers
       const isClassTeacherAssignment = isPinAuthenticated ? false : (data?.some(a => !a.subject_id) || false)
       setIsClassTeacher(isClassTeacherAssignment)
-      console.log('[v0] Is class teacher:', isClassTeacherAssignment, 'PIN auth:', isPinAuthenticated)
+      console.log('[v0] Is class teacher:', isClassTeacherAssignment)
       
       const assignedIds = new Set(data?.map(a => a.subject_id).filter(Boolean) || [])
-      console.log('[v0] Assigned subject IDs:', Array.from(assignedIds))
+      console.log('[v0] Assigned subject IDs count:', assignedIds.size, 'IDs:', Array.from(assignedIds))
       setAssignedSubjectIds(assignedIds)
+      
+      // CRITICAL: Enable PIN subject restrictions when PIN teacher is logged in
+      // This ensures subjects are filtered even if school setting is disabled
+      if (isPinAuthenticated) {
+        setPinManagementEnabled(true)
+        console.log('[v0] PIN management ENABLED because PIN teacher is logged in')
+      }
     } catch (error) {
       console.error('Error fetching assigned subjects:', error)
     }
