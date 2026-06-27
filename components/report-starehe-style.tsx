@@ -6,6 +6,8 @@ import { useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { X, Printer, Download } from 'lucide-react'
 import { getGradeLevelByClass, isUpperClass, GRADING_SCALE_SIMPLE, GRADING_SCALE_EXTENDED } from '@/lib/grading-utils'
+import { PathwayAnalysis } from '@/components/pathway-analysis'
+import { calculatePathwayScores } from '@/lib/pathways'
 
 interface StudentReport {
   learner: { id: string; name: string; admission_number: string | null; gender?: string; parent_phone?: string | null }
@@ -129,6 +131,12 @@ function getAutoTeacherComment(averageLevel: string): string {
   }
   
   return ''
+}
+
+// Helper function to check if class is JSS (grades 7-9)
+function isJSSClass(className: string): boolean {
+  const normalized = className.toUpperCase()
+  return /GRADE\s*[7-9]|CLASS\s*[7-9]|FORM\s*[1-3]|JSS\s*[1-3]/i.test(normalized)
 }
 
 export function ReportStareheStyle({
@@ -541,61 +549,77 @@ export function ReportStareheStyle({
 
                   {/* Charts Row - Side by Side */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px', marginBottom: '3px' }}>
-                    {/* Pie Chart - Subject Distribution with Legend */}
+                    {/* JSS: Pathway Analysis OR Other Grades: Subject Distribution */}
                     <div style={{ border: '1px solid #666', padding: '4px' }}>
-                      <div style={{ fontWeight: 'bold', marginBottom: '2px', fontSize: '10px', textAlign: 'center' }}>SUBJECT DISTRIBUTION</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <svg viewBox="0 0 80 80" style={{ width: '50px', height: '50px', flexShrink: 0 }}>
-                          {(() => {
-                            const scores = subjectData.map(s => s.score || 0)
-                            const total = scores.reduce((a, b) => a + b, 0)
-                            if (total === 0) return <text x="40" y="45" textAnchor="middle" fontSize="7">No Data</text>
-                            
-                            const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#14b8a6']
-                            
-                            let currentAngle = 0
-                            const slices = scores.map((score, i) => {
-                              if (score === 0) return null
-                              const sliceAngle = (score / total) * 360
-                              const startAngle = currentAngle
-                              const endAngle = currentAngle + sliceAngle
-                              
-                              const startRad = (startAngle * Math.PI) / 180
-                              const endRad = (endAngle * Math.PI) / 180
-                              
-                              const x1 = 40 + 28 * Math.cos(startRad)
-                              const y1 = 40 + 28 * Math.sin(startRad)
-                              const x2 = 40 + 28 * Math.cos(endRad)
-                              const y2 = 40 + 28 * Math.sin(endRad)
-                              
-                              const largeArc = sliceAngle > 180 ? 1 : 0
-                              const path = `M 40 40 L ${x1} ${y1} A 28 28 0 ${largeArc} 1 ${x2} ${y2} Z`
-                              
-                              currentAngle = endAngle
-                              
-                              return <path key={i} d={path} fill={colors[i % colors.length]} stroke="white" strokeWidth="0.5" />
-                            })
-                            return slices
-                          })()}
-                        </svg>
-                        {/* Legend with percentages */}
-                        <div style={{ fontSize: '8px', lineHeight: '1.3', flex: 1 }}>
-                          {(() => {
-                            const scores = subjectData.map(s => s.score || 0)
-                            const total = scores.reduce((a, b) => a + b, 0)
-                            const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#14b8a6']
-                            return subjectData.slice(0, 8).map((subject, i) => {
-                              const percentage = total > 0 ? ((scores[i] / total) * 100).toFixed(0) : 0
-                              return (
-                                <div key={subject.subject.id} style={{ display: 'flex', alignItems: 'center', marginBottom: '2px' }}>
-                                  <span style={{ width: '6px', height: '6px', backgroundColor: colors[i % colors.length], marginRight: '3px', flexShrink: 0 }}></span>
-                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{getSubjectDisplay(subject.subject.name)} {percentage}%</span>
-                                </div>
-                              )
-                            })
-                          })()}
-                        </div>
-                      </div>
+                      {isJSSClass(className) ? (
+                        // Pathway Analysis for JSS (Grades 7-9)
+                        <>
+                          <div style={{ fontWeight: 'bold', marginBottom: '2px', fontSize: '10px', textAlign: 'center' }}>PATHWAY ANALYSIS</div>
+                          <div style={{ fontSize: '8px', lineHeight: '1.4' }}>
+                            <PathwayAnalysis
+                              scores={calculatePathwayScores(report.marks, subjects)}
+                              className="print-pathway-analysis"
+                            />
+                          </div>
+                        </>
+                      ) : (
+                        // Subject Distribution Pie Chart for Other Grades
+                        <>
+                          <div style={{ fontWeight: 'bold', marginBottom: '2px', fontSize: '10px', textAlign: 'center' }}>SUBJECT DISTRIBUTION</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <svg viewBox="0 0 80 80" style={{ width: '50px', height: '50px', flexShrink: 0 }}>
+                              {(() => {
+                                const scores = subjectData.map(s => s.score || 0)
+                                const total = scores.reduce((a, b) => a + b, 0)
+                                if (total === 0) return <text x="40" y="45" textAnchor="middle" fontSize="7">No Data</text>
+                                
+                                const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#14b8a6']
+                                
+                                let currentAngle = 0
+                                const slices = scores.map((score, i) => {
+                                  if (score === 0) return null
+                                  const sliceAngle = (score / total) * 360
+                                  const startAngle = currentAngle
+                                  const endAngle = currentAngle + sliceAngle
+                                  
+                                  const startRad = (startAngle * Math.PI) / 180
+                                  const endRad = (endAngle * Math.PI) / 180
+                                  
+                                  const x1 = 40 + 28 * Math.cos(startRad)
+                                  const y1 = 40 + 28 * Math.sin(startRad)
+                                  const x2 = 40 + 28 * Math.cos(endRad)
+                                  const y2 = 40 + 28 * Math.sin(endRad)
+                                  
+                                  const largeArc = sliceAngle > 180 ? 1 : 0
+                                  const path = `M 40 40 L ${x1} ${y1} A 28 28 0 ${largeArc} 1 ${x2} ${y2} Z`
+                                  
+                                  currentAngle = endAngle
+                                  
+                                  return <path key={i} d={path} fill={colors[i % colors.length]} stroke="white" strokeWidth="0.5" />
+                                })
+                                return slices
+                              })()}
+                            </svg>
+                            {/* Legend with percentages */}
+                            <div style={{ fontSize: '8px', lineHeight: '1.3', flex: 1 }}>
+                              {(() => {
+                                const scores = subjectData.map(s => s.score || 0)
+                                const total = scores.reduce((a, b) => a + b, 0)
+                                const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#14b8a6']
+                                return subjectData.slice(0, 8).map((subject, i) => {
+                                  const percentage = total > 0 ? ((scores[i] / total) * 100).toFixed(0) : 0
+                                  return (
+                                    <div key={subject.subject.id} style={{ display: 'flex', alignItems: 'center', marginBottom: '2px' }}>
+                                      <span style={{ width: '6px', height: '6px', backgroundColor: colors[i % colors.length], marginRight: '3px', flexShrink: 0 }}></span>
+                                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{getSubjectDisplay(subject.subject.name)} {percentage}%</span>
+                                    </div>
+                                  )
+                                })
+                              })()}
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
 
                     {/* Bar Chart - Performance Trend (Accumulates all exams) */}
