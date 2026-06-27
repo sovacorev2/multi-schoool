@@ -61,6 +61,16 @@ export default function DashboardLayout({
       // Check for admin bypass from admin portal FIRST (from URL param or stored in context)
       const searchParams = new URLSearchParams(window.location.search)
       const adminBypass = searchParams.get('adminBypass') === 'true'
+
+      // SELF-HEALING: If a PIN teacher session exists, this is a teacher, NOT an admin.
+      // Clear any stale admin bypass flag left over from a previous admin session so
+      // subject restrictions are correctly enforced.
+      const hasTeacherSession = !!localStorage.getItem('teacher_session') || !!localStorage.getItem('teacher_id')
+      if (hasTeacherSession && !adminBypass) {
+        localStorage.removeItem('success_academy_admin_bypass')
+        setIsAdminBypass(false)
+      }
+
       const isStoredAdminBypass = localStorage.getItem("success_academy_admin_bypass") === "true"
       
       // Admin bypass takes priority over everything
