@@ -429,7 +429,36 @@ export default function MarksPage() {
       if (!session) return false;
 
       const currentMarks = marksRef.current;
-      const marksToUpsert = entries.map(({ learnerId, subjectId }) => ({
+      
+      // CRITICAL SECURITY: Filter entries to only those the teacher is authorized to edit
+      const authorizedEntries = entries.filter(({ subjectId }) => {
+        // Admin bypass: can edit all subjects
+        if (isAdminBypass) return true;
+        
+        // PIN management enabled: check subject authorization
+        if (pinManagementEnabled) {
+          // Class teacher (no subject restriction) can edit all
+          if (isClassTeacher) return true;
+          
+          // Subject teacher: only edit assigned subjects
+          const isAssigned = assignedSubjectIds.has(subjectId);
+          if (!isAssigned) {
+            console.warn('[v0] SECURITY: Teacher attempted to edit unauthorized subject', subjectId);
+          }
+          return isAssigned;
+        }
+        
+        // If PIN management not enabled, allow all (legacy mode)
+        return true;
+      });
+      
+      // If all entries were filtered out (unauthorized), return error
+      if (authorizedEntries.length === 0 && entries.length > 0) {
+        console.error('[v0] SECURITY: All mark entries were blocked due to authorization failure');
+        return false;
+      }
+
+      const marksToUpsert = authorizedEntries.map(({ learnerId, subjectId }) => ({
         session_id: selectedSessionId,
         learner_id: learnerId,
         subject_id: subjectId,
@@ -450,7 +479,7 @@ export default function MarksPage() {
       }
       return true;
     },
-    [selectedSessionId, sessions]
+    [selectedSessionId, sessions, isAdminBypass, pinManagementEnabled, isClassTeacher, assignedSubjectIds]
   );
 
   // Autosave the queued changes (triggered by the debounce timer)
