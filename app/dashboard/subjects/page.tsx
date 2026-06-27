@@ -53,13 +53,40 @@ export default function SubjectsPage() {
     if (isAdminBypass) {
       setIsClassTeacher(true)  // Admin can edit all
       setAssignedSubjectIds(new Set())  // No filtering
+      setPinManagementEnabled(false)  // Admin doesn't use PIN management
       return
     }
 
     try {
-      // Get teacher context from localStorage (set during PIN auth)
-      const teacherId = localStorage.getItem('teacher_id')
-      if (!teacherId) return
+      // Get teacher ID from PIN session or localStorage
+      let teacherId: string | null = null
+      let isPinAuthenticated = false
+      
+      // First check for PIN-authenticated teacher session
+      const teacherSessionStr = localStorage.getItem('teacher_session')
+      if (teacherSessionStr) {
+        try {
+          const teacherSession = JSON.parse(teacherSessionStr)
+          teacherId = teacherSession.teacherId
+          isPinAuthenticated = true
+          console.log('[v0] Using PIN session teacher ID:', teacherId)
+          // Enable PIN management for PIN-authenticated teachers
+          setPinManagementEnabled(true)
+        } catch (e) {
+          console.error('[v0] Failed to parse teacher session:', e)
+        }
+      }
+      
+      // Fallback to old teacher_id if not found
+      if (!teacherId) {
+        teacherId = localStorage.getItem('teacher_id')
+        setPinManagementEnabled(false)  // Disable for non-PIN teachers
+      }
+      
+      if (!teacherId) {
+        console.log('[v0] No teacher ID found in storage')
+        return
+      }
 
       // Get assignments for this teacher in this class
       const { data, error } = await supabase
@@ -70,11 +97,14 @@ export default function SubjectsPage() {
 
       if (error) throw error
       
+      console.log('[v0] Teacher assignments:', data?.length, 'PIN auth:', isPinAuthenticated)
+      
       // Check if teacher is class teacher (has assignment with no subject_id)
       const isClassTeacherAssignment = data?.some(a => !a.subject_id) || false
       setIsClassTeacher(isClassTeacherAssignment)
       
       const assignedIds = new Set(data?.map(a => a.subject_id).filter(Boolean) || [])
+      console.log('[v0] Assigned subject IDs:', Array.from(assignedIds))
       setAssignedSubjectIds(assignedIds)
     } catch (error) {
       console.error('Error fetching assigned subjects:', error)
