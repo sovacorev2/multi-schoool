@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useClass } from '@/lib/class-context'
 import { Plus, Trash2, Edit2 } from 'lucide-react'
 import type { Subject } from '@/lib/types'
+import { getStoredTeacherId } from '@/lib/teacher-permissions'
 
 export default function SubjectsPage() {
   const { currentClass, isAdminBypass } = useClass()
@@ -58,30 +59,13 @@ export default function SubjectsPage() {
     }
 
     try {
-      // Get teacher ID from PIN session or localStorage
-      let teacherId: string | null = null
-      let isPinAuthenticated = false
+      // Resolve the PIN teacher id from any known login storage format.
+      const teacherId = getStoredTeacherId()
+      const isPinAuthenticated = !!teacherId
       
-      // First check for PIN-authenticated teacher session
-      const teacherSessionStr = localStorage.getItem('teacher_session')
-      if (teacherSessionStr) {
-        try {
-          const teacherSession = JSON.parse(teacherSessionStr)
-          teacherId = teacherSession.teacherId
-          isPinAuthenticated = true
-          console.log('[v0] Using PIN session teacher ID:', teacherId)
-          // Enable PIN management for PIN-authenticated teachers
-          setPinManagementEnabled(true)
-        } catch (e) {
-          console.error('[v0] Failed to parse teacher session:', e)
-        }
-      }
-      
-      // Fallback to old teacher_id if not found
-      if (!teacherId) {
-        teacherId = localStorage.getItem('teacher_id')
-        setPinManagementEnabled(false)  // Disable for non-PIN teachers
-      }
+      // Enable PIN management (subject restrictions) whenever a PIN teacher is logged in.
+      setPinManagementEnabled(isPinAuthenticated)
+      console.log('[v0] Subjects page - teacherId:', teacherId, 'PIN auth:', isPinAuthenticated)
       
       if (!teacherId) {
         console.log('[v0] No teacher ID found in storage')

@@ -30,6 +30,7 @@ import { Label } from '@/components/ui/label'
 
 import { ReportStareheStyle } from '@/components/report-starehe-style'
 import { FloatingAnalysisButton } from '@/components/floating-analysis-button'
+import { getStoredTeacherId } from '@/lib/teacher-permissions'
 
 
 
@@ -49,7 +50,7 @@ interface LearnerResult {
 }
 
 export default function MarklistPage() {
-  const { currentClass, currentSession: contextSession } = useClass()
+  const { currentClass, currentSession: contextSession, isAdminBypass } = useClass()
   const { currentSchool } = useSchool()
   const [sessions, setSessions] = useState<SessionWithExamType[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
@@ -225,19 +226,12 @@ export default function MarklistPage() {
     ]
 
     try {
-      // Check if this is a PIN-authenticated teacher
-      const teacherSessionStr = typeof window !== 'undefined' ? localStorage.getItem('teacher_session') : null
-      const isPinAuthenticated = !!teacherSessionStr
-      let teacherId: string | null = null
+      // Check if this is a PIN-authenticated teacher (resolve id from any login format).
+      const teacherId = getStoredTeacherId()
+      const isPinAuthenticated = !!teacherId && !isAdminBypass
       
       if (isPinAuthenticated) {
-        try {
-          const teacherSession = JSON.parse(teacherSessionStr || '{}')
-          teacherId = teacherSession.teacherId
-          console.log('[v0] PIN teacher access restricted to assigned classes only')
-        } catch (e) {
-          console.error('[v0] Failed to parse teacher session')
-        }
+        console.log('[v0] PIN teacher access restricted to assigned classes only, id:', teacherId)
       }
 
       // Fetch all classes initially
@@ -248,7 +242,7 @@ export default function MarklistPage() {
       if (isPinAuthenticated && teacherId) {
         const { data: teacherAssignments } = await supabase
           .from('teacher_assignments')
-          .select('distinct class_id')
+          .select('class_id')
           .eq('user_id', teacherId)
         
         const assignedClassIds = new Set(teacherAssignments?.map(a => a.class_id) || [])
@@ -4115,6 +4109,21 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
           </div>
         </div>
       )}
+
+      {/* Floating Analysis Button - quick access to the Analysis tab */}
+      <FloatingAnalysisButton
+        onAnalysisClick={() => {
+          const tabs = document.querySelectorAll('[role="tab"]')
+          const analysisTab = Array.from(tabs).find(tab => tab.textContent?.includes('Analysis')) as HTMLButtonElement | undefined
+          if (analysisTab) {
+            analysisTab.click()
+            // Smoothly scroll the tab content into view
+            setTimeout(() => {
+              analysisTab.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }, 100)
+          }
+        }}
+      />
     </div>
   )
 }
@@ -4252,18 +4261,6 @@ function StreamTransfersContent({ currentClass, allClasses, subjects }: any) {
           )}
         </div>
       )}
-      
-      {/* Floating Analysis Button */}
-      <FloatingAnalysisButton
-        onAnalysisClick={() => {
-          // Trigger the analysis tab
-          const tabs = document.querySelectorAll('[role="tab"]')
-          const analysisTabs = Array.from(tabs).filter(tab => tab.textContent?.includes('Analysis'))
-          if (analysisTabs.length > 0) {
-            (analysisTabs[0] as HTMLButtonElement).click()
-          }
-        }}
-      />
     </div>
   )
 }

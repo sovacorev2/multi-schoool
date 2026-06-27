@@ -1,5 +1,34 @@
 import { createClient } from '@/lib/supabase/client'
 
+/**
+ * Resolve the currently logged-in PIN teacher's id from localStorage.
+ * Different login pages store this differently:
+ *  - /auth/teacher       -> localStorage 'teacher_id'
+ *  - /teacher-pin-login  -> localStorage 'teacher_session' (JSON with teacherId)
+ *  - /teacher-login      -> localStorage 'teacher_session' (JSON with teacherId)
+ * This helper checks all known formats so subject restrictions apply consistently.
+ */
+export function getStoredTeacherId(): string | null {
+  if (typeof window === 'undefined') return null
+
+  // Preferred: direct teacher_id key
+  const directId = localStorage.getItem('teacher_id')
+  if (directId) return directId
+
+  // Fallback: teacher_session JSON
+  const sessionStr = localStorage.getItem('teacher_session')
+  if (sessionStr) {
+    try {
+      const session = JSON.parse(sessionStr)
+      if (session?.teacherId) return session.teacherId as string
+    } catch {
+      // ignore malformed session
+    }
+  }
+
+  return null
+}
+
 export interface TeacherAssignment {
   id: string
   class_id: string
