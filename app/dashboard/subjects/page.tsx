@@ -282,7 +282,13 @@ export default function SubjectsPage() {
                 // PIN teacher: only show assigned subjects (all can be edited)
                 // Admin/non-PIN teacher: show all subjects (all can be edited)
                 const canEdit = true
-                const statusText = isClassTeacher ? 'Class teacher - can edit all' : 'Assigned to you'
+                // Only show assignment labels for PIN-enabled schools
+                // Non-PIN schools: no label (no assignments, no restrictions)
+                const statusText = !pinManagementEnabled 
+                  ? '' 
+                  : isClassTeacher 
+                    ? 'Class teacher - can edit all' 
+                    : 'Assigned to you'
                 
                 return (
                   <div

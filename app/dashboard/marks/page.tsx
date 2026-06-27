@@ -208,19 +208,21 @@ export default function MarksPage() {
         .single()
     ]);
 
-    // Check if teacher is PIN-authenticated (security: PIN teachers must have subject restrictions)
+    // Check if PIN management is enabled for this school - this is the ONLY gate
+    // that should enable subject restrictions. A stored teacher ID alone is NOT
+    // sufficient — the school must explicitly have feature_pin_management=true.
+    const pinManagementFeatureEnabled = schoolRes.data?.feature_pin_management === true;
+
     // Resolve the teacher id from any known login storage format.
     const storedTeacherId = getStoredTeacherId();
-    const isPinAuthenticated = !!storedTeacherId && !isAdminBypass;
-    
-    // Check if PIN management is enabled for this school
-    const pinManagementFeatureEnabled = schoolRes.data?.feature_pin_management === true;
-    
-    // Enable PIN management if: (1) PIN-authenticated teacher OR (2) school has feature enabled
-    const pinManagementEnabled_ = isPinAuthenticated || pinManagementFeatureEnabled;
+    // A teacher is PIN-authenticated only if: they have a stored ID, the school has
+    // PIN management enabled, AND they are not in admin bypass mode.
+    const isPinAuthenticated = !!storedTeacherId && pinManagementFeatureEnabled && !isAdminBypass;
+
+    // PIN management restrictions apply ONLY when the school has the feature enabled
+    // AND a teacher is PIN-authenticated. Non-PIN schools always see all subjects.
+    const pinManagementEnabled_ = pinManagementFeatureEnabled && isPinAuthenticated;
     setPinManagementEnabled(pinManagementEnabled_);
-    console.log('[v0] Marks page - storedTeacherId:', storedTeacherId, 'isPinAuth:', isPinAuthenticated);
-    console.log('[v0] Marks page - PIN auth:', isPinAuthenticated, 'Feature enabled:', pinManagementFeatureEnabled, 'Management enabled:', pinManagementEnabled_);
 
     // If PIN management should be enforced, fetch assigned subjects
     if (pinManagementEnabled_) {
@@ -229,17 +231,13 @@ export default function MarksPage() {
         setIsClassTeacher(true);
         setAssignedSubjectIds(new Set());
       } else {
-        // Regular teacher: fetch their assignments using the stored teacher id
-        const teacherId = storedTeacherId;
-        
-        if (teacherId) {
+        // PIN teacher: fetch their specific subject assignments
+        if (storedTeacherId) {
           const { data: assignments } = await supabase
             .from('teacher_assignments')
             .select('subject_id, class_id')
-            .eq('user_id', teacherId)
+            .eq('user_id', storedTeacherId)
             .eq('class_id', currentClass.id);
-          
-          console.log('[v0] Marks page - teacher assignments for class', currentClass.id, ':', assignments?.length, 'assignments');
           
           // A teacher is a "class teacher" for this class ONLY if they have an
           // assignment row with a NULL subject_id (whole-class assignment).
@@ -248,14 +246,16 @@ export default function MarksPage() {
           
           // Restrict editing strictly to assigned subjects for this class.
           const assignedIds = new Set(assignments?.map(a => a.subject_id).filter(Boolean) || []);
-          console.log('[v0] Marks page - assigned subject IDs:', Array.from(assignedIds));
           setAssignedSubjectIds(assignedIds);
         } else {
-          // No teacher id available but restrictions enforced: lock everything down.
           setIsClassTeacher(false);
           setAssignedSubjectIds(new Set());
         }
       }
+    } else {
+      // Non-PIN school or admin: full access — treat as class teacher with no restrictions
+      setIsClassTeacher(true);
+      setAssignedSubjectIds(new Set());
     }
 
     // Filter to only show sessions with exam_type_id (actual exam sessions)
