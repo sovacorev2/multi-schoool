@@ -981,3 +981,32 @@ function DeadlineTimer({ deadline, sessionName }: { deadline: Date; sessionName:
     </Alert>
   )
 }
+
+// Autosave Status Indicator Component
+function AutosaveStatus({ status }: { status: "idle" | "saving" | "saved" | "error" }) {
+  return (
+    <div className="flex items-center gap-2 text-sm">
+      {status === "idle" && (
+        <span className="text-muted-foreground">Ready to save</span>
+      )}
+      {status === "saving" && (
+        <>
+          <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+          <span className="text-blue-600">Autosaving...</span>
+        </>
+      )}
+      {status === "saved" && (
+        <>
+          <Check className="w-4 h-4 text-green-600" />
+          <span className="text-green-600">Marks saved</span>
+        </>
+      )}
+      {status === "error" && (
+        <>
+          <AlertCircle className="w-4 h-4 text-red-600" />
+          <span className="text-red-600">Save failed</span>
+        </>
+      )}
+    </div>
+  )
+}
