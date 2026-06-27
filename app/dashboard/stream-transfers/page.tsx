@@ -122,8 +122,8 @@ export default function StreamTransfersPage() {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Stream Transfers</h1>
-          <p className="text-gray-600">Move learners between streams within the same grade level</p>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Stream Transfers</h1>
+          <p className="text-muted-foreground">Move learners between streams within the same grade level</p>
         </div>
 
         {/* Success Message */}
@@ -164,16 +164,16 @@ export default function StreamTransfersPage() {
             </CardHeader>
             <CardContent>
               {loading ? (
-                <div className="text-center py-8 text-gray-500">Loading learners...</div>
+                <div className="text-center py-8 text-muted-foreground">Loading learners...</div>
               ) : learners.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">No learners in this class</div>
+                <div className="text-center py-8 text-muted-foreground">No learners in this class</div>
               ) : (
                 <div className="space-y-4">
                   {learners.map(learner => (
                     <div key={learner.id} className="flex items-center justify-between p-4 border rounded-lg bg-white hover:bg-gray-50">
                       <div>
-                        <p className="font-medium text-gray-900">{learner.name}</p>
-                        <p className="text-sm text-gray-500">Current: {classes.find(c => c.id === learner.class_id)?.name}</p>
+                        <p className="font-medium text-foreground">{learner.name}</p>
+                        <p className="text-sm text-muted-foreground">Current: {classes.find(c => c.id === learner.class_id)?.name}</p>
                       </div>
                       
                       <div className="flex items-center gap-2">
@@ -196,11 +196,11 @@ export default function StreamTransfersPage() {
                               </SelectContent>
                             </Select>
                             {transferring === learner.id && (
-                              <span className="text-sm text-gray-500">Transferring...</span>
+                              <span className="text-sm text-muted-foreground">Transferring...</span>
                             )}
                           </>
                         ) : (
-                          <p className="text-sm text-gray-500">No other streams available</p>
+                          <p className="text-sm text-muted-foreground">No other streams available</p>
                         )}
                       </div>
                     </div>

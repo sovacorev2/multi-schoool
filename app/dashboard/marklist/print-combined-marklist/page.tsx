@@ -245,19 +245,19 @@ export default function PrintCombinedMarklistPage() {
       <div className="grid grid-cols-5 gap-2 mb-4 text-center">
         <div className="border p-2 rounded">
           <div className="text-lg font-bold text-blue-600">{learners.length}</div>
-          <div className="text-xs text-gray-500">Total Learners</div>
+          <div className="text-xs text-muted-foreground">Total Learners</div>
         </div>
         <div className="border p-2 rounded">
           <div className="text-lg font-bold text-green-600">{subjects.length}</div>
-          <div className="text-xs text-gray-500">Subjects</div>
+          <div className="text-xs text-muted-foreground">Subjects</div>
         </div>
         <div className="border p-2 rounded">
           <div className="text-lg font-bold text-purple-600">{streamStats.size}</div>
-          <div className="text-xs text-gray-500">Streams</div>
+          <div className="text-xs text-muted-foreground">Streams</div>
         </div>
         <div className="border p-2 rounded">
           <div className="text-lg font-bold text-amber-600">{gradeAverage}</div>
-          <div className="text-xs text-gray-500">Grade Average</div>
+          <div className="text-xs text-muted-foreground">Grade Average</div>
         </div>
         <div className="border p-2 rounded">
           <div className="text-lg font-bold" style={{ color: '#1a3a52' }}>
@@ -273,7 +273,7 @@ export default function PrintCombinedMarklistPage() {
               return mostCommon ? mostCommon[0] : '-'
             })()}
           </div>
-          <div className="text-xs text-gray-500">Average Performance Level</div>
+          <div className="text-xs text-muted-foreground">Average Performance Level</div>
         </div>
       </div>
 

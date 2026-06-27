@@ -41,7 +41,7 @@ export default function TeacherDashboard() {
       const sessionStr = localStorage.getItem('teacher_session')
       if (!sessionStr) {
         console.log('[v0] No teacher_session found, redirecting to login')
-        router.push('/teacher-pin-login')
+        router.push('/teacher-login-selection')
         return
       }
       
@@ -50,21 +50,59 @@ export default function TeacherDashboard() {
         console.log('[v0] Loaded teacher session:', teacherSession.teacherId, teacherSession.name)
         setSession(teacherSession)
         
-        // Fetch authorized classes/subjects from database
-        console.log('[v0] Fetching assigned classes for teacher:', teacherSession.teacherId)
-        const result = await getTeacherAssignedClasses(teacherSession.teacherId)
+        const supabase = createClient()
         
-        if (result.success) {
-          console.log('[v0] Got assigned classes:', result.classes.length)
-          setAssignedClasses(result.classes)
+        // Check if this school has PIN management enabled
+        const { data: schoolData } = await supabase
+          .from('schools')
+          .select('feature_pin_management')
+          .eq('id', teacherSession.schoolId)
+          .single()
+        
+        const hasPinManagement = schoolData?.feature_pin_management === true
+        console.log('[v0] School PIN management enabled:', hasPinManagement)
+        
+        if (hasPinManagement) {
+          // PIN-enabled school: Fetch assigned classes/subjects from database
+          console.log('[v0] Fetching assigned classes for teacher:', teacherSession.teacherId)
+          const result = await getTeacherAssignedClasses(teacherSession.teacherId)
+          
+          if (result.success) {
+            console.log('[v0] Got assigned classes:', result.classes.length)
+            setAssignedClasses(result.classes)
+          } else {
+            console.error('[v0] Failed to get assigned classes:', result.error)
+            setError('Failed to load your assigned classes')
+          }
         } else {
-          console.error('[v0] Failed to get assigned classes:', result.error)
-          setError('Failed to load your assigned classes')
+          // Non-PIN school: Show ALL classes in the school
+          console.log('[v0] Non-PIN school - fetching all classes')
+          const { data: allClasses, error: classError } = await supabase
+            .from('classes')
+            .select('id, name, school_id')
+            .eq('school_id', teacherSession.schoolId)
+            .order('name')
+          
+          if (!classError && allClasses) {
+            const classes = allClasses.map(cls => ({
+              id: cls.id,
+              name: cls.name,
+              schoolId: cls.school_id,
+              subjects: [],
+              isClassTeacher: true, // All teachers can edit all subjects in non-PIN schools
+              allSubjects: [],
+            }))
+            console.log('[v0] Got all classes:', classes.length)
+            setAssignedClasses(classes)
+          } else {
+            console.error('[v0] Failed to get classes:', classError)
+            setError('Failed to load classes')
+          }
         }
       } catch (err) {
         console.error('[v0] Failed to parse session:', err)
         setError('Session error')
-        router.push('/teacher-pin-login')
+        router.push('/teacher-login-selection')
         return
       } finally {
         setIsLoading(false)
@@ -78,10 +116,11 @@ export default function TeacherDashboard() {
     console.log('[v0] Teacher logging out')
     localStorage.removeItem('teacher_session')
     localStorage.removeItem('teacher_pin')
+    localStorage.removeItem('success_academy_admin_bypass')
     localStorage.removeItem('teacher_authenticated')
     localStorage.removeItem('teacher_id')
     localStorage.removeItem('class_id')
-    router.push('/teacher-pin-login')
+    router.push('/teacher-login-selection')
   }
 
   const handleAccessClass = async (classId: string, className: string, schoolId: string) => {
