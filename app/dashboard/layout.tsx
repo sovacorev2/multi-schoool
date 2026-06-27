@@ -82,7 +82,15 @@ export default function DashboardLayout({
       if (currentClass) {
         setIsAdmin(false)
         
-        // Check teacher auth
+        // Check if teacher is PIN-authenticated (came from teacher PIN login)
+        const teacherSession = localStorage.getItem('teacher_session')
+        if (teacherSession) {
+          // PIN-authenticated teacher - bypass password auth, go directly to marks
+          setIsAuthenticated(true)
+          return
+        }
+        
+        // Check teacher auth (password-based)
         const isAuth = await checkTeacherAuth(currentClass.id)
         if (!isAuth) {
           const className = encodeURIComponent(currentClass.name)
