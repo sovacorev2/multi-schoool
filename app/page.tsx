@@ -301,8 +301,8 @@ function HomePageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-lg">
+    <div className="min-h-screen bg-background dark:bg-background flex items-center justify-center p-4">
+      <Card className="w-full max-w-md shadow-lg bg-card dark:bg-card border-border dark:border-border">
         <CardHeader className="text-center space-y-4 pb-6">
           <div className="flex justify-center mb-4">
             {currentSchool.logo_url ? (
