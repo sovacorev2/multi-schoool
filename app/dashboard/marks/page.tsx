@@ -35,6 +35,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ClipboardList, Plus, Save, AlertCircle, Lock, Unlock, Clock, Check, Loader2, CloudUpload } from "lucide-react";
 import type { ExamType, Subject, Learner, Mark } from "@/lib/types";
+import { getStoredTeacherId } from "@/lib/teacher-permissions";
 
 
 
@@ -208,8 +209,9 @@ export default function MarksPage() {
     ]);
 
     // Check if teacher is PIN-authenticated (security: PIN teachers must have subject restrictions)
-    const teacherSessionStr = typeof window !== 'undefined' ? localStorage.getItem('teacher_session') : null;
-    const isPinAuthenticated = !!teacherSessionStr;
+    // Resolve the teacher id from any known login storage format.
+    const storedTeacherId = getStoredTeacherId();
+    const isPinAuthenticated = !!storedTeacherId && !isAdminBypass;
     
     // Check if PIN management is enabled for this school
     const pinManagementFeatureEnabled = schoolRes.data?.feature_pin_management === true;
@@ -217,6 +219,7 @@ export default function MarksPage() {
     // Enable PIN management if: (1) PIN-authenticated teacher OR (2) school has feature enabled
     const pinManagementEnabled_ = isPinAuthenticated || pinManagementFeatureEnabled;
     setPinManagementEnabled(pinManagementEnabled_);
+    console.log('[v0] Marks page - storedTeacherId:', storedTeacherId, 'isPinAuth:', isPinAuthenticated);
     console.log('[v0] Marks page - PIN auth:', isPinAuthenticated, 'Feature enabled:', pinManagementFeatureEnabled, 'Management enabled:', pinManagementEnabled_);
 
     // If PIN management should be enforced, fetch assigned subjects
@@ -226,24 +229,8 @@ export default function MarksPage() {
         setIsClassTeacher(true);
         setAssignedSubjectIds(new Set());
       } else {
-        // Regular teacher: fetch their assignments
-        let teacherId: string | null = null;
-        
-        // First check for PIN-authenticated teacher session
-        if (teacherSessionStr) {
-          try {
-            const teacherSession = JSON.parse(teacherSessionStr);
-            teacherId = teacherSession.teacherId;
-            console.log('[v0] Marks page using PIN session teacher ID:', teacherId);
-          } catch (e) {
-            console.error('[v0] Failed to parse teacher session:', e);
-          }
-        }
-        
-        // Fallback to old teacher_id if not found
-        if (!teacherId) {
-          teacherId = localStorage.getItem('teacher_id');
-        }
+        // Regular teacher: fetch their assignments using the stored teacher id
+        const teacherId = storedTeacherId;
         
         if (teacherId) {
           const { data: assignments } = await supabase
@@ -254,12 +241,19 @@ export default function MarksPage() {
           
           console.log('[v0] Marks page - teacher assignments for class', currentClass.id, ':', assignments?.length, 'assignments');
           
+          // A teacher is a "class teacher" for this class ONLY if they have an
+          // assignment row with a NULL subject_id (whole-class assignment).
           const isClassTeacherAssignment = assignments?.some(a => !a.subject_id) || false;
           setIsClassTeacher(isClassTeacherAssignment);
           
+          // Restrict editing strictly to assigned subjects for this class.
           const assignedIds = new Set(assignments?.map(a => a.subject_id).filter(Boolean) || []);
           console.log('[v0] Marks page - assigned subject IDs:', Array.from(assignedIds));
           setAssignedSubjectIds(assignedIds);
+        } else {
+          // No teacher id available but restrictions enforced: lock everything down.
+          setIsClassTeacher(false);
+          setAssignedSubjectIds(new Set());
         }
       }
     }

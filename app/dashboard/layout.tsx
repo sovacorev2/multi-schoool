@@ -164,7 +164,7 @@ export default function DashboardLayout({
 
   if (isAuthenticated === null) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-background dark:bg-background">
         <div className="animate-pulse text-gray-500">Verifying access...</div>
       </div>
     )
@@ -190,7 +190,7 @@ export default function DashboardLayout({
   ]
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-background dark:bg-background flex flex-col">
       {/* Deadline Notice Banner for Teachers */}
       {upcomingDeadline && !isAdmin && (
         <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-2 sticky top-0 z-50">
@@ -211,7 +211,7 @@ export default function DashboardLayout({
       )}
       
       {/* Horizontal Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+      <header className="bg-card dark:bg-card border-b border-border dark:border-border sticky top-0 z-40">
         <div className="px-6 py-4">
           {/* Title Row */}
           <div className="flex items-center justify-between mb-4">
@@ -233,8 +233,8 @@ export default function DashboardLayout({
                 />
               )}
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">{currentSchool?.name || 'School'}</h1>
-                <p className="text-sm text-gray-600">{currentClass.name}</p>
+                <h1 className="text-2xl font-bold text-foreground">{currentSchool?.name || 'School'}</h1>
+                <p className="text-sm text-muted-foreground">{currentClass.name}</p>
               </div>
             </div>
 
@@ -243,7 +243,7 @@ export default function DashboardLayout({
               {isAdmin === true && isAuthenticated === true && currentSchool && (
                 <button
                   onClick={() => window.location.href = `/admin-portal?school=${currentSchool.code}`}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-all"
                 >
                   <Shield className="w-4 h-4" />
                   Admin Portal
@@ -257,7 +257,7 @@ export default function DashboardLayout({
                   <div className="relative">
                     <button
                       onClick={() => setSessionDropdown(!sessionDropdown)}
-                      className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-all text-sm font-medium"
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 dark:bg-primary/20 text-primary dark:text-accent hover:bg-primary/20 dark:hover:bg-primary/30 transition-all text-sm font-medium"
                     >
                       <span className="text-xs">
                         {currentSession?.exam_types?.name} • {currentSession?.term}
@@ -266,9 +266,9 @@ export default function DashboardLayout({
                     </button>
 
                     {sessionDropdown && (
-                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                        <div className="p-3 border-b border-gray-100">
-                          <p className="text-xs font-semibold text-gray-600 uppercase">Current Session</p>
+                      <div className="absolute right-0 mt-2 w-48 bg-card dark:bg-card rounded-lg shadow-lg border border-border dark:border-border z-50">
+                        <div className="p-3 border-b border-border dark:border-border">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase">Current Session</p>
                         </div>
                         <button
                           onClick={() => {
@@ -277,7 +277,7 @@ export default function DashboardLayout({
                             // Redirect to school's landing page with school code
                             router.push(`/?school=${currentSchool?.code}`)
                           }}
-                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-all"
+                          className="w-full text-left px-4 py-2 text-sm text-foreground hover:bg-muted dark:hover:bg-muted transition-all"
                         >
                           Change Session
                         </button>
@@ -291,7 +291,7 @@ export default function DashboardLayout({
                   {/* Logout */}
                   <button
                     onClick={handleLogout}
-                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
                   >
                     <LogOut className="w-4 h-4" />
                     Logout
@@ -302,7 +302,7 @@ export default function DashboardLayout({
           </div>
 
           {/* Horizontal Navigation - Mobile Responsive */}
-          <nav className="flex items-center gap-1 border-t border-gray-200 pt-4 -mx-6 px-6 overflow-x-auto scrollbar-hide">
+          <nav className="flex items-center gap-1 border-t border-border dark:border-border pt-4 -mx-6 px-6 overflow-x-auto scrollbar-hide">
             <div className="flex items-center gap-1 min-w-max pb-1">
               {navItems.map((item) => {
                 const Icon = item.icon
