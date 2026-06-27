@@ -76,7 +76,7 @@ export default function SubjectsPage() {
       const { data, error } = await supabase
         .from('teacher_assignments')
         .select('subject_id')
-        .eq('user_id', teacherId)
+        .eq('teacher_id', teacherId)
         .eq('class_id', currentClass.id)
 
       if (error) throw error
