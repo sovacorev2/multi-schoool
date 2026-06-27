@@ -330,13 +330,13 @@ function HomePageContent() {
             </div>
           </div>
           <div className="flex-1">
-            <CardTitle className="text-2xl font-bold mb-2">{currentSchool.name}</CardTitle>
-            <CardDescription className="text-base text-gray-600">Exam Marks Entry System</CardDescription>
+            <CardTitle className="text-2xl font-bold mb-2 text-foreground dark:text-foreground">{currentSchool.name}</CardTitle>
+            <CardDescription className="text-base text-muted-foreground dark:text-muted-foreground">Exam Marks Entry System</CardDescription>
           </div>
           <Button
             onClick={() => router.push(`/teacher-pin-login?school=${currentSchool.code}`)}
             variant="outline"
-            className="text-blue-600 border-blue-600 hover:bg-blue-50"
+            className="text-primary dark:text-accent border-primary dark:border-accent hover:bg-primary/10 dark:hover:bg-accent/10"
           >
             <LogIn className="w-4 h-4 mr-2" />
             Teacher PIN Login
@@ -345,36 +345,36 @@ function HomePageContent() {
 
         <CardContent className="space-y-5">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-600 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg text-sm">
               {error}
             </div>
           )}
 
           {isUsingFallback && !error && (
-            <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg text-sm flex items-start gap-2">
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-600 text-amber-800 dark:text-amber-400 px-4 py-3 rounded-lg text-sm flex items-start gap-2">
               <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
               <span>Using offline data - Database connection temporarily unavailable</span>
             </div>
           )}
 
           {isFetchingData && !error ? (
-            <div className="text-center py-8 text-gray-500">Loading...</div>
+            <div className="text-center py-8 text-muted-foreground dark:text-muted-foreground">Loading...</div>
           ) : !error ? (
             <>
               {/* Class Selection - with stream grouping if applicable */}
               {hasStreams ? (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Select Class *</label>
+                    <label className="text-sm font-medium text-foreground dark:text-foreground">Select Class *</label>
                     <Select value={selectedBaseClass} onValueChange={(val) => {
                       setSelectedBaseClass(val)
                       setSelectedStream('')
                       setSelectedClass('')
                     }}>
-                      <SelectTrigger className="bg-white text-gray-900">
+                      <SelectTrigger className="bg-input dark:bg-input text-foreground dark:text-foreground border-border dark:border-border">
                         <SelectValue placeholder="-- Choose a class --" />
                       </SelectTrigger>
-                      <SelectContent className="bg-white">
+                      <SelectContent className="bg-card dark:bg-card border-border dark:border-border">
                         {/* Standalone classes first */}
                         {standaloneClasses.map((cls) => (
                           <SelectItem key={cls.id} value={`standalone_${cls.id}`}>
@@ -400,15 +400,15 @@ function HomePageContent() {
                   
                   {selectedBaseClass && !selectedBaseClass.startsWith('standalone_') && availableStreams.length > 0 && (
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-700">Select Stream *</label>
+                      <label className="text-sm font-medium text-foreground dark:text-foreground">Select Stream *</label>
                       <Select value={selectedStream} onValueChange={(val) => {
                         setSelectedStream(val)
                         setSelectedClass(val)
                       }}>
-                        <SelectTrigger className="bg-white text-gray-900">
+                        <SelectTrigger className="bg-input dark:bg-input text-foreground dark:text-foreground border-border dark:border-border">
                           <SelectValue placeholder="-- Choose stream --" />
                         </SelectTrigger>
-                        <SelectContent className="bg-white">
+                        <SelectContent className="bg-card dark:bg-card border-border dark:border-border">
                           {availableStreams.map((cls) => {
                             const streamName = cls.name.replace(/^(PP\s*\d+|Grade\s+\d+|Form\s+\d+)\s+/i, '')
                             return (
@@ -424,12 +424,12 @@ function HomePageContent() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Select Class *</label>
+                  <label className="text-sm font-medium text-foreground dark:text-foreground">Select Class *</label>
                   <Select value={selectedClass} onValueChange={setSelectedClass}>
-                    <SelectTrigger className="bg-white text-gray-900">
+                    <SelectTrigger className="bg-input dark:bg-input text-foreground dark:text-foreground border-border dark:border-border">
                       <SelectValue placeholder="-- Choose a class --" />
                     </SelectTrigger>
-                    <SelectContent className="bg-white">
+                    <SelectContent className="bg-card dark:bg-card border-border dark:border-border">
                       {sortClassesByLevel(classes).map((cls) => (
                         <SelectItem key={cls.id} value={cls.id}>
                           {cls.name}
@@ -442,21 +442,21 @@ function HomePageContent() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Year *</label>
+                  <label className="text-sm font-medium text-foreground dark:text-foreground">Year *</label>
                   <Input
                     type="number"
                     value={selectedYear}
                     onChange={(e) => setSelectedYear(e.target.value)}
-                    className="h-10"
+                    className="h-10 bg-input dark:bg-input text-foreground dark:text-foreground border-border dark:border-border"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Term *</label>
+                  <label className="text-sm font-medium text-foreground dark:text-foreground">Term *</label>
                   <Select value={selectedTerm} onValueChange={setSelectedTerm}>
-                    <SelectTrigger className="bg-white text-gray-900">
+                    <SelectTrigger className="bg-input dark:bg-input text-foreground dark:text-foreground border-border dark:border-border">
                       <SelectValue placeholder="Select term" />
                     </SelectTrigger>
-                    <SelectContent className="bg-white">
+                    <SelectContent className="bg-card dark:bg-card border-border dark:border-border">
                       {TERMS.map((term) => (
                         <SelectItem key={term} value={term}>
                           {term}
@@ -468,12 +468,12 @@ function HomePageContent() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Exam Type *</label>
+                <label className="text-sm font-medium text-foreground dark:text-foreground">Exam Type *</label>
                 <Select value={selectedExamType} onValueChange={setSelectedExamType}>
-                  <SelectTrigger className="bg-white text-gray-900">
+                  <SelectTrigger className="bg-input dark:bg-input text-foreground dark:text-foreground border-border dark:border-border">
                     <SelectValue placeholder="-- Choose exam type --" />
                   </SelectTrigger>
-                  <SelectContent className="bg-white">
+                  <SelectContent className="bg-card dark:bg-card border-border dark:border-border">
                     {examTypes.map((type) => (
                       <SelectItem key={type.id} value={type.id}>
                         {type.name}
@@ -486,7 +486,7 @@ function HomePageContent() {
               <Button
                 onClick={handleLogin}
                 disabled={isLoading || !selectedClass || !selectedExamType}
-                className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg"
+                className="w-full h-11 bg-primary hover:bg-primary/90 dark:bg-accent dark:hover:bg-accent/90 text-white font-medium rounded-lg"
               >
                 {isLoading ? 'Please wait...' : 'Continue'}
               </Button>
@@ -501,10 +501,10 @@ function HomePageContent() {
 export default function HomePage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background dark:bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+          <div className="w-8 h-8 border-4 border-primary dark:border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted-foreground dark:text-muted-foreground">Loading...</p>
         </div>
       </div>
     }>

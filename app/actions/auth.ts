@@ -66,6 +66,17 @@ export async function verifyTeacherPassword(classId: string, password: string): 
   
   // Try plain text comparison first (for passwords set via admin portal like "welcome")
   if (password === storedPassword) {
+    // Get the actual teacher ID for this class
+    const { data: teacher } = await supabase
+      .from('teacher_accounts')
+      .select('id')
+      .ilike('first_name', (classData.teacher_name || '').split(' ')[0]) // Match first name
+      .eq('school_id', classData.school_id)
+      .single()
+    
+    const teacherId = teacher?.id || classId
+    console.log('[v0] Password verified. Teacher ID:', teacherId, 'Class:', classId)
+    
     const cookieStore = await cookies()
     cookieStore.set("teacher_auth", JSON.stringify({ classId, authenticated: true }), {
       httpOnly: true,
@@ -73,11 +84,22 @@ export async function verifyTeacherPassword(classId: string, password: string): 
       sameSite: "lax",
       maxAge: 60 * 60 * 8, // 8 hours
     })
-    return { success: true, teacher_id: classId, pinEnabled }
+    return { success: true, teacher_id: teacherId, pinEnabled }
   }
   
   // Also try hashed password (for backwards compatibility with passwords set by teachers)
   if (verifyHash(password, storedPassword)) {
+    // Get the actual teacher ID for this class
+    const { data: teacher } = await supabase
+      .from('teacher_accounts')
+      .select('id')
+      .ilike('first_name', (classData.teacher_name || '').split(' ')[0]) // Match first name
+      .eq('school_id', classData.school_id)
+      .single()
+    
+    const teacherId = teacher?.id || classId
+    console.log('[v0] Hashed password verified. Teacher ID:', teacherId, 'Class:', classId)
+    
     const cookieStore = await cookies()
     cookieStore.set("teacher_auth", JSON.stringify({ classId, authenticated: true }), {
       httpOnly: true,
@@ -85,7 +107,7 @@ export async function verifyTeacherPassword(classId: string, password: string): 
       sameSite: "lax",
       maxAge: 60 * 60 * 8,
     })
-    return { success: true, teacher_id: classId, pinEnabled }
+    return { success: true, teacher_id: teacherId, pinEnabled }
   }
   
   return { success: false, error: "Incorrect password" }
@@ -123,7 +145,7 @@ export async function verifyTeacherPin(pin: string): Promise<{ success: boolean;
   }
 }
 
-export async function setupTeacherPassword(classId: string, password: string, confirmPassword: string): Promise<{ success: boolean; error?: string }> {
+export async function setupTeacherPassword(classId: string, password: string, confirmPassword: string): Promise<{ success: boolean; error?: string; teacher_id?: string }> {
   if (password !== confirmPassword) {
     return { success: false, error: "Passwords do not match" }
   }
@@ -134,10 +156,10 @@ export async function setupTeacherPassword(classId: string, password: string, co
   
   const supabase = await createClient()
   
-  // Check if password already set
+  // Check if password already set and get class/school info
   const { data: classData } = await supabase
     .from("classes")
-    .select("password")
+    .select("password, teacher_name, school_id")
     .eq("id", classId)
     .single()
   
@@ -156,6 +178,16 @@ export async function setupTeacherPassword(classId: string, password: string, co
     return { success: false, error: "Failed to set password" }
   }
   
+  // Get the actual teacher ID for this class
+  const { data: teacher } = await supabase
+    .from('teacher_accounts')
+    .select('id')
+    .ilike('first_name', (classData.teacher_name || '').split(' ')[0])
+    .eq('school_id', classData.school_id)
+    .single()
+  
+  const teacherId = teacher?.id || classId
+  
   // Set auth cookie
   const cookieStore = await cookies()
   cookieStore.set("teacher_auth", JSON.stringify({ classId, authenticated: true }), {
@@ -165,7 +197,7 @@ export async function setupTeacherPassword(classId: string, password: string, co
     maxAge: 60 * 60 * 8,
   })
   
-  return { success: true }
+  return { success: true, teacher_id: teacherId }
 }
 
 export async function verifyAdminPassword(password: string): Promise<{ success: boolean; error?: string }> {

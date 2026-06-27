@@ -734,8 +734,8 @@ export default function LearnersPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Manage Learners</h1>
-          <p className="text-gray-600 mt-1">Add, edit, and manage learners for {currentClass?.name}</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground dark:text-foreground">Manage Learners</h1>
+          <p className="text-muted-foreground dark:text-muted-foreground mt-1">Add, edit, and manage learners for {currentClass?.name}</p>
         </div>
         <div className="flex gap-2 flex-wrap">
           <Button
@@ -826,8 +826,8 @@ export default function LearnersPage() {
       {/* CSV Import Modal */}
       {showImportModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Import Learners from CSV</h2>
+          <div className="bg-card dark:bg-card rounded-lg shadow-lg max-w-md w-full p-6 border border-border dark:border-border">
+            <h2 className="text-xl font-bold text-foreground dark:text-foreground mb-4">Import Learners from CSV</h2>
             
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -838,7 +838,7 @@ export default function LearnersPage() {
                 type="file"
                 accept=".csv"
                 onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-border dark:border-border rounded-lg bg-input dark:bg-input text-foreground dark:text-foreground focus:outline-none focus:ring-2 focus:ring-primary dark:focus:ring-accent"
               />
               <p className="text-xs text-gray-500 mt-2">
                 <strong>Required Column:</strong> Name (or "Full Name")<br/>
@@ -884,21 +884,21 @@ export default function LearnersPage() {
       )}
 
       {/* Add Learner Form */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-        <h2 className="text-xl font-bold text-gray-900 mb-6">Register New Learner</h2>
+      <div className="bg-card dark:bg-card rounded-lg shadow-sm border border-border dark:border-border p-8">
+        <h2 className="text-xl font-bold text-foreground dark:text-foreground mb-6">Register New Learner</h2>
         
         {/* Duplicate Warning Alert */}
         {duplicateWarning && (
-          <div className="mb-6 p-4 bg-amber-50 border border-amber-300 rounded-lg flex items-start gap-3">
+          <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-600 rounded-lg flex items-start gap-3">
             <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-amber-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <svg className="h-5 w-5 text-amber-600 dark:text-amber-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
               </svg>
             </div>
             <div className="flex-1">
-              <h3 className="text-sm font-medium text-amber-800">⚠️ Duplicate Learner Detected</h3>
-              <p className="text-sm text-amber-700 mt-1">{duplicateWarning}</p>
-              <p className="text-xs text-amber-600 mt-2">This learner appears to already be registered in this class. Please verify before registering again.</p>
+              <h3 className="text-sm font-medium text-amber-800 dark:text-amber-300">⚠️ Duplicate Learner Detected</h3>
+              <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">{duplicateWarning}</p>
+              <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">This learner appears to already be registered in this class. Please verify before registering again.</p>
             </div>
           </div>
         )}
@@ -907,36 +907,36 @@ export default function LearnersPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Full Name */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+              <label className="block text-sm font-medium text-foreground dark:text-foreground mb-2">Full Name</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Enter full name"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-border dark:border-border rounded-lg bg-input dark:bg-input text-foreground dark:text-foreground placeholder-muted-foreground dark:placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary dark:focus:ring-accent focus:border-transparent"
                 required
               />
             </div>
 
             {/* Assessment Number */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Assessment Number (Optional)</label>
+              <label className="block text-sm font-medium text-foreground dark:text-foreground mb-2">Assessment Number (Optional)</label>
               <input
                 type="text"
                 value={assessmentNumber}
                 onChange={(e) => setAssessmentNumber(e.target.value)}
                 placeholder="Optional"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-border dark:border-border rounded-lg bg-input dark:bg-input text-foreground dark:text-foreground placeholder-muted-foreground dark:placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary dark:focus:ring-accent focus:border-transparent"
               />
             </div>
 
             {/* Gender */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
+              <label className="block text-sm font-medium text-foreground dark:text-foreground mb-2">Gender</label>
               <select
                 value={selectedGender}
                 onChange={(e) => setSelectedGender(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-border dark:border-border rounded-lg bg-input dark:bg-input text-foreground dark:text-foreground focus:outline-none focus:ring-2 focus:ring-primary dark:focus:ring-accent focus:border-transparent"
               >
                 <option value="">Select gender</option>
                 <option value="Male">Male</option>
@@ -946,25 +946,25 @@ export default function LearnersPage() {
 
             {/* Parent Phone */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Parent Phone (Optional)</label>
+              <label className="block text-sm font-medium text-foreground dark:text-foreground mb-2">Parent Phone (Optional)</label>
               <input
                 type="tel"
                 value={parentPhone}
                 onChange={(e) => setParentPhone(e.target.value)}
                 placeholder="e.g. 0712345678"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-border dark:border-border rounded-lg bg-input dark:bg-input text-foreground dark:text-foreground placeholder-muted-foreground dark:placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary dark:focus:ring-accent focus:border-transparent"
               />
             </div>
 
             {/* Birth Certificate Number */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Birth Certificate Number (Optional)</label>
+              <label className="block text-sm font-medium text-foreground dark:text-foreground mb-2">Birth Certificate Number (Optional)</label>
               <input
                 type="text"
                 value={birthCertNumber}
                 onChange={(e) => setBirthCertNumber(e.target.value)}
                 placeholder="e.g. 123456789"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-border dark:border-border rounded-lg bg-input dark:bg-input text-foreground dark:text-foreground placeholder-muted-foreground dark:placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary dark:focus:ring-accent focus:border-transparent"
               />
             </div>
 
@@ -973,7 +973,7 @@ export default function LearnersPage() {
               <button
                 type="submit"
                 disabled={isSubmitting || !name.trim()}
-                className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:bg-gray-400"
+                className="w-full px-6 py-3 bg-primary hover:bg-primary/90 dark:bg-primary dark:hover:bg-primary/90 text-white font-medium rounded-lg transition-colors disabled:bg-muted dark:disabled:bg-muted disabled:text-muted-foreground"
               >
                 <Plus className="w-5 h-5 inline-block mr-2" />
                 Add Learner
@@ -984,51 +984,51 @@ export default function LearnersPage() {
       </div>
 
       {/* Learners Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div className="px-8 py-6 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900">
+      <div className="bg-card dark:bg-card rounded-lg shadow-sm border border-border dark:border-border overflow-hidden">
+        <div className="px-8 py-6 border-b border-border dark:border-border">
+          <h2 className="text-xl font-bold text-foreground dark:text-foreground">
             Registered Learners ({learners.length})
           </h2>
         </div>
 
         {learners.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
+          <div className="p-8 text-center text-muted-foreground dark:text-muted-foreground">
             No learners registered yet. Add your first learner above.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-muted dark:bg-muted border-b border-border dark:border-border">
                 <tr>
                   {showPromotionMode && (
                     <th className="px-4 py-4 text-center">
                       <button
                         onClick={toggleSelectAll}
-                        className="p-1 hover:bg-gray-200 rounded"
+                        className="p-1 hover:bg-muted dark:hover:bg-muted rounded"
                         title={selectedLearners.length === learners.length ? "Deselect all" : "Select all"}
                       >
                         {selectedLearners.length === learners.length ? (
-                          <CheckSquare className="w-5 h-5 text-amber-600" />
+                          <CheckSquare className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                         ) : (
-                          <Square className="w-5 h-5 text-gray-400" />
+                          <Square className="w-5 h-5 text-muted-foreground dark:text-muted-foreground" />
                         )}
                       </button>
                     </th>
                   )}
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">#</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Assessment No.</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Student Name</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Gender</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Parent Phone</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Birth Cert #</th>
-                  <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Actions</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground dark:text-foreground">#</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground dark:text-foreground">Assessment No.</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground dark:text-foreground">Student Name</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground dark:text-foreground">Gender</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground dark:text-foreground">Parent Phone</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground dark:text-foreground">Birth Cert #</th>
+                  <th className="px-6 py-4 text-center text-sm font-semibold text-foreground dark:text-foreground">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {learners.map((learner, index) => {
                   const isAlreadyPromoted = promotedLearnersInTarget.has(learner.id)
                   return (
-                  <tr key={learner.id} className={`border-b border-gray-200 hover:bg-gray-50 ${isAlreadyPromoted ? 'bg-red-50' : selectedLearners.includes(learner.id) ? 'bg-amber-50' : ''}`}>
+                  <tr key={learner.id} className={`border-b border-border dark:border-border hover:bg-muted dark:hover:bg-muted transition-colors ${isAlreadyPromoted ? 'bg-red-50 dark:bg-red-900/20' : selectedLearners.includes(learner.id) ? 'bg-amber-50 dark:bg-amber-900/20' : ''}`}>
                     {showPromotionMode && (
                       <td className="px-4 py-4 text-center">
                         {isAlreadyPromoted ? (
@@ -1049,7 +1049,7 @@ export default function LearnersPage() {
                         )}
                       </td>
                     )}
-                    <td className="px-6 py-4 text-sm text-gray-900">{index + 1}</td>
+                    <td className="px-6 py-4 text-sm text-foreground dark:text-foreground">{index + 1}</td>
                     {editingId === learner.id ? (
                       <>
                         <td className="px-6 py-4">
@@ -1057,7 +1057,7 @@ export default function LearnersPage() {
                             type="text"
                             value={editAssessmentNumber}
                             onChange={(e) => setEditAssessmentNumber(e.target.value)}
-                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            className="w-full px-2 py-1 border border-border dark:border-border rounded text-sm bg-input dark:bg-input text-foreground dark:text-foreground"
                             placeholder="Assessment No."
                           />
                         </td>
@@ -1066,7 +1066,7 @@ export default function LearnersPage() {
                             type="text"
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
-                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            className="w-full px-2 py-1 border border-border dark:border-border rounded text-sm bg-input dark:bg-input text-foreground dark:text-foreground"
                             placeholder="Name"
                             required
                           />
@@ -1075,7 +1075,7 @@ export default function LearnersPage() {
                           <select
                             value={editGender}
                             onChange={(e) => setEditGender(e.target.value)}
-                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            className="w-full px-2 py-1 border border-border dark:border-border rounded text-sm bg-input dark:bg-input text-foreground dark:text-foreground"
                           >
                             <option value="">Select</option>
                             <option value="Male">Male</option>
@@ -1087,7 +1087,7 @@ export default function LearnersPage() {
                             type="tel"
                             value={editParentPhone}
                             onChange={(e) => setEditParentPhone(e.target.value)}
-                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            className="w-full px-2 py-1 border border-border dark:border-border rounded text-sm bg-input dark:bg-input text-foreground dark:text-foreground"
                             placeholder="0712345678"
                           />
                         </td>
@@ -1096,7 +1096,7 @@ export default function LearnersPage() {
                             type="text"
                             value={editBirthCertNumber}
                             onChange={(e) => setEditBirthCertNumber(e.target.value)}
-                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            className="w-full px-2 py-1 border border-border dark:border-border rounded text-sm bg-input dark:bg-input text-foreground dark:text-foreground"
                             placeholder="123456789"
                           />
                         </td>
@@ -1105,14 +1105,14 @@ export default function LearnersPage() {
                             <button
                               onClick={() => handleUpdateLearner(learner.id)}
                               disabled={isUpdating || !editName.trim()}
-                              className="inline-flex p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
+                              className="inline-flex p-2 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors disabled:opacity-50"
                               title="Save"
                             >
                               <Save className="w-5 h-5" />
                             </button>
                             <button
                               onClick={cancelEdit}
-                              className="inline-flex p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                              className="inline-flex p-2 text-muted-foreground dark:text-muted-foreground hover:bg-muted dark:hover:bg-muted rounded-lg transition-colors"
                               title="Cancel"
                             >
                               <X className="w-5 h-5" />
@@ -1122,37 +1122,37 @@ export default function LearnersPage() {
                       </>
                     ) : (
                       <>
-                        <td className="px-6 py-4 text-sm text-gray-600">{learner.admission_number || '-'}</td>
+                        <td className="px-6 py-4 text-sm text-muted-foreground dark:text-muted-foreground">{learner.admission_number || '-'}</td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-medium text-gray-900">{learner.name}</span>
+                            <span className="text-sm font-medium text-foreground dark:text-foreground">{learner.name}</span>
                             {recentPromotions.has(learner.id) && (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 animate-pulse" title="Recently promoted within the last 15 days">
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 animate-pulse" title="Recently promoted within the last 15 days">
                                 ✓ Promoted
                               </span>
                             )}
                             {previouslyPromotedLearners.has(learner.id) && !recentPromotions.has(learner.id) && (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800" title="This learner was promoted in a previous cycle">
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400" title="This learner was promoted in a previous cycle">
                                 Previously Promoted
                               </span>
                             )}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-600">{learner.gender || '-'}</td>
-                        <td className="px-6 py-4 text-sm text-gray-600">{learner.parent_phone || '-'}</td>
-                        <td className="px-6 py-4 text-sm text-gray-600">{learner.birth_cert_number || '-'}</td>
+                        <td className="px-6 py-4 text-sm text-muted-foreground dark:text-muted-foreground">{learner.gender || '-'}</td>
+                        <td className="px-6 py-4 text-sm text-muted-foreground dark:text-muted-foreground">{learner.parent_phone || '-'}</td>
+                        <td className="px-6 py-4 text-sm text-muted-foreground dark:text-muted-foreground">{learner.birth_cert_number || '-'}</td>
                         <td className="px-6 py-4 text-center">
                           <div className="flex justify-center gap-1">
                             <button
                               onClick={() => startEdit(learner)}
-                              className="inline-flex p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              className="inline-flex p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
                               title="Edit learner"
                             >
                               <Edit2 className="w-5 h-5" />
                             </button>
                             <button
                               onClick={() => handleDeleteLearner(learner.id)}
-                              className="inline-flex p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              className="inline-flex p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                               title="Delete learner"
                             >
                               <Trash2 className="w-5 h-5" />
