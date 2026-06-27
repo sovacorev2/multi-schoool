@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useClass } from "@/lib/class-context";
 import { useSchool } from "@/lib/school-context";
@@ -33,7 +33,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { ClipboardList, Plus, Save, AlertCircle, Lock, Unlock, Clock } from "lucide-react";
+import { ClipboardList, Plus, Save, AlertCircle, Lock, Unlock, Clock, Check, Loader2, CloudUpload } from "lucide-react";
 import type { ExamType, Subject, Learner, Mark } from "@/lib/types";
 
 
@@ -155,6 +155,12 @@ export default function MarksPage() {
   const [pinManagementEnabled, setPinManagementEnabled] = useState(false);
   const [isClassTeacher, setIsClassTeacher] = useState(false);
 
+  // Autosave state
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const marksRef = useRef<Record<string, Record<string, number | null>>>({});
+  const pendingMarksRef = useRef<Map<string, { learnerId: string; subjectId: string }>>(new Map());
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Session selection
   const [selectedSessionId, setSelectedSessionId] = useState<string>("");
   const [selectedYear, setSelectedYear] = useState<string>(CURRENT_YEAR.toString());
@@ -263,6 +269,26 @@ export default function MarksPage() {
     return () => clearInterval(interval);
   }, [sessions]);
 
+  // Keep a ref of the latest marks so autosave timers avoid stale closures
+  useEffect(() => {
+    marksRef.current = marks;
+  }, [marks]);
+
+  // Reset the "saved" indicator back to idle after a short delay
+  useEffect(() => {
+    if (saveStatus === "saved") {
+      const t = setTimeout(() => setSaveStatus("idle"), 2500);
+      return () => clearTimeout(t);
+    }
+  }, [saveStatus]);
+
+  // Clear any pending autosave timer when leaving the page
+  useEffect(() => {
+    return () => {
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    };
+  }, []);
+
   useEffect(() => {
     async function fetchMarks() {
       if (!selectedSessionId || !currentClass) {
@@ -285,6 +311,8 @@ export default function MarksPage() {
 
       setMarks(marksMap);
       setHasChanges(false);
+      pendingMarksRef.current.clear();
+      setSaveStatus("idle");
     }
 
     fetchMarks();
@@ -345,7 +373,7 @@ export default function MarksPage() {
 
   const handleMarkChange = (learnerId: string, subjectId: string, value: string) => {
     const numValue = value === "" ? null : Math.min(100, Math.max(0, parseFloat(value) || 0));
-    
+
     setMarks((prev) => ({
       ...prev,
       [learnerId]: {
@@ -354,96 +382,131 @@ export default function MarksPage() {
       },
     }));
     setHasChanges(true);
+
+    // Track only the cell that changed so autosave writes the minimum to the DB
+    pendingMarksRef.current.set(`${learnerId}__${subjectId}`, { learnerId, subjectId });
+
+    // Debounced autosave: waits 1.5s after the last keystroke, then writes
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = setTimeout(() => {
+      autoSaveMarks();
+    }, 1500);
   };
 
+  // Upsert ONLY the supplied changed cells (keeps Supabase Disk I/O low)
+  const persistMarks = useCallback(
+    async (entries: Array<{ learnerId: string; subjectId: string }>) => {
+      if (!selectedSessionId || entries.length === 0) return true;
+      const session = sessions.find((s) => s.id === selectedSessionId);
+      if (!session) return false;
+
+      const currentMarks = marksRef.current;
+      const marksToUpsert = entries.map(({ learnerId, subjectId }) => ({
+        session_id: selectedSessionId,
+        learner_id: learnerId,
+        subject_id: subjectId,
+        score: currentMarks[learnerId]?.[subjectId] ?? null,
+        year: session.year,
+        term: session.term,
+        exam_type_id: session.exam_type_id || null,
+      }));
+
+      const supabase = createClient();
+      const { error } = await supabase.from("marks").upsert(marksToUpsert, {
+        onConflict: "session_id,learner_id,subject_id",
+      });
+
+      if (error) {
+        console.error("[v0] Error saving marks:", error);
+        return false;
+      }
+      return true;
+    },
+    [selectedSessionId, sessions]
+  );
+
+  // Autosave the queued changes (triggered by the debounce timer)
+  const autoSaveMarks = useCallback(async () => {
+    const session = sessions.find((s) => s.id === selectedSessionId);
+    if (!session || !isExamEditable(session).editable) return;
+
+    const entries = Array.from(pendingMarksRef.current.values());
+    if (entries.length === 0) return;
+
+    // Clear the queue immediately so new edits during the save are not lost
+    pendingMarksRef.current.clear();
+    setSaveStatus("saving");
+
+    const ok = await persistMarks(entries);
+    if (ok) {
+      setSaveStatus("saved");
+      setHasChanges(false);
+    } else {
+      setSaveStatus("error");
+      // Re-queue failed cells so the next edit/save retries them
+      entries.forEach((e) =>
+        pendingMarksRef.current.set(`${e.learnerId}__${e.subjectId}`, e)
+      );
+    }
+  }, [selectedSessionId, sessions, persistMarks]);
+
+  // Manual save (bottom button): flush pending changes + write one audit log entry
   const handleSaveMarks = async () => {
     if (!selectedSessionId || !currentClass) return;
-    
+
     const selectedSession = sessions.find((s) => s.id === selectedSessionId);
     if (!selectedSession) return;
 
-    // Check if editable
     const { editable, reason } = isExamEditable(selectedSession);
     if (!editable) {
       alert(`Cannot save marks: ${reason}`);
       return;
     }
 
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+
     setIsSaving(true);
+    setSaveStatus("saving");
 
+    const entries = Array.from(pendingMarksRef.current.values());
+    pendingMarksRef.current.clear();
+
+    const ok = await persistMarks(entries);
+    if (!ok) {
+      setSaveStatus("error");
+      entries.forEach((e) =>
+        pendingMarksRef.current.set(`${e.learnerId}__${e.subjectId}`, e)
+      );
+      setIsSaving(false);
+      return;
+    }
+
+    // Audit log only on manual save to avoid flooding activity_logs (extra I/O)
     const supabase = createClient();
-    const session = sessions.find(s => s.id === selectedSessionId);
-    if (!session) {
-      setIsSaving(false);
-      return;
-    }
-
-    const marksToUpsert: Array<{
-      session_id: string;
-      learner_id: string;
-      subject_id: string;
-      score: number | null;
-      year: number;
-      term: string;
-      exam_type_id: string | null;
-    }> = [];
-
-    Object.entries(marks).forEach(([learnerId, subjectMarks]) => {
-      Object.entries(subjectMarks).forEach(([subjectId, score]) => {
-        marksToUpsert.push({
-          session_id: selectedSessionId,
-          learner_id: learnerId,
-          subject_id: subjectId,
-          score,
-          year: session.year,
-          term: session.term,
-          exam_type_id: session.exam_type_id || null,
-        });
-      });
-    });
-
-    if (marksToUpsert.length === 0) {
-      alert('No marks to save');
-      setIsSaving(false);
-      return;
-    }
-
-    const { error } = await supabase.from("marks").upsert(marksToUpsert, {
-      onConflict: "session_id,learner_id,subject_id",
-    });
-
-    if (error) {
-      console.error("[v0] Error saving marks:", error);
-      setIsSaving(false);
-      return;
-    }
-
-    // Log the action with teacher PIN and class ID for audit trail
-    let teacherPin = typeof window !== 'undefined' ? localStorage.getItem('teacher_pin') : null
-    
-    // If PIN not in localStorage, fetch from database
-    if (!teacherPin && typeof window !== 'undefined') {
-      const teacherId = localStorage.getItem('teacher_id')
+    let teacherPin = typeof window !== "undefined" ? localStorage.getItem("teacher_pin") : null;
+    if (!teacherPin && typeof window !== "undefined") {
+      const teacherId = localStorage.getItem("teacher_id");
       if (teacherId) {
         const { data: teacherData } = await supabase
-          .from('teacher_accounts')
-          .select('pin')
-          .eq('id', teacherId)
-          .single()
-        teacherPin = teacherData?.pin || null
+          .from("teacher_accounts")
+          .select("pin")
+          .eq("id", teacherId)
+          .single();
+        teacherPin = teacherData?.pin || null;
       }
     }
-    
+
     await supabase.from("activity_logs").insert({
       school_id: currentSchool?.id,
       class_id: currentClass?.id,
       teacher_pin: teacherPin,
       action: "marks_submitted",
-      details: `Submitted marks for ${learners.length} learners in ${subjects.length} subjects - ${currentClass.name}`,
-      performed_by: teacherPin || 'Unknown',
+      details: `Saved marks for ${currentClass.name} - ${selectedSession.exam_types?.name} ${selectedSession.term} ${selectedSession.year}`,
+      performed_by: teacherPin || "Unknown",
     });
 
     setIsSaving(false);
+    setSaveStatus("saved");
     setHasChanges(false);
   };
 
@@ -475,11 +538,8 @@ export default function MarksPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {hasChanges && editStatus.editable && (
-            <Button onClick={handleSaveMarks} disabled={isSaving}>
-              <Save className="w-4 h-4 mr-2" />
-              {isSaving ? "Saving..." : "Save Marks"}
-            </Button>
+          {selectedSession && editStatus.editable && (
+            <AutosaveStatus status={saveStatus} />
           )}
         </div>
       </div>
@@ -757,6 +817,19 @@ export default function MarksPage() {
             )}
           </CardContent>
         </Card>
+      )}
+
+      {/* Sticky bottom save bar - always reachable while scrolling through marks */}
+      {selectedSession && editStatus.editable && subjects.length > 0 && learners.length > 0 && (
+        <div className="sticky bottom-0 z-10 -mx-4 border-t border-border bg-card/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-lg sm:border">
+          <div className="flex items-center justify-between gap-4">
+            <AutosaveStatus status={saveStatus} />
+            <Button onClick={handleSaveMarks} disabled={isSaving} size="lg">
+              <Save className="w-4 h-4 mr-2" />
+              {isSaving ? "Saving..." : "Save Marks"}
+            </Button>
+          </div>
+        </div>
       )}
 
       {!selectedSession && !isLoading && (
