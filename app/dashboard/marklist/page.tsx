@@ -31,6 +31,7 @@ import { Label } from '@/components/ui/label'
 import { ReportStareheStyle } from '@/components/report-starehe-style'
 import { FloatingAnalysisButton } from '@/components/floating-analysis-button'
 import { getStoredTeacherId } from '@/lib/teacher-permissions'
+import { AdminPasswordGate, useAdminPrintGate } from '@/components/admin-password-gate'
 
 
 
@@ -52,6 +53,7 @@ interface LearnerResult {
 export default function MarklistPage() {
   const { currentClass, currentSession: contextSession, isAdminBypass } = useClass()
   const { currentSchool } = useSchool()
+  const { gateOpen, actionLabel: gateActionLabel, handleVerified, handleClose: handleGateClose, attemptPrint } = useAdminPrintGate()
   const [sessions, setSessions] = useState<SessionWithExamType[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [learners, setLearners] = useState<Learner[]>([])
@@ -1744,7 +1746,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
             </Button>
             {currentSchool?.feature_report_cards && (
               <Button 
-                onClick={async () => {
+                onClick={() => attemptPrint(async () => {
                   console.log('[v0] === PRINT REPORTS STARTED ===')
                   console.log('[v0] School:', currentSchool?.name, 'ID:', currentSchool?.id)
                   console.log('[v0] Class:', currentClass?.name, 'ID:', currentClass?.id)
@@ -1989,7 +1991,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                   setReportModalData(finalResults)
                   setTermHistory(termHistory)
                   setReportModalOpen(true)
-                }}
+                }, 'Print All Reports')}
                 disabled={results.length === 0 || !selectedSessionId || !currentClass?.id} 
                 className="bg-green-600 text-white hover:bg-green-700 h-9 text-xs sm:text-sm"
                 id="bulk-print-btn"
@@ -2337,11 +2339,10 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                 <Button 
                                   size="sm" 
                                   variant="outline"
-                                  onClick={() => {
-                                    // Pass the result with its correct rank that's already calculated in the results array
+                                  onClick={() => attemptPrint(() => {
                                     setReportModalData([result])
                                     setReportModalOpen(true)
-                                  }}
+                                  }, 'Print Report Form')}
                                   className="h-7 px-2 text-xs"
                                 >
                                   <FileText className="w-3 h-3 mr-1" />
@@ -3082,7 +3083,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                         {isLoadingCombined ? 'Loading...' : 'Combined Marklist'}
                       </Button>
                       {combinedMarklistData && (
-                        <Button size="sm" variant="outline" onClick={() => {
+                        <Button size="sm" variant="outline" onClick={() => attemptPrint(() => {
                           try {
                             // Build table rows with color coding
                             const tableRows = combinedMarklistData.learners.map((learner, idx) => {
@@ -3196,7 +3197,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                             console.error('Error generating combined marklist:', error)
                             alert('Failed to generate combined marklist. Please try again.')
                           }
-                        }}>
+                        }, 'Print Combined Marklist')}>
                           <Printer className="w-4 h-4 sm:mr-2" />
                           <span className="hidden sm:inline">Print Combined</span>
                         </Button>
