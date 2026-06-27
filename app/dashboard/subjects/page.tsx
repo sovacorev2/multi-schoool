@@ -258,78 +258,68 @@ export default function SubjectsPage() {
           </h2>
         </div>
 
-        {subjects.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
-            No subjects added yet. Add your first subject above.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-8">
-            {subjects.map((subject) => {
-              const isAssigned = assignedSubjectIds.has(subject.id)
-              
-              // If PIN management is enabled (pilot feature active), restrict access
-              // Class teachers can edit all subjects, others can only edit assigned ones
-              let canEdit = true
-              let statusText = ''
-              
-              if (pinManagementEnabled) {
-                // PIN Management enabled: Class teachers can edit all, others only assigned
-                canEdit = isClassTeacher || isAssigned
-                statusText = isClassTeacher ? 'Class teacher - can edit all' : isAssigned ? 'Assigned to you' : 'Not assigned'
-              } else {
-                // PIN Management disabled: All teachers can edit all subjects
-                canEdit = true
-                statusText = ''
-              }
-              
-              return (
-                <div
-                  key={subject.id}
-                  className={`flex items-center justify-between p-4 border border-gray-200 rounded-lg transition-all ${
-                    canEdit ? 'hover:bg-gray-50' : 'opacity-40 cursor-not-allowed'
-                  }`}
-                >
-                  <div>
-                    <h3 className={`font-semibold ${canEdit ? 'text-gray-900' : 'text-gray-500'}`}>
-                      {subject.name}
-                    </h3>
-                    {statusText && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        {statusText}
-                      </p>
+        {(() => {
+          // Filter subjects based on PIN management
+          let displayedSubjects = subjects
+          if (pinManagementEnabled && !isClassTeacher) {
+            // PIN teacher (not class teacher): show ONLY assigned subjects
+            displayedSubjects = subjects.filter(s => assignedSubjectIds.has(s.id))
+          }
+          // Admin or non-PIN teacher: show all subjects
+          
+          return displayedSubjects.length === 0 ? (
+            <div className="p-8 text-center text-gray-500">
+              {pinManagementEnabled && !isClassTeacher 
+                ? 'No subjects assigned to you in this class.'
+                : 'No subjects added yet. Add your first subject above.'}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-8">
+              {displayedSubjects.map((subject) => {
+                const isAssigned = assignedSubjectIds.has(subject.id)
+                
+                // PIN teacher: only show assigned subjects (all can be edited)
+                // Admin/non-PIN teacher: show all subjects (all can be edited)
+                const canEdit = true
+                const statusText = isClassTeacher ? 'Class teacher - can edit all' : 'Assigned to you'
+                
+                return (
+                  <div
+                    key={subject.id}
+                    className={`flex items-center justify-between p-4 border border-border dark:border-border rounded-lg transition-all hover:bg-gray-50 dark:hover:bg-slate-700`}
+                  >
+                    <div>
+                      <h3 className={`font-semibold text-foreground dark:text-foreground`}>
+                        {subject.name}
+                      </h3>
+                      {statusText && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {statusText}
+                        </p>
                     )}
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => canEdit && handleEditSubject(subject)}
-                      disabled={!canEdit}
-                      className={`p-2 rounded-lg transition-colors ${
-                        canEdit
-                          ? 'text-blue-600 hover:bg-blue-50 cursor-pointer'
-                          : 'text-gray-300 cursor-not-allowed'
-                      }`}
-                      title={canEdit ? 'Edit subject' : 'Not allowed - not a class teacher'}
-                    >
-                      <Edit2 className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={() => canEdit && handleDeleteSubject(subject.id)}
-                      disabled={!canEdit}
-                      className={`p-2 rounded-lg transition-colors ${
-                        canEdit
-                          ? 'text-red-600 hover:bg-red-50 cursor-pointer'
-                          : 'text-gray-300 cursor-not-allowed'
-                      }`}
-                      title={canEdit ? 'Delete subject' : 'Not allowed - not a class teacher'}
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleEditSubject(subject)}
+                        className="p-2 rounded-lg transition-colors text-primary dark:text-accent hover:bg-primary/10 dark:hover:bg-accent/10 cursor-pointer"
+                        title="Edit subject"
+                      >
+                        <Edit2 className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteSubject(subject.id)}
+                        className="p-2 rounded-lg transition-colors text-destructive hover:bg-destructive/10 cursor-pointer"
+                        title="Delete subject"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
+                )
+              })}
+            </div>
+          )
+        })()}
       </div>
 
       {/* Edit Subject Modal */}
