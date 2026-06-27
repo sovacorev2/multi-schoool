@@ -1735,12 +1735,12 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
             <Button
               onClick={handleDownloadCSV}
               disabled={results.length === 0}
-              className="bg-gray-100 text-white hover:bg-blue-600 h-9 text-xs sm:text-sm"
+              className="bg-gray-700 text-white hover:bg-gray-900 disabled:opacity-40 h-9 text-xs sm:text-sm"
             >
               <Download className="w-4 h-4 sm:mr-2" />
               <span className="hidden sm:inline">Export CSV</span>
             </Button>
-            <Button onClick={handlePrint} disabled={results.length === 0} className="bg-gray-100 text-white hover:bg-blue-600 h-9 text-xs sm:text-sm">
+            <Button onClick={handlePrint} disabled={results.length === 0} className="bg-gray-700 text-white hover:bg-gray-900 disabled:opacity-40 h-9 text-xs sm:text-sm">
               <Printer className="w-4 h-4 sm:mr-2" />
               <span className="hidden sm:inline">Print Marklist</span>
             </Button>
