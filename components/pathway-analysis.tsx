@@ -76,7 +76,7 @@ export function PathwayAnalysis({ scores, className = '' }: PathwayAnalysisProps
         </table>
       </div>
 
-      {/* Recommended Pathway - Compact */}
+      {/* Current Pathway Profile - Compact */}
       <div
         style={{
           padding: '8px 12px',
@@ -88,7 +88,7 @@ export function PathwayAnalysis({ scores, className = '' }: PathwayAnalysisProps
         }}
       >
         <p style={{ margin: '0 0 4px 0', color: '#666', fontWeight: '500' }}>
-          RECOMMENDED PATHWAY
+          CURRENT PATHWAY PROFILE
         </p>
         <p style={{ margin: 0, fontSize: '11px', fontWeight: '700', color: '#0284c7' }}>
           {recommendedPathway}
