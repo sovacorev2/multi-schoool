@@ -2,51 +2,63 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
-import { Lock, Eye, EyeOff, LogOut } from 'lucide-react'
+import { Lock, Eye, EyeOff } from 'lucide-react'
 
 export default function TeacherPINLogin() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
 
   const [pin, setPin] = useState('')
-  const [school, setSchool] = useState('')
-  const [schools, setSchools] = useState<Array<{ id: string; name: string }>>([])
+  const [schoolCode, setSchoolCode] = useState<string | null>(null)
+  const [schoolId, setSchoolId] = useState<string | null>(null)
+  const [schoolName, setSchoolName] = useState<string | null>(null)
   const [showPin, setShowPin] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [schoolsLoading, setSchoolsLoading] = useState(true)
+  const [schoolLoading, setSchoolLoading] = useState(true)
 
-  // Fetch schools on mount
-  useState(() => {
-    fetchSchools()
-  }, [])
+  // Get school from URL parameter and fetch school details
+  useEffect(() => {
+    const school = searchParams.get('school')
+    if (!school) {
+      setError('No school specified. Please use the school selection page.')
+      setSchoolLoading(false)
+      return
+    }
 
-  async function fetchSchools() {
+    setSchoolCode(school)
+    fetchSchoolDetails(school)
+  }, [searchParams])
+
+  async function fetchSchoolDetails(code: string) {
     try {
-      setSchoolsLoading(true)
-      // Only show schools with PIN login enabled (pilot feature)
+      setSchoolLoading(true)
+      // Get school ID and name from the school code
       const { data, error } = await supabase
         .from('schools')
-        .select('id, name')
+        .select('id, name, code')
+        .eq('code', code)
         .eq('feature_pin_management', true)
-        .order('name')
+        .single()
 
-      if (error) throw error
-      if (!data || data.length === 0) {
-        setError('PIN-based login is not yet enabled for your school. Please use the standard login.')
+      if (error || !data) {
+        throw new Error('School not found or PIN login not enabled for this school.')
       }
-      setSchools(data || [])
+
+      setSchoolId(data.id)
+      setSchoolName(data.name)
     } catch (err) {
-      console.error('[v0] Error fetching schools:', err)
-      setError('Could not load schools. Please try again.')
+      console.error('[v0] Error fetching school details:', err)
+      setError(err instanceof Error ? err.message : 'Could not load school information. Please try again.')
     } finally {
-      setSchoolsLoading(false)
+      setSchoolLoading(false)
     }
   }
 
@@ -60,8 +72,8 @@ export default function TeacherPINLogin() {
       if (!pin.trim() || pin.length !== 4) {
         throw new Error('Please enter your 4-digit PIN')
       }
-      if (!school) {
-        throw new Error('Please select your school')
+      if (!schoolId) {
+        throw new Error('School information not available. Please refresh and try again.')
       }
 
       // Verify PIN and get teacher details
@@ -85,7 +97,7 @@ export default function TeacherPINLogin() {
         `,
         )
         .eq('pin', pin)
-        .eq('school_id', school)
+        .eq('school_id', schoolId)
         .eq('is_active', true)
         .single()
 
@@ -98,7 +110,8 @@ export default function TeacherPINLogin() {
         teacherId: teacher.id,
         name: `${teacher.first_name} ${teacher.last_name}`,
         email: teacher.email,
-        schoolId: school,
+        schoolId: schoolId,
+        schoolName: schoolName,
         pin: pin,
         assignments: teacher.teacher_assignments || [],
         loginTime: new Date().toISOString(),
@@ -135,33 +148,26 @@ export default function TeacherPINLogin() {
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="space-y-4">
-            {/* School Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Select Your School *
-              </label>
-              {schoolsLoading ? (
-                <div className="text-sm text-gray-500">Loading schools...</div>
-              ) : (
-                <select
-                  value={school}
-                  onChange={(e) => setSchool(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  disabled={isLoading}
-                >
-                  <option value="">-- Select School --</option>
-                  {schools.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              )}
+          {schoolLoading ? (
+            <div className="text-center py-8">
+              <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading school information...</p>
             </div>
+          ) : !schoolId ? (
+            <div className="text-center py-8">
+              <p className="text-red-600">Unable to load school. Please go back and try again.</p>
+            </div>
+          ) : (
+            <>
+              {/* School Info Display */}
+              <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-sm text-gray-600 mb-1">Logging in to:</p>
+                <p className="text-lg font-semibold text-blue-900">{schoolName}</p>
+              </div>
 
-            {/* PIN Input */}
-            <div>
+              <form onSubmit={handleLogin} className="space-y-4">
+                {/* PIN Input */}
+                <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Your 4-Digit PIN *
               </label>
@@ -187,21 +193,23 @@ export default function TeacherPINLogin() {
               <p className="text-xs text-gray-500 mt-1">Check your email for your PIN</p>
             </div>
 
-            {/* Submit Button */}
-            <Button type="submit" className="w-full" disabled={isLoading} size="lg">
-              {isLoading ? 'Logging in...' : 'Login'}
-            </Button>
-          </form>
+                {/* Submit Button */}
+                <Button type="submit" className="w-full" disabled={isLoading} size="lg">
+                  {isLoading ? 'Logging in...' : 'Login'}
+                </Button>
+              </form>
 
-          {/* Help Text */}
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <h4 className="text-sm font-medium text-blue-900 mb-2">How to login:</h4>
-            <ul className="text-xs text-blue-800 space-y-1">
-              <li>✓ Select your school from the dropdown</li>
-              <li>✓ Enter your 4-digit PIN</li>
-              <li>✓ Access all your assigned classes directly</li>
-            </ul>
-          </div>
+              {/* Help Text */}
+              <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <h4 className="text-sm font-medium text-blue-900 mb-2">How to login:</h4>
+                <ul className="text-xs text-blue-800 space-y-1">
+                  <li>✓ Enter your 4-digit PIN</li>
+                  <li>✓ Access all your assigned classes directly</li>
+                  <li>✓ Marks autosave as you enter them</li>
+                </ul>
+              </div>
+            </>
+          )}
 
           {/* Forgot PIN */}
           <div className="mt-4 text-center">
