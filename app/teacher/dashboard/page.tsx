@@ -107,10 +107,10 @@ export default function TeacherDashboard() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50">
+      <div className="min-h-screen flex items-center justify-center bg-background dark:bg-background">
         <div className="text-center">
-          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your dashboard...</p>
+          <div className="w-8 h-8 border-4 border-primary dark:border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted-foreground dark:text-muted-foreground">Loading your dashboard...</p>
         </div>
       </div>
     )
@@ -123,18 +123,18 @@ export default function TeacherDashboard() {
   const assignedClasses = getUniqueClasses()
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
+    <div className="min-h-screen bg-background dark:bg-background">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      <header className="bg-card dark:bg-card shadow-sm border-b border-border dark:border-border">
         <div className="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Teacher Portal</h1>
-            <p className="text-gray-600 mt-1">Welcome, {session.name}</p>
+            <h1 className="text-3xl font-bold text-foreground dark:text-foreground">Teacher Portal</h1>
+            <p className="text-muted-foreground dark:text-muted-foreground mt-1">Welcome, {session.name}</p>
           </div>
           <Button
             onClick={handleLogout}
             variant="outline"
-            className="flex items-center gap-2 text-red-600 border-red-600 hover:bg-red-50"
+            className="flex items-center gap-2 text-red-600 dark:text-red-400 border-red-600 dark:border-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
           >
             <LogOut className="w-4 h-4" />
             Logout
@@ -146,29 +146,29 @@ export default function TeacherDashboard() {
       <main className="max-w-7xl mx-auto px-4 py-12">
         {/* Classes Section */}
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-            <BookOpen className="w-6 h-6 text-blue-600" />
+          <h2 className="text-2xl font-bold text-foreground dark:text-foreground mb-6 flex items-center gap-2">
+            <BookOpen className="w-6 h-6 text-primary dark:text-accent" />
             Your Assigned Classes
           </h2>
 
           {assignedClasses.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {assignedClasses.map((cls: any) => (
-                <Card key={cls.id} className="hover:shadow-lg transition-shadow cursor-pointer bg-white">
+                <Card key={cls.id} className="hover:shadow-lg transition-shadow cursor-pointer bg-card dark:bg-card border-border dark:border-border">
                   <CardHeader>
-                    <CardTitle className="text-lg text-gray-900">{cls.name}</CardTitle>
-                    <CardDescription>
+                    <CardTitle className="text-lg text-foreground dark:text-foreground">{cls.name}</CardTitle>
+                    <CardDescription className="text-muted-foreground dark:text-muted-foreground">
                       {cls.subjects.length} subject{cls.subjects.length !== 1 ? 's' : ''}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
                       <div className="text-sm">
-                        <p className="text-gray-600 font-medium mb-2">Teaching:</p>
+                        <p className="text-foreground dark:text-foreground font-medium mb-2">Teaching:</p>
                         <div className="space-y-1">
                           {cls.subjects.map((subject: any) => (
-                            <p key={subject.id} className="text-gray-700 text-sm flex items-center gap-2">
-                              <span className="w-1.5 h-1.5 bg-blue-600 rounded-full"></span>
+                            <p key={subject.id} className="text-foreground dark:text-foreground text-sm flex items-center gap-2">
+                              <span className="w-1.5 h-1.5 bg-primary dark:bg-accent rounded-full"></span>
                               {subject.name}
                             </p>
                           ))}
@@ -176,7 +176,7 @@ export default function TeacherDashboard() {
                       </div>
                       <Button
                         onClick={() => handleAccessClass(cls.id, cls.name)}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white mt-4 flex items-center justify-between"
+                        className="w-full bg-primary dark:bg-accent hover:bg-primary/90 dark:hover:bg-accent/90 text-white mt-4 flex items-center justify-between"
                       >
                         Start Marks Entry
                         <ArrowRight className="w-4 h-4" />
@@ -187,20 +187,20 @@ export default function TeacherDashboard() {
               ))}
             </div>
           ) : (
-            <Card className="bg-white">
+            <Card className="bg-card dark:bg-card border-border dark:border-border">
               <CardContent className="pt-6 text-center">
-                <p className="text-gray-600">No classes assigned yet. Contact your school administrator.</p>
+                <p className="text-muted-foreground dark:text-muted-foreground">No classes assigned yet. Contact your school administrator.</p>
               </CardContent>
             </Card>
           )}
         </div>
 
         {/* Info Box */}
-        <Card className="bg-blue-50 border-blue-200">
+        <Card className="bg-card dark:bg-card border-border dark:border-border">
           <CardHeader>
-            <CardTitle className="text-blue-900">Quick Tips</CardTitle>
+            <CardTitle className="text-foreground dark:text-foreground">Quick Tips</CardTitle>
           </CardHeader>
-          <CardContent className="text-blue-800 text-sm space-y-2">
+          <CardContent className="text-foreground dark:text-foreground text-sm space-y-2">
             <p>✓ Click on a class card to start entering marks</p>
             <p>✓ Marks are automatically saved as you enter them</p>
             <p>✓ Use the Save button at the bottom to finalize your entries</p>
