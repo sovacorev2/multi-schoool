@@ -21,18 +21,51 @@ function verifyHash(password: string, hash: string): boolean {
 // Classes that use individual passwords (lower grades set their own)
 const LOWER_GRADE_CLASSES = ["PP1", "PP2", "Grade 1", "Grade 2", "Grade 3"]
 
-// Helper to get admin password from database
-async function getAdminPassword(): Promise<string> {
+export async function verifyAdminPassword(password: string, schoolId?: string): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient()
-  const { data, error } = await supabase
-    .from("admin_settings")
-    .select("value")
-    .eq("key", "admin_password")
-    .single()
-  
-  console.log('[v0] getAdminPassword - data:', data, 'error:', error)
-  
-  return data?.value || "admin26"
+
+  // The admin password is stored on the schools row as admin_password.
+  // schoolId is passed from the marklist page context; if omitted we try to
+  // find any school whose password matches (fallback for legacy callers).
+  let adminPassword: string | null = null
+
+  if (schoolId) {
+    const { data } = await supabase
+      .from("schools")
+      .select("admin_password")
+      .eq("id", schoolId)
+      .single()
+    adminPassword = data?.admin_password ?? null
+  } else {
+    // Fallback: check all schools — used when schoolId is not available
+    const { data } = await supabase
+      .from("schools")
+      .select("admin_password")
+    const match = data?.find(s => s.admin_password && s.admin_password === password)
+    if (match) {
+      const cookieStore = await cookies()
+      cookieStore.set("admin_auth", JSON.stringify({ authenticated: true, role: "admin" }), {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 8,
+      })
+      return { success: true }
+    }
+    return { success: false, error: "Incorrect admin password" }
+  }
+
+  if (adminPassword && password === adminPassword) {
+    const cookieStore = await cookies()
+    cookieStore.set("admin_auth", JSON.stringify({ authenticated: true, role: "admin" }), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 8,
+    })
+    return { success: true }
+  }
+  return { success: false, error: "Incorrect admin password" }
 }
 
 export async function verifyTeacherPassword(classId: string, password: string): Promise<{ success: boolean; error?: string; needsSetup?: boolean; teacher_id?: string; pinEnabled?: boolean }> {
