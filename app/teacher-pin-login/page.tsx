@@ -91,13 +91,47 @@ export default function TeacherPINLogin() {
         throw new Error('Invalid PIN or teacher not found. Please check and try again.')
       }
 
-      // Fetch assignments separately
+      // Fetch assignments separately (note: the column is 'user_id', not 'teacher_id')
       const { data: assignments, error: assignmentError } = await supabase
         .from('teacher_assignments')
-        .select('id, class_id, subject_id, classes(id, name), subjects(id, name)')
-        .eq('teacher_id', teacher.id)
+        .select('id, class_id, subject_id')
+        .eq('user_id', teacher.id)
+        .eq('school_id', schoolId)
+        .eq('is_active', true)
 
-      console.log('[v0] Assignments fetched:', assignments?.length || 0)
+      console.log('[v0] Assignments fetched:', assignments?.length || 0, 'error:', assignmentError?.message)
+
+      // Fetch class and subject details separately to avoid relationship issues
+      let classesMap: Record<string, any> = {}
+      let subjectsMap: Record<string, any> = {}
+
+      if (assignments && assignments.length > 0) {
+        const classIds = [...new Set(assignments.map(a => a.class_id))]
+        const subjectIds = [...new Set(assignments.map(a => a.subject_id).filter(Boolean))]
+
+        if (classIds.length > 0) {
+          const { data: classes } = await supabase
+            .from('classes')
+            .select('id, name')
+            .in('id', classIds)
+          classes?.forEach(c => { classesMap[c.id] = c })
+        }
+
+        if (subjectIds.length > 0) {
+          const { data: subjects } = await supabase
+            .from('subjects')
+            .select('id, name')
+            .in('id', subjectIds)
+          subjects?.forEach(s => { subjectsMap[s.id] = s })
+        }
+      }
+
+      // Enrich assignments with class and subject details
+      const enrichedAssignments = assignments?.map(a => ({
+        ...a,
+        classes: classesMap[a.class_id] || null,
+        subjects: subjectsMap[a.subject_id] || null,
+      })) || []
 
       // Store session in localStorage
       const session = {
@@ -107,7 +141,7 @@ export default function TeacherPINLogin() {
         schoolId: schoolId,
         schoolName: schoolName,
         pin: pin,
-        assignments: assignments || [],
+        assignments: enrichedAssignments,
         loginTime: new Date().toISOString(),
       }
 
