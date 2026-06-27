@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button'
 import { useSchool } from '@/lib/school-context'
 import { X, Printer, Download } from 'lucide-react'
 import { useRef } from 'react'
+import { PathwayAnalysis } from '@/components/pathway-analysis'
+import { calculatePathwayScores } from '@/lib/pathways'
 
 // Helper function to generate automatic teacher comment based on average performance level
 function getAutoTeacherComment(averageLevel: string): string {
@@ -59,6 +61,12 @@ interface ReportModalProps {
   totalStudents: number
 }
 
+// Helper function to check if class is JSS (grades 7-9)
+function isJSSClass(className: string): boolean {
+  const normalized = className.toUpperCase()
+  return /GRADE\s*[7-9]|CLASS\s*[7-9]|FORM\s*[1-3]|JSS\s*[1-3]/i.test(normalized)
+}
+
 export function ReportModal({
   isOpen,
   onClose,
@@ -70,6 +78,9 @@ export function ReportModal({
 }: ReportModalProps) {
   const printRef = useRef<HTMLDivElement>(null)
   const { currentSchool } = useSchool()
+  
+  // Check if we should show pathway analysis
+  const showPathwayAnalysis = isJSSClass(className)
 
   if (!isOpen) return null
 
@@ -197,6 +208,17 @@ export function ReportModal({
                       </span>
                     )}
                   </div>
+
+                  {/* Pathway Analysis for JSS (Grades 7-9) */}
+                  {showPathwayAnalysis && (
+                    <div style={{ marginBottom: '15px', paddingBottom: '15px', borderBottom: '2px solid #ddd' }}>
+                      <h3 style={{ marginTop: 0, marginBottom: '10px', fontSize: '11px', fontWeight: 'bold', color: '#1e40af' }}>PATHWAY ANALYSIS</h3>
+                      <PathwayAnalysis
+                        scores={calculatePathwayScores(report.marks, subjects)}
+                        className="print-pathway-analysis"
+                      />
+                    </div>
+                  )}
 
                   {/* Marks Table */}
                   <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '10px', fontSize: '10px' }}>
