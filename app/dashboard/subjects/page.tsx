@@ -27,49 +27,59 @@ export default function SubjectsPage() {
   const supabase = createClient()
 
   useEffect(() => {
-    fetchSubjects()
-    fetchAssignedSubjects()
-    fetchSchoolInfo()
-  }, [currentClass?.id])
+    if (!currentClass?.id) return
+    loadPageData()
+  }, [currentClass?.id, isAdminBypass])
 
-  const fetchSchoolInfo = async () => {
-    if (!currentClass?.school_id) return
-    try {
-      const { data: school } = await supabase
-        .from('schools')
-        .select('feature_pin_management')
-        .eq('id', currentClass.school_id)
-        .single()
-      
-      setPinManagementEnabled(school?.feature_pin_management === true)
-    } catch (error) {
-      console.error('Error fetching school info:', error)
-    }
-  }
-
-  async function fetchAssignedSubjects() {
+  // Single sequential loader: school info first, then conditionally assignments
+  const loadPageData = async () => {
     if (!currentClass) return
-    
-    // Admin bypass: show all subjects with no teacher filtering
+
+    // Step 1: fetch subjects (can run immediately, no dependencies)
+    fetchSubjects()
+
+    // Step 2: check if school has PIN management enabled
+    const schoolId = currentClass.school_id
+    let hasPinManagement = false
+
+    if (schoolId) {
+      try {
+        const { data: school } = await supabase
+          .from('schools')
+          .select('feature_pin_management')
+          .eq('id', schoolId)
+          .single()
+        hasPinManagement = school?.feature_pin_management === true
+      } catch {
+        hasPinManagement = false
+      }
+    }
+
+    setPinManagementEnabled(hasPinManagement)
+
+    // Step 3: decide restrictions based on school setting
+    if (!hasPinManagement) {
+      // Non-PIN school: full access, no restrictions, no labels
+      setIsClassTeacher(true)
+      setAssignedSubjectIds(new Set())
+      return
+    }
+
+    // Step 4: PIN-enabled school — apply restrictions
     if (isAdminBypass) {
-      setIsClassTeacher(true)  // Admin can edit all
-      setAssignedSubjectIds(new Set())  // No filtering
+      setIsClassTeacher(true)
+      setAssignedSubjectIds(new Set())
+      return
+    }
+
+    const teacherId = getStoredTeacherId()
+    if (!teacherId) {
+      setIsClassTeacher(false)
+      setAssignedSubjectIds(new Set())
       return
     }
 
     try {
-      // Resolve the PIN teacher id from any known login storage format.
-      const teacherId = getStoredTeacherId()
-      const isPinAuthenticated = !!teacherId
-      
-      console.log('[v0] Subjects page - fetchAssignedSubjects - teacherId:', teacherId, 'PIN auth:', isPinAuthenticated)
-      
-      if (!teacherId) {
-        console.log('[v0] No teacher ID found in storage')
-        return
-      }
-
-      // Get assignments for this teacher in this class
       const { data, error } = await supabase
         .from('teacher_assignments')
         .select('subject_id')
@@ -77,23 +87,10 @@ export default function SubjectsPage() {
         .eq('class_id', currentClass.id)
 
       if (error) throw error
-      
-      console.log('[v0] Teacher assignments found:', data?.length, 'assignments')
-      
-      // For PIN-authenticated teachers: NEVER allow class teacher status
-      // PIN teachers can ONLY edit their specifically assigned subjects
-      // Class teacher status is only for non-PIN teachers
-      const isClassTeacherAssignment = isPinAuthenticated ? false : (data?.some(a => !a.subject_id) || false)
+
+      const isClassTeacherAssignment = data?.some(a => !a.subject_id) || false
       setIsClassTeacher(isClassTeacherAssignment)
-      console.log('[v0] Is class teacher:', isClassTeacherAssignment)
-      
-      const assignedIds = new Set(data?.map(a => a.subject_id).filter(Boolean) || [])
-      console.log('[v0] Assigned subject IDs count:', assignedIds.size, 'IDs:', Array.from(assignedIds))
-      setAssignedSubjectIds(assignedIds)
-      
-      // NOTE: Do NOT force pinManagementEnabled=true here
-      // It should only be true if the school has feature_pin_management=true (checked in fetchSchoolInfo)
-      // For non-PIN schools, even if a PIN teacher exists, restrictions should not apply
+      setAssignedSubjectIds(new Set(data?.map(a => a.subject_id).filter(Boolean) || []))
     } catch (error) {
       console.error('Error fetching assigned subjects:', error)
     }
