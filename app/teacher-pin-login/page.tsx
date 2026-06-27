@@ -148,6 +148,10 @@ export default function TeacherPINLogin() {
       localStorage.setItem('teacher_session', JSON.stringify(session))
       localStorage.setItem('teacher_pin', pin)
 
+      // CRITICAL: Clear any stale admin bypass flag so PIN teachers are never
+      // treated as admin (which would skip subject restrictions).
+      localStorage.removeItem('success_academy_admin_bypass')
+
       // Redirect to teacher dashboard
       router.push('/teacher/dashboard')
     } catch (err) {

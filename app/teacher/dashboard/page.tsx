@@ -30,7 +30,7 @@ interface AssignedClass {
 
 export default function TeacherDashboard() {
   const router = useRouter()
-  const { setCurrentClass } = useClass()
+  const { setCurrentClass, setIsAdminBypass } = useClass()
   const [session, setSession] = useState<TeacherSession | null>(null)
   const [assignedClasses, setAssignedClasses] = useState<AssignedClass[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -87,6 +87,12 @@ export default function TeacherDashboard() {
   const handleAccessClass = async (classId: string, className: string, schoolId: string) => {
     try {
       console.log('[v0] Teacher accessing class:', classId, className)
+      
+      // CRITICAL: Clear any stale admin bypass flag from a previous admin session.
+      // PIN teachers must NEVER be treated as admin, otherwise subject restrictions
+      // are skipped and they see/edit all subjects.
+      setIsAdminBypass(false)
+      localStorage.removeItem('success_academy_admin_bypass')
       
       // Store the teacher info in localStorage
       localStorage.setItem('teacher_authenticated', 'true')
