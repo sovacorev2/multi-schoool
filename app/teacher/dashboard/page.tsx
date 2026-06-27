@@ -5,6 +5,8 @@ export const dynamic = 'force-dynamic'
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { getTeacherAssignedClasses } from '@/app/actions/teacher-access'
+import { useClass } from '@/lib/class-context'
+import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { LogOut, BookOpen, ArrowRight, AlertCircle } from 'lucide-react'
@@ -28,6 +30,7 @@ interface AssignedClass {
 
 export default function TeacherDashboard() {
   const router = useRouter()
+  const { setCurrentClass } = useClass()
   const [session, setSession] = useState<TeacherSession | null>(null)
   const [assignedClasses, setAssignedClasses] = useState<AssignedClass[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -81,14 +84,42 @@ export default function TeacherDashboard() {
     router.push('/teacher-pin-login')
   }
 
-  const handleAccessClass = async (classId: string, className: string) => {
+  const handleAccessClass = async (classId: string, className: string, schoolId: string) => {
     try {
-      console.log('[v0] Teacher accessing class:', classId)
-      // Store the teacher and class info in localStorage for the dashboard
+      console.log('[v0] Teacher accessing class:', classId, className)
+      
+      // Store the teacher info in localStorage
       localStorage.setItem('teacher_authenticated', 'true')
       localStorage.setItem('teacher_id', session?.teacherId || '')
       localStorage.setItem('class_id', classId)
-      // Redirect to marks entry - restrictions will be enforced server-side
+      
+      // Fetch full class data from database
+      const supabase = createClient()
+      const { data: classData, error: fetchError } = await supabase
+        .from('classes')
+        .select('*')
+        .eq('id', classId)
+        .single()
+      
+      if (fetchError || !classData) {
+        console.error('[v0] Failed to fetch class:', fetchError)
+        setError('Failed to load class details')
+        return
+      }
+      
+      // Set class in context (this bypasses password requirement for PIN-authenticated teachers)
+      setCurrentClass({
+        id: classData.id,
+        name: classData.name,
+        code: classData.code,
+        teacher_name: classData.teacher_name,
+        school_id: schoolId || classData.school_id,
+        password: classData.password,
+        created_at: classData.created_at,
+        display_order: classData.display_order
+      })
+      
+      // Redirect to marks entry - layout will see currentClass is set and won't redirect
       router.push(`/dashboard/marks?class=${classId}`)
     } catch (error) {
       console.error('[v0] Error accessing class:', error)
@@ -189,7 +220,7 @@ export default function TeacherDashboard() {
                         </div>
                       </div>
                       <Button
-                        onClick={() => handleAccessClass(cls.id, cls.name)}
+                        onClick={() => handleAccessClass(cls.id, cls.name, cls.schoolId)}
                         className="w-full bg-primary dark:bg-accent hover:bg-primary/90 dark:hover:bg-accent/90 text-white mt-4 flex items-center justify-between"
                       >
                         Start Marks Entry
