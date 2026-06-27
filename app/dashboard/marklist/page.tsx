@@ -2133,46 +2133,46 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
               const isStreamedClass = classWords.length > 2
               
               return (
-                <table className="w-full text-base border-collapse border-2 border-gray-800">
+                <table className="w-full text-base border-collapse border-2 border-border dark:border-border">
               <thead>
-                <tr className="bg-gray-200">
-                  <th className="border border-gray-600 p-2 text-left font-bold">No.</th>
-                  <th className="border border-gray-600 p-2 text-left font-bold">Name</th>
+                <tr className="bg-slate-200 dark:bg-slate-700">
+                  <th className="border border-border dark:border-border p-2 text-left font-bold text-foreground dark:text-foreground">No.</th>
+                  <th className="border border-border dark:border-border p-2 text-left font-bold text-foreground dark:text-foreground">Name</th>
                   {subjects.map((subject) => (
                     <React.Fragment key={subject.id}>
-                      <th colSpan={3} className="border border-gray-600 p-2 font-bold text-center">
+                      <th colSpan={3} className="border border-border dark:border-border p-2 font-bold text-center text-foreground dark:text-foreground">
                         {subject.name}
                       </th>
                     </React.Fragment>
                   ))}
-                  <th className="border border-gray-600 p-2 font-bold">Total</th>
-                  <th className="border border-gray-600 p-2 font-bold">Average</th>
+                  <th className="border border-border dark:border-border p-2 font-bold text-foreground dark:text-foreground">Total</th>
+                  <th className="border border-border dark:border-border p-2 font-bold text-foreground dark:text-foreground">Average</th>
                 </tr>
-                <tr className="bg-gray-200">
-                  <th className="border border-gray-600 p-2 text-left font-bold"></th>
-                  <th className="border border-gray-600 p-2 text-left font-bold"></th>
+                <tr className="bg-slate-200 dark:bg-slate-700">
+                  <th className="border border-border dark:border-border p-2 text-left font-bold text-foreground dark:text-foreground"></th>
+                  <th className="border border-border dark:border-border p-2 text-left font-bold text-foreground dark:text-foreground"></th>
                   {subjects.map((subject) => (
                     <React.Fragment key={`header-${subject.id}`}>
-                      <th className="border border-gray-600 p-2 font-bold text-xs">
+                      <th className="border border-border dark:border-border p-2 font-bold text-xs text-foreground dark:text-foreground">
                         Marks
                       </th>
-                      <th className="border border-gray-600 p-2 font-bold text-xs" style={{ color: '#1a3a52' }}>
+                      <th className="border border-border dark:border-border p-2 font-bold text-xs" style={{ color: '#00d9ff' }}>
                         Level
                       </th>
-                      <th className="border border-gray-600 p-2 font-bold text-xs" style={{ color: '#d97706' }}>
+                      <th className="border border-border dark:border-border p-2 font-bold text-xs" style={{ color: '#fbbf24' }}>
                         Points
                       </th>
                     </React.Fragment>
                   ))}
-                  <th className="border border-gray-600 p-2 font-bold"></th>
-                  <th className="border border-gray-600 p-2 font-bold"></th>
+                  <th className="border border-border dark:border-border p-2 font-bold text-foreground dark:text-foreground"></th>
+                  <th className="border border-border dark:border-border p-2 font-bold text-foreground dark:text-foreground"></th>
                 </tr>
               </thead>
               <tbody>
                 {results.map((result, idx) => (
-                  <tr key={result.learner.id} className={idx % 2 === 0 ? 'bg-card dark:bg-card' : 'bg-slate-50 dark:bg-slate-900/20'}>
-                    <td className="border border-gray-500 p-2 text-left">{idx + 1}</td>
-                    <td className="border border-gray-500 p-2 text-left font-medium">
+                  <tr key={result.learner.id} className={idx % 2 === 0 ? 'bg-card dark:bg-card' : 'bg-slate-50 dark:bg-slate-800/40'}>
+                    <td className="border border-border dark:border-border p-2 text-left text-foreground dark:text-foreground">{idx + 1}</td>
+                    <td className="border border-border dark:border-border p-2 text-left font-medium text-foreground dark:text-foreground">
                       {result.learner.name}
                     </td>
                     {subjects.map((subject) => {
@@ -2180,20 +2180,20 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                       const performanceLevel = getGradeLevelByClass(score, currentClass?.name, currentSchool?.name)
                       return (
                         <React.Fragment key={subject.id}>
-                          <td className="border border-gray-500 p-2 text-center">
+                          <td className="border border-border dark:border-border p-2 text-center text-foreground dark:text-foreground">
                             {score ?? '-'}
                           </td>
-                          <td className="border border-gray-500 p-2 text-center font-bold" style={{ color: '#1a3a52' }}>
+                          <td className="border border-border dark:border-border p-2 text-center font-bold" style={{ color: '#00d9ff' }}>
                             {performanceLevel ? performanceLevel.level : '-'}
                           </td>
-                          <td className="border border-gray-500 p-2 text-center font-bold" style={{ color: '#d97706' }}>
+                          <td className="border border-border dark:border-border p-2 text-center font-bold" style={{ color: '#fbbf24' }}>
                             {performanceLevel ? performanceLevel.points : '-'}
                           </td>
                         </React.Fragment>
                       )
                     })}
-                    <td className="border border-gray-500 p-2 text-center font-bold">{result.total}</td>
-                    <td className="border border-gray-500 p-2 text-center font-bold" style={{ color: '#1a3a52' }}>
+                    <td className="border border-border dark:border-border p-2 text-center font-bold text-foreground dark:text-foreground">{result.total}</td>
+                    <td className="border border-border dark:border-border p-2 text-center font-bold" style={{ color: '#00d9ff' }}>
                       {(() => {
                         const avgPerformanceLevel = getGradeLevelByClass(Math.round(result.average), currentClass?.name, currentSchool?.name)
                         return avgPerformanceLevel ? avgPerformanceLevel.level : '-'
@@ -2202,30 +2202,30 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                   </tr>
                 ))}
                 {/* Subject Means Row */}
-                <tr className="bg-gray-200 font-bold">
-                  <td className="border border-gray-600 p-2" colSpan={2}>MEAN</td>
+                <tr className="bg-slate-200 dark:bg-slate-700 font-bold">
+                  <td className="border border-border dark:border-border p-2 text-foreground dark:text-foreground" colSpan={2}>MEAN</td>
                   {subjects.map((subject) => {
                     const scores = results.map(r => r.marks[subject.id]).filter((m): m is number => m !== null && m !== undefined)
                     const mean = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length) : 0
                     const meanPerformance = getGradeLevelByClass(Math.round(mean), currentClass?.name, currentSchool?.name)
                     return (
                       <React.Fragment key={`mean-${subject.id}`}>
-                        <td className="border border-gray-600 p-2 text-center text-sm">
+                        <td className="border border-border dark:border-border p-2 text-center text-sm text-foreground dark:text-foreground">
                           {scores.length > 0 ? mean.toFixed(1) : '-'}
                         </td>
-                        <td className="border border-gray-600 p-2 text-center text-sm font-bold" style={{ color: '#1a3a52' }}>
+                        <td className="border border-border dark:border-border p-2 text-center text-sm font-bold" style={{ color: '#00d9ff' }}>
                           {meanPerformance ? meanPerformance.level : '-'}
                         </td>
-                        <td className="border border-gray-600 p-2 text-center text-sm font-bold" style={{ color: '#d97706' }}>
+                        <td className="border border-border dark:border-border p-2 text-center text-sm font-bold" style={{ color: '#fbbf24' }}>
                           {meanPerformance ? meanPerformance.points : '-'}
                         </td>
                       </React.Fragment>
                     )
                   })}
-                  <td className="border border-gray-600 p-2 text-center font-bold">
+                  <td className="border border-border dark:border-border p-2 text-center font-bold text-foreground dark:text-foreground">
                     {results.length > 0 ? results.reduce((a, b) => a + b.total, 0) : '-'}
                   </td>
-                  <td className="border border-gray-600 p-2 text-center font-bold">
+                  <td className="border border-border dark:border-border p-2 text-center font-bold" style={{ color: '#00d9ff' }}>
                     {classAverage}
                   </td>
                 </tr>
