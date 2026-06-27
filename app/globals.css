@@ -38,8 +38,43 @@
   --radius: 0.75rem;
 }
 
+:root.dark {
+  --background: 220 13% 13%;
+  --foreground: 0 0% 98%;
+  --card: 220 13% 18%;
+  --card-foreground: 0 0% 98%;
+  --popover: 220 13% 18%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 200 100% 50%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 160 84% 39%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 220 14% 25%;
+  --muted-foreground: 220 9% 64%;
+  --accent: 280 85% 67%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 220 13% 25%;
+  --input: 220 13% 25%;
+  --ring: 200 100% 50%;
+  --chart-1: 200 100% 50%;
+  --chart-2: 160 84% 39%;
+  --chart-3: 280 85% 67%;
+  --chart-4: 40 84% 61%;
+  --chart-5: 10 86% 61%;
+  --sidebar-background: 220 13% 13%;
+  --sidebar-foreground: 0 0% 98%;
+  --sidebar-primary: 200 100% 50%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 220 13% 23%;
+  --sidebar-accent-foreground: 0 0% 98%;
+  --sidebar-border: 220 13% 20%;
+  --sidebar-ring: 200 100% 50%;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root.dark {
+  :root:not(.light) {
     --background: 220 13% 13%;
     --foreground: 0 0% 98%;
     --card: 220 13% 18%;
