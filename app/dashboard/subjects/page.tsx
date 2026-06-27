@@ -99,9 +99,12 @@ export default function SubjectsPage() {
       
       console.log('[v0] Teacher assignments:', data?.length, 'PIN auth:', isPinAuthenticated)
       
-      // Check if teacher is class teacher (has assignment with no subject_id)
-      const isClassTeacherAssignment = data?.some(a => !a.subject_id) || false
+      // For PIN-authenticated teachers: NEVER allow class teacher status
+      // PIN teachers can ONLY edit their specifically assigned subjects
+      // Class teacher status is only for non-PIN teachers
+      const isClassTeacherAssignment = isPinAuthenticated ? false : (data?.some(a => !a.subject_id) || false)
       setIsClassTeacher(isClassTeacherAssignment)
+      console.log('[v0] Is class teacher:', isClassTeacherAssignment, 'PIN auth:', isPinAuthenticated)
       
       const assignedIds = new Set(data?.map(a => a.subject_id).filter(Boolean) || [])
       console.log('[v0] Assigned subject IDs:', Array.from(assignedIds))
@@ -216,41 +219,52 @@ export default function SubjectsPage() {
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Manage Subjects</h1>
         <p className="text-gray-600 mt-2">Add and manage subjects for {currentClass?.name}</p>
-      </div>
-
-      {/* Add Subject Form */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-        <h2 className="text-xl font-bold text-gray-900 mb-6">Add New Subject</h2>
         
-        <form onSubmit={handleAddSubject} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Subject Name */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Subject Name</label>
-              <input
-                type="text"
-                value={subjectName}
-                onChange={(e) => setSubjectName(e.target.value)}
-                placeholder="e.g., Mathematics, English, Science"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              />
-            </div>
-
-            {/* Add Button */}
-            <div className="flex items-end">
-              <button
-                type="submit"
-                disabled={isSubmitting || !subjectName.trim()}
-                className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:bg-gray-400"
-              >
-                <Plus className="w-5 h-5 inline-block mr-2" />
-                Add Subject
-              </button>
-            </div>
+        {/* PIN Teacher Info */}
+        {pinManagementEnabled && (
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-800">
+              <span className="font-semibold">Subject Restrictions Active:</span> You can only edit and manage subjects you are assigned to teach.
+            </p>
           </div>
-        </form>
+        )}
       </div>
+
+      {/* Add Subject Form - Only for admins and non-PIN teachers */}
+      {!pinManagementEnabled && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-6">Add New Subject</h2>
+          
+          <form onSubmit={handleAddSubject} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Subject Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Subject Name</label>
+                <input
+                  type="text"
+                  value={subjectName}
+                  onChange={(e) => setSubjectName(e.target.value)}
+                  placeholder="e.g., Mathematics, English, Science"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
+              {/* Add Button */}
+              <div className="flex items-end">
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !subjectName.trim()}
+                  className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:bg-gray-400"
+                >
+                  <Plus className="w-5 h-5 inline-block mr-2" />
+                  Add Subject
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* Subjects List */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
