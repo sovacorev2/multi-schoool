@@ -5,6 +5,8 @@ export const dynamic = 'force-dynamic'
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { useClass } from '@/lib/class-context'
+import { useSchool } from '@/lib/school-context'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { LogOut, BookOpen, ArrowRight } from 'lucide-react'
@@ -21,6 +23,8 @@ interface TeacherSession {
 
 export default function TeacherDashboard() {
   const router = useRouter()
+  const { setCurrentClass } = useClass()
+  const { setSchool } = useSchool()
   const [session, setSession] = useState<TeacherSession | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -87,7 +91,8 @@ export default function TeacherDashboard() {
         .single()
 
       if (classData) {
-        // Store full class in localStorage for marks entry to use
+        // Set class in context AND localStorage so dashboard layout recognizes auth
+        setCurrentClass(classData)
         localStorage.setItem('current_class', JSON.stringify(classData))
         localStorage.setItem('teacher_current_class', JSON.stringify({ id: classId, name: className }))
       }
