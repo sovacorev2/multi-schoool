@@ -8,17 +8,15 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
-import { Lock, Eye, EyeOff } from 'lucide-react'
+import { Lock, Eye, EyeOff, LogOut } from 'lucide-react'
 
 export default function TeacherPINLogin() {
   const router = useRouter()
   const supabase = createClient()
 
-  const [welcomePassword, setWelcomePassword] = useState('')
   const [pin, setPin] = useState('')
   const [school, setSchool] = useState('')
   const [schools, setSchools] = useState<Array<{ id: string; name: string }>>([])
-  const [showPassword, setShowPassword] = useState(false)
   const [showPin, setShowPin] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -59,25 +57,11 @@ export default function TeacherPINLogin() {
 
     try {
       // Validate input
-      if (!welcomePassword.trim()) {
-        throw new Error('Please enter the welcome password')
-      }
       if (!pin.trim() || pin.length !== 4) {
         throw new Error('Please enter your 4-digit PIN')
       }
       if (!school) {
         throw new Error('Please select your school')
-      }
-
-      // First, verify welcome password against school
-      const { data: schoolData } = await supabase
-        .from('schools')
-        .select('admin_password')
-        .eq('id', school)
-        .single()
-
-      if (!schoolData || schoolData.admin_password !== welcomePassword) {
-        throw new Error('Invalid welcome password. Please try again.')
       }
 
       // Verify PIN and get teacher details
@@ -176,30 +160,6 @@ export default function TeacherPINLogin() {
               )}
             </div>
 
-            {/* Welcome Password */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Welcome Password *
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={welcomePassword}
-                  onChange={(e) => setWelcomePassword(e.target.value)}
-                  placeholder="Enter welcome password"
-                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  disabled={isLoading}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-2.5 text-gray-600 hover:text-gray-900"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-            </div>
-
             {/* PIN Input */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -235,11 +195,11 @@ export default function TeacherPINLogin() {
 
           {/* Help Text */}
           <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <h4 className="text-sm font-medium text-blue-900 mb-2">First time logging in?</h4>
+            <h4 className="text-sm font-medium text-blue-900 mb-2">How to login:</h4>
             <ul className="text-xs text-blue-800 space-y-1">
-              <li>✓ Your school admin registered your account</li>
-              <li>✓ Check your email for the welcome message with your PIN</li>
-              <li>✓ Enter the welcome password and PIN above</li>
+              <li>✓ Select your school from the dropdown</li>
+              <li>✓ Enter your 4-digit PIN</li>
+              <li>✓ Access all your assigned classes directly</li>
             </ul>
           </div>
 

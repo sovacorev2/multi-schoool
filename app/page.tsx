@@ -329,10 +329,18 @@ function HomePageContent() {
               {currentSchool.short_name?.substring(0, 2) || currentSchool.name.substring(0, 2).toUpperCase()}
             </div>
           </div>
-          <div>
+          <div className="flex-1">
             <CardTitle className="text-2xl font-bold mb-2">{currentSchool.name}</CardTitle>
             <CardDescription className="text-base text-gray-600">Exam Marks Entry System</CardDescription>
           </div>
+          <Button
+            onClick={() => router.push(`/teacher-pin-login?school=${currentSchool.code}`)}
+            variant="outline"
+            className="text-blue-600 border-blue-600 hover:bg-blue-50"
+          >
+            <LogIn className="w-4 h-4 mr-2" />
+            Teacher PIN Login
+          </Button>
         </CardHeader>
 
         <CardContent className="space-y-5">
