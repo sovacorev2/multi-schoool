@@ -1240,13 +1240,12 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
     
     printWindow.document.write(marklistContent)
     printWindow.document.close()
-    
-    // Wait for content to load, then print
-    printWindow.onload = () => {
-      setTimeout(() => {
-        printWindow.print()
-      }, 250)
-    }
+
+    // onload is unreliable on mobile — use setTimeout directly after close()
+    setTimeout(() => {
+      printWindow.focus()
+      printWindow.print()
+    }, 500)
   }
 
   const downloadFullLearnerComparison = () => {
@@ -1333,7 +1332,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
 
       printWindow.document.write(reportContent)
       printWindow.document.close()
-      printWindow.print()
+      setTimeout(() => { printWindow.focus(); printWindow.print() }, 500)
     } catch (error) {
       console.error('Error downloading learner comparison:', error)
       alert('Failed to download comparison. Please try again.')
@@ -1609,8 +1608,9 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
     
     // Trigger print dialog for PDF download
     setTimeout(() => {
+      printWindow.focus()
       printWindow.print()
-    }, 250)
+    }, 500)
   }
 
   // Determine page orientation based on number of subjects
@@ -1734,13 +1734,12 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
           <div className="flex flex-wrap gap-2">
             <Button
               onClick={handleDownloadCSV}
-              disabled={results.length === 0}
-              className="bg-gray-700 text-white hover:bg-gray-900 disabled:opacity-40 h-9 text-xs sm:text-sm"
+              className="bg-gray-700 text-white hover:bg-gray-900 h-9 text-xs sm:text-sm"
             >
               <Download className="w-4 h-4 sm:mr-2" />
               <span className="hidden sm:inline">Export CSV</span>
             </Button>
-            <Button onClick={handlePrint} disabled={results.length === 0} className="bg-gray-700 text-white hover:bg-gray-900 disabled:opacity-40 h-9 text-xs sm:text-sm">
+            <Button onClick={handlePrint} className="bg-gray-700 text-white hover:bg-gray-900 h-9 text-xs sm:text-sm">
               <Printer className="w-4 h-4 sm:mr-2" />
               <span className="hidden sm:inline">Print Marklist</span>
             </Button>
@@ -3192,7 +3191,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                             }
                             printWindow.document.write(reportContent)
                             printWindow.document.close()
-                            printWindow.print()
+                            setTimeout(() => { printWindow.focus(); printWindow.print() }, 500)
                           } catch (error) {
                             console.error('Error generating combined marklist:', error)
                             alert('Failed to generate combined marklist. Please try again.')
