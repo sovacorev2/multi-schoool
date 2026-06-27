@@ -236,7 +236,7 @@ export default function MarksPage() {
           const { data: assignments } = await supabase
             .from('teacher_assignments')
             .select('subject_id, class_id')
-            .eq('user_id', teacherId)
+            .eq('teacher_id', teacherId)
             .eq('class_id', currentClass.id);
           
           console.log('[v0] Marks page - teacher assignments for class', currentClass.id, ':', assignments?.length, 'assignments');
