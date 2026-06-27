@@ -206,7 +206,7 @@ export default function SubjectsPage() {
         
         {/* PIN Teacher Info */}
         {pinManagementEnabled && (
-          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-600 rounded-lg">
             <p className="text-sm text-blue-800">
               <span className="font-semibold">Subject Restrictions Active:</span> You can only edit and manage subjects you are assigned to teach.
             </p>
@@ -216,7 +216,7 @@ export default function SubjectsPage() {
 
       {/* Add Subject Form - Only for admins and non-PIN teachers */}
       {!pinManagementEnabled && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+        <div className="bg-card dark:bg-card rounded-lg shadow-sm border border-border dark:border-border p-8">
           <h2 className="text-xl font-bold text-gray-900 mb-6">Add New Subject</h2>
           
           <form onSubmit={handleAddSubject} className="space-y-6">
@@ -251,7 +251,7 @@ export default function SubjectsPage() {
       )}
 
       {/* Subjects List */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-card dark:bg-card rounded-lg shadow-sm border border-border dark:border-border overflow-hidden">
         <div className="px-8 py-6 border-b border-gray-200">
           <h2 className="text-xl font-bold text-gray-900">
             Class Subjects ({subjects.length})
@@ -335,7 +335,7 @@ export default function SubjectsPage() {
       {/* Edit Subject Modal */}
       {showEditModal && editingSubject && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full space-y-4">
+          <div className="bg-card dark:bg-card rounded-lg p-6 max-w-md w-full space-y-4">
             <h3 className="text-lg font-semibold text-gray-900">Edit Subject Name</h3>
 
             <div>

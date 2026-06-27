@@ -1733,12 +1733,12 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
             <Button
               onClick={handleDownloadCSV}
               disabled={results.length === 0}
-              className="bg-blue-500 text-white hover:bg-blue-600 h-9 text-xs sm:text-sm"
+              className="bg-blue-500/10 dark:bg-blue-900/200 text-white hover:bg-blue-600 h-9 text-xs sm:text-sm"
             >
               <Download className="w-4 h-4 sm:mr-2" />
               <span className="hidden sm:inline">Export CSV</span>
             </Button>
-            <Button onClick={handlePrint} disabled={results.length === 0} className="bg-blue-500 text-white hover:bg-blue-600 h-9 text-xs sm:text-sm">
+            <Button onClick={handlePrint} disabled={results.length === 0} className="bg-blue-500/10 dark:bg-blue-900/200 text-white hover:bg-blue-600 h-9 text-xs sm:text-sm">
               <Printer className="w-4 h-4 sm:mr-2" />
               <span className="hidden sm:inline">Print Marklist</span>
             </Button>
@@ -2111,7 +2111,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
 
       {/* Print area */}
       {selectedSessionId && (
-        <div id="print-area" className="bg-white p-2">
+        <div id="print-area" className="bg-card dark:bg-card p-2">
           {/* Print header - hidden */}
           <div className="print-header" style={{ display: 'none' }}></div>
           
@@ -2170,7 +2170,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
               </thead>
               <tbody>
                 {results.map((result, idx) => (
-                  <tr key={result.learner.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                  <tr key={result.learner.id} className={idx % 2 === 0 ? 'bg-card dark:bg-card' : 'bg-slate-50 dark:bg-slate-900/20'}>
                     <td className="border border-gray-500 p-2 text-left">{idx + 1}</td>
                     <td className="border border-gray-500 p-2 text-left font-medium">
                       {result.learner.name}
@@ -2258,7 +2258,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                   <TabsTrigger value="stream-transfers" className="flex-1 min-w-[80px] text-xs sm:text-sm">Stream Transfers</TabsTrigger>
                 ) : null
               })()}
-              <TabsTrigger value="analysis" className="flex-1 min-w-[80px] text-xs sm:text-sm font-semibold bg-blue-50">Analysis</TabsTrigger>
+              <TabsTrigger value="analysis" className="flex-1 min-w-[80px] text-xs sm:text-sm font-semibold bg-blue-500/10 dark:bg-blue-900/20">Analysis</TabsTrigger>
             </TabsList>
 
             {/* Marklist Tab */}
@@ -2305,7 +2305,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                       </thead>
                       <tbody>
                         {results.map((result, idx) => (
-                          <tr key={result.learner.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                          <tr key={result.learner.id} className={idx % 2 === 0 ? 'bg-card dark:bg-card' : 'bg-slate-50 dark:bg-slate-900/20'}>
                             <td className="border border-gray-500 p-2 text-left">{idx + 1}</td>
                             <td className="border border-gray-500 p-2 text-left font-medium">{result.learner.name}</td>
                             {subjects.map((subject) => {
@@ -2389,7 +2389,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                       )
                                       window.open(`https://wa.me/${formattedPhone}?text=${message}`, '_blank')
                                     }}
-                                    className="h-7 px-2 text-xs bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+                                    className="h-7 px-2 text-xs bg-green-500/10 dark:bg-green-900/20 hover:bg-green-100 text-green-700 border-green-200"
                                     title="Send results via WhatsApp"
                                   >
                                     <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
@@ -2489,7 +2489,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {/* Header Info */}
-                  <div className="bg-gray-50 p-4 rounded-lg border">
+                  <div className="bg-slate-50 dark:bg-slate-900/20 p-4 rounded-lg border">
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div><span className="font-semibold">Class:</span> {currentClass?.name}</div>
                       <div><span className="font-semibold">Exam:</span> {selectedSession?.exam_types?.name} - {selectedSession?.term} {selectedSession?.year}</div>
@@ -2502,11 +2502,11 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                   <div>
                     <h3 className="font-semibold text-gray-800 mb-3">Summary Statistics</h3>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                      <div className="bg-blue-50 p-3 rounded-lg border border-blue-200 text-center">
+                      <div className="bg-blue-500/10 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-300 dark:border-blue-700 text-center">
                         <p className="text-xs text-gray-600">Total Students</p>
-                        <p className="text-2xl font-bold text-blue-600">{results.length}</p>
+                        <p className="text-2xl font-bold text-primary dark:text-accent">{results.length}</p>
                       </div>
-                      <div className="bg-green-50 p-3 rounded-lg border border-green-200 text-center">
+                      <div className="bg-green-500/10 dark:bg-green-900/20 p-3 rounded-lg border border-green-200 text-center">
                         <p className="text-xs text-gray-600">Class Average</p>
                         <p className="text-2xl font-bold text-green-600">{classAverage}</p>
                       </div>
@@ -2518,7 +2518,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                         <p className="text-xs text-gray-600">Highest Total</p>
                         <p className="text-2xl font-bold text-purple-600">{results.length > 0 ? Math.max(...results.map((r) => r.total)) : 0}</p>
                       </div>
-                      <div className="bg-red-50 p-3 rounded-lg border border-red-200 text-center">
+                      <div className="bg-red-500/10 dark:bg-red-900/20 p-3 rounded-lg border border-red-200 text-center">
                         <p className="text-xs text-gray-600">Lowest Total</p>
                         <p className="text-2xl font-bold text-red-600">{results.length > 0 ? Math.min(...results.map((r) => r.total)) : 0}</p>
                       </div>
@@ -2534,15 +2534,15 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                   <div>
                     <h3 className="font-semibold text-gray-800 mb-3">Gender Analysis</h3>
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                      <div className="bg-blue-500/10 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-300 dark:border-blue-700">
                         <div className="flex justify-between items-center">
                           <div>
                             <p className="text-sm text-gray-600">Male Students</p>
-                            <p className="text-2xl font-bold text-blue-600">{maleStudents.length}</p>
+                            <p className="text-2xl font-bold text-primary dark:text-accent">{maleStudents.length}</p>
                           </div>
                           <div className="text-right">
                             <p className="text-sm text-gray-600">Average</p>
-                            <p className="text-2xl font-bold text-blue-600">{maleAverage}</p>
+                            <p className="text-2xl font-bold text-primary dark:text-accent">{maleAverage}</p>
                           </div>
                         </div>
                       </div>
@@ -2565,7 +2565,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <h3 className="font-semibold text-gray-800 mb-3">Top 5 Performers</h3>
-                      <div className="bg-green-50 rounded-lg border border-green-200 overflow-hidden">
+                      <div className="bg-green-500/10 dark:bg-green-900/20 rounded-lg border border-green-200 overflow-hidden">
                         <table className="w-full text-sm">
                           <thead className="bg-green-100">
                             <tr>
@@ -2593,7 +2593,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                     </div>
                     <div>
                       <h3 className="font-semibold text-gray-800 mb-3">Bottom 5 Performers</h3>
-                      <div className="bg-red-50 rounded-lg border border-red-200 overflow-hidden">
+                      <div className="bg-red-500/10 dark:bg-red-900/20 rounded-lg border border-red-200 overflow-hidden">
                         <table className="w-full text-sm">
                           <thead className="bg-red-100">
                             <tr>
@@ -2639,7 +2639,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {/* Header Info */}
-                  <div className="bg-gray-50 p-4 rounded-lg border">
+                  <div className="bg-slate-50 dark:bg-slate-900/20 p-4 rounded-lg border">
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div><span className="font-semibold">Class:</span> {currentClass?.name}</div>
                       <div><span className="font-semibold">Exam:</span> {selectedSession?.exam_types?.name} - {selectedSession?.term} {selectedSession?.year}</div>
@@ -2671,10 +2671,10 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                       </thead>
                       <tbody>
                         {subjectPerformance.map((subject, idx) => (
-                          <tr key={subject.name} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                          <tr key={subject.name} className={idx % 2 === 0 ? 'bg-card dark:bg-card' : 'bg-slate-50 dark:bg-slate-900/20'}>
                             <td className="border p-2 text-center font-semibold">{idx + 1}</td>
                             <td className="border p-2 font-medium">{subject.name}</td>
-                            <td className="border p-2 text-center font-bold text-blue-600">{subject.mean}</td>
+                            <td className="border p-2 text-center font-bold text-primary dark:text-accent">{subject.mean}</td>
                             <td className="border p-2 text-center text-green-600">{subject.highest}</td>
                             <td className="border p-2 text-center text-red-600">{subject.lowest}</td>
                             <td className="border p-2 text-center">{subject.stdDev}</td>
@@ -2684,10 +2684,10 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                               </span>
                             </td>
                             <td className="border p-2 text-center bg-emerald-50">{subject.gradeA}</td>
-                            <td className="border p-2 text-center bg-blue-50">{subject.gradeB}</td>
+                            <td className="border p-2 text-center bg-blue-500/10 dark:bg-blue-900/20">{subject.gradeB}</td>
                             <td className="border p-2 text-center bg-yellow-50">{subject.gradeC}</td>
                             <td className="border p-2 text-center bg-orange-50">{subject.gradeD}</td>
-                            <td className="border p-2 text-center bg-red-50">{subject.gradeE}</td>
+                            <td className="border p-2 text-center bg-red-500/10 dark:bg-red-900/20">{subject.gradeE}</td>
                             <td className="border p-2 text-sm">{subject.topPerformer}</td>
                             <td className="border p-2 text-center">
                               {subject.topPerformer !== '-' && (
@@ -2720,30 +2720,30 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                     <h3 className="font-semibold text-gray-800 mb-3">Subject Details</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {subjectPerformance.map((subject, idx) => (
-                        <div key={subject.name} className={`border rounded-lg p-4 ${idx === 0 ? 'bg-green-50 border-green-300' : idx === subjectPerformance.length - 1 ? 'bg-red-50 border-red-300' : 'bg-gray-50'}`}>
+                        <div key={subject.name} className={`border rounded-lg p-4 ${idx === 0 ? 'bg-green-500/10 dark:bg-green-900/20 border-green-300' : idx === subjectPerformance.length - 1 ? 'bg-red-500/10 dark:bg-red-900/20 border-red-300' : 'bg-slate-50 dark:bg-slate-900/20'}`}>
                           <div className="flex items-center justify-between mb-3">
                             <h4 className="font-semibold text-gray-900 flex items-center gap-2">
-                              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${idx === 0 ? 'bg-green-500 text-white' : idx === subjectPerformance.length - 1 ? 'bg-red-500 text-white' : 'bg-gray-400 text-white'}`}>
+                              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${idx === 0 ? 'bg-green-500/10 dark:bg-green-900/200 text-white' : idx === subjectPerformance.length - 1 ? 'bg-red-500/10 dark:bg-red-900/200 text-white' : 'bg-gray-400 text-white'}`}>
                                 {idx + 1}
                               </span>
                               {subject.name}
                             </h4>
-                            <span className="text-xl font-bold text-blue-600">{subject.mean}</span>
+                            <span className="text-xl font-bold text-primary dark:text-accent">{subject.mean}</span>
                           </div>
                           <div className="grid grid-cols-4 gap-2 text-xs">
-                            <div className="bg-white p-2 rounded text-center">
+                            <div className="bg-card dark:bg-card p-2 rounded text-center">
                               <p className="text-gray-500">Highest</p>
                               <p className="font-bold text-green-600">{subject.highest}</p>
                             </div>
-                            <div className="bg-white p-2 rounded text-center">
+                            <div className="bg-card dark:bg-card p-2 rounded text-center">
                               <p className="text-gray-500">Lowest</p>
                               <p className="font-bold text-red-600">{subject.lowest}</p>
                             </div>
-                            <div className="bg-white p-2 rounded text-center">
+                            <div className="bg-card dark:bg-card p-2 rounded text-center">
                               <p className="text-gray-500">Pass Rate</p>
                               <p className="font-bold">{subject.passRate}%</p>
                             </div>
-                            <div className="bg-white p-2 rounded text-center">
+                            <div className="bg-card dark:bg-card p-2 rounded text-center">
                               <p className="text-gray-500">Std Dev</p>
                               <p className="font-bold">{subject.stdDev}</p>
                             </div>
@@ -2908,7 +2908,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                             </thead>
                             <tbody>
                               {comparisonData.subjectComparisons.map((subj, idx) => (
-                                <tr key={subj.name} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                <tr key={subj.name} className={idx % 2 === 0 ? 'bg-card dark:bg-card' : 'bg-slate-50 dark:bg-slate-900/20'}>
                                   <td className="border p-2.5 font-medium">{subj.name}</td>
                                   <td className="border p-2.5 text-center">{subj.previousMean}</td>
                                   <td className="border p-2.5 text-center font-semibold">{subj.currentMean}</td>
@@ -2922,7 +2922,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                     <div className="flex items-center gap-1">
                                       <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
                                         <div
-                                          className={`h-full rounded-full ${subj.change > 0 ? 'bg-emerald-500' : subj.change < 0 ? 'bg-red-500' : 'bg-gray-400'}`}
+                                          className={`h-full rounded-full ${subj.change > 0 ? 'bg-emerald-500' : subj.change < 0 ? 'bg-red-500/10 dark:bg-red-900/200' : 'bg-gray-400'}`}
                                           style={{ width: `${Math.min(Math.abs(subj.change), 30) / 30 * 100}%` }}
                                         />
                                       </div>
@@ -2951,7 +2951,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                           ) : (
                             <div className="space-y-3">
                               {comparisonData.topImprovers.map((l, i) => (
-                                <div key={l.name} className="flex items-center justify-between bg-white rounded-lg p-3 border border-emerald-100">
+                                <div key={l.name} className="flex items-center justify-between bg-card dark:bg-card rounded-lg p-3 border border-emerald-100">
                                   <div className="flex items-center gap-3">
                                     <span className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm">{i + 1}</span>
                                     <div>
@@ -2967,7 +2967,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                         </div>
 
                         {/* Top 3 Droppers */}
-                        <div className="bg-red-50 rounded-xl border border-red-200 p-5">
+                        <div className="bg-red-500/10 dark:bg-red-900/20 rounded-xl border border-red-200 p-5">
                           <h4 className="font-bold text-red-800 mb-3 flex items-center gap-2">
                             <ArrowDownRight className="w-5 h-5" />
                             Top 3 Most Dropped
@@ -2977,7 +2977,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                           ) : (
                             <div className="space-y-3">
                               {comparisonData.topDroppers.map((l, i) => (
-                                <div key={l.name} className="flex items-center justify-between bg-white rounded-lg p-3 border border-red-100">
+                                <div key={l.name} className="flex items-center justify-between bg-card dark:bg-card rounded-lg p-3 border border-red-100">
                                   <div className="flex items-center gap-3">
                                     <span className="w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center font-bold text-sm">{i + 1}</span>
                                     <div>
@@ -3019,7 +3019,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                               {comparisonData.learnerComparisons.map((l, idx) => {
                                 const rankChange = l.previousRank - l.currentRank
                                 return (
-                                  <tr key={l.name} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                  <tr key={l.name} className={idx % 2 === 0 ? 'bg-card dark:bg-card' : 'bg-slate-50 dark:bg-slate-900/20'}>
                                     <td className="border p-2 font-medium">{l.name}</td>
                                     <td className="border p-2 text-center">{l.previousTotal || '-'}</td>
                                     <td className="border p-2 text-center">{l.previousTotal > 0 ? l.previousRank : '-'}</td>
@@ -3330,7 +3330,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                       {/* Stream Overview Cards */}
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {streamComparisonData.streams.map((stream, idx) => (
-                          <Card key={stream.classId} className={`border-2 ${idx === 0 ? 'border-yellow-400 bg-yellow-50' : idx === 1 ? 'border-gray-300 bg-gray-50' : idx === 2 ? 'border-amber-600 bg-amber-50' : 'border-gray-200'}`}>
+                          <Card key={stream.classId} className={`border-2 ${idx === 0 ? 'border-yellow-400 bg-yellow-50' : idx === 1 ? 'border-gray-300 bg-slate-50 dark:bg-slate-900/20' : idx === 2 ? 'border-amber-600 bg-amber-50' : 'border-border dark:border-border'}`}>
                             <CardHeader className="pb-2">
                               <div className="flex items-center justify-between">
                                 <CardTitle className="text-lg">{stream.name}</CardTitle>
@@ -3344,11 +3344,11 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                             </CardHeader>
                             <CardContent className="space-y-3">
                               <div className="grid grid-cols-2 gap-2 text-sm">
-                                <div className="bg-white p-2 rounded border">
-                                  <div className="text-2xl font-bold text-blue-600">{stream.classAvg}</div>
+                                <div className="bg-card dark:bg-card p-2 rounded border">
+                                  <div className="text-2xl font-bold text-primary dark:text-accent">{stream.classAvg}</div>
                                   <div className="text-xs text-gray-500">Mean Score</div>
                                 </div>
-                                <div className="bg-white p-2 rounded border">
+                                <div className="bg-card dark:bg-card p-2 rounded border">
                                   <div className="text-2xl font-bold text-green-600">{stream.passRate}%</div>
                                   <div className="text-xs text-gray-500">Pass Rate</div>
                                 </div>
@@ -3377,9 +3377,9 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                     return (
                                       <>
                                         <div className="bg-emerald-500" style={{ width: `${(stream.rubricDistribution.r4 / total) * 100}%` }} />
-                                        <div className="bg-blue-500" style={{ width: `${(stream.rubricDistribution.r3 / total) * 100}%` }} />
+                                        <div className="bg-blue-500/10 dark:bg-blue-900/200" style={{ width: `${(stream.rubricDistribution.r3 / total) * 100}%` }} />
                                         <div className="bg-amber-400" style={{ width: `${(stream.rubricDistribution.r2 / total) * 100}%` }} />
-                                        <div className="bg-red-500" style={{ width: `${(stream.rubricDistribution.r1 / total) * 100}%` }} />
+                                        <div className="bg-red-500/10 dark:bg-red-900/200" style={{ width: `${(stream.rubricDistribution.r1 / total) * 100}%` }} />
                                       </>
                                     )
                                   })()}
@@ -3410,11 +3410,11 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                   </th>
                                 ))}
                               </tr>
-                              <tr className="bg-gray-50">
+                              <tr className="bg-slate-50 dark:bg-slate-900/20">
                                 <th className="border p-2"></th>
                                 {streamComparisonData.streams.map(stream => (
                                   <React.Fragment key={`header-${stream.classId}`}>
-                                    <th className="border p-1 text-center text-xs text-blue-600">Mean</th>
+                                    <th className="border p-1 text-center text-xs text-primary dark:text-accent">Mean</th>
                                     <th className="border p-1 text-center text-xs text-green-600">High</th>
                                     <th className="border p-1 text-center text-xs text-red-600">Low</th>
                                   </React.Fragment>
@@ -3428,7 +3428,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                 streamComparisonData.streams.forEach(s => s.subjects.forEach(subj => allSubjects.add(subj.name)))
                                 
                                 return Array.from(allSubjects).map(subjName => (
-                                  <tr key={subjName} className="hover:bg-gray-50">
+                                  <tr key={subjName} className="hover:bg-slate-50 dark:bg-slate-900/20">
                                     <td className="border p-2 font-medium">{subjName}</td>
                                     {streamComparisonData.streams.map(stream => {
                                       const subj = stream.subjects.find(s => s.name === subjName)
@@ -3471,11 +3471,11 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
 
                       {/* Summary Stats */}
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 text-center">
+                        <div className="bg-blue-500/10 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-300 dark:border-blue-700 text-center">
                           <div className="text-3xl font-bold text-blue-700">{streamComparisonData.streams.length}</div>
-                          <div className="text-sm text-blue-600">Streams Compared</div>
+                          <div className="text-sm text-primary dark:text-accent">Streams Compared</div>
                         </div>
-                        <div className="bg-green-50 p-4 rounded-lg border border-green-200 text-center">
+                        <div className="bg-green-500/10 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 text-center">
                           <div className="text-3xl font-bold text-green-700">
                             {streamComparisonData.streams.reduce((a, s) => a + s.totalLearners, 0)}
                           </div>
@@ -3529,7 +3529,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                           </thead>
                           <tbody>
                             {combinedMarklistData.learners.slice(0, 20).map((learner, idx) => (
-                              <tr key={learner.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                              <tr key={learner.id} className={idx % 2 === 0 ? 'bg-card dark:bg-card' : 'bg-slate-50 dark:bg-slate-900/20'}>
                                 <td className="border border-gray-300 px-3 py-2">{idx + 1}</td>
                                 <td className="border border-gray-300 px-3 py-2 font-medium">{learner.name}</td>
                                 <td className="border border-gray-300 px-3 py-2 text-xs">{learner.stream}</td>
@@ -3571,7 +3571,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {/* Header */}
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-300 dark:border-blue-700">
                     <h3 className="font-bold text-lg text-blue-900">{currentSchool?.name || 'School'} - Whole School Analysis</h3>
                     <p className="text-sm text-blue-700">
                       {selectedSession?.exam_types?.name} - {selectedSession?.term} {selectedSession?.year} | CBC Competency-Based Assessment
@@ -3594,7 +3594,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                     const categoryColors: Record<string, { bg: string; border: string; text: string; badge: string }> = {
                       'Pre-School': { bg: 'bg-purple-50', border: 'border-purple-300', text: 'text-purple-800', badge: 'bg-purple-600' },
                       'Lower Primary': { bg: 'bg-emerald-50', border: 'border-emerald-300', text: 'text-emerald-800', badge: 'bg-emerald-600' },
-                      'Upper Primary': { bg: 'bg-blue-50', border: 'border-blue-300', text: 'text-blue-800', badge: 'bg-blue-600' },
+                      'Upper Primary': { bg: 'bg-blue-500/10 dark:bg-blue-900/20', border: 'border-blue-300', text: 'text-blue-800', badge: 'bg-blue-600' },
                       'Junior Secondary': { bg: 'bg-orange-50', border: 'border-orange-300', text: 'text-orange-800', badge: 'bg-orange-600' },
                     }
                     const colors = categoryColors[cat.category] || categoryColors['Lower Primary']
@@ -3632,7 +3632,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                   <span className="text-emerald-600">R4</span>
                                 </th>
                                 <th className="border p-2.5 text-center font-semibold">
-                                  <span className="text-blue-600">R3</span>
+                                  <span className="text-primary dark:text-accent">R3</span>
                                 </th>
                                 <th className="border p-2.5 text-center font-semibold">
                                   <span className="text-amber-600">R2</span>
@@ -3654,7 +3654,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                 const rank = cls.classAvg > 0 ? idx + 1 : '-'
 
                                 return (
-                                  <tr key={cls.classId} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                  <tr key={cls.classId} className={idx % 2 === 0 ? 'bg-card dark:bg-card' : 'bg-slate-50 dark:bg-slate-900/20'}>
                                     <td className="border p-2.5 text-center">
                                       {rank !== '-' ? (
                                         <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-white font-bold text-xs ${rank === 1 ? 'bg-yellow-500' : rank === 2 ? 'bg-gray-400' : rank === 3 ? 'bg-amber-700' : 'bg-gray-300'}`}>
@@ -3666,7 +3666,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                     <td className="border p-2.5 text-center">{cls.totalLearners}</td>
                                     <td className="border p-2.5 text-center">{cls.subjectCount}</td>
                                     <td className="border p-2.5 text-center">
-                                      <span className={`font-bold text-base ${cls.classAvg >= 60 ? 'text-emerald-600' : cls.classAvg >= 40 ? 'text-blue-600' : cls.classAvg > 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                                      <span className={`font-bold text-base ${cls.classAvg >= 60 ? 'text-emerald-600' : cls.classAvg >= 40 ? 'text-primary dark:text-accent' : cls.classAvg > 0 ? 'text-red-600' : 'text-gray-400'}`}>
                                         {cls.classAvg || '--'}
                                       </span>
                                     </td>
@@ -3711,13 +3711,13 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                   <div className="bg-emerald-500 flex items-center justify-center text-white text-xs font-bold" style={{ width: `${(catR4 / totalR) * 100}%` }}>
                                     {Math.round((catR4 / totalR) * 100) > 5 && `${Math.round((catR4 / totalR) * 100)}%`}
                                   </div>
-                                  <div className="bg-blue-500 flex items-center justify-center text-white text-xs font-bold" style={{ width: `${(catR3 / totalR) * 100}%` }}>
+                                  <div className="bg-blue-500/10 dark:bg-blue-900/200 flex items-center justify-center text-white text-xs font-bold" style={{ width: `${(catR3 / totalR) * 100}%` }}>
                                     {Math.round((catR3 / totalR) * 100) > 5 && `${Math.round((catR3 / totalR) * 100)}%`}
                                   </div>
                                   <div className="bg-amber-400 flex items-center justify-center text-white text-xs font-bold" style={{ width: `${(catR2 / totalR) * 100}%` }}>
                                     {Math.round((catR2 / totalR) * 100) > 5 && `${Math.round((catR2 / totalR) * 100)}%`}
                                   </div>
-                                  <div className="bg-red-500 flex items-center justify-center text-white text-xs font-bold" style={{ width: `${(catR1 / totalR) * 100}%` }}>
+                                  <div className="bg-red-500/10 dark:bg-red-900/200 flex items-center justify-center text-white text-xs font-bold" style={{ width: `${(catR1 / totalR) * 100}%` }}>
                                     {Math.round((catR1 / totalR) * 100) > 5 && `${Math.round((catR1 / totalR) * 100)}%`}
                                   </div>
                                 </div>
@@ -3741,7 +3741,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                       <h3 className="text-lg font-bold mb-4">Overall School Summary</h3>
                       <div className="grid grid-cols-4 gap-4">
                         {schoolPerformance.map((cat) => (
-                          <div key={cat.category} className="bg-white/10 rounded-lg p-4 text-center">
+                          <div key={cat.category} className="bg-card dark:bg-card/10 rounded-lg p-4 text-center">
                             <p className="text-xs opacity-75">{cat.category}</p>
                             <p className="text-3xl font-bold mt-1">{cat.categoryAvg || '--'}</p>
                             <p className="text-xs opacity-60 mt-1">{cat.totalLearners} learners</p>
@@ -3825,7 +3825,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
       {/* WhatsApp Bulk Send Modal */}
       {whatsappModalOpen && whatsappQueue.length > 0 && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden">
+          <div className="bg-card dark:bg-card rounded-xl shadow-2xl max-w-md w-full overflow-hidden">
             <div className="px-6 py-4 bg-emerald-600 text-white">
               <h3 className="font-semibold text-lg">Send Results via WhatsApp</h3>
               <p className="text-sm opacity-90">Sending to {whatsappQueue.length} parents</p>
@@ -3847,7 +3847,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                     </div>
                   </div>
                   
-                  <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                  <div className="bg-slate-50 dark:bg-slate-900/20 rounded-lg p-4 mb-4">
                     <p className="text-sm text-gray-600 mb-1">Current Student:</p>
                     <p className="font-semibold text-lg">{whatsappQueue[whatsappCurrentIndex]?.learner.name}</p>
                     <p className="text-sm text-gray-600">Phone: {whatsappQueue[whatsappCurrentIndex]?.learner.parent_phone}</p>
@@ -3924,7 +3924,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
               )}
             </div>
             
-            <div className="px-6 py-3 bg-gray-50 border-t flex justify-end">
+            <div className="px-6 py-3 bg-slate-50 dark:bg-slate-900/20 border-t flex justify-end">
               <Button
                 variant="outline"
                 onClick={() => {
@@ -3944,9 +3944,9 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
       {/* Certificate Print Modal */}
       {certificateData && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full overflow-hidden">
+          <div className="bg-card dark:bg-card rounded-2xl shadow-2xl max-w-3xl w-full overflow-hidden">
             {/* Modal Controls */}
-            <div className="flex items-center justify-between px-6 py-3 bg-gray-50 border-b">
+            <div className="flex items-center justify-between px-6 py-3 bg-slate-50 dark:bg-slate-900/20 border-b">
               <h3 className="font-semibold text-gray-800">Certificate Preview</h3>
               <div className="flex gap-2">
                 <Button
@@ -4236,7 +4236,7 @@ function StreamTransfersContent({ currentClass, allClasses, subjects }: any) {
           ) : (
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {streamLearners.map((learner) => (
-                <div key={learner.id} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded">
+                <div key={learner.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/20 border border-border dark:border-border rounded">
                   <span className="font-medium text-sm">{learner.name}</span>
                   <Select 
                     value="select"
