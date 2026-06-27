@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { LogOut, BookOpen, ArrowRight } from 'lucide-react'
@@ -75,11 +76,28 @@ export default function TeacherDashboard() {
     return Array.from(classMap.values())
   }
 
-  const handleAccessClass = (classId: string, className: string) => {
-    // Store current class in session for marks entry
-    localStorage.setItem('teacher_current_class', JSON.stringify({ id: classId, name: className }))
-    // Redirect to marks page
-    router.push(`/dashboard/marks?class=${classId}`)
+  const handleAccessClass = async (classId: string, className: string) => {
+    try {
+      // Fetch the full class object from database
+      const supabase = createClient()
+      const { data: classData } = await supabase
+        .from('classes')
+        .select('*')
+        .eq('id', classId)
+        .single()
+
+      if (classData) {
+        // Store full class in localStorage for marks entry to use
+        localStorage.setItem('current_class', JSON.stringify(classData))
+        localStorage.setItem('teacher_current_class', JSON.stringify({ id: classId, name: className }))
+      }
+
+      // Redirect directly to marks entry for this class - no password needed
+      router.push(`/dashboard/marks?class=${classId}`)
+    } catch (error) {
+      console.error('[v0] Error accessing class:', error)
+      alert('Failed to access class. Please try again.')
+    }
   }
 
   if (isLoading) {
