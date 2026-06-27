@@ -236,22 +236,6 @@ export async function setupTeacherPassword(classId: string, password: string, co
   return { success: true, teacher_id: teacherId }
 }
 
-export async function verifyAdminPassword(password: string): Promise<{ success: boolean; error?: string }> {
-  const adminPassword = await getAdminPassword()
-  
-  if (password === adminPassword) {
-    const cookieStore = await cookies()
-    cookieStore.set("admin_auth", JSON.stringify({ authenticated: true, role: "admin" }), {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 8,
-    })
-    return { success: true }
-  }
-  return { success: false, error: "Incorrect admin password" }
-}
-
 export async function checkTeacherAuth(classId: string): Promise<boolean> {
   const cookieStore = await cookies()
   const authCookie = cookieStore.get("teacher_auth")
@@ -290,29 +274,36 @@ export async function logoutAdmin(): Promise<void> {
   cookieStore.delete("admin_auth")
 }
 
-export async function changeAdminPassword(currentPassword: string, newPassword: string): Promise<{ success: boolean; error?: string }> {
+export async function changeAdminPassword(currentPassword: string, newPassword: string, schoolId?: string): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient()
-  
-  // Verify current password
-  const adminPassword = await getAdminPassword()
-  if (currentPassword !== adminPassword) {
-    return { success: false, error: "Current password is incorrect" }
-  }
-  
+
   if (newPassword.length < 4) {
     return { success: false, error: "New password must be at least 4 characters" }
   }
-  
-  // Update the password in the database
+
+  // Verify current password against schools.admin_password
+  const query = schoolId
+    ? supabase.from("schools").select("id, admin_password").eq("id", schoolId).single()
+    : supabase.from("schools").select("id, admin_password").limit(1).single()
+
+  const { data: schoolData, error: fetchErr } = await query
+  if (fetchErr || !schoolData) {
+    return { success: false, error: "School not found" }
+  }
+
+  if (currentPassword !== schoolData.admin_password) {
+    return { success: false, error: "Current password is incorrect" }
+  }
+
   const { error } = await supabase
-    .from("admin_settings")
-    .update({ value: newPassword, updated_at: new Date().toISOString() })
-    .eq("key", "admin_password")
-  
+    .from("schools")
+    .update({ admin_password: newPassword })
+    .eq("id", schoolData.id)
+
   if (error) {
     return { success: false, error: "Failed to update password" }
   }
-  
+
   return { success: true }
 }
 
