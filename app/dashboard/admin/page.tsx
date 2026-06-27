@@ -475,7 +475,7 @@ export default function AdminPage() {
                                 Password Set
                               </Badge>
                             ) : (
-                              <Badge variant="outline" className="text-gray-600">
+                              <Badge variant="outline" className="text-muted-foreground">
                                 <Unlock className="w-3 h-3 mr-1" />
                                 Not Set
                               </Badge>

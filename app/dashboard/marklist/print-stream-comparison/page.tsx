@@ -235,21 +235,21 @@ export default function PrintStreamComparisonPage() {
       <div className="grid grid-cols-4 gap-4 mb-6 text-center">
         <div className="border p-3 rounded">
           <div className="text-2xl font-bold text-blue-600">{streams.length}</div>
-          <div className="text-xs text-gray-500">Streams</div>
+          <div className="text-xs text-muted-foreground">Streams</div>
         </div>
         <div className="border p-3 rounded">
           <div className="text-2xl font-bold text-green-600">{streams.reduce((a, s) => a + s.totalLearners, 0)}</div>
-          <div className="text-xs text-gray-500">Total Learners</div>
+          <div className="text-xs text-muted-foreground">Total Learners</div>
         </div>
         <div className="border p-3 rounded">
           <div className="text-2xl font-bold text-purple-600">{streams[0]?.streamName || '-'}</div>
-          <div className="text-xs text-gray-500">Top Stream</div>
+          <div className="text-xs text-muted-foreground">Top Stream</div>
         </div>
         <div className="border p-3 rounded">
           <div className="text-2xl font-bold text-amber-600">
             {streams.length > 0 ? (streams.reduce((a, s) => a + s.classAvg, 0) / streams.length).toFixed(1) : '0'}
           </div>
-          <div className="text-xs text-gray-500">Grade Average</div>
+          <div className="text-xs text-muted-foreground">Grade Average</div>
         </div>
       </div>
 

@@ -37,7 +37,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="bg-background">
+    <html lang="en" className="bg-background light">
       <head>
         <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
         <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />

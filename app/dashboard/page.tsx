@@ -23,8 +23,8 @@ export default function DashboardPage() {
     <div className="space-y-8">
       {/* Marks Management Workflow Header */}
       <div>
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Marks Management Workflow</h2>
-        <p className="text-gray-600 text-lg">Follow these steps to complete your marks entry process</p>
+        <h2 className="text-3xl font-bold text-foreground mb-2">Marks Management Workflow</h2>
+        <p className="text-muted-foreground text-lg">Follow these steps to complete your marks entry process</p>
       </div>
 
       {/* Workflow Steps */}
@@ -45,43 +45,43 @@ export default function DashboardPage() {
 
         {/* Step 2 - Configure Subjects */}
         <Link href="/dashboard/subjects">
-          <div className="bg-white text-gray-900 p-8 rounded-lg cursor-pointer hover:shadow-lg transition-all border border-gray-200 h-full">
+          <div className="bg-white text-foreground p-8 rounded-lg cursor-pointer hover:shadow-lg transition-all border border-gray-200 h-full">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-gray-600" />
+                <BookOpen className="w-6 h-6 text-muted-foreground" />
               </div>
-              <span className="text-sm font-bold text-gray-700 bg-gray-100 px-3 py-1 rounded-full">Step 2</span>
+              <span className="text-sm font-bold text-foreground bg-gray-100 px-3 py-1 rounded-full">Step 2</span>
             </div>
             <h3 className="text-xl font-bold mb-2">Configure Subjects</h3>
-            <p className="text-sm text-gray-600">Set up subjects for your class</p>
+            <p className="text-sm text-muted-foreground">Set up subjects for your class</p>
           </div>
         </Link>
 
         {/* Step 3 - Enter Marks */}
         <Link href="/dashboard/marks">
-          <div className="bg-white text-gray-900 p-8 rounded-lg cursor-pointer hover:shadow-lg transition-all border border-gray-200 h-full">
+          <div className="bg-white text-foreground p-8 rounded-lg cursor-pointer hover:shadow-lg transition-all border border-gray-200 h-full">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                <ClipboardList className="w-6 h-6 text-gray-600" />
+                <ClipboardList className="w-6 h-6 text-muted-foreground" />
               </div>
-              <span className="text-sm font-bold text-gray-700 bg-gray-100 px-3 py-1 rounded-full">Step 3</span>
+              <span className="text-sm font-bold text-foreground bg-gray-100 px-3 py-1 rounded-full">Step 3</span>
             </div>
             <h3 className="text-xl font-bold mb-2">Enter Marks</h3>
-            <p className="text-sm text-gray-600">Record exam results and scores</p>
+            <p className="text-sm text-muted-foreground">Record exam results and scores</p>
           </div>
         </Link>
 
         {/* Step 4 - Generate Marklist */}
         <Link href="/dashboard/marklist">
-          <div className="bg-white text-gray-900 p-8 rounded-lg cursor-pointer hover:shadow-lg transition-all border border-gray-200 h-full">
+          <div className="bg-white text-foreground p-8 rounded-lg cursor-pointer hover:shadow-lg transition-all border border-gray-200 h-full">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                <FileText className="w-6 h-6 text-gray-600" />
+                <FileText className="w-6 h-6 text-muted-foreground" />
               </div>
-              <span className="text-sm font-bold text-gray-700 bg-gray-100 px-3 py-1 rounded-full">Step 4</span>
+              <span className="text-sm font-bold text-foreground bg-gray-100 px-3 py-1 rounded-full">Step 4</span>
             </div>
             <h3 className="text-xl font-bold mb-2">Generate Marklist</h3>
-            <p className="text-sm text-gray-600">Create and export reports</p>
+            <p className="text-sm text-muted-foreground">Create and export reports</p>
           </div>
         </Link>
 
