@@ -98,7 +98,7 @@ export default function TeacherLoginSelection() {
                     <Card
                       key={school.id}
                       className="hover:border-gray-400 hover:shadow-md transition-all cursor-pointer"
-                      onClick={() => router.push('/')}
+                      onClick={() => router.push(`/teacher-login?school=${school.id}`)}
                     >
                       <CardHeader>
                         <div className="flex items-center justify-between">

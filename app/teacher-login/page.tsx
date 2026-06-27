@@ -9,6 +9,7 @@ import Link from 'next/link'
 
 export default function TeacherLoginPage() {
   const router = useRouter()
+  const supabase = createClient()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [pin, setPin] = useState('')
@@ -17,8 +18,6 @@ export default function TeacherLoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [showPin, setShowPin] = useState(false)
-
-  const supabase = createClient()
 
   useEffect(() => {
     // Fetch schools for dropdown
@@ -125,7 +124,7 @@ export default function TeacherLoginPage() {
         // Redirect to teacher dashboard
         router.push('/teacher/dashboard')
       } else {
-        // Standard login (email + password)
+        // Standard login (email + password) - for schools without PIN management
         const response = await fetch('/api/teacher-login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -139,6 +138,28 @@ export default function TeacherLoginPage() {
           setIsLoading(false)
           return
         }
+
+        // Get school info
+        const { data: schoolInfo } = await supabase
+          .from('schools')
+          .select('name')
+          .eq('id', schoolId)
+          .single()
+
+        // Store session in localStorage for non-PIN schools
+        const session = {
+          teacherId: data.teacher.id,
+          name: data.teacher.name,
+          email: data.teacher.email,
+          schoolId: schoolId,
+          assignments: data.assignments || [],
+          loginTime: new Date().toISOString(),
+          isPinEnabled: false, // Explicitly mark as non-PIN login
+        }
+
+        localStorage.setItem('teacher_session', JSON.stringify(session))
+        localStorage.setItem('current_school_id', schoolId)
+        localStorage.setItem('current_school_name', schoolInfo?.name || 'Shuletech')
 
         // Redirect to teacher dashboard
         router.push('/teacher/dashboard')
