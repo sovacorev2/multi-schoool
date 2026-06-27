@@ -24,11 +24,14 @@ const LOWER_GRADE_CLASSES = ["PP1", "PP2", "Grade 1", "Grade 2", "Grade 3"]
 // Helper to get admin password from database
 async function getAdminPassword(): Promise<string> {
   const supabase = await createClient()
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("admin_settings")
     .select("value")
     .eq("key", "admin_password")
     .single()
+  
+  console.log('[v0] getAdminPassword - data:', data, 'error:', error)
+  
   return data?.value || "admin26"
 }
 

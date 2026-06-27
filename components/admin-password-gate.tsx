@@ -63,8 +63,8 @@ export function AdminPasswordGate({ isOpen, onClose, onVerified, actionLabel = '
       <DialogContent className="sm:max-w-sm bg-card border-border">
         <DialogHeader>
           <div className="flex items-center gap-3 mb-1">
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-              <Lock className="w-5 h-5 text-primary" />
+            <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
+              <Lock className="w-5 h-5 text-destructive" />
             </div>
             <div>
               <DialogTitle className="text-foreground">Admin Verification Required</DialogTitle>
@@ -111,7 +111,7 @@ export function AdminPasswordGate({ isOpen, onClose, onVerified, actionLabel = '
             </Button>
             <Button
               type="submit"
-              className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+              className="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={isLoading}
             >
               {isLoading ? 'Verifying...' : 'Verify & Print'}
