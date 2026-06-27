@@ -2158,7 +2158,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                       <th className="border border-border dark:border-border p-2 font-bold text-xs text-foreground dark:text-foreground">
                         Marks
                       </th>
-                      <th className="border border-border dark:border-border p-2 font-bold text-xs" style={{ color: '#00d9ff' }}>
+                      <th className="border border-border dark:border-border p-2 font-bold text-xs" style={{ color: '#1a56db' }}>
                         Level
                       </th>
                       <th className="border border-border dark:border-border p-2 font-bold text-xs" style={{ color: '#fbbf24' }}>
@@ -2185,7 +2185,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                           <td className="border border-border dark:border-border p-2 text-center text-foreground dark:text-foreground">
                             {score ?? '-'}
                           </td>
-                          <td className="border border-border dark:border-border p-2 text-center font-bold" style={{ color: '#00d9ff' }}>
+                          <td className="border border-border dark:border-border p-2 text-center font-bold" style={{ color: '#1a56db' }}>
                             {performanceLevel ? performanceLevel.level : '-'}
                           </td>
                           <td className="border border-border dark:border-border p-2 text-center font-bold" style={{ color: '#fbbf24' }}>
@@ -2195,7 +2195,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                       )
                     })}
                     <td className="border border-border dark:border-border p-2 text-center font-bold text-foreground dark:text-foreground">{result.total}</td>
-                    <td className="border border-border dark:border-border p-2 text-center font-bold" style={{ color: '#00d9ff' }}>
+                    <td className="border border-border dark:border-border p-2 text-center font-bold" style={{ color: '#1a56db' }}>
                       {(() => {
                         const avgPerformanceLevel = getGradeLevelByClass(Math.round(result.average), currentClass?.name, currentSchool?.name)
                         return avgPerformanceLevel ? avgPerformanceLevel.level : '-'
@@ -2215,7 +2215,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                         <td className="border border-border dark:border-border p-2 text-center text-sm text-foreground dark:text-foreground">
                           {scores.length > 0 ? mean.toFixed(1) : '-'}
                         </td>
-                        <td className="border border-border dark:border-border p-2 text-center text-sm font-bold" style={{ color: '#00d9ff' }}>
+                        <td className="border border-border dark:border-border p-2 text-center text-sm font-bold" style={{ color: '#1a56db' }}>
                           {meanPerformance ? meanPerformance.level : '-'}
                         </td>
                         <td className="border border-border dark:border-border p-2 text-center text-sm font-bold" style={{ color: '#fbbf24' }}>
@@ -2227,7 +2227,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                   <td className="border border-border dark:border-border p-2 text-center font-bold text-foreground dark:text-foreground">
                     {results.length > 0 ? results.reduce((a, b) => a + b.total, 0) : '-'}
                   </td>
-                  <td className="border border-border dark:border-border p-2 text-center font-bold" style={{ color: '#00d9ff' }}>
+                  <td className="border border-border dark:border-border p-2 text-center font-bold" style={{ color: '#1a56db' }}>
                     {classAverage}
                   </td>
                 </tr>
@@ -2505,7 +2505,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                       <div className="bg-blue-500/10 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-300 dark:border-blue-700 text-center">
                         <p className="text-xs text-gray-600">Total Students</p>
-                        <p className="text-2xl font-bold text-primary dark:text-accent">{results.length}</p>
+                        <p className="text-2xl font-bold text-blue-600">{results.length}</p>
                       </div>
                       <div className="bg-green-500/10 dark:bg-green-900/20 p-3 rounded-lg border border-green-200 text-center">
                         <p className="text-xs text-gray-600">Class Average</p>
@@ -2539,11 +2539,11 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                         <div className="flex justify-between items-center">
                           <div>
                             <p className="text-sm text-gray-600">Male Students</p>
-                            <p className="text-2xl font-bold text-primary dark:text-accent">{maleStudents.length}</p>
+                            <p className="text-2xl font-bold text-blue-600">{maleStudents.length}</p>
                           </div>
                           <div className="text-right">
                             <p className="text-sm text-gray-600">Average</p>
-                            <p className="text-2xl font-bold text-primary dark:text-accent">{maleAverage}</p>
+                            <p className="text-2xl font-bold text-blue-600">{maleAverage}</p>
                           </div>
                         </div>
                       </div>
@@ -2675,7 +2675,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                           <tr key={subject.name} className={idx % 2 === 0 ? 'bg-card dark:bg-card' : 'bg-slate-50 dark:bg-slate-900/20'}>
                             <td className="border p-2 text-center font-semibold">{idx + 1}</td>
                             <td className="border p-2 font-medium">{subject.name}</td>
-                            <td className="border p-2 text-center font-bold text-primary dark:text-accent">{subject.mean}</td>
+                            <td className="border p-2 text-center font-bold text-blue-600">{subject.mean}</td>
                             <td className="border p-2 text-center text-green-600">{subject.highest}</td>
                             <td className="border p-2 text-center text-red-600">{subject.lowest}</td>
                             <td className="border p-2 text-center">{subject.stdDev}</td>
@@ -2729,7 +2729,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                               </span>
                               {subject.name}
                             </h4>
-                            <span className="text-xl font-bold text-primary dark:text-accent">{subject.mean}</span>
+                            <span className="text-xl font-bold text-blue-600">{subject.mean}</span>
                           </div>
                           <div className="grid grid-cols-4 gap-2 text-xs">
                             <div className="bg-card dark:bg-card p-2 rounded text-center">
@@ -3346,7 +3346,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                             <CardContent className="space-y-3">
                               <div className="grid grid-cols-2 gap-2 text-sm">
                                 <div className="bg-card dark:bg-card p-2 rounded border">
-                                  <div className="text-2xl font-bold text-primary dark:text-accent">{stream.classAvg}</div>
+                                  <div className="text-2xl font-bold text-blue-600">{stream.classAvg}</div>
                                   <div className="text-xs text-gray-500">Mean Score</div>
                                 </div>
                                 <div className="bg-card dark:bg-card p-2 rounded border">
@@ -3415,7 +3415,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                 <th className="border p-2"></th>
                                 {streamComparisonData.streams.map(stream => (
                                   <React.Fragment key={`header-${stream.classId}`}>
-                                    <th className="border p-1 text-center text-xs text-primary dark:text-accent">Mean</th>
+                                    <th className="border p-1 text-center text-xs text-blue-600">Mean</th>
                                     <th className="border p-1 text-center text-xs text-green-600">High</th>
                                     <th className="border p-1 text-center text-xs text-red-600">Low</th>
                                   </React.Fragment>
@@ -3474,7 +3474,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
                         <div className="bg-blue-500/10 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-300 dark:border-blue-700 text-center">
                           <div className="text-3xl font-bold text-blue-700">{streamComparisonData.streams.length}</div>
-                          <div className="text-sm text-primary dark:text-accent">Streams Compared</div>
+                          <div className="text-sm text-blue-600">Streams Compared</div>
                         </div>
                         <div className="bg-green-500/10 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 text-center">
                           <div className="text-3xl font-bold text-green-700">
@@ -3633,7 +3633,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                   <span className="text-emerald-600">R4</span>
                                 </th>
                                 <th className="border p-2.5 text-center font-semibold">
-                                  <span className="text-primary dark:text-accent">R3</span>
+                                  <span className="text-blue-600">R3</span>
                                 </th>
                                 <th className="border p-2.5 text-center font-semibold">
                                   <span className="text-amber-600">R2</span>
@@ -3667,7 +3667,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                     <td className="border p-2.5 text-center">{cls.totalLearners}</td>
                                     <td className="border p-2.5 text-center">{cls.subjectCount}</td>
                                     <td className="border p-2.5 text-center">
-                                      <span className={`font-bold text-base ${cls.classAvg >= 60 ? 'text-emerald-600' : cls.classAvg >= 40 ? 'text-primary dark:text-accent' : cls.classAvg > 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                                      <span className={`font-bold text-base ${cls.classAvg >= 60 ? 'text-emerald-600' : cls.classAvg >= 40 ? 'text-blue-600' : cls.classAvg > 0 ? 'text-red-600' : 'text-gray-400'}`}>
                                         {cls.classAvg || '--'}
                                       </span>
                                     </td>
@@ -3822,6 +3822,14 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
             termHistory={termHistory || {}}
           />
       )}
+
+      {/* Admin Password Gate for Print Actions */}
+      <AdminPasswordGate
+        isOpen={gateOpen}
+        actionLabel={gateActionLabel}
+        onVerified={handleVerified}
+        onClose={handleGateClose}
+      />
 
       {/* WhatsApp Bulk Send Modal */}
       {whatsappModalOpen && whatsappQueue.length > 0 && (
