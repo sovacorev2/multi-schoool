@@ -207,11 +207,19 @@ export default function MarksPage() {
         .single()
     ]);
 
+    // Check if teacher is PIN-authenticated (security: PIN teachers must have subject restrictions)
+    const teacherSessionStr = typeof window !== 'undefined' ? localStorage.getItem('teacher_session') : null;
+    const isPinAuthenticated = !!teacherSessionStr;
+    
     // Check if PIN management is enabled for this school
-    const pinManagementEnabled_ = schoolRes.data?.feature_pin_management === true;
+    const pinManagementFeatureEnabled = schoolRes.data?.feature_pin_management === true;
+    
+    // Enable PIN management if: (1) PIN-authenticated teacher OR (2) school has feature enabled
+    const pinManagementEnabled_ = isPinAuthenticated || pinManagementFeatureEnabled;
     setPinManagementEnabled(pinManagementEnabled_);
+    console.log('[v0] Marks page - PIN auth:', isPinAuthenticated, 'Feature enabled:', pinManagementFeatureEnabled, 'Management enabled:', pinManagementEnabled_);
 
-    // If PIN management is enabled, fetch assigned subjects
+    // If PIN management should be enforced, fetch assigned subjects
     if (pinManagementEnabled_) {
       // Admin bypass: show all subjects
       if (isAdminBypass) {
@@ -222,7 +230,6 @@ export default function MarksPage() {
         let teacherId: string | null = null;
         
         // First check for PIN-authenticated teacher session
-        const teacherSessionStr = localStorage.getItem('teacher_session');
         if (teacherSessionStr) {
           try {
             const teacherSession = JSON.parse(teacherSessionStr);
@@ -241,11 +248,11 @@ export default function MarksPage() {
         if (teacherId) {
           const { data: assignments } = await supabase
             .from('teacher_assignments')
-            .select('subject_id')
+            .select('subject_id, class_id')
             .eq('user_id', teacherId)
             .eq('class_id', currentClass.id);
           
-          console.log('[v0] Marks page - teacher assignments fetched:', assignments?.length);
+          console.log('[v0] Marks page - teacher assignments for class', currentClass.id, ':', assignments?.length, 'assignments');
           
           const isClassTeacherAssignment = assignments?.some(a => !a.subject_id) || false;
           setIsClassTeacher(isClassTeacherAssignment);
