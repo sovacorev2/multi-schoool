@@ -91,12 +91,9 @@ export default function SubjectsPage() {
       console.log('[v0] Assigned subject IDs count:', assignedIds.size, 'IDs:', Array.from(assignedIds))
       setAssignedSubjectIds(assignedIds)
       
-      // CRITICAL: Enable PIN subject restrictions when PIN teacher is logged in
-      // This ensures subjects are filtered even if school setting is disabled
-      if (isPinAuthenticated) {
-        setPinManagementEnabled(true)
-        console.log('[v0] PIN management ENABLED because PIN teacher is logged in')
-      }
+      // NOTE: Do NOT force pinManagementEnabled=true here
+      // It should only be true if the school has feature_pin_management=true (checked in fetchSchoolInfo)
+      // For non-PIN schools, even if a PIN teacher exists, restrictions should not apply
     } catch (error) {
       console.error('Error fetching assigned subjects:', error)
     }

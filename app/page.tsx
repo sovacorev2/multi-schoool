@@ -333,14 +333,16 @@ function HomePageContent() {
             <CardTitle className="text-2xl font-bold mb-2 text-foreground dark:text-foreground">{currentSchool.name}</CardTitle>
             <CardDescription className="text-base text-muted-foreground dark:text-muted-foreground">Exam Marks Entry System</CardDescription>
           </div>
-          <Button
-            onClick={() => router.push(`/teacher-pin-login?school=${currentSchool.code}`)}
-            variant="outline"
-            className="text-primary dark:text-accent border-primary dark:border-accent hover:bg-primary/10 dark:hover:bg-accent/10"
-          >
-            <LogIn className="w-4 h-4 mr-2" />
-            Teacher PIN Login
-          </Button>
+          {currentSchool.feature_pin_management && (
+            <Button
+              onClick={() => router.push(`/teacher-pin-login?school=${currentSchool.code}`)}
+              variant="outline"
+              className="text-primary dark:text-accent border-primary dark:border-accent hover:bg-primary/10 dark:hover:bg-accent/10"
+            >
+              <LogIn className="w-4 h-4 mr-2" />
+              Teacher PIN Login
+            </Button>
+          )}
         </CardHeader>
 
         <CardContent className="space-y-5">
