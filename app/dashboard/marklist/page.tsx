@@ -243,7 +243,7 @@ export default function MarklistPage() {
         const { data: teacherAssignments } = await supabase
           .from('teacher_assignments')
           .select('class_id')
-          .eq('teacher_id', teacherId)
+          .eq('user_id', teacherId)
         
         const assignedClassIds = new Set(teacherAssignments?.map(a => a.class_id) || [])
         allClasses = allClasses.filter(cls => assignedClassIds.has(cls.id))
