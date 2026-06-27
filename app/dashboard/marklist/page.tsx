@@ -7,7 +7,7 @@ import { formatGradeWithPoints, getPerformanceLevelWithPoints, getGradeLevelByCl
 import { getSubjectDisplay, normalizeSubjectName, areSubjectsEqual } from '@/lib/subject-utils'
 import { sortClassesByLevel } from '@/lib/class-sort-utils'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useClass } from '@/lib/class-context'
 import { useSchool } from '@/lib/school-context'
@@ -29,6 +29,7 @@ import { Label } from '@/components/ui/label'
 
 
 import { ReportStareheStyle } from '@/components/report-starehe-style'
+import { FloatingAnalysisButton } from '@/components/floating-analysis-button'
 
 
 
@@ -86,6 +87,9 @@ export default function MarklistPage() {
     previousClassAvg: number
     learnerComparisons: { name: string; currentTotal: number; previousTotal: number; change: number; currentRank: number; previousRank: number }[]
   } | null>(null)
+  
+  // Analysis tab ref for floating button
+  const analysisTabRef = useRef<HTMLButtonElement>(null)
   const [isLoadingComparison, setIsLoadingComparison] = useState(false)
   const [comparisonClassId, setComparisonClassId] = useState<string>('')
   const [comparisonSessionId, setComparisonSessionId] = useState<string>('') // Allow manual selection of comparison exam
@@ -221,9 +225,36 @@ export default function MarklistPage() {
     ]
 
     try {
-      // Fetch all classes
-      const { data: allClasses } = await supabase.from('classes').select('*').eq('school_id', currentSchool?.id).order('display_order')
+      // Check if this is a PIN-authenticated teacher
+      const teacherSessionStr = typeof window !== 'undefined' ? localStorage.getItem('teacher_session') : null
+      const isPinAuthenticated = !!teacherSessionStr
+      let teacherId: string | null = null
+      
+      if (isPinAuthenticated) {
+        try {
+          const teacherSession = JSON.parse(teacherSessionStr || '{}')
+          teacherId = teacherSession.teacherId
+          console.log('[v0] PIN teacher access restricted to assigned classes only')
+        } catch (e) {
+          console.error('[v0] Failed to parse teacher session')
+        }
+      }
+
+      // Fetch all classes initially
+      let { data: allClasses } = await supabase.from('classes').select('*').eq('school_id', currentSchool?.id).order('display_order')
       if (!allClasses) return
+      
+      // For PIN teachers: filter to only assigned classes
+      if (isPinAuthenticated && teacherId) {
+        const { data: teacherAssignments } = await supabase
+          .from('teacher_assignments')
+          .select('distinct class_id')
+          .eq('user_id', teacherId)
+        
+        const assignedClassIds = new Set(teacherAssignments?.map(a => a.class_id) || [])
+        allClasses = allClasses.filter(cls => assignedClassIds.has(cls.id))
+        console.log('[v0] PIN teacher restricted to', allClasses.length, 'assigned classes')
+      }
 
       // Get ALL matching sessions at once instead of per-class
       const { data: allSessions } = await supabase
@@ -4221,6 +4252,18 @@ function StreamTransfersContent({ currentClass, allClasses, subjects }: any) {
           )}
         </div>
       )}
+      
+      {/* Floating Analysis Button */}
+      <FloatingAnalysisButton
+        onAnalysisClick={() => {
+          // Trigger the analysis tab
+          const tabs = document.querySelectorAll('[role="tab"]')
+          const analysisTabs = Array.from(tabs).filter(tab => tab.textContent?.includes('Analysis'))
+          if (analysisTabs.length > 0) {
+            (analysisTabs[0] as HTMLButtonElement).click()
+          }
+        }}
+      />
     </div>
   )
 }

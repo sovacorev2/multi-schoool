@@ -9,6 +9,7 @@ import { useSchool } from '@/lib/school-context'
 import { checkTeacherAuth, checkAdminAuth, logoutTeacher, logoutAdmin } from '@/app/actions/auth'
 import { LogOut, Users, BookOpen, ClipboardList, FileText, ChevronDown, Shield, Clock, AlertTriangle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 export default function DashboardLayout({
   children,
@@ -284,6 +285,9 @@ export default function DashboardLayout({
                     )}
                   </div>
 
+                  {/* Theme Toggle */}
+                  <ThemeToggle />
+                  
                   {/* Logout */}
                   <button
                     onClick={handleLogout}

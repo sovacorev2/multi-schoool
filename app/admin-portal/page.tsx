@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -150,6 +151,8 @@ export default function AdminPortalPage() {
 
   // Form state
   const [newExamType, setNewExamType] = useState('')
+  const [newExamTypeYear, setNewExamTypeYear] = useState(new Date().getFullYear().toString())
+  const [newExamTypeTerm, setNewExamTypeTerm] = useState('Term 1')
   const [newClassName, setNewClassName] = useState('')
   const [deletingExamTypeId, setDeletingExamTypeId] = useState<string | null>(null)
   
@@ -376,13 +379,20 @@ export default function AdminPortalPage() {
     const supabase = createClient()
     const { data, error } = await supabase
       .from('exam_types')
-      .insert({ name: newExamType.trim(), school_id: currentSchool.id })
+      .insert({
+        name: newExamType.trim(),
+        school_id: currentSchool.id,
+        year: parseInt(newExamTypeYear),
+        term: newExamTypeTerm
+      })
       .select()
       .single()
 
     if (!error && data) {
       setExamTypes([...examTypes, data])
       setNewExamType('')
+      setNewExamTypeYear(new Date().getFullYear().toString())
+      setNewExamTypeTerm('Term 1')
     }
   }
 
@@ -1846,23 +1856,63 @@ export default function AdminPortalPage() {
                   <CardDescription>Add custom exam types like CAT, Weekly Test, etc.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Enter exam type (e.g., CAT 1, Weekly Test, Assignment)"
-                      value={newExamType}
-                      onChange={(e) => setNewExamType(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && addExamType()}
-                    />
-                    <Button onClick={addExamType} disabled={!newExamType.trim()}>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Exam Type
-                    </Button>
+                  <div className="grid grid-cols-4 gap-2 mb-4">
+                    <div>
+                      <Label className="text-xs">Exam Type Name</Label>
+                      <Input
+                        placeholder="e.g., CAT 1, Weekly Test"
+                        value={newExamType}
+                        onChange={(e) => setNewExamType(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && addExamType()}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Year</Label>
+                      <select
+                        value={newExamTypeYear}
+                        onChange={(e) => setNewExamTypeYear(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                      >
+                        {[2024, 2025, 2026, 2027, 2028].map(year => (
+                          <option key={year} value={year}>{year}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <Label className="text-xs">Term</Label>
+                      <select
+                        value={newExamTypeTerm}
+                        onChange={(e) => setNewExamTypeTerm(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                      >
+                        <option value="Term 1">Term 1</option>
+                        <option value="Term 2">Term 2</option>
+                        <option value="Term 3">Term 3</option>
+                      </select>
+                    </div>
+                    <div className="flex items-end">
+                      <Button onClick={addExamType} disabled={!newExamType.trim()} className="w-full">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add
+                      </Button>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-4 gap-3">
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-5 gap-2 p-3 bg-gray-100 rounded-lg font-semibold text-sm">
+                      <span>Exam Type</span>
+                      <span>Year</span>
+                      <span>Term</span>
+                      <span></span>
+                      <span></span>
+                    </div>
                     {examTypes.map(e => (
-                      <div key={e.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div key={e.id} className="grid grid-cols-5 gap-2 p-3 bg-gray-50 rounded-lg items-center text-sm">
                         <span className="font-medium">{e.name}</span>
+                        <span className="text-gray-600">{e.year || '-'}</span>
+                        <span className="text-gray-600">{e.term || '-'}</span>
+                        <span></span>
                         <Button
                           size="sm"
                           variant="ghost"
