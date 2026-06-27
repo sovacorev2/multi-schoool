@@ -75,6 +75,9 @@ export interface ExamType {
   description: string | null
   display_order: number
   created_at: string
+  year?: number | null
+  term?: string | null
+  school_id?: string
 }
 
 export interface Stream {
