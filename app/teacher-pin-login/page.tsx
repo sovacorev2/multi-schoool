@@ -76,35 +76,28 @@ export default function TeacherPINLogin() {
         throw new Error('School information not available. Please refresh and try again.')
       }
 
-      // Verify PIN and get teacher details
+      // Verify PIN and get teacher details (simplified query)
       const { data: teacher, error: teacherError } = await supabase
         .from('teacher_accounts')
-        .select(
-          `
-          id,
-          first_name,
-          last_name,
-          email,
-          school_id,
-          is_active,
-          teacher_assignments(
-            id,
-            class_id,
-            subject_id,
-            classes:class_id(id, name),
-            subjects:subject_id(id, name)
-          )
-        `,
-        )
+        .select('id, first_name, last_name, email, school_id, is_active')
         .eq('pin', pin)
         .eq('school_id', schoolId)
         .single()
 
-      console.log('[v0] PIN Login Debug:', { pin, schoolId, teacherError, teacher: teacher?.first_name })
+      console.log('[v0] PIN Login - Teacher Query:', { teacherError, found: !!teacher })
 
       if (teacherError || !teacher) {
+        console.log('[v0] Teacher error:', teacherError?.message)
         throw new Error('Invalid PIN or teacher not found. Please check and try again.')
       }
+
+      // Fetch assignments separately
+      const { data: assignments, error: assignmentError } = await supabase
+        .from('teacher_assignments')
+        .select('id, class_id, subject_id, classes(id, name), subjects(id, name)')
+        .eq('teacher_id', teacher.id)
+
+      console.log('[v0] Assignments fetched:', assignments?.length || 0)
 
       // Store session in localStorage
       const session = {
@@ -114,7 +107,7 @@ export default function TeacherPINLogin() {
         schoolId: schoolId,
         schoolName: schoolName,
         pin: pin,
-        assignments: teacher.teacher_assignments || [],
+        assignments: assignments || [],
         loginTime: new Date().toISOString(),
       }
 
