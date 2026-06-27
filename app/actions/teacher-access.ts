@@ -20,7 +20,7 @@ export async function getTeacherAssignedClasses(teacherId: string) {
       class_id,
       subject_id,
       classes:class_id ( id, name, school_id ),
-      subjects:subject_id ( id, name )
+      subjects:subject_id ( id, subject_code, name )
     `)
     .eq('teacher_id', teacherId)
   
@@ -34,7 +34,7 @@ export async function getTeacherAssignedClasses(teacherId: string) {
   // Group by class
   const classMap = new Map<string, any>()
   
-  assignments?.forEach((assignment: any) => {
+  assignments?.forEach(assignment => {
     const classId = assignment.class_id
     const classInfo = assignment.classes as any
     
@@ -61,10 +61,11 @@ export async function getTeacherAssignedClasses(teacherId: string) {
       if (subjectInfo && !cls.subjects.find((s: any) => s.id === subjectInfo.id)) {
         cls.subjects.push({
           id: subjectInfo.id,
+          code: subjectInfo.subject_code,
           name: subjectInfo.name
         })
         cls.allSubjects.push(subjectInfo.id)  // Store ID for comparison
-        console.log(`[v0] ${teacherId} assigned to ${subjectInfo.name} in ${classInfo?.name}`)
+        console.log(`[v0] ${teacherId} assigned to ${subjectInfo.subject_code} in ${classInfo?.name}`)
       }
     }
   })
@@ -72,7 +73,7 @@ export async function getTeacherAssignedClasses(teacherId: string) {
   const classes = Array.from(classMap.values())
   
   console.log(`[v0] Teacher has access to ${classes.length} classes`)
-  classes.forEach((c: any) => {
+  classes.forEach(c => {
     console.log(`  - ${c.name}: ${c.isClassTeacher ? 'CLASS TEACHER' : c.subjects.length + ' subjects'}`)
   })
   
@@ -147,4 +148,3 @@ export async function isTeacherClassTeacher(
   
   return isClassTeacher
 }
-
