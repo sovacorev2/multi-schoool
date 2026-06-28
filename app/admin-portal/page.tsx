@@ -32,7 +32,7 @@ import {
 import { 
   Shield, Eye, EyeOff, Settings, BookOpen, Calendar, 
   Clock, FileText, Plus, Trash2, Save, ArrowLeft, Lock, Unlock,
-  GraduationCap, ClipboardList, History, Edit, Users, X, Key, Copy, Check
+  GraduationCap, ClipboardList, History, Edit, Users, X, Key, Copy, Check, Bell, Send
 } from 'lucide-react'
 import type { Class, ExamType, Subject } from '@/lib/types'
 import SchoolLogoUploader from '@/components/admin/SchoolLogoUploader'
@@ -172,6 +172,14 @@ export default function AdminPortalPage() {
   // Inline deadline editing
   const [editingDeadlineId, setEditingDeadlineId] = useState<string | null>(null)
   const [editingDeadlineValue, setEditingDeadlineValue] = useState('')
+
+  // Notification form state
+  const [notificationMessage, setNotificationMessage] = useState('')
+  const [selectedClasses, setSelectedClasses] = useState<string[]>([])
+  const [notificationAllClasses, setNotificationAllClasses] = useState(false)
+  const [notificationSending, setNotificationSending] = useState(false)
+  const [notificationError, setNotificationError] = useState('')
+  const [notificationSuccess, setNotificationSuccess] = useState('')
 
   // Deadline filters
   const [deadlineFilters, setDeadlineFilters] = useState({
@@ -1252,6 +1260,10 @@ export default function AdminPortalPage() {
                 <History className="w-4 h-4" />
                 Audit Logs
               </TabsTrigger>
+              <TabsTrigger value="notifications" className="flex items-center gap-2">
+                <Bell className="w-4 h-4" />
+                Notifications
+              </TabsTrigger>
             </TabsList>
 
             {/* Deadlines Tab */}
@@ -2099,6 +2111,184 @@ export default function AdminPortalPage() {
                       ))}
                     </div>
                   )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Notifications Tab */}
+            <TabsContent value="notifications">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Bell className="w-5 h-5" />
+                    Custom Notifications
+                  </CardTitle>
+                  <CardDescription>
+                    Send bulk SMS notifications to parents in selected classes
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6 max-w-2xl">
+                  {/* Message Input */}
+                  <div className="space-y-2">
+                    <Label htmlFor="notification-message" className="text-base font-medium">Message</Label>
+                    <textarea
+                      id="notification-message"
+                      placeholder="Enter your custom message for parents..."
+                      value={notificationMessage}
+                      onChange={(e) => {
+                        setNotificationMessage(e.target.value)
+                        setNotificationError('')
+                        setNotificationSuccess('')
+                      }}
+                      className="w-full min-h-[120px] p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+                    />
+                    <p className="text-xs text-gray-500">{notificationMessage.length} characters</p>
+                  </div>
+
+                  {/* Class Selection */}
+                  <div className="space-y-3">
+                    <Label className="text-base font-medium">Send To</Label>
+                    
+                    {/* All Classes Toggle */}
+                    <div className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-900/50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        id="all-classes"
+                        checked={notificationAllClasses}
+                        onChange={(e) => {
+                          setNotificationAllClasses(e.target.checked)
+                          if (e.target.checked) {
+                            setSelectedClasses([])
+                          }
+                        }}
+                        className="w-4 h-4 cursor-pointer"
+                      />
+                      <label htmlFor="all-classes" className="flex-1 cursor-pointer">
+                        <p className="font-medium text-gray-700 dark:text-gray-300">Send to All Classes</p>
+                        <p className="text-xs text-gray-500">Reaches parents in all classes of the school</p>
+                      </label>
+                    </div>
+
+                    {/* Individual Class Selection */}
+                    {!notificationAllClasses && (
+                      <div className="space-y-2">
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Or select specific classes:</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[300px] overflow-y-auto border border-gray-200 rounded-lg p-3 dark:border-slate-700">
+                          {sortClasses(classes).map(cls => (
+                            <div key={cls.id} className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                id={`class-${cls.id}`}
+                                checked={selectedClasses.includes(cls.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedClasses([...selectedClasses, cls.id])
+                                  } else {
+                                    setSelectedClasses(selectedClasses.filter(id => id !== cls.id))
+                                  }
+                                }}
+                                className="w-4 h-4 cursor-pointer"
+                              />
+                              <label htmlFor={`class-${cls.id}`} className="text-sm cursor-pointer">
+                                {cls.name}
+                              </label>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-xs text-gray-500">Selected: {selectedClasses.length} class(es)</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Status Messages */}
+                  {notificationError && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm dark:bg-red-950/30 dark:border-red-800 dark:text-red-400">
+                      {notificationError}
+                    </div>
+                  )}
+
+                  {notificationSuccess && (
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm dark:bg-green-950/30 dark:border-green-800 dark:text-green-400">
+                      {notificationSuccess}
+                    </div>
+                  )}
+
+                  {/* Send Button */}
+                  <div className="flex gap-3 pt-4">
+                    <Button
+                      onClick={async () => {
+                        setNotificationError('')
+                        setNotificationSuccess('')
+
+                        // Validation
+                        if (!notificationMessage.trim()) {
+                          setNotificationError('Please enter a message')
+                          return
+                        }
+
+                        if (!notificationAllClasses && selectedClasses.length === 0) {
+                          setNotificationError('Please select at least one class or choose "Send to All Classes"')
+                          return
+                        }
+
+                        try {
+                          setNotificationSending(true)
+                          const targetClasses = notificationAllClasses ? classes.map(c => c.id) : selectedClasses
+
+                          const res = await fetch('/api/admin/send-bulk-notification', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              schoolId: school?.id,
+                              message: notificationMessage,
+                              classIds: targetClasses
+                            })
+                          })
+
+                          const data = await res.json()
+
+                          if (data.success) {
+                            setNotificationSuccess(`Notification sent to ${data.totalRecipients} parents across ${data.totalClasses} class(es)`)
+                            setNotificationMessage('')
+                            setSelectedClasses([])
+                            setNotificationAllClasses(false)
+                          } else {
+                            setNotificationError(data.error || 'Failed to send notification')
+                          }
+                        } catch (error: any) {
+                          setNotificationError(error.message || 'Error sending notification')
+                        } finally {
+                          setNotificationSending(false)
+                        }
+                      }}
+                      disabled={notificationSending || !notificationMessage.trim()}
+                      className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+                    >
+                      {notificationSending ? (
+                        <>
+                          <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4" />
+                          Send Notification
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setNotificationMessage('')
+                        setSelectedClasses([])
+                        setNotificationAllClasses(false)
+                        setNotificationError('')
+                        setNotificationSuccess('')
+                      }}
+                    >
+                      Clear
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
