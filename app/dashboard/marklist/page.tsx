@@ -135,6 +135,7 @@ export default function MarklistPage() {
   const [reportModalData, setReportModalData] = useState<LearnerResult[]>([])
   const [results, setResults] = useState<LearnerResult[]>([])
   const [termHistory, setTermHistory] = useState<Record<string, any[]>>({})
+  const [subjectInitialsMap, setSubjectInitialsMap] = useState<Record<string, string>>({})
   
   // WhatsApp bulk send state
   const [whatsappModalOpen, setWhatsappModalOpen] = useState(false)
@@ -2000,6 +2001,35 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                   console.log('[v0] === SETTING REPORT DATA AND OPENING MODAL ===')
                   setReportModalData(finalResults)
                   setTermHistory(termHistory)
+
+                  // Fetch teacher initials for each subject in this class
+                  try {
+                    const supabaseForInitials = createClient()
+                    const { data: assignments } = await supabaseForInitials
+                      .from('teacher_assignments')
+                      .select('subject_id, users(first_name, last_name)')
+                      .eq('class_id', currentClass?.id)
+                      .not('subject_id', 'is', null)
+                      .eq('is_active', true)
+
+                    const initialsMap: Record<string, string> = {}
+                    if (assignments) {
+                      for (const a of assignments) {
+                        if (a.subject_id && (a as any).users) {
+                          const u = (a as any).users
+                          const fn = (u.first_name || '').trim()
+                          const ln = (u.last_name || '').trim()
+                          const initials = `${fn.charAt(0)}${ln.charAt(0)}`.toUpperCase()
+                          initialsMap[a.subject_id] = initials
+                        }
+                      }
+                    }
+                    setSubjectInitialsMap(initialsMap)
+                  } catch (e) {
+                    console.error('[v0] Failed to fetch teacher initials:', e)
+                    setSubjectInitialsMap({})
+                  }
+
                   setReportModalOpen(true)
                 }, 'Print All Reports')}
                 disabled={results.length === 0 || !selectedSessionId || !currentClass?.id} 
@@ -2372,8 +2402,32 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                 <Button 
                                   size="sm" 
                                   variant="outline"
-                                  onClick={() => attemptPrint(() => {
+                                  onClick={() => attemptPrint(async () => {
                                     setReportModalData([result])
+                                    // Fetch teacher initials for this class if not already loaded
+                                    try {
+                                      const supabaseForInitials = createClient()
+                                      const { data: assignments } = await supabaseForInitials
+                                        .from('teacher_assignments')
+                                        .select('subject_id, users(first_name, last_name)')
+                                        .eq('class_id', currentClass?.id)
+                                        .not('subject_id', 'is', null)
+                                        .eq('is_active', true)
+                                      const initialsMap: Record<string, string> = {}
+                                      if (assignments) {
+                                        for (const a of assignments) {
+                                          if (a.subject_id && (a as any).users) {
+                                            const u = (a as any).users
+                                            const fn = (u.first_name || '').trim()
+                                            const ln = (u.last_name || '').trim()
+                                            initialsMap[a.subject_id] = `${fn.charAt(0)}${ln.charAt(0)}`.toUpperCase()
+                                          }
+                                        }
+                                      }
+                                      setSubjectInitialsMap(initialsMap)
+                                    } catch (e) {
+                                      setSubjectInitialsMap({})
+                                    }
                                     setReportModalOpen(true)
                                   }, 'Print Report Form')}
                                   className="h-7 px-2 text-xs"
@@ -3887,6 +3941,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
             className={currentClass?.name || ''}
             totalStudents={results.length}
             classTeacherName={currentClass?.teacher_name}
+            subjectInitialsMap={subjectInitialsMap}
             termHistory={termHistory || {}}
           />
       )}
