@@ -105,6 +105,7 @@ interface School {
   primary_color: string
   admin_password: string
   is_active: boolean
+  feature_bulk_sms?: boolean
 }
 
 interface AuditLog {
@@ -1260,10 +1261,12 @@ export default function AdminPortalPage() {
                 <History className="w-4 h-4" />
                 Audit Logs
               </TabsTrigger>
-              <TabsTrigger value="notifications" className="flex items-center gap-2">
-                <Bell className="w-4 h-4" />
-                Notifications
-              </TabsTrigger>
+              {school?.feature_bulk_sms && (
+                <TabsTrigger value="notifications" className="flex items-center gap-2">
+                  <Bell className="w-4 h-4" />
+                  Notifications
+                </TabsTrigger>
+              )}
 
             </TabsList>
 
@@ -2116,7 +2119,8 @@ export default function AdminPortalPage() {
               </Card>
             </TabsContent>
 
-            {/* Notifications Tab */}
+            {/* Notifications Tab - only shown if Bulk SMS feature is enabled */}
+            {school?.feature_bulk_sms && (
             <TabsContent value="notifications">
               <Card>
                 <CardHeader>
@@ -2293,7 +2297,7 @@ export default function AdminPortalPage() {
                 </CardContent>
               </Card>
             </TabsContent>
-
+            )}
 
           </Tabs>
         )}
