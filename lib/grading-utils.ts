@@ -13,7 +13,7 @@ export const GRADING_SCALE_EXTENDED: GradeLevel[] = [
   { level: 'ME1', minMark: 58, maxMark: 74, points: 6 },
   { level: 'ME2', minMark: 41, maxMark: 57, points: 5 },
   { level: 'AE1', minMark: 31, maxMark: 40, points: 4 },
-  { level: 'AE3', minMark: 21, maxMark: 30, points: 3 },
+  { level: 'AE2', minMark: 21, maxMark: 30, points: 3 },
   { level: 'BE1', minMark: 11, maxMark: 20, points: 2 },
   { level: 'BE2', minMark: 0, maxMark: 10, points: 1 },
 ]
@@ -48,7 +48,7 @@ export const GRADING_SCALE_SIMPLE: GradeLevel[] = [
   { level: 'ME1', minMark: 58, maxMark: 74, points: 3.0 },
   { level: 'ME2', minMark: 41, maxMark: 57, points: 2.5 },
   { level: 'AE1', minMark: 31, maxMark: 40, points: 2.0 },
-  { level: 'AE3', minMark: 21, maxMark: 30, points: 1.5 },
+  { level: 'AE2', minMark: 21, maxMark: 30, points: 1.5 },
   { level: 'BE1', minMark: 11, maxMark: 20, points: 1.0 },
   { level: 'BE2', minMark: 0, maxMark: 10, points: 0.5 },
 ]
