@@ -98,14 +98,13 @@ async function createSMSTables() {
       console.log('[v0] Created sms_usage_logs table')
     }
 
-    // Insert default bundles
+    // Insert default bundles (KES pricing - 1 KES = 1 SMS)
     const { error: insertError } = await supabase
       .from('sms_bundles')
       .insert([
-        { sms_count: 100, price_ksh: 500, description: '100 SMS Package' },
-        { sms_count: 500, price_ksh: 2000, description: '500 SMS Package' },
-        { sms_count: 1000, price_ksh: 3500, description: '1000 SMS Package' },
-        { sms_count: 5000, price_ksh: 15000, description: '5000 SMS Package' }
+        { sms_count: 700, price_ksh: 700, description: '700 SMS - KES 700' },
+        { sms_count: 1250, price_ksh: 1250, description: '1,250 SMS - KES 1,250' },
+        { sms_count: 1500, price_ksh: 1500, description: '1,500 SMS - KES 1,500' }
       ])
       .on('insertError', (err) => {
         console.log('[v0] Some bundles may already exist (that\'s okay)')

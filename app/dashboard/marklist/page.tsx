@@ -2452,9 +2452,10 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                         `Total: ${result.total} | Mean: ${result.average.toFixed(1)}% | Level: ${performanceLevel} | Pos: ${result.rank}/${results.length}\n` +
                                         `Powered by Shuletech`
                                       try {
-                                        const res = await fetch('/api/send-sms', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mobile: result.learner.parent_phone, message }) })
+                                        const res = await fetch('/api/send-sms', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mobile: result.learner.parent_phone, message, schoolId: currentSchool?.id }) })
                                         const data = await res.json()
-                                        if (data.success) alert(`SMS sent to ${result.learner.name}'s parent.`)
+                                        if (res.status === 402) alert(`Insufficient SMS credits: ${data.error}`)
+                                        else if (data.success) alert(`SMS sent to ${result.learner.name}'s parent.`)
                                         else alert(`SMS failed: ${data.error || 'Unknown error'}`)
                                       } catch { alert('Failed to send SMS. Please try again.') }
                                     }}
@@ -4047,9 +4048,13 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
             const res = await fetch('/api/send-sms', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ mobile: result.learner.parent_phone, message: buildMessage(result) })
+              body: JSON.stringify({ mobile: result.learner.parent_phone, message: buildMessage(result), schoolId: currentSchool?.id })
             })
             const data = await res.json()
+            if (res.status === 402) {
+              console.log(`[marklist] Insufficient SMS credits: ${data.error}`)
+              return false
+            }
             return data.success === true
           } catch {
             return false
