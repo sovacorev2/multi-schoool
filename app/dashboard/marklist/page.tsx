@@ -142,6 +142,17 @@ export default function MarklistPage() {
   const [whatsappCurrentIndex, setWhatsappCurrentIndex] = useState(0)
   const [whatsappSentCount, setWhatsappSentCount] = useState(0)
 
+  // SMS bulk send state
+  const [smsModalOpen, setSmsModalOpen] = useState(false)
+  const [smsQueue, setSmsQueue] = useState<LearnerResult[]>([])
+  const [smsCurrentIndex, setSmsCurrentIndex] = useState(0)
+  const [smsSentCount, setSmsSentCount] = useState(0)
+  const [smsSending, setSmsSending] = useState(false)
+  const [smsError, setSmsError] = useState<string | null>(null)
+  const [smsBulkRunning, setSmsBulkRunning] = useState(false)
+  const [smsFailedNumbers, setSmsFailedNumbers] = useState<string[]>([])
+  const smsBulkAbortRef = useRef(false)
+
   // Check if admin (has both currentClass and contextSession from context)
   const isAdminUser = !!(currentClass && contextSession)
 
@@ -2021,6 +2032,29 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                 <span className="hidden sm:inline">Send All via WhatsApp</span>
               </Button>
             )}
+            {currentSchool?.feature_bulk_sms && (
+              <Button
+                onClick={() => {
+                  const studentsWithPhone = results.filter(r => r.learner.parent_phone)
+                  if (studentsWithPhone.length === 0) {
+                    alert('No students have registered parent phone numbers. Please add parent phone numbers in the Learners tab.')
+                    return
+                  }
+                  setSmsQueue(studentsWithPhone)
+                  setSmsCurrentIndex(0)
+                  setSmsSentCount(0)
+                  setSmsError(null)
+                  setSmsModalOpen(true)
+                }}
+                disabled={results.length === 0 || !selectedSessionId || !currentClass?.id}
+                className="bg-blue-600 text-white hover:bg-blue-700 h-9 text-xs sm:text-sm"
+              >
+                <svg className="w-4 h-4 sm:mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                <span className="hidden sm:inline">Send All via SMS</span>
+              </Button>
+            )}
           </div>
         </div>
 
@@ -2394,6 +2428,41 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                   >
                                     <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
                                       <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                                    </svg>
+                                  </Button>
+                                )}
+                                {currentSchool?.feature_bulk_sms && result.learner.parent_phone && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={async () => {
+                                      const gradeInfo = getGradeLevelByClass(Math.round(result.average), currentClass?.name, currentSchool?.name)
+                                      const performanceLevel = gradeInfo?.level || '-'
+                                      const subjectDetails = subjects.map(subject => {
+                                        const score = result.marks[subject.id]
+                                        if (score === null || score === undefined) return null
+                                        const subjectGrade = getGradeLevelByClass(Math.round(score), currentClass?.name, currentSchool?.name)
+                                        return `${subject.name}: ${score}% (${subjectGrade?.level || '-'})`
+                                      }).filter(Boolean).join(', ')
+                                      const message =
+                                        `${currentSchool?.name?.toUpperCase() || 'SCHOOL'} - EXAM RESULTS\n` +
+                                        `Student: ${result.learner.name}\n` +
+                                        `Class: ${currentClass?.name || ''} | ${selectedSession?.exam_types?.name || 'Exam'} ${selectedSession?.term} ${selectedSession?.year}\n` +
+                                        `${subjectDetails}\n` +
+                                        `Total: ${result.total} | Mean: ${result.average.toFixed(1)}% | Level: ${performanceLevel} | Pos: ${result.rank}/${results.length}\n` +
+                                        `Powered by Shuletech`
+                                      try {
+                                        const res = await fetch('/api/send-sms', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mobile: result.learner.parent_phone, message }) })
+                                        const data = await res.json()
+                                        if (data.success) alert(`SMS sent to ${result.learner.name}'s parent.`)
+                                        else alert(`SMS failed: ${data.error || 'Unknown error'}`)
+                                      } catch { alert('Failed to send SMS. Please try again.') }
+                                    }}
+                                    className="h-7 px-2 text-xs bg-blue-500/10 hover:bg-blue-100 text-blue-700 border-blue-200"
+                                    title="Send results via SMS"
+                                  >
+                                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                                     </svg>
                                   </Button>
                                 )}
@@ -3828,7 +3897,6 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
         actionLabel={gateActionLabel}
         onVerified={handleVerified}
         onClose={handleGateClose}
-        schoolId={currentSchool?.id}
       />
 
       {/* WhatsApp Bulk Send Modal */}
@@ -3949,6 +4017,183 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
           </div>
         </div>
       )}
+
+      {/* SMS Bulk Send Modal */}
+      {smsModalOpen && smsQueue.length > 0 && (() => {
+        const isDone = smsCurrentIndex >= smsQueue.length
+
+        const buildMessage = (result: LearnerResult) => {
+          const gradeInfo = getGradeLevelByClass(Math.round(result.average), currentClass?.name, currentSchool?.name)
+          const performanceLevel = gradeInfo?.level || '-'
+          const subjectDetails = subjects.map(subject => {
+            const score = result.marks[subject.id]
+            if (score === null || score === undefined) return null
+            const subjectGrade = getGradeLevelByClass(Math.round(score), currentClass?.name, currentSchool?.name)
+            return `${subject.name}: ${score}% (${subjectGrade?.level || '-'})`
+          }).filter(Boolean).join(', ')
+          return (
+            `${currentSchool?.name?.toUpperCase() || 'SCHOOL'} - EXAM RESULTS\n` +
+            `Student: ${result.learner.name}\n` +
+            `Class: ${currentClass?.name || ''} | ${selectedSession?.exam_types?.name || 'Exam'} ${selectedSession?.term} ${selectedSession?.year}\n` +
+            `${subjectDetails}\n` +
+            `Total: ${result.total} | Mean: ${result.average.toFixed(1)}% | Level: ${performanceLevel} | Pos: ${result.rank}/${results.length}\n` +
+            `Powered by Shuletech`
+          )
+        }
+
+        const sendOne = async (index: number): Promise<boolean> => {
+          const result = smsQueue[index]
+          try {
+            const res = await fetch('/api/send-sms', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ mobile: result.learner.parent_phone, message: buildMessage(result) })
+            })
+            const data = await res.json()
+            return data.success === true
+          } catch {
+            return false
+          }
+        }
+
+        const startBulkSend = async () => {
+          smsBulkAbortRef.current = false
+          setSmsBulkRunning(true)
+          setSmsFailedNumbers([])
+          setSmsError(null)
+          let sent = 0
+          const failed: string[] = []
+          for (let i = smsCurrentIndex; i < smsQueue.length; i++) {
+            if (smsBulkAbortRef.current) break
+            setSmsCurrentIndex(i)
+            const ok = await sendOne(i)
+            if (ok) { sent++ } else { failed.push(smsQueue[i].learner.name) }
+            await new Promise(r => setTimeout(r, 300)) // 300ms between sends to avoid rate limiting
+          }
+          setSmsSentCount(prev => prev + sent)
+          setSmsFailedNumbers(failed)
+          setSmsCurrentIndex(smsQueue.length)
+          setSmsBulkRunning(false)
+        }
+
+        return (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+            <div className="bg-card rounded-xl shadow-2xl max-w-md w-full overflow-hidden">
+              {/* Header */}
+              <div className="px-6 py-4 bg-blue-600 text-white">
+                <h3 className="font-semibold text-lg">Bulk SMS - Exam Results</h3>
+                <p className="text-sm opacity-90">{smsQueue.length} parents with registered phone numbers</p>
+              </div>
+
+              <div className="p-6 space-y-4">
+                {/* Progress bar - always visible once started */}
+                {(smsBulkRunning || smsCurrentIndex > 0) && (
+                  <div>
+                    <div className="flex justify-between text-sm text-muted-foreground mb-2">
+                      <span>{smsBulkRunning ? 'Sending...' : isDone ? 'Completed' : 'Paused'}</span>
+                      <span>{Math.min(smsCurrentIndex, smsQueue.length)} / {smsQueue.length}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+                      <div
+                        className="bg-blue-600 h-3 rounded-full transition-all duration-300"
+                        style={{ width: `${(Math.min(smsCurrentIndex, smsQueue.length) / smsQueue.length) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Currently sending */}
+                {smsBulkRunning && smsCurrentIndex < smsQueue.length && (
+                  <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
+                    <p className="text-xs text-blue-600 font-medium mb-1">Now sending to:</p>
+                    <p className="font-semibold text-sm">{smsQueue[smsCurrentIndex]?.learner.name}</p>
+                    <p className="text-xs text-muted-foreground">{smsQueue[smsCurrentIndex]?.learner.parent_phone}</p>
+                  </div>
+                )}
+
+                {/* Done summary */}
+                {isDone && (
+                  <div className="text-center py-2">
+                    <div className="w-14 h-14 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <svg className="w-7 h-7 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <p className="font-semibold text-lg">Done!</p>
+                    <p className="text-sm text-muted-foreground">
+                      {smsSentCount} sent successfully
+                      {smsFailedNumbers.length > 0 && `, ${smsFailedNumbers.length} failed`}
+                    </p>
+                    {smsFailedNumbers.length > 0 && (
+                      <p className="text-xs text-red-500 mt-1">Failed: {smsFailedNumbers.join(', ')}</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Not started yet - show preview */}
+                {!smsBulkRunning && !isDone && smsCurrentIndex === 0 && (
+                  <div className="bg-slate-50 dark:bg-slate-900/20 rounded-lg p-3 text-sm text-muted-foreground">
+                    <p className="font-medium text-foreground mb-1">Ready to send</p>
+                    <p>Each parent will receive their child&apos;s results including all subject scores, total, mean score, performance level and class position.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Action buttons */}
+              <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900/20 border-t flex gap-3">
+                {isDone ? (
+                  <Button
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                    onClick={() => {
+                      setSmsModalOpen(false)
+                      setSmsQueue([])
+                      setSmsCurrentIndex(0)
+                      setSmsSentCount(0)
+                      setSmsError(null)
+                      setSmsFailedNumbers([])
+                    }}
+                  >
+                    Done
+                  </Button>
+                ) : smsBulkRunning ? (
+                  <Button
+                    variant="outline"
+                    className="flex-1 border-red-300 text-red-600 hover:bg-red-50"
+                    onClick={() => { smsBulkAbortRef.current = true }}
+                  >
+                    Stop Sending
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                      onClick={startBulkSend}
+                    >
+                      <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                      </svg>
+                      Send to All {smsQueue.length} Parents
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setSmsModalOpen(false)
+                        setSmsQueue([])
+                        setSmsCurrentIndex(0)
+                        setSmsSentCount(0)
+                        setSmsError(null)
+                        setSmsFailedNumbers([])
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Certificate Print Modal */}
       {certificateData && (
