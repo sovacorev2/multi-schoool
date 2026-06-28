@@ -43,6 +43,19 @@ export async function POST(req: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
+    // Get school name
+    const { data: schoolData, error: schoolError } = await supabase
+      .from('schools')
+      .select('name')
+      .eq('id', schoolId)
+      .single()
+
+    if (schoolError || !schoolData) {
+      return NextResponse.json({ error: 'Failed to fetch school information' }, { status: 500 })
+    }
+
+    const schoolName = schoolData.name
+
     // Get all learners in selected classes with parent phone numbers
     const { data: learners, error } = await supabase
       .from('learners')
@@ -70,12 +83,15 @@ export async function POST(req: NextRequest) {
 
 
 
+    // Format message with school name and Shuletech footer
+    const formattedMessage = `${message}\n\n${schoolName}\nPowered by Shuletech`
+
     // Send SMS to all unique phone numbers
     let successCount = 0
     const failedPhones: string[] = []
 
     for (const [phone, learnerName] of uniquePhones.entries()) {
-      const success = await sendSms(phone, message)
+      const success = await sendSms(phone, formattedMessage)
       if (success) {
         successCount++
       } else {
