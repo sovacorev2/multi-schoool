@@ -54,6 +54,7 @@ interface ReportStareheStyleProps {
   totalStudents: number
   termHistory?: Record<string, TermHistory[]>
   classTeacherName?: string | null
+  subjectInitialsMap?: Record<string, string>
 }
 
 // CBC Performance Level helper
@@ -148,7 +149,8 @@ export function ReportStareheStyle({
   className,
   totalStudents,
   termHistory = {},
-  classTeacherName
+  classTeacherName,
+  subjectInitialsMap = {}
 }: ReportStareheStyleProps) {
   const { currentSchool } = useSchool()
   const reportRef = useRef<HTMLDivElement>(null)
@@ -509,7 +511,9 @@ export function ReportStareheStyle({
                             <td style={{ border: '1px solid #666', padding: '7px', textAlign: 'center', fontSize: '12px' }}>{report.subjectPositions?.[item.subject.id] || '-'}/{totalStudents}</td>
                           )}
                           <td style={{ border: '1px solid #666', padding: '7px', textAlign: 'left', fontSize: '11px' }}>{item.remarks}</td>
-                          <td style={{ border: '1px solid #666', padding: '7px', textAlign: 'center', fontSize: '12px' }}></td>
+                          <td style={{ border: '1px solid #666', padding: '7px', textAlign: 'center', fontSize: '12px', fontWeight: 'bold' }}>
+                            {subjectInitialsMap[item.subject.id] || ''}
+                          </td>
                         </tr>
                       ))}
                       <tr style={{ backgroundColor: '#ffeb3b', fontWeight: 'bold' }}>
@@ -746,7 +750,7 @@ export function ReportStareheStyle({
                           : ''}
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', padding: '3px', borderTop: '1px solid #666', fontSize: '9px' }}>
-                        <div>NAME: ________________</div>
+                        <div>NAME: <span style={{ fontWeight: 'bold' }}>{classTeacherName || '________________'}</span></div>
                         <div>SIGN: ________________</div>
                       </div>
                       <div style={{ padding: '3px', fontSize: '9px' }}>DATE: ________________</div>
