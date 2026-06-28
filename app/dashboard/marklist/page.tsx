@@ -149,6 +149,9 @@ export default function MarklistPage() {
   const [smsSentCount, setSmsSentCount] = useState(0)
   const [smsSending, setSmsSending] = useState(false)
   const [smsError, setSmsError] = useState<string | null>(null)
+  const [smsBulkRunning, setSmsBulkRunning] = useState(false)
+  const [smsFailedNumbers, setSmsFailedNumbers] = useState<string[]>([])
+  const smsBulkAbortRef = useRef(false)
 
   // Check if admin (has both currentClass and contextSession from context)
   const isAdminUser = !!(currentClass && contextSession)
@@ -4017,126 +4020,181 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
       )}
 
       {/* SMS Bulk Send Modal */}
-      {smsModalOpen && smsQueue.length > 0 && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-card dark:bg-card rounded-xl shadow-2xl max-w-md w-full overflow-hidden">
-            <div className="px-6 py-4 bg-blue-600 text-white">
-              <h3 className="font-semibold text-lg">Send Results via SMS</h3>
-              <p className="text-sm opacity-90">Sending to {smsQueue.length} parents via TextSMS</p>
-            </div>
+      {smsModalOpen && smsQueue.length > 0 && (() => {
+        const isDone = smsCurrentIndex >= smsQueue.length
 
-            <div className="p-6">
-              {smsCurrentIndex < smsQueue.length ? (
-                <>
-                  <div className="mb-4">
-                    <div className="flex justify-between text-sm text-gray-600 mb-2">
-                      <span>Progress</span>
-                      <span>{smsCurrentIndex + 1} of {smsQueue.length}</span>
+        const buildMessage = (result: LearnerResult) => {
+          const gradeInfo = getGradeLevelByClass(Math.round(result.average), currentClass?.name, currentSchool?.name)
+          const performanceLevel = gradeInfo?.level || '-'
+          const subjectDetails = subjects.map(subject => {
+            const score = result.marks[subject.id]
+            if (score === null || score === undefined) return null
+            const subjectGrade = getGradeLevelByClass(Math.round(score), currentClass?.name, currentSchool?.name)
+            return `${subject.name}: ${score}% (${subjectGrade?.level || '-'})`
+          }).filter(Boolean).join(', ')
+          return (
+            `${currentSchool?.name?.toUpperCase() || 'SCHOOL'} - EXAM RESULTS\n` +
+            `Student: ${result.learner.name}\n` +
+            `Class: ${currentClass?.name || ''} | ${selectedSession?.exam_types?.name || 'Exam'} ${selectedSession?.term} ${selectedSession?.year}\n` +
+            `${subjectDetails}\n` +
+            `Total: ${result.total} | Mean: ${result.average.toFixed(1)}% | Level: ${performanceLevel} | Pos: ${result.rank}/${results.length}\n` +
+            `Powered by Shuletech`
+          )
+        }
+
+        const sendOne = async (index: number): Promise<boolean> => {
+          const result = smsQueue[index]
+          try {
+            const res = await fetch('/api/send-sms', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ mobile: result.learner.parent_phone, message: buildMessage(result) })
+            })
+            const data = await res.json()
+            return data.success === true
+          } catch {
+            return false
+          }
+        }
+
+        const startBulkSend = async () => {
+          smsBulkAbortRef.current = false
+          setSmsBulkRunning(true)
+          setSmsFailedNumbers([])
+          setSmsError(null)
+          let sent = 0
+          const failed: string[] = []
+          for (let i = smsCurrentIndex; i < smsQueue.length; i++) {
+            if (smsBulkAbortRef.current) break
+            setSmsCurrentIndex(i)
+            const ok = await sendOne(i)
+            if (ok) { sent++ } else { failed.push(smsQueue[i].learner.name) }
+            await new Promise(r => setTimeout(r, 300)) // 300ms between sends to avoid rate limiting
+          }
+          setSmsSentCount(prev => prev + sent)
+          setSmsFailedNumbers(failed)
+          setSmsCurrentIndex(smsQueue.length)
+          setSmsBulkRunning(false)
+        }
+
+        return (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+            <div className="bg-card rounded-xl shadow-2xl max-w-md w-full overflow-hidden">
+              {/* Header */}
+              <div className="px-6 py-4 bg-blue-600 text-white">
+                <h3 className="font-semibold text-lg">Bulk SMS - Exam Results</h3>
+                <p className="text-sm opacity-90">{smsQueue.length} parents with registered phone numbers</p>
+              </div>
+
+              <div className="p-6 space-y-4">
+                {/* Progress bar - always visible once started */}
+                {(smsBulkRunning || smsCurrentIndex > 0) && (
+                  <div>
+                    <div className="flex justify-between text-sm text-muted-foreground mb-2">
+                      <span>{smsBulkRunning ? 'Sending...' : isDone ? 'Completed' : 'Paused'}</span>
+                      <span>{Math.min(smsCurrentIndex, smsQueue.length)} / {smsQueue.length}</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
                       <div
-                        className="bg-blue-600 h-2 rounded-full transition-all"
-                        style={{ width: `${(smsCurrentIndex / smsQueue.length) * 100}%` }}
+                        className="bg-blue-600 h-3 rounded-full transition-all duration-300"
+                        style={{ width: `${(Math.min(smsCurrentIndex, smsQueue.length) / smsQueue.length) * 100}%` }}
                       />
                     </div>
                   </div>
+                )}
 
-                  <div className="bg-slate-50 dark:bg-slate-900/20 rounded-lg p-4 mb-4">
-                    <p className="text-sm text-gray-600 mb-1">Current Student:</p>
-                    <p className="font-semibold text-lg">{smsQueue[smsCurrentIndex]?.learner.name}</p>
-                    <p className="text-sm text-gray-600">Phone: {smsQueue[smsCurrentIndex]?.learner.parent_phone}</p>
-                    <p className="text-sm text-gray-600">Average: {smsQueue[smsCurrentIndex]?.average.toFixed(1)}%</p>
+                {/* Currently sending */}
+                {smsBulkRunning && smsCurrentIndex < smsQueue.length && (
+                  <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
+                    <p className="text-xs text-blue-600 font-medium mb-1">Now sending to:</p>
+                    <p className="font-semibold text-sm">{smsQueue[smsCurrentIndex]?.learner.name}</p>
+                    <p className="text-xs text-muted-foreground">{smsQueue[smsCurrentIndex]?.learner.parent_phone}</p>
                   </div>
+                )}
 
-                  {smsError && (
-                    <p className="text-sm text-red-600 mb-3 bg-red-50 rounded px-3 py-2">{smsError}</p>
-                  )}
+                {/* Done summary */}
+                {isDone && (
+                  <div className="text-center py-2">
+                    <div className="w-14 h-14 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <svg className="w-7 h-7 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <p className="font-semibold text-lg">Done!</p>
+                    <p className="text-sm text-muted-foreground">
+                      {smsSentCount} sent successfully
+                      {smsFailedNumbers.length > 0 && `, ${smsFailedNumbers.length} failed`}
+                    </p>
+                    {smsFailedNumbers.length > 0 && (
+                      <p className="text-xs text-red-500 mt-1">Failed: {smsFailedNumbers.join(', ')}</p>
+                    )}
+                  </div>
+                )}
 
-                  <div className="flex gap-3">
+                {/* Not started yet - show preview */}
+                {!smsBulkRunning && !isDone && smsCurrentIndex === 0 && (
+                  <div className="bg-slate-50 dark:bg-slate-900/20 rounded-lg p-3 text-sm text-muted-foreground">
+                    <p className="font-medium text-foreground mb-1">Ready to send</p>
+                    <p>Each parent will receive their child&apos;s results including all subject scores, total, mean score, performance level and class position.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Action buttons */}
+              <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900/20 border-t flex gap-3">
+                {isDone ? (
+                  <Button
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                    onClick={() => {
+                      setSmsModalOpen(false)
+                      setSmsQueue([])
+                      setSmsCurrentIndex(0)
+                      setSmsSentCount(0)
+                      setSmsError(null)
+                      setSmsFailedNumbers([])
+                    }}
+                  >
+                    Done
+                  </Button>
+                ) : smsBulkRunning ? (
+                  <Button
+                    variant="outline"
+                    className="flex-1 border-red-300 text-red-600 hover:bg-red-50"
+                    onClick={() => { smsBulkAbortRef.current = true }}
+                  >
+                    Stop Sending
+                  </Button>
+                ) : (
+                  <>
                     <Button
-                      disabled={smsSending}
-                      onClick={async () => {
-                        const result = smsQueue[smsCurrentIndex]
-                        const gradeInfo = getGradeLevelByClass(Math.round(result.average), currentClass?.name, currentSchool?.name)
-                        const performanceLevel = gradeInfo?.level || '-'
-                        const subjectDetails = subjects.map(subject => {
-                          const score = result.marks[subject.id]
-                          if (score === null || score === undefined) return null
-                          const subjectGrade = getGradeLevelByClass(Math.round(score), currentClass?.name, currentSchool?.name)
-                          return `${subject.name}: ${score}% (${subjectGrade?.level || '-'})`
-                        }).filter(Boolean).join(', ')
-                        const message =
-                          `${currentSchool?.name?.toUpperCase() || 'SCHOOL'} - EXAM RESULTS\n` +
-                          `Student: ${result.learner.name}\n` +
-                          `Class: ${currentClass?.name || ''} | ${selectedSession?.exam_types?.name || 'Exam'} ${selectedSession?.term} ${selectedSession?.year}\n` +
-                          `${subjectDetails}\n` +
-                          `Total: ${result.total} | Mean: ${result.average.toFixed(1)}% | Level: ${performanceLevel} | Pos: ${result.rank}/${results.length}\n` +
-                          `Powered by Shuletech`
-                        setSmsSending(true)
-                        setSmsError(null)
-                        try {
-                          const res = await fetch('/api/send-sms', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mobile: result.learner.parent_phone, message }) })
-                          const data = await res.json()
-                          if (data.success) {
-                            setSmsSentCount(prev => prev + 1)
-                            setSmsCurrentIndex(prev => prev + 1)
-                          } else {
-                            setSmsError(`Failed: ${data.error || 'Unknown error'}. You can skip or retry.`)
-                          }
-                        } catch {
-                          setSmsError('Network error. You can skip or retry.')
-                        }
-                        setSmsSending(false)
-                      }}
                       className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                      onClick={startBulkSend}
                     >
-                      {smsSending ? (
-                        <span className="flex items-center gap-2"><svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>Sending...</span>
-                      ) : (
-                        <span className="flex items-center gap-2">
-                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                          Send & Next
-                        </span>
-                      )}
+                      <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                      </svg>
+                      Send to All {smsQueue.length} Parents
                     </Button>
                     <Button
                       variant="outline"
-                      onClick={() => { setSmsCurrentIndex(prev => prev + 1); setSmsError(null) }}
+                      onClick={() => {
+                        setSmsModalOpen(false)
+                        setSmsQueue([])
+                        setSmsCurrentIndex(0)
+                        setSmsSentCount(0)
+                        setSmsError(null)
+                        setSmsFailedNumbers([])
+                      }}
                     >
-                      Skip
+                      Cancel
                     </Button>
-                  </div>
-                </>
-              ) : (
-                <div className="text-center py-4">
-                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-8 h-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <h4 className="font-semibold text-lg mb-2">Complete!</h4>
-                  <p className="text-gray-600">Sent SMS to {smsSentCount} of {smsQueue.length} parents</p>
-                </div>
-              )}
-            </div>
-
-            <div className="px-6 py-3 bg-slate-50 dark:bg-slate-900/20 border-t flex justify-end">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSmsModalOpen(false)
-                  setSmsQueue([])
-                  setSmsCurrentIndex(0)
-                  setSmsSentCount(0)
-                  setSmsError(null)
-                }}
-              >
-                {smsCurrentIndex >= smsQueue.length ? 'Done' : 'Cancel'}
-              </Button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* Certificate Print Modal */}
       {certificateData && (
