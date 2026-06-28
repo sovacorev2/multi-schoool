@@ -2249,7 +2249,7 @@ export default function AdminPortalPage() {
                           const data = await res.json()
 
                           if (data.success) {
-                            setNotificationSuccess(`Notification sent to ${data.totalRecipients} parents across ${data.totalClasses} class(es)`)
+                            setNotificationSuccess(data.message || `Notification sent to ${data.totalRecipients} parent${data.totalRecipients !== 1 ? 's' : ''}`)
                             setNotificationMessage('')
                             setSelectedClasses([])
                             setNotificationAllClasses(false)
