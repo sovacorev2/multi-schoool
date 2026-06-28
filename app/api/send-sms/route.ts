@@ -29,8 +29,8 @@ export async function POST(req: NextRequest) {
     let data: any
     try { data = JSON.parse(text) } catch { data = { raw: text } }
 
-    // TextSMS returns responses_code 200 on success
-    const success = response.ok && (data?.responses?.[0]?.response_code === 200 || data?.response_code === 200 || text.includes('"response_code":200'))
+    // TextSMS returns "response-code" (with hyphen) in responses array
+    const success = response.ok && data?.responses?.[0]?.['response-code'] === 200
 
     return NextResponse.json({ success, data })
   } catch (error: any) {
