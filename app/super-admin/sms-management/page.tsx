@@ -10,12 +10,11 @@ import {
   RefreshCw, AlertCircle, CheckCircle, Clock, Eye, EyeOff
 } from 'lucide-react'
 
-// Hardcoded SMS bundles - no database needed
+// SMS bundles - pricing based on 1 KES per SMS to schools
 const SMS_BUNDLES = [
-  { id: '1', sms_count: 100, price_ksh: 500 },
-  { id: '2', sms_count: 500, price_ksh: 2000 },
-  { id: '3', sms_count: 1000, price_ksh: 3500 },
-  { id: '4', sms_count: 5000, price_ksh: 15000 }
+  { id: '1', sms_count: 700, price_ksh: 700, name: 'Starter' },
+  { id: '2', sms_count: 1250, price_ksh: 1250, name: 'Standard' },
+  { id: '3', sms_count: 1500, price_ksh: 1500, name: 'Premium' }
 ]
 
 export default function SuperAdminSMSPage() {
@@ -42,13 +41,13 @@ export default function SuperAdminSMSPage() {
   const fetchBalance = async () => {
     try {
       setLoadingBalance(true)
-      const res = await fetch('/api/sms/africas-talking-balance')
+      const res = await fetch('/api/textsms/balance')
       if (res.ok) {
         const data = await res.json()
         setBalance(data.balance || 0)
       }
     } catch (error) {
-      console.error('[v0] Error fetching balance:', error)
+      console.error('[v0] Error fetching TextSMS balance:', error)
     } finally {
       setLoadingBalance(false)
     }
@@ -68,32 +67,14 @@ export default function SuperAdminSMSPage() {
     e.preventDefault()
     if (!smsAmount) return
 
-    setBuyingSMS(true)
-    setBuyMessage('')
-    try {
-      const response = await fetch('/api/sms/buy-from-africas-talking', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: parseInt(smsAmount) })
-      })
-
-      if (response.ok) {
-        setBuySuccess(true)
-        setBuyMessage(`Successfully purchased ${smsAmount} SMS!`)
-        setSmsAmount('')
-        setTimeout(() => {
-          fetchBalance()
-          setBuySuccess(false)
-        }, 1000)
-      } else {
-        setBuyMessage('Failed to purchase SMS. Please try again.')
-      }
-    } catch (error) {
-      console.error('[v0] Error buying SMS:', error)
-      setBuyMessage('Error: Could not complete purchase')
-    } finally {
-      setBuyingSMS(false)
-    }
+    // For now, display info about purchasing from TextSMS
+    // In production, this would integrate with M-Pesa or another payment provider
+    setBuyMessage(`To purchase ${smsAmount} SMS from TextSMS: Contact TextSMS at textsms.co.ke with your Partner ID (16593). Your account balance will update automatically.`)
+    setBuySuccess(true)
+    setSmsAmount('')
+    setTimeout(() => {
+      setBuySuccess(false)
+    }, 5000)
   }
 
   if (!isAuthenticated) {
@@ -152,8 +133,8 @@ export default function SuperAdminSMSPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">SMS Management</h1>
-            <p className="text-gray-600 mt-1">Manage SMS credits from Africa's Talking</p>
+            <h1 className="text-3xl font-bold text-gray-900">SMS Billing Management</h1>
+            <p className="text-gray-600 mt-1">TextSMS Account Balance & School SMS Bundle Allocation</p>
           </div>
           <Button
             variant="outline"
@@ -172,7 +153,7 @@ export default function SuperAdminSMSPage() {
             <CardTitle className="flex items-center justify-between">
               <span className="flex items-center gap-2">
                 <CreditCard className="w-5 h-5 text-blue-600" />
-                Africa's Talking Balance
+                TextSMS Account Balance
               </span>
               <Button
                 size="sm"
@@ -186,7 +167,7 @@ export default function SuperAdminSMSPage() {
           </CardHeader>
           <CardContent>
             <div className="text-4xl font-bold text-blue-900">KES {balance.toLocaleString()}</div>
-            <p className="text-sm text-blue-700 mt-2">Available for school purchases</p>
+            <p className="text-sm text-blue-700 mt-2">Your TextSMS account balance (0.30 KES per SMS cost)</p>
           </CardContent>
         </Card>
 
@@ -210,8 +191,8 @@ export default function SuperAdminSMSPage() {
                       <CheckCircle className="w-5 h-5 text-green-600" />
                       <h3 className="font-semibold text-green-900">Status</h3>
                     </div>
-                    <p className="text-sm text-green-700">Africa's Talking connected</p>
-                    <p className="text-sm text-green-700 mt-1">SMS system active</p>
+                    <p className="text-sm text-green-700">TextSMS (textsms.co.ke) connected</p>
+                    <p className="text-sm text-green-700 mt-1">Billing system active</p>
                   </div>
 
                   <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -242,8 +223,8 @@ export default function SuperAdminSMSPage() {
           <TabsContent value="buy" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Purchase SMS from Africa's Talking</CardTitle>
-                <CardDescription>Buy SMS credits directly</CardDescription>
+                <CardTitle>Purchase SMS from TextSMS</CardTitle>
+                <CardDescription>Add SMS credits to your account (KES 0.30 per SMS)</CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleBuySMS} className="space-y-4 max-w-md">
@@ -270,12 +251,12 @@ export default function SuperAdminSMSPage() {
                           <span className="font-semibold">{parseInt(smsAmount).toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-700">Rate:</span>
-                          <span className="font-semibold">KES 0.50 per SMS</span>
+                          <span className="text-gray-700">TextSMS Rate:</span>
+                          <span className="font-semibold">KES 0.30 per SMS</span>
                         </div>
                         <div className="border-t border-blue-200 pt-2 flex justify-between">
-                          <span className="text-gray-900 font-semibold">Total:</span>
-                          <span className="font-bold text-blue-900">KES {(parseInt(smsAmount) * 0.5).toLocaleString()}</span>
+                          <span className="text-gray-900 font-semibold">Total Cost:</span>
+                          <span className="font-bold text-blue-900">KES {(parseInt(smsAmount) * 0.3).toLocaleString()}</span>
                         </div>
                       </div>
                     </div>
