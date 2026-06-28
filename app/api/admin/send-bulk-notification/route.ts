@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { deductSMSCredits, getSchoolSMSCredits } from '@/lib/sms-credits'
 
 const TEXTSMS_API_KEY = '80a942a47ec152bfc44f39181857fd37'
 const TEXTSMS_PARTNER_ID = '16593'
@@ -49,7 +48,7 @@ export async function POST(req: NextRequest) {
       .from('learners')
       .select('id, name, parent_phone')
       .in('class_id', classIds)
-      .eq('school_id', schoolId)
+      .eq('school_id')
       .not('parent_phone', 'is', null)
 
     if (error) {
@@ -69,22 +68,7 @@ export async function POST(req: NextRequest) {
       }
     })
 
-    // Check if school has enough SMS credits
-    try {
-      const credits = await getSchoolSMSCredits(supabase, schoolId)
-      if (credits.balance < uniquePhones.size) {
-        return NextResponse.json(
-          { 
-            success: false,
-            error: `Insufficient SMS credits. Need ${uniquePhones.size} SMS, have ${credits.balance}. Purchase more bundles.`
-          },
-          { status: 402 }
-        )
-      }
-    } catch (error: any) {
-      console.error('[send-bulk-notification] Credit check error:', error)
-      return NextResponse.json({ error: 'Failed to verify SMS credits' }, { status: 500 })
-    }
+
 
     // Send SMS to all unique phone numbers
     let successCount = 0
@@ -101,21 +85,14 @@ export async function POST(req: NextRequest) {
       await new Promise(r => setTimeout(r, 100))
     }
 
-    // Deduct SMS credits for successfully sent messages
-    try {
-      await deductSMSCredits(supabase, schoolId, successCount)
-      console.log(`[send-bulk-notification] Deducted ${successCount} SMS credits for school ${schoolId}`)
-    } catch (error: any) {
-      console.error('[send-bulk-notification] Failed to deduct credits:', error)
-      // Don't fail the response if credit deduction fails, but log it
-    }
+
 
     // Get unique classes for response
     const { data: classData } = await supabase
       .from('classes')
       .select('id')
       .in('id', classIds)
-      .eq('school_id', schoolId)
+      .eq('school_id')
 
     return NextResponse.json({
       success: true,
