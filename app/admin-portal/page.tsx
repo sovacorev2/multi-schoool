@@ -1264,10 +1264,7 @@ export default function AdminPortalPage() {
                 <Bell className="w-4 h-4" />
                 Notifications
               </TabsTrigger>
-              <TabsTrigger value="sms-credits" className="flex items-center gap-2">
-                <CreditCard className="w-4 h-4" />
-                SMS Credits
-              </TabsTrigger>
+
             </TabsList>
 
             {/* Deadlines Tab */}
@@ -2297,76 +2294,7 @@ export default function AdminPortalPage() {
               </Card>
             </TabsContent>
 
-            {/* SMS Credits Tab */}
-            <TabsContent value="sms-credits">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CreditCard className="w-5 h-5" />
-                    SMS Credits & Billing
-                  </CardTitle>
-                  <CardDescription>
-                    Request SMS bundles and view your SMS credit balance
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6 max-w-3xl">
-                  {/* Current Balance */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="text-sm text-blue-600 font-medium">Current SMS Balance</p>
-                      <p className="text-3xl font-bold text-blue-900 mt-2">{school?.sms_credits?.balance || 0} SMS</p>
-                      <p className="text-xs text-blue-700 mt-1">≈ KES {((school?.sms_credits?.balance || 0) * 1).toLocaleString()}</p>
-                    </div>
-                    <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                      <p className="text-sm text-green-600 font-medium">Total Purchased</p>
-                      <p className="text-3xl font-bold text-green-900 mt-2">{school?.sms_credits?.total_purchased || 0} SMS</p>
-                      <p className="text-xs text-green-700 mt-1">All time allocation</p>
-                    </div>
-                  </div>
 
-                  {/* Request SMS Bundle */}
-                  <div className="border-t pt-6">
-                    <h3 className="text-lg font-semibold mb-4">Request SMS Bundle</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {[
-                        { sms: 700, price: 700, name: 'Starter' },
-                        { sms: 1250, price: 1250, name: 'Standard' },
-                        { sms: 1500, price: 1500, name: 'Premium' }
-                      ].map((bundle) => (
-                        <div key={bundle.sms} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
-                          <div className="text-center">
-                            <p className="text-sm text-gray-600 font-medium">{bundle.name} Package</p>
-                            <p className="text-2xl font-bold text-gray-900 mt-2">{bundle.sms}</p>
-                            <p className="text-xs text-gray-500">SMS messages</p>
-                            <p className="text-lg font-semibold text-gray-900 mt-2">KES {bundle.price}</p>
-                            <Button
-                              onClick={async () => {
-                                // For now, show info message
-                                alert(`Request for ${bundle.sms} SMS (KES ${bundle.price}) has been submitted to super admin for approval. You will be notified once approved.`)
-                              }}
-                              className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white"
-                            >
-                              Request Bundle
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* SMS Usage Info */}
-                  <div className="border-t pt-6 bg-gray-50 rounded-lg p-4">
-                    <h3 className="font-semibold mb-3">How SMS Billing Works</h3>
-                    <ul className="space-y-2 text-sm text-gray-700">
-                      <li>• <span className="font-medium">1 KES = 1 SMS</span> - You purchase SMS at 1 KES per message</li>
-                      <li>• <span className="font-medium">Teachers send free SMS</span> - Deducted from your allocated balance</li>
-                      <li>• <span className="font-medium">Super admin approves</span> - Your requests are reviewed and approved by the super admin</li>
-                      <li>• <span className="font-medium">Real-time tracking</span> - See balance updates as SMS are sent to parents</li>
-                    </ul>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
           </Tabs>
         )}
 
