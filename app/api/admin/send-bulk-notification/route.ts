@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
       .from('learners')
       .select('id, name, parent_phone')
       .in('class_id', classIds)
-      .eq('school_id')
+      .eq('school_id', schoolId)
       .not('parent_phone', 'is', null)
 
     if (error) {
@@ -87,19 +87,21 @@ export async function POST(req: NextRequest) {
 
 
 
-    // Get unique classes for response
+    // Get class names for better response message
     const { data: classData } = await supabase
       .from('classes')
-      .select('id')
+      .select('id, name')
       .in('id', classIds)
-      .eq('school_id')
+      .eq('school_id', schoolId)
+
+    const classNames = classData?.map(c => c.name).join(', ') || 'selected classes'
 
     return NextResponse.json({
       success: true,
       totalRecipients: successCount,
       totalClasses: classIds.length,
       failed: failedPhones.length,
-      message: `Sent to ${successCount} parents${failedPhones.length > 0 ? ` (${failedPhones.length} failed)` : ''}`
+      message: `Message sent to ${successCount} parent${successCount !== 1 ? 's' : ''} in ${classNames}${failedPhones.length > 0 ? ` (${failedPhones.length} failed)` : ''}`
     })
   } catch (error: any) {
     console.error('[send-bulk-notification] error:', error)
