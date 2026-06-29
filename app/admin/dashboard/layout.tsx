@@ -54,7 +54,7 @@ export default function AdminDashboardLayout({
 
   const handleLogout = () => {
     document.cookie = "admin_auth=; path=/; max-age=0"
-    router.push("/admin")
+    router.back()
   }
 
   if (isAuthenticated === null) {
