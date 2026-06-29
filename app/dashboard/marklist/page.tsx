@@ -1991,22 +1991,34 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                   // Fetch teacher initials for each subject in this class
                   try {
                     const supabaseForInitials = createClient()
+                    // Step 1: get assignments for this class that have a subject
                     const { data: assignments } = await supabaseForInitials
                       .from('teacher_assignments')
-                      .select('subject_id, users(first_name, last_name)')
+                      .select('subject_id, user_id')
                       .eq('class_id', currentClass?.id)
-                      .not('subject_id', 'is', null)
                       .eq('is_active', true)
+                      .not('subject_id', 'is', null)
 
                     const initialsMap: Record<string, string> = {}
-                    if (assignments) {
+                    if (assignments && assignments.length > 0) {
+                      // Step 2: get teacher names from teacher_accounts using user_id = id
+                      const teacherIds = [...new Set(assignments.map(a => a.user_id))]
+                      const { data: teachers } = await supabaseForInitials
+                        .from('teacher_accounts')
+                        .select('id, first_name, last_name')
+                        .in('id', teacherIds)
+
+                      const teacherMap: Record<string, { first_name: string; last_name: string }> = {}
+                      for (const t of (teachers || [])) {
+                        teacherMap[t.id] = { first_name: t.first_name, last_name: t.last_name }
+                      }
+
                       for (const a of assignments) {
-                        if (a.subject_id && (a as any).users) {
-                          const u = (a as any).users
-                          const fn = (u.first_name || '').trim()
-                          const ln = (u.last_name || '').trim()
-                          const initials = `${fn.charAt(0)}${ln.charAt(0)}`.toUpperCase()
-                          initialsMap[a.subject_id] = initials
+                        const teacher = teacherMap[a.user_id]
+                        if (a.subject_id && teacher) {
+                          const fn = (teacher.first_name || '').trim()
+                          const ln = (teacher.last_name || '').trim()
+                          initialsMap[a.subject_id] = `${fn.charAt(0)}${ln.charAt(0)}`.toUpperCase()
                         }
                       }
                     }
@@ -2390,23 +2402,28 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                   variant="outline"
                                   onClick={() => attemptPrint(async () => {
                                     setReportModalData([result])
-                                    // Fetch teacher initials for this class if not already loaded
+                                    // Fetch teacher initials for this class
                                     try {
                                       const supabaseForInitials = createClient()
                                       const { data: assignments } = await supabaseForInitials
                                         .from('teacher_assignments')
-                                        .select('subject_id, users(first_name, last_name)')
+                                        .select('subject_id, user_id')
                                         .eq('class_id', currentClass?.id)
-                                        .not('subject_id', 'is', null)
                                         .eq('is_active', true)
+                                        .not('subject_id', 'is', null)
                                       const initialsMap: Record<string, string> = {}
-                                      if (assignments) {
+                                      if (assignments && assignments.length > 0) {
+                                        const teacherIds = [...new Set(assignments.map((a: any) => a.user_id))]
+                                        const { data: teachers } = await supabaseForInitials
+                                          .from('teacher_accounts')
+                                          .select('id, first_name, last_name')
+                                          .in('id', teacherIds)
+                                        const teacherMap: Record<string, any> = {}
+                                        for (const t of (teachers || [])) teacherMap[t.id] = t
                                         for (const a of assignments) {
-                                          if (a.subject_id && (a as any).users) {
-                                            const u = (a as any).users
-                                            const fn = (u.first_name || '').trim()
-                                            const ln = (u.last_name || '').trim()
-                                            initialsMap[a.subject_id] = `${fn.charAt(0)}${ln.charAt(0)}`.toUpperCase()
+                                          const t = teacherMap[a.user_id]
+                                          if (a.subject_id && t) {
+                                            initialsMap[a.subject_id] = `${(t.first_name||'').trim().charAt(0)}${(t.last_name||'').trim().charAt(0)}`.toUpperCase()
                                           }
                                         }
                                       }
