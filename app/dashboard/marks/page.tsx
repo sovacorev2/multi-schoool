@@ -452,15 +452,18 @@ export default function MarksPage() {
         return false;
       }
 
-      const marksToUpsert = authorizedEntries.map(({ learnerId, subjectId }) => ({
-        session_id: selectedSessionId,
-        learner_id: learnerId,
-        subject_id: subjectId,
-        score: currentMarks[learnerId]?.[subjectId] ?? null,
-        year: session.year,
-        term: session.term,
-        exam_type_id: session.exam_type_id || null,
-      }));
+      // Only upsert marks that actually have a score value (not empty/null)
+      const marksToUpsert = authorizedEntries
+        .map(({ learnerId, subjectId }) => ({
+          session_id: selectedSessionId,
+          learner_id: learnerId,
+          subject_id: subjectId,
+          score: currentMarks[learnerId]?.[subjectId] ?? null,
+          year: session.year,
+          term: session.term,
+          exam_type_id: session.exam_type_id || null,
+        }))
+        .filter(m => m.score !== null && m.score !== undefined && m.score !== '');
 
       const supabase = createClient();
       const { error } = await supabase.from("marks").upsert(marksToUpsert, {
