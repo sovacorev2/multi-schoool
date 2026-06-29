@@ -965,29 +965,20 @@ export default function MarklistPage() {
       return
     }
 
-    const supabase = createClient()
-    
-    // Get unique learner IDs from marks for this session
+    // Use already-loaded learners from the class, not just those with marks
+    // This ensures all students show in marklist even if they don't have marks yet
     const marksArray = Array.isArray(marks) ? marks : []
-    const learnerIdsInSession = new Set(marksArray.map(m => m.learner_id))
     
-    if (learnerIdsInSession.size === 0) {
+    // Use the learners state which has all class learners
+    const sessionLearners = learners
+    
+    if (!sessionLearners || sessionLearners.length === 0) {
       setResults([])
       return
     }
 
-    supabase
-      .from('learners')
-      .select('*')
-      .in('id', Array.from(learnerIdsInSession))
-      .then(({ data: sessionLearners, error }) => {
-        if (error) {
-          console.error('[v0] Error fetching learners:', error)
-          setResults([])
-          return
-        }
-
-        const results: LearnerResult[] = (sessionLearners || [])
+    // Process the learners with their marks
+    const results: LearnerResult[] = (sessionLearners || [])
           .map((learner) => {
             const learnerMarks: Record<string, number | null> = {}
             let total = 0
@@ -1035,13 +1026,8 @@ export default function MarklistPage() {
             return result
           })
 
-        setResults(results)
-      })
-      .catch((err) => {
-        console.error('[v0] Unexpected error fetching learners:', err)
-        setResults([])
-      })
-  }, [selectedSession?.id, marks.length, subjects.length, currentClass?.name])
+    setResults(results)
+  }, [selectedSession?.id, marks.length, subjects.length, learners.length])
 
   const subjectPerformance = subjects
   .map((subject) => {
