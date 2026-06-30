@@ -212,8 +212,8 @@ export default function SubjectsPage() {
         )}
       </div>
 
-      {/* Add Subject Form - Only for admins and non-PIN teachers */}
-      {!pinManagementEnabled && (
+      {/* Add Subject Form - Hidden only for PIN subject-teachers (not class teachers, not admins) */}
+      {(!pinManagementEnabled || isAdminBypass || isClassTeacher) && (
         <div className="bg-card dark:bg-card rounded-lg shadow-sm border border-border dark:border-border p-8">
           <h2 className="text-xl font-bold text-gray-900 mb-6">Add New Subject</h2>
           

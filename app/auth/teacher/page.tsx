@@ -204,7 +204,7 @@ export default function TeacherAuthPage() {
               {error}
             </div>
             <Button
-              onClick={() => router.push("/")}
+              onClick={() => router.back()}
               className="w-full bg-blue-600 hover:bg-blue-700"
             >
               Back to Class Selection
@@ -355,7 +355,7 @@ export default function TeacherAuthPage() {
               <Button
                 type="button"
                 variant="ghost"
-                onClick={() => router.push("/")}
+                onClick={() => router.back()}
                 className="w-full text-gray-600"
               >
                 Back to Class Selection

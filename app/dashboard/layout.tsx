@@ -40,12 +40,14 @@ export default function DashboardLayout({
     } catch (err) {
       console.error('[v0] Logout error:', err)
     } finally {
-      // Redirect to school's home page (never to select-school)
       const schoolCode = currentSchool?.code
       setCurrentClass(null)
       setCurrentSession(null)
-      // Always redirect to school's home page
-      router.push(`/?school=${schoolCode || 'st-james'}`)
+      if (schoolCode) {
+        router.push(`/?school=${schoolCode}`)
+      } else {
+        router.back()
+      }
     }
   }
 
