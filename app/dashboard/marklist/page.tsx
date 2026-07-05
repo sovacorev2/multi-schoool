@@ -97,6 +97,7 @@ export default function MarklistPage() {
   const [comparisonClassId, setComparisonClassId] = useState<string>('')
   const [comparisonSessionId, setComparisonSessionId] = useState<string>('') // Allow manual selection of comparison exam
   const [allClasses, setAllClasses] = useState<{ id: string; name: string }[]>([])
+  const [isLowerGradePointsEntry, setIsLowerGradePointsEntry] = useState(false)
   const [streamComparisonData, setStreamComparisonData] = useState<{
     baseClassName: string
     streams: {
@@ -160,6 +161,15 @@ export default function MarklistPage() {
   // Preschool classes use direct rubric (1-4), others use score-based rubric
   const PRESCHOOL_CLASSES = ['playgroup', 'pp1', 'pp2']
   const isPreschool = PRESCHOOL_CLASSES.includes(currentClass?.name?.toLowerCase() || '')
+
+  // Kimwangarc lower grades (PP1, PP2, Grade 1-6) use points entry only
+  const isKimwangarc = currentSchool?.name?.toLowerCase().includes('kimwangarc')
+  const lowerGradePatterns = /^(PP1|PP2|Grade\s*1|Grade\s*2|Grade\s*3|Grade\s*4|Grade\s*5|Grade\s*6)$/i
+  const isKimwangaraLowerGrade = isKimwangarc && lowerGradePatterns.test(currentClass?.name || '')
+  
+  useEffect(() => {
+    setIsLowerGradePointsEntry(isKimwangaraLowerGrade)
+  }, [isKimwangaraLowerGrade])
 
   const getRubric = (score: number | null): number | null => {
     if (score === null || score === undefined) return null
@@ -1137,25 +1147,40 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
       return
     }
     
-    // Build subject headers (two rows: subject name spanning 3 columns, then MKS/LVL/PTS)
+    // Build subject headers (two rows: subject name spanning 2-3 columns based on whether marks shown, then LVL/PTS or MKS/LVL/PTS)
+    const colSpan = isLowerGradePointsEntry ? 2 : 3
     const subjectHeadersRow1 = subjects.map(s => 
-      `<th colSpan="3" style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9px; background: #e5e7eb;">${getSubjectDisplay(s.name).toUpperCase()}</th>`
+      `<th colSpan="${colSpan}" style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9px; background: #e5e7eb;">${getSubjectDisplay(s.name).toUpperCase()}</th>`
     ).join('')
     
-    const subjectHeadersRow2 = subjects.map(s => 
-      `<th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 8px; background: #e5e7eb;">MKS</th>
-       <th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 8px; background: #e5e7eb; color: #000000;">LVL</th>
-       <th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 8px; background: #e5e7eb; color: #d97706;">PTS</th>`
-    ).join('')
+    const subjectHeadersRow2 = subjects.map(s => {
+      if (isLowerGradePointsEntry) {
+        // For Kimwangarc lower grades: show only LVL and PTS, no MKS
+        return `<th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 8px; background: #e5e7eb; color: #000000;">LVL</th>
+         <th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 8px; background: #e5e7eb; color: #d97706;">PTS</th>`
+      } else {
+        // For all other classes: show MKS, LVL, and PTS
+        return `<th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 8px; background: #e5e7eb;">MKS</th>
+         <th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 8px; background: #e5e7eb; color: #000000;">LVL</th>
+         <th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 8px; background: #e5e7eb; color: #d97706;">PTS</th>`
+      }
+    }).join('')
     
     // Build student rows
     const studentRows = results.map((result, idx) => {
       const subjectCells = subjects.map(subject => {
         const score = result.marks[subject.id]
         const performanceLevel = getGradeLevelByClass(score, currentClass?.name, currentSchool?.name)
-        return `<td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 9px;">${score ?? '-'}</td>
-                <td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 9px; font-weight: bold; color: #000000;">${performanceLevel ? performanceLevel.level : '-'}</td>
-                <td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; color: #d97706; font-weight: bold;">${performanceLevel ? performanceLevel.points : '-'}</td>`
+        if (isLowerGradePointsEntry) {
+          // For Kimwangarc lower grades: show only Level and Points
+          return `<td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 9px; font-weight: bold; color: #000000;">${performanceLevel ? performanceLevel.level : '-'}</td>
+                  <td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; color: #d97706; font-weight: bold;">${performanceLevel ? performanceLevel.points : '-'}</td>`
+        } else {
+          // For all other classes: show Marks, Level, and Points
+          return `<td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 9px;">${score ?? '-'}</td>
+                  <td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 9px; font-weight: bold; color: #000000;">${performanceLevel ? performanceLevel.level : '-'}</td>
+                  <td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; color: #d97706; font-weight: bold;">${performanceLevel ? performanceLevel.points : '-'}</td>`
+        }
       }).join('')
       
       const avgPerformanceLevel = getGradeLevelByClass(Math.round(result.average), currentClass?.name, currentSchool?.name)
@@ -1174,9 +1199,16 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
       const meanScore = subjectScores.length > 0 ? (subjectScores.reduce((a, b) => a + b, 0) / subjectScores.length).toFixed(1) : '-'
       const mean = subjectScores.length > 0 ? Math.round(subjectScores.reduce((a, b) => a + b, 0) / subjectScores.length) : null
       const meanPerformance = getGradeLevelByClass(mean, currentClass?.name, currentSchool?.name)
-      return `<td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; font-weight: bold; background: #e5e7eb;">${meanScore}</td>
-              <td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; font-weight: bold; background: #e5e7eb; color: #000000;">${meanPerformance ? meanPerformance.level : '-'}</td>
-              <td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; background: #e5e7eb; color: #d97706; font-weight: bold;">${meanPerformance ? meanPerformance.points : '-'}</td>`
+      if (isLowerGradePointsEntry) {
+        // For Kimwangarc lower grades: show only Level and Points
+        return `<td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; font-weight: bold; background: #e5e7eb; color: #000000;">${meanPerformance ? meanPerformance.level : '-'}</td>
+                <td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; background: #e5e7eb; color: #d97706; font-weight: bold;">${meanPerformance ? meanPerformance.points : '-'}</td>`
+      } else {
+        // For all other classes: show Marks, Level, and Points
+        return `<td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; font-weight: bold; background: #e5e7eb;">${meanScore}</td>
+                <td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; font-weight: bold; background: #e5e7eb; color: #000000;">${meanPerformance ? meanPerformance.level : '-'}</td>
+                <td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; background: #e5e7eb; color: #d97706; font-weight: bold;">${meanPerformance ? meanPerformance.points : '-'}</td>`
+      }
     }).join('')
     
     const marklistContent = `
@@ -3226,11 +3258,20 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                   else if (score >= 30) scoreStyle = 'color: #b45309;'
                                   else scoreStyle = 'color: #000000;'
                                 }
-                                return `
-                                  <td style="border: 1px solid #333; padding: 4px; text-align: center; ${scoreStyle}">${score !== null ? score : '-'}</td>
-                                  <td style="border: 1px solid #333; padding: 4px; text-align: center; color: #000000; font-weight: bold; font-size: 11px;">${level}</td>
-                                  <td style="border: 1px solid #333; padding: 4px; text-align: center; color: #d97706; font-weight: bold; font-size: 11px;">${points}</td>
-                                `
+                                if (isLowerGradePointsEntry) {
+                                  // For Kimwangarc lower grades: show only Level and Points
+                                  return `
+                                    <td style="border: 1px solid #333; padding: 4px; text-align: center; color: #000000; font-weight: bold; font-size: 11px;">${level}</td>
+                                    <td style="border: 1px solid #333; padding: 4px; text-align: center; color: #d97706; font-weight: bold; font-size: 11px;">${points}</td>
+                                  `
+                                } else {
+                                  // For all other classes: show Marks, Level, and Points
+                                  return `
+                                    <td style="border: 1px solid #333; padding: 4px; text-align: center; ${scoreStyle}">${score !== null ? score : '-'}</td>
+                                    <td style="border: 1px solid #333; padding: 4px; text-align: center; color: #000000; font-weight: bold; font-size: 11px;">${level}</td>
+                                    <td style="border: 1px solid #333; padding: 4px; text-align: center; color: #d97706; font-weight: bold; font-size: 11px;">${points}</td>
+                                  `
+                                }
                               }).join('')
                               
                               const overallLevel = getGradeLevelByClass(Math.round(learner.average), selectedBaseClass, currentSchool?.name)?.level || '-'
@@ -3247,16 +3288,24 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                               `
                             }).join('')
 
-                            // Build subject headers with 3 columns per subject
+                            // Build subject headers (2-3 columns per subject based on whether marks shown)
+                            const headerColSpan = isLowerGradePointsEntry ? 2 : 3
                             const subjectHeaders = combinedMarklistData.subjects.map(subj => 
-                              `<th colSpan="3" style="border: 1px solid #333; padding: 6px; text-align: center; background: #e5e7eb; font-size: 11px;">${subj.name}</th>`
+                              `<th colSpan="${headerColSpan}" style="border: 1px solid #333; padding: 6px; text-align: center; background: #e5e7eb; font-size: 11px;">${subj.name}</th>`
                             ).join('')
                             
-                            const subjectSubHeaders = combinedMarklistData.subjects.map(() => 
-                              `<th style="border: 1px solid #333; padding: 4px; text-align: center; background: #f3f4f6; font-size: 10px;">MKS</th>
-                               <th style="border: 1px solid #333; padding: 4px; text-align: center; background: #f3f4f6; font-size: 10px;">LVL</th>
-                               <th style="border: 1px solid #333; padding: 4px; text-align: center; background: #f3f4f6; font-size: 10px;">PTS</th>`
-                            ).join('')
+                            const subjectSubHeaders = combinedMarklistData.subjects.map(() => {
+                              if (isLowerGradePointsEntry) {
+                                // For Kimwangarc lower grades: show only LVL and PTS
+                                return `<th style="border: 1px solid #333; padding: 4px; text-align: center; background: #f3f4f6; font-size: 10px;">LVL</th>
+                                 <th style="border: 1px solid #333; padding: 4px; text-align: center; background: #f3f4f6; font-size: 10px;">PTS</th>`
+                              } else {
+                                // For all other classes: show MKS, LVL, and PTS
+                                return `<th style="border: 1px solid #333; padding: 4px; text-align: center; background: #f3f4f6; font-size: 10px;">MKS</th>
+                                 <th style="border: 1px solid #333; padding: 4px; text-align: center; background: #f3f4f6; font-size: 10px;">LVL</th>
+                                 <th style="border: 1px solid #333; padding: 4px; text-align: center; background: #f3f4f6; font-size: 10px;">PTS</th>`
+                              }
+                            }).join('')
 
                             const reportContent = `<!DOCTYPE html>
 <html>
