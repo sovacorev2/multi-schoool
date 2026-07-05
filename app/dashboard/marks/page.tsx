@@ -277,7 +277,7 @@ export default function MarksPage() {
 
     // Detect if this is Kimwangarc and lower grades (PP1, PP2, 1-6)
     // For these classes, show points entry instead of marks
-    const isKimwangarc = currentSchool?.name?.toLowerCase().includes('kimwangarc');
+    const isKimwangarc = currentSchool?.code?.toLowerCase() === 'kimwangarc';
     const lowerGradePatterns = /^(PP1|PP2|Grade\s*1|Grade\s*2|Grade\s*3|Grade\s*4|Grade\s*5|Grade\s*6)$/i;
     const isLowerGrade = lowerGradePatterns.test(currentClass?.name || '');
     setIsLowerGradePointsEntry(isKimwangarc && isLowerGrade);
