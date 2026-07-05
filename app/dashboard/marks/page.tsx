@@ -757,7 +757,7 @@ export default function MarksPage() {
                 </CardTitle>
                 {isLowerGradePointsEntry && (
                   <p className="text-xs text-muted-foreground mt-1">
-                    Enter performance points (1-4): 4=Exemplary, 3=Proficient, 2=Developing, 1=Beginning
+                    Enter performance points (1-4): 4=EE, 3=AE, 2=ME, 1=BE
                   </p>
                 )}
               </div>
