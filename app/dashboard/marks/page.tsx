@@ -402,7 +402,9 @@ export default function MarksPage() {
   };
 
   const handleMarkChange = (learnerId: string, subjectId: string, value: string) => {
-    const numValue = value === "" ? null : Math.min(100, Math.max(0, parseFloat(value) || 0));
+    const min = isLowerGradePointsEntry ? 1 : 0;
+    const max = isLowerGradePointsEntry ? 4 : 100;
+    const numValue = value === "" ? null : Math.min(max, Math.max(min, Math.round(parseFloat(value) || min)));
 
     setMarks((prev) => ({
       ...prev,
