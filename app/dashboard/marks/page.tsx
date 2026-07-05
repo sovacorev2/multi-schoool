@@ -155,6 +155,7 @@ export default function MarksPage() {
   const [assignedSubjectIds, setAssignedSubjectIds] = useState<Set<string>>(new Set());
   const [pinManagementEnabled, setPinManagementEnabled] = useState(false);
   const [isClassTeacher, setIsClassTeacher] = useState(false);
+  const [isLowerGradePointsEntry, setIsLowerGradePointsEntry] = useState(false);
 
   // Autosave state
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -273,6 +274,13 @@ export default function MarksPage() {
     setSubjects(subjectsRes.data || []);
     setLearners(learnersRes.data || []);
     setIsLoading(false);
+
+    // Detect if this is Kimwangarc and lower grades (PP1, PP2, 1-6)
+    // For these classes, show points entry instead of marks
+    const isKimwangarc = currentSchool?.name?.toLowerCase().includes('kimwangarc');
+    const lowerGradePatterns = /^(PP1|PP2|Grade\s*1|Grade\s*2|Grade\s*3|Grade\s*4|Grade\s*5|Grade\s*6)$/i;
+    const isLowerGrade = lowerGradePatterns.test(currentClass?.name || '');
+    setIsLowerGradePointsEntry(isKimwangarc && isLowerGrade);
   }, [currentClass, currentSchool]);
 
   useEffect(() => {
@@ -741,11 +749,18 @@ export default function MarksPage() {
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-medium flex items-center gap-2">
-                <ClipboardList className="w-4 h-4" />
-                {selectedSession.exam_types?.name} - {selectedSession.term}{" "}
-                {selectedSession.year}
-              </CardTitle>
+              <div className="flex-1">
+                <CardTitle className="text-base font-medium flex items-center gap-2">
+                  <ClipboardList className="w-4 h-4" />
+                  {selectedSession.exam_types?.name} - {selectedSession.term}{" "}
+                  {selectedSession.year}
+                </CardTitle>
+                {isLowerGradePointsEntry && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Enter performance points (1-4): 4=EE, 3=AE, 2=ME, 1=BE
+                  </p>
+                )}
+              </div>
               {getSessionStatus(selectedSession)}
             </div>
           </CardHeader>
@@ -838,8 +853,8 @@ export default function MarksPage() {
                               <TableCell key={subject.id} className="p-1 opacity-100">
                                 <Input
                                   type="number"
-                                  min="0"
-                                  max="100"
+                                  min={isLowerGradePointsEntry ? "1" : "0"}
+                                  max={isLowerGradePointsEntry ? "4" : "100"}
                                   className="w-full text-center h-9"
                                   value={learnerMarks[subject.id] ?? ""}
                                   onChange={(e) =>
@@ -849,9 +864,9 @@ export default function MarksPage() {
                                       e.target.value
                                     )
                                   }
-                                  placeholder="-"
+                                  placeholder={isLowerGradePointsEntry ? "1-4" : "-"}
                                   disabled={canEdit}
-                                  title={!isAssigned && pinManagementEnabled ? 'Not assigned to you' : editStatus.editable ? 'Exam closed - cannot edit' : ''}
+                                  title={!isAssigned && pinManagementEnabled ? 'Not assigned to you' : editStatus.editable ? 'Exam closed - cannot edit' : isLowerGradePointsEntry ? 'Enter performance points (1-4)' : ''}
                                 />
                               </TableCell>
                             ) : null;
