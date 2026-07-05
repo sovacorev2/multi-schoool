@@ -2235,7 +2235,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                   <th className="border border-border dark:border-border p-2 text-left font-bold text-foreground dark:text-foreground">Name</th>
                   {subjects.map((subject) => (
                     <React.Fragment key={subject.id}>
-                      <th colSpan={3} className="border border-border dark:border-border p-2 font-bold text-center text-foreground dark:text-foreground">
+                      <th colSpan={isLowerGradePointsEntry ? 2 : 3} className="border border-border dark:border-border p-2 font-bold text-center text-foreground dark:text-foreground">
                         {subject.name}
                       </th>
                     </React.Fragment>
@@ -2248,9 +2248,11 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                   <th className="border border-border dark:border-border p-2 text-left font-bold text-foreground dark:text-foreground"></th>
                   {subjects.map((subject) => (
                     <React.Fragment key={`header-${subject.id}`}>
-                      <th className="border border-border dark:border-border p-2 font-bold text-xs text-foreground dark:text-foreground">
-                        Marks
-                      </th>
+                      {!isLowerGradePointsEntry && (
+                        <th className="border border-border dark:border-border p-2 font-bold text-xs text-foreground dark:text-foreground">
+                          Marks
+                        </th>
+                      )}
                       <th className="border border-border dark:border-border p-2 font-bold text-xs" style={{ color: '#000000' }}>
                         Level
                       </th>
@@ -2275,9 +2277,11 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                       const performanceLevel = getGradeLevelByClass(score, currentClass?.name, currentSchool?.name)
                       return (
                         <React.Fragment key={subject.id}>
-                          <td className="border border-border dark:border-border p-2 text-center text-foreground dark:text-foreground">
-                            {score ?? '-'}
-                          </td>
+                          {!isLowerGradePointsEntry && (
+                            <td className="border border-border dark:border-border p-2 text-center text-foreground dark:text-foreground">
+                              {score ?? '-'}
+                            </td>
+                          )}
                           <td className="border border-border dark:border-border p-2 text-center font-bold" style={{ color: '#000000' }}>
                             {performanceLevel ? performanceLevel.level : '-'}
                           </td>
@@ -2305,9 +2309,11 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                     const meanPerformance = getGradeLevelByClass(Math.round(mean), currentClass?.name, currentSchool?.name)
                     return (
                       <React.Fragment key={`mean-${subject.id}`}>
-                        <td className="border border-border dark:border-border p-2 text-center text-sm text-foreground dark:text-foreground">
-                          {scores.length > 0 ? mean.toFixed(1) : '-'}
-                        </td>
+                        {!isLowerGradePointsEntry && (
+                          <td className="border border-border dark:border-border p-2 text-center text-sm text-foreground dark:text-foreground">
+                            {scores.length > 0 ? mean.toFixed(1) : '-'}
+                          </td>
+                        )}
                         <td className="border border-border dark:border-border p-2 text-center text-sm font-bold" style={{ color: '#000000' }}>
                           {meanPerformance ? meanPerformance.level : '-'}
                         </td>
