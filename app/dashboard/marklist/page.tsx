@@ -162,8 +162,8 @@ export default function MarklistPage() {
   const PRESCHOOL_CLASSES = ['playgroup', 'pp1', 'pp2']
   const isPreschool = PRESCHOOL_CLASSES.includes(currentClass?.name?.toLowerCase() || '')
 
-  // Kimwangarc lower grades (PP1, PP2, Grade 1-6) use points entry only
-  const isKimwangarc = currentSchool?.name?.toLowerCase().includes('kimwangarc')
+  // Kimwangarc lower grades (PP1, PP2, Grade 1-6) use points entry only — matched by school code
+  const isKimwangarc = currentSchool?.code?.toLowerCase() === 'kimwangarc'
   const lowerGradePatterns = /^(PP1|PP2|Grade\s*1|Grade\s*2|Grade\s*3|Grade\s*4|Grade\s*5|Grade\s*6)$/i
   const isKimwangaraLowerGrade = isKimwangarc && lowerGradePatterns.test(currentClass?.name || '')
   
