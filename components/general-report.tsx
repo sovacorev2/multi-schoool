@@ -616,9 +616,9 @@ function generateReportHTML(
       <div style="display:grid;grid-template-columns:1.8fr 1fr;gap:8px;margin-bottom:6px;flex:2;min-height:0;">
 
         <!-- ACADEMIC PERFORMANCE TABLE -->
-        <div style="border:1.5px solid #1e3a5f;border-radius:5px;overflow:hidden;display:flex;flex-direction:column;">
-          <div style="background:#1e3a5f;color:#fff;font-size:10px;font-weight:700;padding:5px 10px;letter-spacing:0.5px;flex-shrink:0;">ACADEMIC PERFORMANCE SUMMARY</div>
-          <table style="width:100%;border-collapse:collapse;flex:1;">
+        <div style="border:1.5px solid #1e3a5f;border-radius:5px;display:flex;flex-direction:column;overflow:visible;">
+          <div style="background:#1e3a5f;color:#fff;font-size:10px;font-weight:700;padding:5px 10px;letter-spacing:0.5px;flex-shrink:0;border-radius:3px 3px 0 0;">ACADEMIC PERFORMANCE SUMMARY</div>
+          <table style="width:100%;border-collapse:collapse;">
             <thead>
               <tr>
                 <th style="border:1px solid #d1d5db;padding:5px 7px;background:#e5e7eb;color:#1f2937;font-size:10px;text-align:left;">LEARNING AREA</th>
@@ -629,7 +629,7 @@ function generateReportHTML(
             </thead>
             <tbody>
               ${subjectRows}
-              <tr style="background:#fef9c3;font-weight:700;">
+              <tr style="background:#fef9c3;">
                 <td style="border:1px solid #d1d5db;padding:5px 7px;font-size:11px;font-weight:700;">OVERALL AVERAGE</td>
                 ${overallExamCells}
                 <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-size:11px;font-weight:700;">${overallAverage !== null ? overallAverage.toFixed(1) : '-'}</td>
@@ -637,13 +637,13 @@ function generateReportHTML(
                   ${overallGrade ? `<span style="background:${overallBadgeColor};color:#fff;border-radius:3px;padding:2px 6px;font-size:10px;font-weight:700;">${overallGrade.level}</span>` : '-'}
                 </td>
               </tr>
-              <tr style="background:#eff6ff;">
-                <td style="border:1px solid #d1d5db;padding:5px 7px;font-size:10px;font-weight:700;color:#1e3a5f;">CLASS POSITION</td>
+              <tr style="background:#dbeafe;">
+                <td style="border:1.5px solid #93c5fd;padding:5px 7px;font-size:10px;font-weight:800;color:#1e40af;white-space:nowrap;">CLASS POSITION</td>
                 ${chosenSessions.map(s => {
                   const rank = examRanks[s.id]
-                  return `<td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-size:10px;font-weight:700;color:#1e3a5f;">${rank != null ? `${rank} / ${totalInClass}` : '-'}</td>`
+                  return `<td style="border:1.5px solid #93c5fd;padding:5px 7px;text-align:center;font-size:11px;font-weight:800;color:#1e40af;">${rank != null ? `${rank}<span style="font-size:9px;font-weight:600;color:#3b82f6"> /${totalInClass}</span>` : '—'}</td>`
                 }).join('')}
-                <td colspan="2" style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-size:10px;font-weight:700;color:#1e3a5f;">${classRank > 0 ? `${classRank} / ${totalInClass}` : '-'}</td>
+                <td colspan="2" style="border:1.5px solid #93c5fd;padding:5px 7px;text-align:center;font-size:11px;font-weight:800;color:#1e40af;">${classRank > 0 ? `${classRank}<span style="font-size:9px;font-weight:600;color:#3b82f6"> /${totalInClass}</span>` : '—'}</td>
               </tr>
             </tbody>
           </table>
