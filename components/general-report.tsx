@@ -546,13 +546,14 @@ function generateReportHTML(
       return sessionScores.length > 0 ? sessionScores.reduce((a, b) => a + b, 0) / sessionScores.length : null
     })
     
-    // Calculate sum of all exam averages and their points
+    // Sum of per-subject averages (the AVG column values) and their rubric points
+    // e.g. if subjects have averages 72, 84, 41... the total is 72+84+41+...
     let sumAllExamAverages = 0
     let sumAllExamPoints = 0
-    trendPoints.forEach(avg => {
-      if (avg !== null) {
-        sumAllExamAverages += avg
-        const gradeInfo = getRubricLabel(avg, currentClass.name, school?.name || '')
+    subjectMarks.forEach(sm => {
+      if (sm.average !== null && sm.average !== undefined) {
+        sumAllExamAverages += sm.average
+        const gradeInfo = getRubricLabel(sm.average, currentClass.name, school?.name || '')
         if (gradeInfo?.points) {
           sumAllExamPoints += gradeInfo.points
         }
