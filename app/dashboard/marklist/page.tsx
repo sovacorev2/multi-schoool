@@ -511,6 +511,24 @@ export default function MarklistPage() {
         marksBySessionId.get(m.session_id).push(m)
       })
 
+      // Build a global map: normalised subject name → list of subject IDs across ALL streams
+      // This is the key fix: subjects are per-class, so "ENGLISH" in BLUE has a different id
+      // than "ENGLISH" in GREEN. We must match by name, not by id.
+      const subjectNameToIds = new Map<string, string[]>()
+      allSubjects?.forEach(s => {
+        const key = s.name.trim().toUpperCase()
+        if (!subjectNameToIds.has(key)) subjectNameToIds.set(key, [])
+        subjectNameToIds.get(key)!.push(s.id)
+      })
+
+      // Union of all subject names in display order (preserve first-seen ordering)
+      const allSubjectNamesOrdered: string[] = []
+      const seenNames = new Set<string>()
+      allSubjects?.forEach(s => {
+        const key = s.name.trim().toUpperCase()
+        if (!seenNames.has(key)) { seenNames.add(key); allSubjectNamesOrdered.push(s.name.trim()) }
+      })
+
       const streamsData = []
 
       for (const cls of streamClasses) {
@@ -539,17 +557,29 @@ export default function MarklistPage() {
         const clsLearners = learnersByClassId.get(cls.id) || []
         const clsMarks = marksBySessionId.get(sessionId) || []
 
-        // Calculate per-subject stats
-        const subjectStats = clsSubjects.map(subj => {
-          const subjMarks = clsMarks.filter(m => m.subject_id === subj.id && m.score !== null)
-          const scores = subjMarks.map(m => m.score || 0)
+        // Build a set of subject IDs that belong to THIS class's session
+        const clsSubjectIds = new Set(clsSubjects.map((s: any) => s.id))
+
+        // Calculate per-subject stats using name-based matching so every stream
+        // shows data for every subject that exists anywhere in the grade, not just
+        // the subjects that happen to be stored under that class's own IDs.
+        const subjectStats = allSubjectNamesOrdered.map(subjName => {
+          const key = subjName.trim().toUpperCase()
+          // All subject IDs (across all classes) that share this name
+          const allIdsForName = subjectNameToIds.get(key) || []
+          // Restrict to IDs that belong to this class's subjects
+          const relevantIds = allIdsForName.filter(id => clsSubjectIds.has(id))
+          // If this class doesn't have this subject at all, skip (return null)
+          if (relevantIds.length === 0) return null
+          const subjMarks = clsMarks.filter((m: any) => relevantIds.includes(m.subject_id) && m.score !== null)
+          const scores = subjMarks.map((m: any) => Number(m.score) || 0)
           return {
-            name: subj.name,
-            mean: scores.length > 0 ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10 : 0,
-            highest: scores.length > 0 ? Math.max(...scores) : 0,
-            lowest: scores.length > 0 ? Math.min(...scores) : 0,
+            name: subjName,
+            mean: scores.length > 0 ? Math.round((scores.reduce((a: number, b: number) => a + b, 0) / scores.length) * 10) / 10 : null,
+            highest: scores.length > 0 ? Math.max(...scores) : null,
+            lowest: scores.length > 0 ? Math.min(...scores) : null,
           }
-        })
+        }).filter(Boolean)
 
         // Calculate learner totals
         const learnerTotals = clsLearners.map(learner => {
@@ -3681,10 +3711,10 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                       return (
                                         <React.Fragment key={`${stream.classId}-${subjName}`}>
                                           <td className={`border p-1 text-center ${isHighest ? 'bg-green-100 font-bold text-green-700' : ''}`}>
-                                            {subj?.mean || '-'}
+                                            {subj?.mean != null ? subj.mean : '-'}
                                           </td>
-                                          <td className="border p-1 text-center text-green-600">{subj?.highest || '-'}</td>
-                                          <td className="border p-1 text-center text-red-600">{subj?.lowest || '-'}</td>
+                                          <td className="border p-1 text-center text-green-600">{subj?.highest != null ? subj.highest : '-'}</td>
+                                          <td className="border p-1 text-center text-red-600">{subj?.lowest != null ? subj.lowest : '-'}</td>
                                         </React.Fragment>
                                       )
                                     })}
