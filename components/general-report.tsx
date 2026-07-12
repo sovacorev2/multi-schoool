@@ -25,13 +25,14 @@ interface LearnerReportData {
   subjectMarks: {
     subjectId: string
     subjectName: string
-    marksByExam: Record<string, number | null> // examTypeId -> score
+    marksByExam: Record<string, number | null> // sessionId -> score
     average: number | null
   }[]
   overallAverage: number | null
   totalPoints: number | null
-  classRank: number
+  classRank: number          // overall rank across all chosen sessions
   totalInClass: number
+  examRanks: Record<string, number | null>  // sessionId -> rank in that exam
   strengthSubjects: string[]
   prioritySubjects: string[]
   autoComment: string
@@ -231,14 +232,38 @@ export function GeneralReport({
           autoComment,
           classRank: 0,
           totalInClass: learners.length,
+          examRanks: {},
         }
       })
 
-      // Calculate class ranks based on overall average
+      // Calculate overall class rank based on overall average
       const ranked = [...learnersData]
         .filter(l => l.overallAverage !== null)
         .sort((a, b) => (b.overallAverage ?? 0) - (a.overallAverage ?? 0))
       ranked.forEach((l, idx) => { l.classRank = idx + 1 })
+
+      // Calculate per-exam ranks: for each session, rank learners by their
+      // average score across all subjects in that session
+      for (const session of chosenSessions) {
+        // Build list of { learnerId, sessionAvg }
+        const sessionAvgs = learnersData.map(ld => {
+          const scores = ld.subjectMarks
+            .map(sm => sm.marksByExam[session.id])
+            .filter((v): v is number => v !== null)
+          const avg = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : null
+          return { ld, avg }
+        })
+        // Sort descending to assign ranks
+        const withScores = sessionAvgs.filter(x => x.avg !== null)
+          .sort((a, b) => (b.avg ?? 0) - (a.avg ?? 0))
+        withScores.forEach((x, idx) => {
+          x.ld.examRanks[session.id] = idx + 1
+        })
+        // Learners with no marks in this session get null rank
+        sessionAvgs.filter(x => x.avg === null).forEach(x => {
+          x.ld.examRanks[session.id] = null
+        })
+      }
 
       // Generate HTML for all learners
       const html = generateReportHTML(
@@ -449,7 +474,7 @@ function generateReportHTML(
 
   // Build individual pages
   const pages = learnersData.map(ld => {
-    const { learner, subjectMarks, overallAverage, classRank, totalInClass, strengthSubjects, prioritySubjects, autoComment } = ld
+    const { learner, subjectMarks, overallAverage, classRank, totalInClass, examRanks, strengthSubjects, prioritySubjects, autoComment } = ld
     const overallPoints = calcOverallPoints(overallAverage, currentClass.name, school?.name || '')
     const trendPoints = chosenSessions.map(s => {
       const sessionScores = subjectMarks.flatMap(sm => {
@@ -462,20 +487,20 @@ function generateReportHTML(
     const bestExamName = bestExamIdx >= 0 ? (chosenSessions[bestExamIdx]?.exam_types?.name || `Exam ${bestExamIdx + 1}`) : '-'
     const bestExamScore = bestExamIdx >= 0 && trendPoints[bestExamIdx] !== null ? (trendPoints[bestExamIdx] as number).toFixed(1) : '-'
 
-    // Subject rows — tight padding for single-page fit
+    // Subject rows — comfortable padding
     const subjectRows = subjectMarks.map(sm => {
       const avgGrade = getRubricLabel(sm.average, currentClass.name, school?.name || '')
       const examCells = chosenSessions.map(s => {
         const v = sm.marksByExam[s.id]
-        return `<td style="border:1px solid #d1d5db;padding:3px 5px;text-align:center;font-size:10px;">${v !== null && v !== undefined ? v : '-'}</td>`
+        return `<td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-size:11px;">${v !== null && v !== undefined ? v : '-'}</td>`
       }).join('')
       const badgeColor = avgGrade ? rubricBadgeColor(avgGrade.level) : '#6b7280'
       return `<tr>
-        <td style="border:1px solid #d1d5db;padding:3px 5px;font-size:10px;">${sm.subjectName}</td>
+        <td style="border:1px solid #d1d5db;padding:5px 7px;font-size:11px;">${sm.subjectName}</td>
         ${examCells}
-        <td style="border:1px solid #d1d5db;padding:3px 5px;text-align:center;font-size:10px;font-weight:600;">${sm.average !== null ? sm.average.toFixed(1) : '-'}</td>
-        <td style="border:1px solid #d1d5db;padding:3px 5px;text-align:center;">
-          ${avgGrade ? `<span style="background:${badgeColor};color:#fff;border-radius:3px;padding:1px 5px;font-size:9px;font-weight:700;">${avgGrade.level}</span>` : '-'}
+        <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-size:11px;font-weight:600;">${sm.average !== null ? sm.average.toFixed(1) : '-'}</td>
+        <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;">
+          ${avgGrade ? `<span style="background:${badgeColor};color:#fff;border-radius:3px;padding:2px 6px;font-size:10px;font-weight:700;">${avgGrade.level}</span>` : '-'}
         </td>
       </tr>`
     }).join('')
@@ -490,12 +515,12 @@ function generateReportHTML(
       return sessionScores.length > 0 ? (sessionScores.reduce((a, b) => a + b, 0) / sessionScores.length).toFixed(1) : '-'
     })
     const overallExamCells = overallExamAvgs.map(v =>
-      `<td style="border:1px solid #d1d5db;padding:3px 5px;text-align:center;font-size:10px;font-weight:700;">${v}</td>`
+      `<td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-size:11px;font-weight:700;">${v}</td>`
     ).join('')
     const overallBadgeColor = overallGrade ? rubricBadgeColor(overallGrade.level) : '#6b7280'
 
     const examHeaderCells = examColumns.map(col =>
-      `<th style="border:1px solid #d1d5db;padding:4px 5px;background:#1e3a5f;color:#fff;font-size:9px;text-align:center;">${col}</th>`
+      `<th style="border:1px solid #d1d5db;padding:5px 7px;background:#1e3a5f;color:#fff;font-size:10px;text-align:center;">${col}</th>`
     ).join('')
 
     const strengthList = strengthSubjects.length > 0
@@ -527,57 +552,57 @@ function generateReportHTML(
         </div>
       </div>
 
-      <!-- TOP TWO-COLUMN SECTION -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:7px;flex-shrink:0;">
+      <!-- TOP TWO-COLUMN SECTION — fixed height -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;flex-shrink:0;">
 
         <!-- LEARNER DETAILS -->
         <div style="border:1.5px solid #1e3a5f;border-radius:5px;overflow:hidden;">
-          <div style="background:#1e3a5f;color:#fff;font-size:9px;font-weight:700;padding:4px 8px;letter-spacing:0.5px;">LEARNER DETAILS</div>
-          <div style="padding:6px 8px;display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+          <div style="background:#1e3a5f;color:#fff;font-size:10px;font-weight:700;padding:5px 10px;letter-spacing:0.5px;">LEARNER DETAILS</div>
+          <div style="padding:8px 10px;display:grid;grid-template-columns:1fr 1fr;gap:5px;">
             <div>
-              <div style="font-size:7.5px;color:#6b7280;font-weight:600;">Learner's Name:</div>
-              <div style="font-size:10px;font-weight:600;">${learner.name}</div>
+              <div style="font-size:8.5px;color:#6b7280;font-weight:600;">Learner's Name:</div>
+              <div style="font-size:11px;font-weight:600;">${learner.name}</div>
             </div>
             <div>
-              <div style="font-size:7.5px;color:#6b7280;font-weight:600;">Class Teacher:</div>
-              <div style="font-size:10px;font-weight:600;">${teacherName || '—'}</div>
+              <div style="font-size:8.5px;color:#6b7280;font-weight:600;">Class Teacher:</div>
+              <div style="font-size:11px;font-weight:600;">${teacherName || '—'}</div>
             </div>
             <div>
-              <div style="font-size:7.5px;color:#6b7280;font-weight:600;">Admission No.:</div>
-              <div style="font-size:10px;">${learner.admission_number || '—'}</div>
+              <div style="font-size:8.5px;color:#6b7280;font-weight:600;">Admission No.:</div>
+              <div style="font-size:11px;">${learner.admission_number || '—'}</div>
             </div>
             <div>
-              <div style="font-size:7.5px;color:#6b7280;font-weight:600;">Academic Year:</div>
-              <div style="font-size:10px;">${chosenSessions[0]?.year || '—'}</div>
+              <div style="font-size:8.5px;color:#6b7280;font-weight:600;">Academic Year:</div>
+              <div style="font-size:11px;">${chosenSessions[0]?.year || '—'}</div>
             </div>
             <div>
-              <div style="font-size:7.5px;color:#6b7280;font-weight:600;">Grade:</div>
-              <div style="font-size:10px;">${gradeLabel}</div>
+              <div style="font-size:8.5px;color:#6b7280;font-weight:600;">Grade:</div>
+              <div style="font-size:11px;">${gradeLabel}</div>
             </div>
             <div>
-              <div style="font-size:7.5px;color:#6b7280;font-weight:600;">Gender:</div>
-              <div style="font-size:10px;">${learner.gender || '—'}</div>
+              <div style="font-size:8.5px;color:#6b7280;font-weight:600;">Gender:</div>
+              <div style="font-size:11px;">${learner.gender || '—'}</div>
             </div>
-            ${streamName ? `<div><div style="font-size:7.5px;color:#6b7280;font-weight:600;">Stream:</div><div style="font-size:10px;">${streamName}</div></div>` : ''}
+            ${streamName ? `<div><div style="font-size:8.5px;color:#6b7280;font-weight:600;">Stream:</div><div style="font-size:11px;">${streamName}</div></div>` : ''}
             <div>
-              <div style="font-size:7.5px;color:#6b7280;font-weight:600;">Term:</div>
-              <div style="font-size:10px;">${termDisplay}</div>
+              <div style="font-size:8.5px;color:#6b7280;font-weight:600;">Term:</div>
+              <div style="font-size:11px;">${termDisplay}</div>
             </div>
           </div>
         </div>
 
         <!-- OVERALL ACHIEVEMENT -->
         <div style="border:1.5px solid #1e3a5f;border-radius:5px;overflow:hidden;">
-          <div style="background:#1e3a5f;color:#fff;font-size:9px;font-weight:700;padding:4px 8px;letter-spacing:0.5px;">OVERALL ACHIEVEMENT</div>
-          <div style="padding:6px 10px;text-align:center;">
-            <div style="font-size:8.5px;color:#6b7280;margin-bottom:2px;">Overall Average (%)</div>
-            <div style="font-size:32px;font-weight:800;color:#1e3a5f;line-height:1;">${overallAverage !== null ? overallAverage.toFixed(1) : '—'}</div>
-            <div style="font-size:8px;color:#6b7280;margin-bottom:5px;">Overall Points: ${overallPoints}</div>
+          <div style="background:#1e3a5f;color:#fff;font-size:10px;font-weight:700;padding:5px 10px;letter-spacing:0.5px;">OVERALL ACHIEVEMENT</div>
+          <div style="padding:8px 12px;text-align:center;">
+            <div style="font-size:9.5px;color:#6b7280;margin-bottom:2px;">Overall Average (%)</div>
+            <div style="font-size:36px;font-weight:800;color:#1e3a5f;line-height:1;">${overallAverage !== null ? overallAverage.toFixed(1) : '—'}</div>
+            <div style="font-size:9px;color:#6b7280;margin-bottom:5px;">Overall Points: ${overallPoints}</div>
             <div style="margin-bottom:6px;">
-              <span style="border:1.5px solid ${overallRubricColor(overallAverage)};color:${overallRubricColor(overallAverage)};border-radius:16px;padding:3px 10px;font-size:9px;font-weight:700;">${overallRubricLabel(overallAverage)}</span>
+              <span style="border:1.5px solid ${overallRubricColor(overallAverage)};color:${overallRubricColor(overallAverage)};border-radius:16px;padding:4px 12px;font-size:10px;font-weight:700;">${overallRubricLabel(overallAverage)}</span>
             </div>
-            <div style="font-size:9px;color:#374151;margin-bottom:4px;">Class Position: ${classRank > 0 ? `${classRank} out of ${totalInClass}` : 'N/A'}</div>
-            <div style="text-align:left;font-size:8px;line-height:1.5;">
+            <div style="font-size:9.5px;color:#374151;margin-bottom:4px;">Overall Position: <strong>${classRank > 0 ? `${classRank} out of ${totalInClass}` : 'N/A'}</strong></div>
+            <div style="text-align:left;font-size:9px;line-height:1.6;">
               <div><span style="color:#16a34a;font-weight:700;">●</span> EE: Exceeding Expectation (≥75%)</div>
               <div><span style="color:#2563eb;font-weight:700;">●</span> ME: Meeting Expectation (58–74%)</div>
               <div><span style="color:#d97706;font-weight:700;">●</span> AE: Approaching Expectation (41–57%)</div>
@@ -587,89 +612,97 @@ function generateReportHTML(
         </div>
       </div>
 
-      <!-- ACADEMIC PERFORMANCE SUMMARY + TREND -->
-      <div style="display:grid;grid-template-columns:1.8fr 1fr;gap:8px;margin-bottom:7px;flex-shrink:0;">
+      <!-- ACADEMIC PERFORMANCE SUMMARY + TREND — flex:2 so the table takes most growth -->
+      <div style="display:grid;grid-template-columns:1.8fr 1fr;gap:8px;margin-bottom:6px;flex:2;min-height:0;">
 
         <!-- ACADEMIC PERFORMANCE TABLE -->
-        <div style="border:1.5px solid #1e3a5f;border-radius:5px;overflow:hidden;">
-          <div style="background:#1e3a5f;color:#fff;font-size:9px;font-weight:700;padding:4px 8px;letter-spacing:0.5px;">ACADEMIC PERFORMANCE SUMMARY</div>
-          <table style="width:100%;border-collapse:collapse;">
+        <div style="border:1.5px solid #1e3a5f;border-radius:5px;overflow:hidden;display:flex;flex-direction:column;">
+          <div style="background:#1e3a5f;color:#fff;font-size:10px;font-weight:700;padding:5px 10px;letter-spacing:0.5px;flex-shrink:0;">ACADEMIC PERFORMANCE SUMMARY</div>
+          <table style="width:100%;border-collapse:collapse;flex:1;">
             <thead>
               <tr>
-                <th style="border:1px solid #d1d5db;padding:4px 5px;background:#e5e7eb;color:#1f2937;font-size:9px;text-align:left;">LEARNING AREA</th>
+                <th style="border:1px solid #d1d5db;padding:5px 7px;background:#e5e7eb;color:#1f2937;font-size:10px;text-align:left;">LEARNING AREA</th>
                 ${examHeaderCells}
-                <th style="border:1px solid #d1d5db;padding:4px 5px;background:#e5e7eb;color:#1f2937;font-size:9px;text-align:center;">AVG</th>
-                <th style="border:1px solid #d1d5db;padding:4px 5px;background:#e5e7eb;color:#1f2937;font-size:9px;text-align:center;">RUBRIC</th>
+                <th style="border:1px solid #d1d5db;padding:5px 7px;background:#e5e7eb;color:#1f2937;font-size:10px;text-align:center;">AVG</th>
+                <th style="border:1px solid #d1d5db;padding:5px 7px;background:#e5e7eb;color:#1f2937;font-size:10px;text-align:center;">RUBRIC</th>
               </tr>
             </thead>
             <tbody>
               ${subjectRows}
               <tr style="background:#fef9c3;font-weight:700;">
-                <td style="border:1px solid #d1d5db;padding:3px 5px;font-size:10px;font-weight:700;">OVERALL AVERAGE</td>
+                <td style="border:1px solid #d1d5db;padding:5px 7px;font-size:11px;font-weight:700;">OVERALL AVERAGE</td>
                 ${overallExamCells}
-                <td style="border:1px solid #d1d5db;padding:3px 5px;text-align:center;font-size:10px;font-weight:700;">${overallAverage !== null ? overallAverage.toFixed(1) : '-'}</td>
-                <td style="border:1px solid #d1d5db;padding:3px 5px;text-align:center;">
-                  ${overallGrade ? `<span style="background:${overallBadgeColor};color:#fff;border-radius:3px;padding:1px 5px;font-size:9px;font-weight:700;">${overallGrade.level}</span>` : '-'}
+                <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-size:11px;font-weight:700;">${overallAverage !== null ? overallAverage.toFixed(1) : '-'}</td>
+                <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;">
+                  ${overallGrade ? `<span style="background:${overallBadgeColor};color:#fff;border-radius:3px;padding:2px 6px;font-size:10px;font-weight:700;">${overallGrade.level}</span>` : '-'}
                 </td>
+              </tr>
+              <tr style="background:#eff6ff;">
+                <td style="border:1px solid #d1d5db;padding:5px 7px;font-size:10px;font-weight:700;color:#1e3a5f;">CLASS POSITION</td>
+                ${chosenSessions.map(s => {
+                  const rank = examRanks[s.id]
+                  return `<td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-size:10px;font-weight:700;color:#1e3a5f;">${rank != null ? `${rank} / ${totalInClass}` : '-'}</td>`
+                }).join('')}
+                <td colspan="2" style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-size:10px;font-weight:700;color:#1e3a5f;">${classRank > 0 ? `${classRank} / ${totalInClass}` : '-'}</td>
               </tr>
             </tbody>
           </table>
         </div>
 
         <!-- PERFORMANCE TREND -->
-        <div style="border:1.5px solid #1e3a5f;border-radius:5px;overflow:hidden;">
-          <div style="background:#1e3a5f;color:#fff;font-size:9px;font-weight:700;padding:4px 8px;letter-spacing:0.5px;">PERFORMANCE TREND</div>
-          <div style="padding:8px;text-align:center;">
-            <div style="font-size:8.5px;color:#4b5563;font-weight:600;margin-bottom:4px;">Average Score (%)</div>
+        <div style="border:1.5px solid #1e3a5f;border-radius:5px;overflow:hidden;display:flex;flex-direction:column;">
+          <div style="background:#1e3a5f;color:#fff;font-size:10px;font-weight:700;padding:5px 10px;letter-spacing:0.5px;flex-shrink:0;">PERFORMANCE TREND</div>
+          <div style="padding:10px;text-align:center;flex:1;display:flex;flex-direction:column;justify-content:space-around;">
+            <div style="font-size:9px;color:#4b5563;font-weight:600;margin-bottom:4px;">Average Score (%)</div>
             ${trendSVG(trendPoints)}
-            <!-- BEST PERFORMANCE CIRCLE — filled green matching template -->
-            <div style="margin-top:8px;display:flex;justify-content:center;">
-              <div style="width:82px;height:82px;border-radius:50%;background:#16a34a;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 0 0 3px #bbf7d0;">
-                <div style="font-size:8px;color:#fff;font-weight:700;letter-spacing:0.3px;">BEST:</div>
-                <div style="font-size:9px;color:#fff;font-weight:800;text-align:center;line-height:1.2;padding:0 4px;">${bestExamName}</div>
-                <div style="font-size:10px;color:#fff;font-weight:800;">(${bestExamScore}%)</div>
+            <!-- BEST PERFORMANCE CIRCLE -->
+            <div style="display:flex;justify-content:center;margin-top:10px;">
+              <div style="width:88px;height:88px;border-radius:50%;background:#16a34a;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 0 0 4px #bbf7d0;">
+                <div style="font-size:9px;color:#fff;font-weight:700;letter-spacing:0.3px;">BEST:</div>
+                <div style="font-size:9.5px;color:#fff;font-weight:800;text-align:center;line-height:1.2;padding:0 6px;">${bestExamName}</div>
+                <div style="font-size:11px;color:#fff;font-weight:800;">(${bestExamScore}%)</div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- STRENGTHS + PRIORITY AREAS -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:7px;flex-shrink:0;">
-        <div style="border:1.5px solid #16a34a;border-radius:5px;overflow:hidden;">
-          <div style="background:#16a34a;color:#fff;font-size:9px;font-weight:700;padding:4px 8px;letter-spacing:0.5px;">STRENGTH AREAS</div>
-          <div style="padding:6px 10px;">
-            <ul style="margin:0;padding-left:14px;font-size:10px;line-height:1.5;">
+      <!-- STRENGTHS + PRIORITY AREAS — flex:1 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;flex:1;min-height:0;">
+        <div style="border:1.5px solid #16a34a;border-radius:5px;overflow:hidden;display:flex;flex-direction:column;">
+          <div style="background:#16a34a;color:#fff;font-size:10px;font-weight:700;padding:5px 10px;letter-spacing:0.5px;flex-shrink:0;">STRENGTH AREAS</div>
+          <div style="padding:8px 12px;flex:1;">
+            <ul style="margin:0;padding-left:16px;font-size:11px;line-height:1.7;">
               ${strengthList}
             </ul>
           </div>
         </div>
-        <div style="border:1.5px solid #dc2626;border-radius:5px;overflow:hidden;">
-          <div style="background:#dc2626;color:#fff;font-size:9px;font-weight:700;padding:4px 8px;letter-spacing:0.5px;">PRIORITY LEARNING AREAS</div>
-          <div style="padding:6px 10px;">
-            <ul style="margin:0;padding-left:14px;font-size:10px;line-height:1.5;">
+        <div style="border:1.5px solid #dc2626;border-radius:5px;overflow:hidden;display:flex;flex-direction:column;">
+          <div style="background:#dc2626;color:#fff;font-size:10px;font-weight:700;padding:5px 10px;letter-spacing:0.5px;flex-shrink:0;">PRIORITY LEARNING AREAS</div>
+          <div style="padding:8px 12px;flex:1;">
+            <ul style="margin:0;padding-left:16px;font-size:11px;line-height:1.7;">
               ${priorityList}
             </ul>
           </div>
         </div>
       </div>
 
-      <!-- COMMENTS — flex:1 so this stretches to fill all leftover space -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;flex:1;min-height:0;">
+      <!-- COMMENTS — flex:1.5 for a decent-sized comments area -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;flex:1.5;min-height:0;">
         <div style="border:1.5px solid #1e3a5f;border-radius:5px;overflow:hidden;display:flex;flex-direction:column;">
-          <div style="background:#1e3a5f;color:#fff;font-size:9px;font-weight:700;padding:4px 8px;letter-spacing:0.5px;flex-shrink:0;">CLASS TEACHER'S COMMENTS</div>
-          <div style="padding:6px 8px;flex:1;display:flex;flex-direction:column;justify-content:space-between;">
-            <p style="font-size:10px;line-height:1.5;margin:0;">${autoComment}</p>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:9px;color:#374151;border-top:1px solid #e5e7eb;padding-top:5px;">
+          <div style="background:#1e3a5f;color:#fff;font-size:10px;font-weight:700;padding:5px 10px;letter-spacing:0.5px;flex-shrink:0;">CLASS TEACHER'S COMMENTS</div>
+          <div style="padding:8px 10px;flex:1;display:flex;flex-direction:column;justify-content:space-between;">
+            <p style="font-size:11px;line-height:1.6;margin:0;">${autoComment}</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:10px;color:#374151;border-top:1px solid #e5e7eb;padding-top:6px;">
               <div>${teacherName || '______________________'}<br/><span style="color:#6b7280;">Class Teacher</span></div>
               <div>Signature: ______________________</div>
             </div>
           </div>
         </div>
         <div style="border:1.5px solid #1e3a5f;border-radius:5px;overflow:hidden;display:flex;flex-direction:column;">
-          <div style="background:#1e3a5f;color:#fff;font-size:9px;font-weight:700;padding:4px 8px;letter-spacing:0.5px;flex-shrink:0;">PARENT / GUARDIAN COMMENTS</div>
-          <div style="padding:6px 8px;flex:1;display:flex;flex-direction:column;justify-content:flex-end;">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:9px;color:#374151;border-top:1px solid #e5e7eb;padding-top:5px;">
+          <div style="background:#1e3a5f;color:#fff;font-size:10px;font-weight:700;padding:5px 10px;letter-spacing:0.5px;flex-shrink:0;">PARENT / GUARDIAN COMMENTS</div>
+          <div style="padding:8px 10px;flex:1;display:flex;flex-direction:column;justify-content:flex-end;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:10px;color:#374151;border-top:1px solid #e5e7eb;padding-top:6px;">
               <div>Signature: ___________________</div>
               <div>Date: ______________________</div>
             </div>
