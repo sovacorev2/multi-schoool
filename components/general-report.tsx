@@ -767,39 +767,33 @@ function generateReportHTML(
         </div>
       </div>
 
-      <!-- COMMENTS + CALENDAR — flex:1 reduced size -->
-      <div style="display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:8px;margin-bottom:6px;flex:1;min-height:0;">
-        <div style="border:1.5px solid #1e3a5f;border-radius:5px;overflow:hidden;display:flex;flex-direction:column;grid-column:1;">
+      <!-- COMMENTS — flex:1 with 2-column layout -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;flex:1;min-height:0;">
+        <div style="border:1.5px solid #1e3a5f;border-radius:5px;overflow:hidden;display:flex;flex-direction:column;">
           <div style="background:#1e3a5f;color:#fff;font-size:10px;font-weight:700;padding:5px 10px;letter-spacing:0.5px;flex-shrink:0;">CLASS TEACHER'S COMMENTS</div>
           <div style="padding:6px 8px;flex:1;display:flex;flex-direction:column;justify-content:space-between;">
-            <p style="font-size:10px;line-height:1.5;margin:0;min-height:30px;">${autoComment}</p>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;font-size:8px;color:#374151;border-top:1px solid #e5e7eb;padding-top:4px;">
-              <div>${teacherName || '______'}<br/><span style="color:#6b7280;">Teacher</span></div>
-              <div>Sign: _______</div>
+            <p style="font-size:10px;line-height:1.5;margin:0;min-height:35px;">${autoComment}</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:8px;color:#374151;border-top:1px solid #e5e7eb;padding-top:4px;">
+              <div>${teacherName || '______'}<br/><span style="color:#6b7280;">Class Teacher</span></div>
+              <div>Signature: _______________________</div>
             </div>
           </div>
         </div>
         <div style="border:1.5px solid #1e3a5f;border-radius:5px;overflow:hidden;display:flex;flex-direction:column;">
           <div style="background:#1e3a5f;color:#fff;font-size:10px;font-weight:700;padding:5px 10px;letter-spacing:0.5px;flex-shrink:0;">PARENT / GUARDIAN COMMENTS</div>
           <div style="padding:6px 8px;flex:1;display:flex;flex-direction:column;justify-content:flex-end;">
-            <div style="display:grid;grid-template-columns:1fr;gap:2px;font-size:8px;color:#374151;border-top:1px solid #e5e7eb;padding-top:4px;">
-              <div>Signature: _______</div>
-              <div>Date: _______</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:8px;color:#374151;border-top:1px solid #e5e7eb;padding-top:4px;">
+              <div>Signature: _______________________</div>
+              <div>Date: _______________________</div>
             </div>
           </div>
         </div>
-        
-        <!-- SCHOOL CALENDAR -->
-        <div style="display:flex;flex-direction:column;gap:6px;">
-          <div style="border:1px solid #10b981;border-radius:3px;background:#f0fdf4;padding:6px;text-align:center;">
-            <div style="font-size:8px;color:#15803d;font-weight:700;text-transform:uppercase;">School Opens</div>
-            <div style="font-size:11px;font-weight:700;color:#15803d;margin-top:2px;">___/___/____</div>
-          </div>
-          <div style="border:1px solid #dc2626;border-radius:3px;background:#fef2f2;padding:6px;text-align:center;">
-            <div style="font-size:8px;color:#7f1d1d;font-weight:700;text-transform:uppercase;">School Closes</div>
-            <div style="font-size:11px;font-weight:700;color:#dc2626;margin-top:2px;">___/___/____</div>
-          </div>
-        </div>
+      </div>
+
+      <!-- CALENDAR DATES FOOTER -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;flex-shrink:0;text-align:center;font-size:10px;font-weight:700;color:#1f2937;">
+        <div>DATE CLOSED: ___/___/____</div>
+        <div>NEXT TERM BEGINS FROM: ___/___/____</div>
       </div>
 
       <!-- FOOTER — pinned at bottom -->
