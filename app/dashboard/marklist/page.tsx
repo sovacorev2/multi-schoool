@@ -1003,7 +1003,10 @@ export default function MarklistPage() {
               }
             })
 
-            const average = subjectsWithMarks > 0 ? total / subjectsWithMarks : 0
+            // Average as percentage: (total / max possible marks) * 100
+            // Max possible = 100 marks per subject × number of subjects
+            const maxPossibleMarks = subjectsWithMarks * 100
+            const average = subjectsWithMarks > 0 ? (total / maxPossibleMarks) * 100 : 0
 
             return {
               learner,
