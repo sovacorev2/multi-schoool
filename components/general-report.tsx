@@ -511,10 +511,10 @@ function generateReportHTML(
       : `<div style="width:56px;height:56px;background:#1e3a5f;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:8px;font-weight:700;text-align:center;padding:3px;">${schoolName.split(' ').map((w: string) => w[0]).join('').slice(0, 4)}</div>`
 
     return `
-    <div style="page-break-after:always;font-family:'Helvetica Neue',Arial,sans-serif;width:210mm;height:297mm;margin:0 auto;padding:8mm 10mm;color:#1f2937;background:#fff;box-sizing:border-box;overflow:hidden;">
+    <div style="page-break-after:always;font-family:'Helvetica Neue',Arial,sans-serif;width:210mm;height:297mm;margin:0 auto;padding:8mm 10mm;color:#1f2937;background:#fff;box-sizing:border-box;overflow:hidden;display:flex;flex-direction:column;">
 
       <!-- HEADER -->
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;padding-bottom:6px;border-bottom:2px solid #1e3a5f;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;padding-bottom:6px;border-bottom:2px solid #1e3a5f;flex-shrink:0;">
         <div style="flex:0 0 auto;">${logoHTML}</div>
         <div style="flex:1;text-align:center;padding:0 10px;">
           <h1 style="font-size:17px;font-weight:800;color:#1e3a5f;margin:0 0 1px 0;letter-spacing:0.5px;">${schoolName.toUpperCase()}</h1>
@@ -528,7 +528,7 @@ function generateReportHTML(
       </div>
 
       <!-- TOP TWO-COLUMN SECTION -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:7px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:7px;flex-shrink:0;">
 
         <!-- LEARNER DETAILS -->
         <div style="border:1.5px solid #1e3a5f;border-radius:5px;overflow:hidden;">
@@ -588,7 +588,7 @@ function generateReportHTML(
       </div>
 
       <!-- ACADEMIC PERFORMANCE SUMMARY + TREND -->
-      <div style="display:grid;grid-template-columns:1.8fr 1fr;gap:8px;margin-bottom:7px;">
+      <div style="display:grid;grid-template-columns:1.8fr 1fr;gap:8px;margin-bottom:7px;flex-shrink:0;">
 
         <!-- ACADEMIC PERFORMANCE TABLE -->
         <div style="border:1.5px solid #1e3a5f;border-radius:5px;overflow:hidden;">
@@ -635,7 +635,7 @@ function generateReportHTML(
       </div>
 
       <!-- STRENGTHS + PRIORITY AREAS -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:7px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:7px;flex-shrink:0;">
         <div style="border:1.5px solid #16a34a;border-radius:5px;overflow:hidden;">
           <div style="background:#16a34a;color:#fff;font-size:9px;font-weight:700;padding:4px 8px;letter-spacing:0.5px;">STRENGTH AREAS</div>
           <div style="padding:6px 10px;">
@@ -654,22 +654,21 @@ function generateReportHTML(
         </div>
       </div>
 
-      <!-- COMMENTS -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;">
-        <div style="border:1.5px solid #1e3a5f;border-radius:5px;overflow:hidden;">
-          <div style="background:#1e3a5f;color:#fff;font-size:9px;font-weight:700;padding:4px 8px;letter-spacing:0.5px;">CLASS TEACHER'S COMMENTS</div>
-          <div style="padding:6px 8px;">
-            <p style="font-size:10px;line-height:1.5;margin:0 0 8px 0;">${autoComment}</p>
+      <!-- COMMENTS — flex:1 so this stretches to fill all leftover space -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;flex:1;min-height:0;">
+        <div style="border:1.5px solid #1e3a5f;border-radius:5px;overflow:hidden;display:flex;flex-direction:column;">
+          <div style="background:#1e3a5f;color:#fff;font-size:9px;font-weight:700;padding:4px 8px;letter-spacing:0.5px;flex-shrink:0;">CLASS TEACHER'S COMMENTS</div>
+          <div style="padding:6px 8px;flex:1;display:flex;flex-direction:column;justify-content:space-between;">
+            <p style="font-size:10px;line-height:1.5;margin:0;">${autoComment}</p>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:9px;color:#374151;border-top:1px solid #e5e7eb;padding-top:5px;">
               <div>${teacherName || '______________________'}<br/><span style="color:#6b7280;">Class Teacher</span></div>
               <div>Signature: ______________________</div>
             </div>
           </div>
         </div>
-        <div style="border:1.5px solid #1e3a5f;border-radius:5px;overflow:hidden;">
-          <div style="background:#1e3a5f;color:#fff;font-size:9px;font-weight:700;padding:4px 8px;letter-spacing:0.5px;">PARENT / GUARDIAN COMMENTS</div>
-          <div style="padding:6px 8px;">
-            <div style="height:38px;"></div>
+        <div style="border:1.5px solid #1e3a5f;border-radius:5px;overflow:hidden;display:flex;flex-direction:column;">
+          <div style="background:#1e3a5f;color:#fff;font-size:9px;font-weight:700;padding:4px 8px;letter-spacing:0.5px;flex-shrink:0;">PARENT / GUARDIAN COMMENTS</div>
+          <div style="padding:6px 8px;flex:1;display:flex;flex-direction:column;justify-content:flex-end;">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:9px;color:#374151;border-top:1px solid #e5e7eb;padding-top:5px;">
               <div>Signature: ___________________</div>
               <div>Date: ______________________</div>
@@ -678,8 +677,8 @@ function generateReportHTML(
         </div>
       </div>
 
-      <!-- FOOTER -->
-      <div style="border-top:1.5px solid #1e3a5f;padding-top:4px;display:flex;justify-content:space-between;font-size:8.5px;color:#4b5563;">
+      <!-- FOOTER — pinned at bottom -->
+      <div style="border-top:1.5px solid #1e3a5f;padding-top:4px;display:flex;justify-content:space-between;font-size:8.5px;color:#4b5563;flex-shrink:0;margin-top:auto;">
         <div><strong>Powered by ShuleTech</strong> — Smart Schools, Better Results</div>
         <div style="text-align:right;">${schoolName} &bull; ${gradeLabel} &bull; ${termDisplay}</div>
       </div>
