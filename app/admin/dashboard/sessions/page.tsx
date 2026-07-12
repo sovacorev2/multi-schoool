@@ -45,7 +45,8 @@ import {
   AlertCircle,
   FileText,
   Key,
-  RotateCcw
+  RotateCcw,
+  Edit2
 } from "lucide-react";
 import type { ExamType, Class, AuditLog } from "@/lib/types";
 import { getClassesForPasswordManagement, resetClassPassword } from "@/app/actions/auth";
@@ -95,6 +96,12 @@ const { currentSchool } = useSchool();
   const [passwordResetLoading, setPasswordResetLoading] = useState<string | null>(null);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [classToReset, setClassToReset] = useState<{ id: string; name: string } | null>(null);
+
+  // Exam type editing
+  const [isEditExamDialogOpen, setIsEditExamDialogOpen] = useState(false);
+  const [editingExamType, setEditingExamType] = useState<ExamType | null>(null);
+  const [editExamName, setEditExamName] = useState("");
+  const [editExamLoading, setEditExamLoading] = useState(false);
 
   const fetchData = useCallback(async () => {
     const supabase = createClient();
@@ -257,6 +264,37 @@ const { currentSchool } = useSchool();
     // Placeholder for handleCreateException logic
   };
 
+  const handleSaveExamTypeName = async () => {
+    if (!editingExamType || !editExamName.trim()) return;
+    
+    setEditExamLoading(true);
+    const supabase = createClient();
+    
+    const { error } = await supabase
+      .from("exam_types")
+      .update({ name: editExamName.trim() })
+      .eq("id", editingExamType.id);
+
+    if (!error) {
+      // Log the action
+      await supabase.from("activity_logs").insert({
+        school_id: currentSchool?.id,
+        action: "exam_type_renamed",
+        details: `Renamed exam type from "${editingExamType.name}" to "${editExamName.trim()}"`,
+        performed_by: "Admin",
+      });
+
+      setIsEditExamDialogOpen(false);
+      setEditingExamType(null);
+      setEditExamName("");
+      fetchData();
+    } else {
+      alert("Failed to update exam type name");
+    }
+    
+    setEditExamLoading(false);
+  };
+
   const getSessionStatus = (session: SessionWithDetails) => {
     if (session.is_locked) {
       return <Badge variant="destructive"><Lock className="w-3 h-3 mr-1" />Locked</Badge>;
@@ -375,7 +413,23 @@ const { currentSchool } = useSchool();
                           <TableCell className="font-medium">
                             {session.classes?.name}
                           </TableCell>
-                          <TableCell>{session.exam_types?.name}</TableCell>
+                          <TableCell className="flex items-center gap-2">
+                            <span>{session.exam_types?.name}</span>
+                            {session.exam_types && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-5 w-5 p-0"
+                                onClick={() => {
+                                  setEditingExamType(session.exam_types!);
+                                  setEditExamName(session.exam_types!.name);
+                                  setIsEditExamDialogOpen(true);
+                                }}
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </Button>
+                            )}
+                          </TableCell>
                           <TableCell>{session.term} {session.year}</TableCell>
                           <TableCell>{getSessionStatus(session)}</TableCell>
                           <TableCell>
@@ -643,29 +697,48 @@ const { currentSchool } = useSchool();
         </DialogContent>
       </Dialog>
 
-      {/* Unlock Confirmation Dialog */}
-      <Dialog open={isUnlockConfirmDialogOpen} onOpenChange={setIsUnlockConfirmDialogOpen}>
+      {/* Edit Exam Type Name Dialog */}
+      <Dialog open={isEditExamDialogOpen} onOpenChange={setIsEditExamDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-yellow-600" />
-              Deadline Has Passed
+              <Edit2 className="w-5 h-5" />
+              Rename Exam Type
             </DialogTitle>
             <DialogDescription>
-              {selectedSession && (
-                <>
-                  The deadline for {selectedSession.classes?.name} - {selectedSession.exam_types?.name} has passed. 
-                  Are you sure you want to unlock this exam for data entry?
-                </>
-              )}
+              Update the name of this exam type to fit your reporting requirements.
             </DialogDescription>
           </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="exam-name">Exam Type Name</Label>
+              <Input
+                id="exam-name"
+                value={editExamName}
+                onChange={(e) => setEditExamName(e.target.value)}
+                placeholder="e.g., Mid-Term, End-Term, CAT 1"
+                maxLength={100}
+              />
+            </div>
+          </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsUnlockConfirmDialogOpen(false)} disabled={toggleLoading !== null}>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsEditExamDialogOpen(false);
+                setEditingExamType(null);
+                setEditExamName("");
+              }} 
+              disabled={editExamLoading}
+            >
               Cancel
             </Button>
-            <Button onClick={handleConfirmUnlock} disabled={toggleLoading !== null} className="bg-blue-600">
-              {toggleLoading ? "Unlocking..." : "Yes, Unlock Exam"}
+            <Button 
+              onClick={handleSaveExamTypeName} 
+              disabled={!editExamName.trim() || editExamLoading}
+              className="bg-blue-600"
+            >
+              {editExamLoading ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
         </DialogContent>
