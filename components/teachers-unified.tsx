@@ -64,9 +64,29 @@ export function TeachersUnified({ schoolId, schoolName, whatsappEnabled = false 
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [loading, setLoading] = useState(false)
 
+  // Search and filter
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filterByClass, setFilterByClass] = useState<string | null>(null)
+
   useEffect(() => {
     loadData()
   }, [schoolId])
+
+  // Filter teachers based on search and class filter
+  const filteredTeachers = teachers.filter((teacher) => {
+    // Search by name or PIN
+    const searchLower = searchQuery.toLowerCase()
+    const matchesSearch = searchQuery === '' ||
+      teacher.first_name.toLowerCase().includes(searchLower) ||
+      teacher.last_name.toLowerCase().includes(searchLower) ||
+      (teacher.pin && teacher.pin.includes(searchQuery))
+
+    // Filter by class
+    const matchesClass = !filterByClass || 
+      assignments.some(a => a.user_id === teacher.id && a.class_id === filterByClass && a.is_active)
+
+    return matchesSearch && matchesClass
+  })
 
   const loadData = async () => {
     const supabase = createClient()
@@ -420,6 +440,67 @@ export function TeachersUnified({ schoolId, schoolName, whatsappEnabled = false 
         </div>
       )}
 
+      {/* Search and Filter Controls */}
+      <div className="bg-white p-6 rounded-lg border border-gray-200 space-y-4">
+        <h3 className="text-lg font-semibold text-gray-900">Search & Filter Teachers</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Search Input */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Search by Name or PIN</label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Teacher name or PIN..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full border border-gray-300 rounded px-4 py-2 pl-10"
+              />
+              <svg className="w-4 h-4 absolute left-3 top-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Class Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Class</label>
+            <select
+              value={filterByClass || ''}
+              onChange={(e) => setFilterByClass(e.target.value || null)}
+              className="w-full border border-gray-300 rounded px-4 py-2"
+            >
+              <option value="">All Classes</option>
+              {classes.map((cls) => (
+                <option key={cls.id} value={cls.id}>
+                  {cls.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Clear Filters */}
+        {(searchQuery || filterByClass) && (
+          <button
+            onClick={() => {
+              setSearchQuery('')
+              setFilterByClass(null)
+            }}
+            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+          >
+            Clear Filters
+          </button>
+        )}
+      </div>
+
       {/* Create Teacher Form */}
       {showCreateForm ? (
         <div className="bg-white p-6 rounded-lg border border-gray-200 space-y-4">
@@ -484,13 +565,22 @@ export function TeachersUnified({ schoolId, schoolName, whatsappEnabled = false 
 
       {/* Teachers List */}
       <div className="space-y-4">
-        <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Teachers & Assignments</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Teachers & Assignments</h3>
+          {teachers.length > 0 && (
+            <span className="text-sm text-gray-600">
+              {filteredTeachers.length} of {teachers.length} teachers
+            </span>
+          )}
+        </div>
 
         {teachers.length === 0 ? (
           <p className="text-gray-600">No teachers yet. Create one to get started.</p>
+        ) : filteredTeachers.length === 0 ? (
+          <p className="text-gray-600">No teachers match your search or filter criteria.</p>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {teachers.map((teacher) => {
+            {filteredTeachers.map((teacher) => {
               const teacherAssignments = assignments.filter((a) => a.user_id === teacher.id && a.is_active)
 
               return (
