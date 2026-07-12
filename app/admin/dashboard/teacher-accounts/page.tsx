@@ -10,8 +10,15 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Trash2, Plus, Mail, Copy, Check } from 'lucide-react'
+import { Trash2, Plus, Mail, Copy, Check, Search, X } from 'lucide-react'
 import { useSchool } from '@/lib/school-context'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 interface TeacherAccount {
   id: string
@@ -24,13 +31,22 @@ interface TeacherAccount {
   created_at: string
 }
 
+interface Class {
+  id: string
+  name: string
+}
+
 export default function TeacherAccountsPage() {
   const { currentSchool } = useSchool()
   const [teachers, setTeachers] = useState<TeacherAccount[]>([])
+  const [classes, setClasses] = useState<Class[]>([])
+  const [teacherClasses, setTeacherClasses] = useState<Record<string, string[]>>({}) // teacher_id -> class_ids
   const [isLoading, setIsLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
   const [copiedPin, setCopiedPin] = useState<string | null>(null)
   const [pinLoginEnabled, setPinLoginEnabled] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedClass, setSelectedClass] = useState<string | null>(null)
 
   // Check if PIN login is enabled for this school
   useEffect(() => {
@@ -61,14 +77,47 @@ export default function TeacherAccountsPage() {
     
     setIsLoading(true)
     try {
-      const { data, error } = await supabase
+      // Fetch all teachers
+      const { data: teachersData, error: teachersError } = await supabase
         .from('teacher_accounts')
         .select('*')
         .eq('school_id', currentSchool.id)
         .order('created_at', { ascending: false })
 
-      if (error) throw error
-      setTeachers(data || [])
+      if (teachersError) throw teachersError
+      setTeachers(teachersData || [])
+
+      // Fetch all classes
+      const { data: classesData, error: classesError } = await supabase
+        .from('classes')
+        .select('id, name')
+        .eq('school_id', currentSchool.id)
+        .order('name', { ascending: true })
+
+      if (classesError) throw classesError
+      setClasses(classesData || [])
+
+      // Fetch teacher assignments to map teachers to classes
+      const { data: assignmentsData, error: assignmentsError } = await supabase
+        .from('teacher_assignments')
+        .select('teacher_id, class_id')
+        .in('teacher_id', (teachersData || []).map(t => t.id))
+
+      if (assignmentsError) throw assignmentsError
+      
+      // Build teacher -> classes mapping
+      const mapping: Record<string, string[]> = {}
+      if (assignmentsData) {
+        for (const assignment of assignmentsData) {
+          if (!mapping[assignment.teacher_id]) {
+            mapping[assignment.teacher_id] = []
+          }
+          if (!mapping[assignment.teacher_id].includes(assignment.class_id)) {
+            mapping[assignment.teacher_id].push(assignment.class_id)
+          }
+        }
+      }
+      setTeacherClasses(mapping)
     } catch (error) {
       console.error('[v0] Error fetching teachers:', error)
     } finally {
@@ -218,6 +267,22 @@ export default function TeacherAccountsPage() {
     setTimeout(() => setCopiedPin(null), 2000)
   }
 
+  // Filter and search teachers
+  const filteredTeachers = teachers.filter((teacher) => {
+    // Search by name or PIN
+    const searchLower = searchQuery.toLowerCase()
+    const matchesSearch = searchQuery === '' ||
+      teacher.first_name.toLowerCase().includes(searchLower) ||
+      teacher.last_name.toLowerCase().includes(searchLower) ||
+      teacher.pin.includes(searchQuery)
+
+    // Filter by class
+    const matchesClass = !selectedClass ||
+      (teacherClasses[teacher.id] && teacherClasses[teacher.id].includes(selectedClass))
+
+    return matchesSearch && matchesClass
+  })
+
   if (!pinLoginEnabled) {
     return (
       <div className="space-y-6">
@@ -335,16 +400,85 @@ export default function TeacherAccountsPage() {
         </Card>
       )}
 
+      {/* Search and Filter Controls */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Search & Filter Teachers</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row gap-4">
+            {/* Search Input */}
+            <div className="flex-1">
+              <Label htmlFor="search" className="mb-2 block">Search by Name or PIN</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                <Input
+                  id="search"
+                  placeholder="Search teacher name or PIN..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Class Filter */}
+            <div className="flex-1">
+              <Label htmlFor="class-filter" className="mb-2 block">Filter by Class</Label>
+              <Select value={selectedClass || ''} onValueChange={(value) => setSelectedClass(value || null)}>
+                <SelectTrigger id="class-filter">
+                  <SelectValue placeholder="All Classes" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Classes</SelectItem>
+                  {classes.map((cls) => (
+                    <SelectItem key={cls.id} value={cls.id}>
+                      {cls.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Clear Filters Button */}
+            {(searchQuery || selectedClass) && (
+              <div className="flex items-end">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSearchQuery('')
+                    setSelectedClass(null)
+                  }}
+                  className="w-full sm:w-auto"
+                >
+                  Clear Filters
+                </Button>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Teachers Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Registered Teachers ({teachers.length})</CardTitle>
+          <CardTitle>Registered Teachers ({filteredTeachers.length} of {teachers.length})</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <p className="text-gray-500">Loading teachers...</p>
           ) : teachers.length === 0 ? (
             <p className="text-gray-500 text-center py-8">No teachers registered yet. Register your first teacher above.</p>
+          ) : filteredTeachers.length === 0 ? (
+            <p className="text-gray-500 text-center py-8">No teachers match your search or filter criteria.</p>
           ) : (
             <div className="overflow-x-auto">
               <Table>
@@ -353,13 +487,14 @@ export default function TeacherAccountsPage() {
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>PIN Code</TableHead>
+                    <TableHead>Assigned Classes</TableHead>
                     <TableHead>Email Status</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {teachers.map((teacher) => (
+                  {filteredTeachers.map((teacher) => (
                     <TableRow key={teacher.id}>
                       <TableCell className="font-medium">
                         {teacher.first_name} {teacher.last_name}
@@ -382,6 +517,22 @@ export default function TeacherAccountsPage() {
                             )}
                           </button>
                         </div>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {teacherClasses[teacher.id]?.length ? (
+                          <div className="flex flex-wrap gap-1">
+                            {teacherClasses[teacher.id].map(classId => {
+                              const className = classes.find(c => c.id === classId)?.name
+                              return (
+                                <Badge key={classId} variant="secondary" className="text-xs">
+                                  {className}
+                                </Badge>
+                              )
+                            })}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-sm">—</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         {teacher.email_sent ? (
