@@ -25,13 +25,14 @@ interface LearnerReportData {
   subjectMarks: {
     subjectId: string
     subjectName: string
-    marksByExam: Record<string, number | null> // examTypeId -> score
+    marksByExam: Record<string, number | null> // sessionId -> score
     average: number | null
   }[]
   overallAverage: number | null
   totalPoints: number | null
-  classRank: number
+  classRank: number          // overall rank across all chosen sessions
   totalInClass: number
+  examRanks: Record<string, number | null>  // sessionId -> rank in that exam
   strengthSubjects: string[]
   prioritySubjects: string[]
   autoComment: string
@@ -231,14 +232,38 @@ export function GeneralReport({
           autoComment,
           classRank: 0,
           totalInClass: learners.length,
+          examRanks: {},
         }
       })
 
-      // Calculate class ranks based on overall average
+      // Calculate overall class rank based on overall average
       const ranked = [...learnersData]
         .filter(l => l.overallAverage !== null)
         .sort((a, b) => (b.overallAverage ?? 0) - (a.overallAverage ?? 0))
       ranked.forEach((l, idx) => { l.classRank = idx + 1 })
+
+      // Calculate per-exam ranks: for each session, rank learners by their
+      // average score across all subjects in that session
+      for (const session of chosenSessions) {
+        // Build list of { learnerId, sessionAvg }
+        const sessionAvgs = learnersData.map(ld => {
+          const scores = ld.subjectMarks
+            .map(sm => sm.marksByExam[session.id])
+            .filter((v): v is number => v !== null)
+          const avg = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : null
+          return { ld, avg }
+        })
+        // Sort descending to assign ranks
+        const withScores = sessionAvgs.filter(x => x.avg !== null)
+          .sort((a, b) => (b.avg ?? 0) - (a.avg ?? 0))
+        withScores.forEach((x, idx) => {
+          x.ld.examRanks[session.id] = idx + 1
+        })
+        // Learners with no marks in this session get null rank
+        sessionAvgs.filter(x => x.avg === null).forEach(x => {
+          x.ld.examRanks[session.id] = null
+        })
+      }
 
       // Generate HTML for all learners
       const html = generateReportHTML(
@@ -449,7 +474,7 @@ function generateReportHTML(
 
   // Build individual pages
   const pages = learnersData.map(ld => {
-    const { learner, subjectMarks, overallAverage, classRank, totalInClass, strengthSubjects, prioritySubjects, autoComment } = ld
+    const { learner, subjectMarks, overallAverage, classRank, totalInClass, examRanks, strengthSubjects, prioritySubjects, autoComment } = ld
     const overallPoints = calcOverallPoints(overallAverage, currentClass.name, school?.name || '')
     const trendPoints = chosenSessions.map(s => {
       const sessionScores = subjectMarks.flatMap(sm => {
@@ -576,7 +601,7 @@ function generateReportHTML(
             <div style="margin-bottom:6px;">
               <span style="border:1.5px solid ${overallRubricColor(overallAverage)};color:${overallRubricColor(overallAverage)};border-radius:16px;padding:4px 12px;font-size:10px;font-weight:700;">${overallRubricLabel(overallAverage)}</span>
             </div>
-            <div style="font-size:9.5px;color:#374151;margin-bottom:4px;">Class Position: ${classRank > 0 ? `${classRank} out of ${totalInClass}` : 'N/A'}</div>
+            <div style="font-size:9.5px;color:#374151;margin-bottom:4px;">Overall Position: <strong>${classRank > 0 ? `${classRank} out of ${totalInClass}` : 'N/A'}</strong></div>
             <div style="text-align:left;font-size:9px;line-height:1.6;">
               <div><span style="color:#16a34a;font-weight:700;">●</span> EE: Exceeding Expectation (≥75%)</div>
               <div><span style="color:#2563eb;font-weight:700;">●</span> ME: Meeting Expectation (58–74%)</div>
@@ -611,6 +636,14 @@ function generateReportHTML(
                 <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;">
                   ${overallGrade ? `<span style="background:${overallBadgeColor};color:#fff;border-radius:3px;padding:2px 6px;font-size:10px;font-weight:700;">${overallGrade.level}</span>` : '-'}
                 </td>
+              </tr>
+              <tr style="background:#eff6ff;">
+                <td style="border:1px solid #d1d5db;padding:5px 7px;font-size:10px;font-weight:700;color:#1e3a5f;">CLASS POSITION</td>
+                ${chosenSessions.map(s => {
+                  const rank = examRanks[s.id]
+                  return `<td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-size:10px;font-weight:700;color:#1e3a5f;">${rank != null ? `${rank} / ${totalInClass}` : '-'}</td>`
+                }).join('')}
+                <td colspan="2" style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-size:10px;font-weight:700;color:#1e3a5f;">${classRank > 0 ? `${classRank} / ${totalInClass}` : '-'}</td>
               </tr>
             </tbody>
           </table>
