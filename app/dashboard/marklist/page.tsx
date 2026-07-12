@@ -563,14 +563,23 @@ export default function MarklistPage() {
         // Calculate per-subject stats using name-based matching so every stream
         // shows data for every subject that exists anywhere in the grade, not just
         // the subjects that happen to be stored under that class's own IDs.
+        // Important: DO NOT filter out nulls — we want to show all subjects in
+        // allSubjectNamesOrdered, even if a particular stream has no data for it.
         const subjectStats = allSubjectNamesOrdered.map(subjName => {
           const key = subjName.trim().toUpperCase()
           // All subject IDs (across all classes) that share this name
           const allIdsForName = subjectNameToIds.get(key) || []
           // Restrict to IDs that belong to this class's subjects
           const relevantIds = allIdsForName.filter(id => clsSubjectIds.has(id))
-          // If this class doesn't have this subject at all, skip (return null)
-          if (relevantIds.length === 0) return null
+          // If this class doesn't have this subject, return placeholder with null values
+          if (relevantIds.length === 0) {
+            return {
+              name: subjName,
+              mean: null,
+              highest: null,
+              lowest: null,
+            }
+          }
           const subjMarks = clsMarks.filter((m: any) => relevantIds.includes(m.subject_id) && m.score !== null)
           const scores = subjMarks.map((m: any) => Number(m.score) || 0)
           return {
@@ -579,7 +588,7 @@ export default function MarklistPage() {
             highest: scores.length > 0 ? Math.max(...scores) : null,
             lowest: scores.length > 0 ? Math.min(...scores) : null,
           }
-        }).filter(Boolean)
+        })
 
         // Calculate learner totals
         const learnerTotals = clsLearners.map(learner => {
