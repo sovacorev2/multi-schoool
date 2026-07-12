@@ -545,6 +545,20 @@ function generateReportHTML(
       })
       return sessionScores.length > 0 ? sessionScores.reduce((a, b) => a + b, 0) / sessionScores.length : null
     })
+    
+    // Calculate sum of all exam averages and their points
+    let sumAllExamAverages = 0
+    let sumAllExamPoints = 0
+    trendPoints.forEach(avg => {
+      if (avg !== null) {
+        sumAllExamAverages += avg
+        const gradeInfo = getRubricLabel(avg, currentClass.name, school?.name || '')
+        if (gradeInfo?.points) {
+          sumAllExamPoints += gradeInfo.points
+        }
+      }
+    })
+    
     const bestExamIdx = trendPoints.reduce((best, v, i) => (v !== null && (best === -1 || (trendPoints[best] ?? 0) < v)) ? i : best, -1)
     const bestExamName = bestExamIdx >= 0 ? (chosenSessions[bestExamIdx]?.exam_types?.name || `Exam ${bestExamIdx + 1}`) : '-'
     const bestExamScore = bestExamIdx >= 0 && trendPoints[bestExamIdx] !== null ? (trendPoints[bestExamIdx] as number).toFixed(1) : '-'
@@ -740,11 +754,11 @@ function generateReportHTML(
                 <div style="font-size:10px;color:#15803d;font-weight:700;">${bestExamScore}%</div>
               </div>
               
-              <!-- TOTAL MARKS AND POINTS FOR AVERAGE EXAM -->
+              <!-- TOTAL MARKS AND POINTS - SUM OF ALL EXAM AVERAGES -->
               <div style="border:1px solid #2563eb;border-radius:3px;background:#eff6ff;padding:6px;text-align:center;">
                 <div style="font-size:7px;color:#1e40af;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;">TOTAL MKS / PTS</div>
-                <div style="font-size:11px;font-weight:800;color:#1e40af;margin-top:2px;">${overallAverage !== null ? overallAverage.toFixed(1) : '0'} / ${overallPoints !== null ? overallPoints : '0'}</div>
-                <div style="font-size:8px;color:#3b82f6;font-weight:600;">Average exam</div>
+                <div style="font-size:11px;font-weight:800;color:#1e40af;margin-top:2px;">${sumAllExamAverages > 0 ? sumAllExamAverages.toFixed(1) : '0'} / ${sumAllExamPoints > 0 ? sumAllExamPoints.toFixed(1) : '0'}</div>
+                <div style="font-size:8px;color:#3b82f6;font-weight:600;">Sum of all exams</div>
               </div>
               
               <!-- POSITION -->
