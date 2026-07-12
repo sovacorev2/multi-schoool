@@ -152,6 +152,13 @@ export function GeneralReport({
 
   async function handlePrintAll() {
     if (!currentClass || !currentSchool || chosenSessions.length === 0 || learners.length === 0) return
+    
+    // Enforce max 3 exams constraint
+    if (chosenSessions.length > 3) {
+      alert('⚠️ Maximum 3 exam types allowed. Please select only 3 or fewer exams.')
+      return
+    }
+    
     setIsGenerating(true)
 
     try {
@@ -408,7 +415,7 @@ export function GeneralReport({
           <div className="flex items-center gap-4">
             <Button
               onClick={handlePrintAll}
-              disabled={isGenerating || chosenSessions.length === 0 || learners.length === 0}
+              disabled={isGenerating || chosenSessions.length === 0 || learners.length === 0 || chosenSessions.length > 3}
               className="gap-2"
             >
               {isGenerating ? (
@@ -417,8 +424,9 @@ export function GeneralReport({
                 <><Printer className="w-4 h-4" /> Print All {learners.length} Report Cards</>
               )}
             </Button>
-            <p className="text-xs text-muted-foreground">
+            <p className={`text-xs ${chosenSessions.length > 3 ? 'text-red-600 font-semibold' : 'text-muted-foreground'}`}>
               {chosenSessions.length} exam{chosenSessions.length !== 1 ? 's' : ''} selected &bull; One page per learner
+              {chosenSessions.length > 3 && ' ⚠️ Maximum 3 exams allowed'}
             </p>
           </div>
 
