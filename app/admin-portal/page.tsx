@@ -474,15 +474,33 @@ export default function AdminPortalPage() {
       // Delete everything referencing this exam type
       // Proceed with deletion even if dependencies don't exist
       
-      try {
-        console.log('[v0] Deleting marks...')
-        await supabase
-          .from('marks')
-          .delete()
-          .eq('exam_type_id', id)
+      // First, find all sessions that reference this exam type
+      console.log('[v0] Finding sessions for exam type:', id)
+      const { data: sessionsToDelete, error: sessionsError } = await supabase
+        .from('sessions')
+        .select('id')
+        .eq('exam_type_id', id)
+      
+      if (sessionsError) {
+        console.log('[v0] Error finding sessions:', sessionsError)
+      }
+
+      // Delete marks for each session
+      if (sessionsToDelete && sessionsToDelete.length > 0) {
+        console.log('[v0] Deleting marks for', sessionsToDelete.length, 'sessions...')
+        const sessionIds = sessionsToDelete.map(s => s.id)
+        
+        for (const sessionId of sessionIds) {
+          try {
+            await supabase
+              .from('marks')
+              .delete()
+              .eq('session_id', sessionId)
+          } catch (e) {
+            console.log('[v0] Error deleting marks for session', sessionId, ':', e)
+          }
+        }
         console.log('[v0] Marks deleted')
-      } catch (e) {
-        console.log('[v0] Marks deletion error (continuing):', e)
       }
 
       try {
@@ -496,24 +514,47 @@ export default function AdminPortalPage() {
         console.log('[v0] Analytics deletion error (continuing):', e)
       }
 
-      try {
-        console.log('[v0] Deleting sessions...')
-        await supabase
-          .from('sessions')
-          .delete()
-          .eq('exam_type_id', id)
-        console.log('[v0] Sessions deleted')
-      } catch (e) {
-        console.log('[v0] Sessions deletion error (continuing):', e)
+      // Delete sessions that reference this exam type
+      if (sessionsToDelete && sessionsToDelete.length > 0) {
+        try {
+          console.log('[v0] Deleting', sessionsToDelete.length, 'sessions...')
+          const sessionIds = sessionsToDelete.map(s => s.id)
+          
+          // Delete by ID to ensure we're hitting the right records
+          for (const sessionId of sessionIds) {
+            const { error: delErr } = await supabase
+              .from('sessions')
+              .delete()
+              .eq('id', sessionId)
+            
+            if (delErr) {
+              console.error('[v0] Error deleting session', sessionId, ':', delErr)
+              throw delErr
+            }
+          }
+          console.log('[v0] Sessions deleted')
+        } catch (e) {
+          console.log('[v0] Sessions deletion error:', e)
+          throw new Error(`Could not delete sessions: ${e instanceof Error ? e.message : String(e)}`)
+        }
       }
 
       // Now delete the exam type itself
-      console.log('[v0] Deleting exam type...')
-      const { error: examTypeError } = await supabase.from('exam_types').delete().eq('id', id)
+      console.log('[v0] Deleting exam type:', id)
+      const { error: examTypeError } = await supabase
+        .from('exam_types')
+        .delete()
+        .eq('id', id)
+        .eq('school_id', currentSchool?.id)
 
       if (examTypeError) {
         console.error('[v0] Error deleting exam type:', examTypeError)
-        alert(`Failed to delete exam type: ${examTypeError.message}`)
+        const errorDetail = examTypeError.message || 'Unknown error'
+        if (errorDetail.includes('foreign key')) {
+          alert(`Cannot delete "${examTypeName}" because it is used by exam sessions.\n\nPlease delete the sessions first, then delete the exam type.`)
+        } else {
+          alert(`Failed to delete exam type: ${errorDetail}`)
+        }
         setDeletingExamTypeId(null)
         return
       }
