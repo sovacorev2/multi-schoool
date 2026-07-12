@@ -669,7 +669,7 @@ function generateReportHTML(
             <div style="margin-bottom:6px;">
               <span style="border:1.5px solid ${overallRubricColor(overallAverage)};color:${overallRubricColor(overallAverage)};border-radius:16px;padding:4px 12px;font-size:10px;font-weight:700;">${overallRubricLabel(overallAverage)}</span>
             </div>
-            <div style="font-size:9.5px;color:#374151;">Overall Position: <strong>${classRank > 0 ? `${classRank} out of ${totalInClass}` : 'N/A'}</strong></div>
+            <div style="font-size:9.5px;color:#374151;">Overall Position: <strong>${totalInLevel > totalInClass && crossStreamRank > 0 ? `${crossStreamRank} out of ${totalInLevel}` : (classRank > 0 ? `${classRank} out of ${totalInClass}` : 'N/A')}</strong></div>
           </div>
         </div>
       </div>
@@ -747,51 +747,63 @@ function generateReportHTML(
         </div>
       </div>
 
-      <!-- STRENGTHS + PRIORITY AREAS — flex:1 -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;flex:1;min-height:0;">
+      <!-- STRENGTHS + PRIORITY AREAS — flex:0.8 reduced -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;flex:0.8;min-height:0;">
         <div style="border:1.5px solid #16a34a;border-radius:5px;overflow:hidden;display:flex;flex-direction:column;">
           <div style="background:#16a34a;color:#fff;font-size:10px;font-weight:700;padding:5px 10px;letter-spacing:0.5px;flex-shrink:0;">STRENGTH AREAS</div>
-          <div style="padding:8px 12px;flex:1;">
-            <ul style="margin:0;padding-left:16px;font-size:11px;line-height:1.7;">
+          <div style="padding:6px 10px;flex:1;overflow:hidden;">
+            <ul style="margin:0;padding-left:14px;font-size:10px;line-height:1.5;">
               ${strengthList}
             </ul>
           </div>
         </div>
         <div style="border:1.5px solid #dc2626;border-radius:5px;overflow:hidden;display:flex;flex-direction:column;">
           <div style="background:#dc2626;color:#fff;font-size:10px;font-weight:700;padding:5px 10px;letter-spacing:0.5px;flex-shrink:0;">PRIORITY LEARNING AREAS</div>
-          <div style="padding:8px 12px;flex:1;">
-            <ul style="margin:0;padding-left:16px;font-size:11px;line-height:1.7;">
+          <div style="padding:6px 10px;flex:1;overflow:hidden;">
+            <ul style="margin:0;padding-left:14px;font-size:10px;line-height:1.5;">
               ${priorityList}
             </ul>
           </div>
         </div>
       </div>
 
-      <!-- COMMENTS — flex:1.5 for a decent-sized comments area -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;flex:1.5;min-height:0;">
-        <div style="border:1.5px solid #1e3a5f;border-radius:5px;overflow:hidden;display:flex;flex-direction:column;">
+      <!-- COMMENTS + CALENDAR — flex:1 reduced size -->
+      <div style="display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:8px;margin-bottom:6px;flex:1;min-height:0;">
+        <div style="border:1.5px solid #1e3a5f;border-radius:5px;overflow:hidden;display:flex;flex-direction:column;grid-column:1;">
           <div style="background:#1e3a5f;color:#fff;font-size:10px;font-weight:700;padding:5px 10px;letter-spacing:0.5px;flex-shrink:0;">CLASS TEACHER'S COMMENTS</div>
-          <div style="padding:8px 10px;flex:1;display:flex;flex-direction:column;justify-content:space-between;">
-            <p style="font-size:11px;line-height:1.6;margin:0;">${autoComment}</p>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:10px;color:#374151;border-top:1px solid #e5e7eb;padding-top:6px;">
-              <div>${teacherName || '______________________'}<br/><span style="color:#6b7280;">Class Teacher</span></div>
-              <div>Signature: ______________________</div>
+          <div style="padding:6px 8px;flex:1;display:flex;flex-direction:column;justify-content:space-between;">
+            <p style="font-size:10px;line-height:1.5;margin:0;min-height:30px;">${autoComment}</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;font-size:8px;color:#374151;border-top:1px solid #e5e7eb;padding-top:4px;">
+              <div>${teacherName || '______'}<br/><span style="color:#6b7280;">Teacher</span></div>
+              <div>Sign: _______</div>
             </div>
           </div>
         </div>
         <div style="border:1.5px solid #1e3a5f;border-radius:5px;overflow:hidden;display:flex;flex-direction:column;">
           <div style="background:#1e3a5f;color:#fff;font-size:10px;font-weight:700;padding:5px 10px;letter-spacing:0.5px;flex-shrink:0;">PARENT / GUARDIAN COMMENTS</div>
-          <div style="padding:8px 10px;flex:1;display:flex;flex-direction:column;justify-content:flex-end;">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:10px;color:#374151;border-top:1px solid #e5e7eb;padding-top:6px;">
-              <div>Signature: ___________________</div>
-              <div>Date: ______________________</div>
+          <div style="padding:6px 8px;flex:1;display:flex;flex-direction:column;justify-content:flex-end;">
+            <div style="display:grid;grid-template-columns:1fr;gap:2px;font-size:8px;color:#374151;border-top:1px solid #e5e7eb;padding-top:4px;">
+              <div>Signature: _______</div>
+              <div>Date: _______</div>
             </div>
+          </div>
+        </div>
+        
+        <!-- SCHOOL CALENDAR -->
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <div style="border:1px solid #10b981;border-radius:3px;background:#f0fdf4;padding:6px;text-align:center;">
+            <div style="font-size:8px;color:#15803d;font-weight:700;text-transform:uppercase;">School Opens</div>
+            <div style="font-size:11px;font-weight:700;color:#15803d;margin-top:2px;">___/___/____</div>
+          </div>
+          <div style="border:1px solid #dc2626;border-radius:3px;background:#fef2f2;padding:6px;text-align:center;">
+            <div style="font-size:8px;color:#7f1d1d;font-weight:700;text-transform:uppercase;">School Closes</div>
+            <div style="font-size:11px;font-weight:700;color:#dc2626;margin-top:2px;">___/___/____</div>
           </div>
         </div>
       </div>
 
       <!-- FOOTER — pinned at bottom -->
-      <div style="border-top:1.5px solid #1e3a5f;padding-top:4px;display:flex;justify-content:space-between;font-size:8.5px;color:#4b5563;flex-shrink:0;margin-top:auto;">
+      <div style="border-top:1.5px solid #1e3a5f;padding-top:4px;display:flex;justify-content:space-between;font-size:8px;color:#4b5563;flex-shrink:0;margin-top:auto;">
         <div><strong>Powered by ShuleTech</strong> — Smart Schools, Better Results</div>
         <div style="text-align:right;">${schoolName} &bull; ${gradeLabel} &bull; ${termDisplay}</div>
       </div>
