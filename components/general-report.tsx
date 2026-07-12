@@ -693,12 +693,13 @@ function generateReportHTML(
 <meta charset="UTF-8"/>
 <title>General Report — ${currentClass.name} — ${school?.name || ''}</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #f3f4f6; font-family: 'Helvetica Neue', Arial, sans-serif; }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+  body { background: #f3f4f6; font-family: 'Helvetica Neue', Arial, sans-serif; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   @media print {
     body { background: #fff; }
     @page { size: A4 portrait; margin: 0; }
     div[style*="page-break-after"] { page-break-after: always; break-after: page; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
   }
 </style>
 </head>
