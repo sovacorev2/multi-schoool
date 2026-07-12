@@ -98,6 +98,32 @@ export function getGradingScale(className?: string, schoolName?: string): GradeL
   return isUpper ? GRADING_SCALE_EXTENDED : GRADING_SCALE_SIMPLE
 }
 
+// Derive the overall performance level from total points and number of subjects.
+// We compute the average points per subject, then find the grade level whose
+// points value is closest. This is used for overall ranking so that a learner
+// who sat fewer exams cannot achieve a higher level than one who sat more.
+export function getLevelByTotalPoints(
+  totalPoints: number,
+  subjectCount: number,
+  className?: string,
+  schoolName?: string
+): { level: string; points: number } | null {
+  if (!subjectCount || subjectCount === 0) return null
+  const avgPoints = totalPoints / subjectCount
+  const scale = getGradingScale(className, schoolName)
+  // Find the grade level whose midpoint points value is closest to avgPoints
+  let best: GradeLevel | null = null
+  let bestDiff = Infinity
+  for (const g of scale) {
+    const diff = Math.abs(g.points - avgPoints)
+    if (diff < bestDiff) {
+      bestDiff = diff
+      best = g
+    }
+  }
+  return best ? { level: best.level, points: best.points } : null
+}
+
 // Get grade level with class and school context
 export function getGradeLevelByClass(marks: number | string | null | undefined, className?: string, schoolName?: string): { level: string; points: number } | null {
   if (marks === null || marks === undefined) return null
