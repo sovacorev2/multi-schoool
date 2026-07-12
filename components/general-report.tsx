@@ -612,8 +612,8 @@ function generateReportHTML(
         </div>
       </div>
 
-      <!-- ACADEMIC PERFORMANCE SUMMARY + TREND — flex:2 so the table takes most growth -->
-      <div style="display:grid;grid-template-columns:1.8fr 1fr;gap:8px;margin-bottom:6px;flex:2;min-height:0;">
+      <!-- ACADEMIC PERFORMANCE SUMMARY + TREND — natural height so table (incl. position row) is never squeezed -->
+      <div style="display:grid;grid-template-columns:1.8fr 1fr;gap:8px;margin-bottom:6px;flex-shrink:0;">
 
         <!-- ACADEMIC PERFORMANCE TABLE -->
         <div style="border:1.5px solid #1e3a5f;border-radius:5px;display:flex;flex-direction:column;overflow:visible;">
