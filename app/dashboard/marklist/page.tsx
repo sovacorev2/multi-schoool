@@ -1907,12 +1907,91 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                     }
                   } else {
                     console.log('[v0] ✓ Processing NON-STREAMED class')
-                    // For non-streamed classes, also set overall_rank and total_in_grade
-                    finalResults = results.map(r => ({
-                      ...r,
-                      overall_rank: r.overall_rank || r.rank,
-                      total_in_grade: r.total_in_grade || results.length
-                    }))
+                    // For non-streamed classes, rank across ALL classes in the same grade
+                    try {
+                      const gradeName = currentClass?.name?.match(/^(Grade|PP)\s*\d+/i)?.[0] || currentClass?.name
+                      console.log('[v0] Non-streamed: extracting grade level:', gradeName, 'from class:', currentClass?.name)
+                      
+                      // Get all classes that match this grade (may have multiple single-stream classes)
+                      const { data: gradeClasses } = await supabase
+                        .from('classes')
+                        .select('id, name')
+                        .eq('school_id', currentSchool?.id)
+                        .ilike('name', `${gradeName}%`)
+                      
+                      if (gradeClasses && gradeClasses.length > 0) {
+                        const gradeClassIds = gradeClasses.map(c => c.id)
+                        console.log('[v0] Found', gradeClassIds.length, 'classes for grade:', gradeClasses.map(c => c.name))
+                        
+                        // Get all learners in this grade
+                        const { data: gradeLearners } = await supabase
+                          .from('learners')
+                          .select('id')
+                          .in('class_id', gradeClassIds)
+                        
+                        const gradeLearnerIds = (gradeLearners || []).map(l => l.id)
+                        console.log('[v0] Total learners in grade:', gradeLearnerIds.length)
+                        
+                        if (gradeLearnerIds.length > 0) {
+                          // Get marks for all grade learners
+                          const { data: gradeMarks } = await supabase
+                            .from('marks')
+                            .select('learner_id, score')
+                            .in('learner_id', gradeLearnerIds)
+                            .eq('year', selectedSession?.year)
+                            .eq('term', selectedSession?.term)
+                            .eq('exam_type_id', selectedSession?.exam_type_id)
+                          
+                          // Calculate totals per learner
+                          const learnerTotals: Record<string, number> = {}
+                          for (const m of (gradeMarks || [])) {
+                            if (m?.learner_id && m.score !== undefined) {
+                              if (!learnerTotals[m.learner_id]) learnerTotals[m.learner_id] = 0
+                              learnerTotals[m.learner_id] += Number(m.score) || 0
+                            }
+                          }
+                          
+                          // Create ranked list for grade
+                          const rankedGradeLearners = Object.entries(learnerTotals)
+                            .sort(([, a], [, b]) => (b as any) - (a as any))
+                            .map(([id, total], index) => ({ id, total, rank: index + 1 }))
+                          
+                          console.log('[v0] Non-streamed: ranked learners in grade:', rankedGradeLearners.length, 'Top 3:', rankedGradeLearners.slice(0, 3))
+                          
+                          // Update results with grade-level ranking
+                          finalResults = results.map((r, idx) => {
+                            const ranked = rankedGradeLearners.find(rl => rl.id === r.learner.id)
+                            return {
+                              ...r,
+                              overall_rank: ranked?.rank || r.rank,
+                              total_in_grade: gradeLearnerIds.length
+                            }
+                          })
+                          console.log('[v0] Non-streamed: updated results with grade ranks')
+                        } else {
+                          // Fallback: use class ranking only
+                          finalResults = results.map(r => ({
+                            ...r,
+                            overall_rank: r.rank,
+                            total_in_grade: results.length
+                          }))
+                        }
+                      } else {
+                        // Fallback: use class ranking only
+                        finalResults = results.map(r => ({
+                          ...r,
+                          overall_rank: r.rank,
+                          total_in_grade: results.length
+                        }))
+                      }
+                    } catch (gradeRankErr) {
+                      console.error('[v0] Non-streamed grade ranking error:', gradeRankErr)
+                      finalResults = results.map(r => ({
+                        ...r,
+                        overall_rank: r.rank,
+                        total_in_grade: results.length
+                      }))
+                    }
                   }
                   
                   console.log('[v0] Final results - Count:', finalResults.length, 'Sample:', finalResults.slice(0, 2).map(r => ({
