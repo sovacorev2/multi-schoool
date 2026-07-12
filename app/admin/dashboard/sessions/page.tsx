@@ -46,7 +46,8 @@ import {
   FileText,
   Key,
   RotateCcw,
-  Edit2
+  Edit2,
+  Trash2
 } from "lucide-react";
 import type { ExamType, Class, AuditLog } from "@/lib/types";
 import { getClassesForPasswordManagement, resetClassPassword } from "@/app/actions/auth";
@@ -760,10 +761,10 @@ const { currentSchool } = useSchool();
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Edit2 className="w-5 h-5" />
-              Rename Exam Type
+              Edit Exam Type
             </DialogTitle>
             <DialogDescription>
-              Update the name of this exam type to fit your reporting requirements.
+              Update the name and choose which classes this exam type is available for.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -777,6 +778,30 @@ const { currentSchool } = useSchool();
                 maxLength={100}
               />
             </div>
+            <div>
+              <Label>Available for classes</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Leave all unchecked to make this exam type available to <strong>all classes</strong>. Otherwise tick only the classes that should see it (e.g. tick Grade 7-9 for a JSS-only exam).
+              </p>
+              <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-1">
+                {allClasses.map((cls) => {
+                  const checked = editExamClasses.includes(cls.id);
+                  return (
+                    <button
+                      key={cls.id}
+                      type="button"
+                      onClick={() => setEditExamClasses(checked ? editExamClasses.filter((id) => id !== cls.id) : [...editExamClasses, cls.id])}
+                      className={`px-3 py-1 rounded-full text-xs border transition-colors ${checked ? "bg-blue-600 text-white border-blue-600" : "bg-background text-foreground border-input hover:border-blue-400"}`}
+                    >
+                      {cls.name}
+                    </button>
+                  );
+                })}
+              </div>
+              {editExamClasses.length === 0 && (
+                <p className="text-xs text-blue-600 mt-2">Currently available to: <strong>All classes</strong></p>
+              )}
+            </div>
           </div>
           <DialogFooter>
             <Button 
@@ -785,6 +810,7 @@ const { currentSchool } = useSchool();
                 setIsEditExamDialogOpen(false);
                 setEditingExamType(null);
                 setEditExamName("");
+                setEditExamClasses([]);
               }} 
               disabled={editExamLoading}
             >
