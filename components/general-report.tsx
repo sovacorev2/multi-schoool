@@ -519,6 +519,21 @@ function generateReportHTML(
     ).join('')
     const overallBadgeColor = overallGrade ? rubricBadgeColor(overallGrade.level) : '#6b7280'
 
+    // Average points row — average points across all subjects per exam
+    const overallExamPoints = chosenSessions.map(s => {
+      const sessionScores = subjectMarks.flatMap(sm => {
+        const v = sm.marksByExam[s.id]
+        return v !== null && v !== undefined ? [v] : []
+      })
+      if (sessionScores.length === 0) return '-'
+      const avgMark = sessionScores.reduce((a, b) => a + b, 0) / sessionScores.length
+      const gradeInfo = getRubricLabel(avgMark, currentClass.name, school?.name || '')
+      return gradeInfo ? gradeInfo.points.toFixed(1) : '-'
+    })
+    const overallExamPointsCells = overallExamPoints.map(v =>
+      `<td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-size:11px;font-weight:700;color:#16a34a;">${v}</td>`
+    ).join('')
+
     const examHeaderCells = examColumns.map(col =>
       `<th style="border:1px solid #d1d5db;padding:5px 7px;background:#1e3a5f;color:#fff;font-size:10px;text-align:center;">${col}</th>`
     ).join('')
@@ -636,6 +651,11 @@ function generateReportHTML(
                 <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;">
                   ${overallGrade ? `<span style="background:${overallBadgeColor};color:#fff;border-radius:3px;padding:2px 6px;font-size:10px;font-weight:700;">${overallGrade.level}</span>` : '-'}
                 </td>
+              </tr>
+              <tr style="background:#f0fdf4;border:1px solid #dcfce7;">
+                <td style="border:1px solid #d1d5db;padding:5px 7px;font-size:11px;font-weight:700;color:#15803d;">AVERAGE POINTS</td>
+                ${overallExamPointsCells}
+                <td colspan="2" style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-size:11px;font-weight:700;color:#15803d;">${overallPoints}</td>
               </tr>
               <tr style="background:#dbeafe;">
                 <td style="border:1.5px solid #93c5fd;padding:5px 7px;font-size:10px;font-weight:800;color:#1e40af;white-space:nowrap;">CLASS POSITION</td>
