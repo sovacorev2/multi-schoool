@@ -29,6 +29,7 @@ import { Label } from '@/components/ui/label'
 
 
 import { ReportStareheStyle } from '@/components/report-starehe-style'
+import { GeneralReport } from '@/components/general-report'
 import { FloatingAnalysisButton } from '@/components/floating-analysis-button'
 import { getStoredTeacherId } from '@/lib/teacher-permissions'
 import { AdminPasswordGate, useAdminPrintGate } from '@/components/admin-password-gate'
@@ -2441,6 +2442,10 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                   <TabsTrigger value="stream-transfers" className="flex-1 min-w-[80px] text-xs sm:text-sm">Stream Transfers</TabsTrigger>
                 ) : null
               })()}
+              <TabsTrigger value="general-report" className="flex-1 min-w-[80px] text-xs sm:text-sm gap-1">
+                <FileText className="w-3 h-3" />
+                General Report
+              </TabsTrigger>
               <TabsTrigger value="analysis" className="flex-1 min-w-[80px] text-xs sm:text-sm font-semibold bg-gray-100">Analysis</TabsTrigger>
             </TabsList>
 
@@ -2681,6 +2686,19 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            {/* General Report Tab */}
+            <TabsContent value="general-report">
+              <GeneralReport
+                currentClass={currentClass}
+                currentSchool={currentSchool}
+                subjects={subjects}
+                learners={learners}
+                sessions={sessions}
+                selectedYear={selectedYear}
+                selectedTerm={selectedTerm}
+              />
             </TabsContent>
 
             {/* Stream Transfers Tab - Only for streamed classes */}
