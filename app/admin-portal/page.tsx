@@ -485,11 +485,29 @@ export default function AdminPortalPage() {
         console.log('[v0] Error finding sessions:', sessionsError)
       }
 
-      // Delete marks for each session
-      if (sessionsToDelete && sessionsToDelete.length > 0) {
-        console.log('[v0] Deleting marks for', sessionsToDelete.length, 'sessions...')
-        const sessionIds = sessionsToDelete.map(s => s.id)
-        
+      const sessionIds = sessionsToDelete?.map(s => s.id) || []
+
+      // Step 1: Delete audit_logs that reference these sessions (they have FK to sessions)
+      if (sessionIds.length > 0) {
+        try {
+          console.log('[v0] Deleting audit logs for', sessionIds.length, 'sessions...')
+          for (const sessionId of sessionIds) {
+            await supabase
+              .from('audit_logs')
+              .delete()
+              .eq('session_id', sessionId)
+          }
+          console.log('[v0] Audit logs deleted')
+        } catch (e) {
+          console.log('[v0] Audit logs deletion error:', e)
+          // Don't continue if audit logs can't be deleted
+          throw e
+        }
+      }
+
+      // Step 2: Delete marks for each session
+      if (sessionIds.length > 0) {
+        console.log('[v0] Deleting marks for', sessionIds.length, 'sessions...')
         for (const sessionId of sessionIds) {
           try {
             await supabase
@@ -514,11 +532,10 @@ export default function AdminPortalPage() {
         console.log('[v0] Analytics deletion error (continuing):', e)
       }
 
-      // Delete sessions that reference this exam type
-      if (sessionsToDelete && sessionsToDelete.length > 0) {
+      // Step 3: Delete sessions that reference this exam type
+      if (sessionIds.length > 0) {
         try {
-          console.log('[v0] Deleting', sessionsToDelete.length, 'sessions...')
-          const sessionIds = sessionsToDelete.map(s => s.id)
+          console.log('[v0] Deleting', sessionIds.length, 'sessions...')
           
           // Delete by ID to ensure we're hitting the right records
           for (const sessionId of sessionIds) {
