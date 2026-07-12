@@ -90,26 +90,24 @@ export function getGradingScale(className?: string, schoolName?: string): GradeL
     if (!className) return GRADING_SCALE_KOLANYA_GIRLS_JSS
     
     const isUpper = isUpperClass(className)
-    if (isUpper) {
-      console.log('[v0] Kolanya Girls JSS (Grade 7-9): Using 8-level scale')
-      return GRADING_SCALE_KOLANYA_GIRLS_JSS
-    } else {
-      console.log('[v0] Kolanya Girls Primary (Grade 1-6): Using 4-level scale')
-      return GRADING_SCALE_KOLANYA_GIRLS_PRIMARY
-    }
+    return isUpper ? GRADING_SCALE_KOLANYA_GIRLS_JSS : GRADING_SCALE_KOLANYA_GIRLS_PRIMARY
   }
   
   if (!className) return GRADING_SCALE_EXTENDED
   const isUpper = isUpperClass(className)
-  console.log('[v0] Class:', className, 'School:', schoolName, 'isUpperClass:', isUpper, 'Scale:', isUpper ? 'EXTENDED (1-8)' : 'SIMPLE (0.5 increments)')
   return isUpper ? GRADING_SCALE_EXTENDED : GRADING_SCALE_SIMPLE
 }
 
 // Get grade level with class and school context
-export function getGradeLevelByClass(marks: number | null | undefined, className?: string, schoolName?: string): { level: string; points: number } | null {
+export function getGradeLevelByClass(marks: number | string | null | undefined, className?: string, schoolName?: string): { level: string; points: number } | null {
   if (marks === null || marks === undefined) return null
-  
+
+  // Coerce to a number defensively — DB numeric columns can arrive as strings,
+  // and string comparisons would break the min/max range matching.
+  const score = typeof marks === 'string' ? parseFloat(marks) : marks
+  if (typeof score !== 'number' || Number.isNaN(score)) return null
+
   const scale = getGradingScale(className, schoolName)
-  const grade = scale.find(g => marks >= g.minMark && marks <= g.maxMark)
+  const grade = scale.find(g => score >= g.minMark && score <= g.maxMark)
   return grade ? { level: grade.level, points: grade.points } : null
 }

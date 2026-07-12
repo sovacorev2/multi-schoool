@@ -154,8 +154,16 @@ export default function AdminPortalPage() {
   const [newExamType, setNewExamType] = useState('')
   const [newExamTypeYear, setNewExamTypeYear] = useState(new Date().getFullYear().toString())
   const [newExamTypeTerm, setNewExamTypeTerm] = useState('Term 1')
+  const [newExamTypeClasses, setNewExamTypeClasses] = useState<string[]>([])
   const [newClassName, setNewClassName] = useState('')
   const [deletingExamTypeId, setDeletingExamTypeId] = useState<string | null>(null)
+  // Exam type editing
+  const [editingExamTypeId, setEditingExamTypeId] = useState<string | null>(null)
+  const [editingExamTypeName, setEditingExamTypeName] = useState('')
+  const [editingExamTypeClasses, setEditingExamTypeClasses] = useState<string[]>([])
+  const [savingExamTypeEdit, setSavingExamTypeEdit] = useState(false)
+  // Session deletion
+  const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null)
   
   // Stream management
   const [streamBaseClass, setStreamBaseClass] = useState('')
@@ -381,7 +389,7 @@ export default function AdminPortalPage() {
     }
   }
 
-  // Add exam type
+  // Add exam type. An empty allowed_class_ids means the exam type applies to ALL classes.
   const addExamType = async () => {
     if (!newExamType.trim() || !currentSchool) return
     
@@ -391,8 +399,7 @@ export default function AdminPortalPage() {
       .insert({
         name: newExamType.trim(),
         school_id: currentSchool.id,
-        year: parseInt(newExamTypeYear),
-        term: newExamTypeTerm
+        allowed_class_ids: newExamTypeClasses.length > 0 ? newExamTypeClasses : null,
       })
       .select()
       .single()
@@ -400,9 +407,51 @@ export default function AdminPortalPage() {
     if (!error && data) {
       setExamTypes([...examTypes, data])
       setNewExamType('')
-      setNewExamTypeYear(new Date().getFullYear().toString())
-      setNewExamTypeTerm('Term 1')
+      setNewExamTypeClasses([])
+    } else if (error) {
+      alert(`Failed to add exam type: ${error.message}`)
     }
+  }
+
+  // Begin editing an exam type (name + which classes it applies to)
+  const startEditExamType = (examType: any) => {
+    setEditingExamTypeId(examType.id)
+    setEditingExamTypeName(examType.name)
+    setEditingExamTypeClasses(Array.isArray(examType.allowed_class_ids) ? examType.allowed_class_ids : [])
+  }
+
+  const cancelEditExamType = () => {
+    setEditingExamTypeId(null)
+    setEditingExamTypeName('')
+    setEditingExamTypeClasses([])
+  }
+
+  // Save edits to an exam type
+  const saveEditExamType = async (id: string) => {
+    if (!editingExamTypeName.trim()) {
+      alert('Exam type name cannot be empty')
+      return
+    }
+    setSavingExamTypeEdit(true)
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('exam_types')
+      .update({
+        name: editingExamTypeName.trim(),
+        allowed_class_ids: editingExamTypeClasses.length > 0 ? editingExamTypeClasses : null,
+      })
+      .eq('id', id)
+
+    if (error) {
+      alert(`Failed to update exam type: ${error.message}`)
+      setSavingExamTypeEdit(false)
+      return
+    }
+    setExamTypes(examTypes.map(e => e.id === id
+      ? { ...e, name: editingExamTypeName.trim(), allowed_class_ids: editingExamTypeClasses.length > 0 ? editingExamTypeClasses : null }
+      : e))
+    setSavingExamTypeEdit(false)
+    cancelEditExamType()
   }
 
   // Delete exam type
@@ -764,6 +813,44 @@ export default function AdminPortalPage() {
     setEditingDeadlineId(null)
     setEditingDeadlineValue('')
     loadAdminData()
+  }
+
+  // Delete an entire exam session (and its marks)
+  const deleteSession = async (sessionId: string, sessionLabel: string) => {
+    const confirmMessage = `Are you sure you want to delete the exam session "${sessionLabel}"?\n\nThis will permanently delete this session AND all marks entered for it.\n\nThis action cannot be undone.`
+    if (!confirm(confirmMessage)) return
+
+    try {
+      setDeletingSessionId(sessionId)
+      const supabase = createClient()
+
+      // Delete marks tied to this session first
+      await supabase.from('marks').delete().eq('session_id', sessionId)
+
+      // Delete the session itself
+      const { error } = await supabase.from('sessions').delete().eq('id', sessionId)
+      if (error) {
+        alert(`Failed to delete session: ${error.message}`)
+        setDeletingSessionId(null)
+        return
+      }
+
+      // Log the action
+      if (currentSchool) {
+        await supabase.from('activity_logs').insert({
+          school_id: currentSchool.id,
+          action: 'session_deleted',
+          details: `Deleted exam session: ${sessionLabel}`,
+          performed_by: 'Admin Portal',
+        })
+      }
+
+      setDeadlines(deadlines.filter(d => d.id !== sessionId))
+      setDeletingSessionId(null)
+    } catch (err) {
+      alert(`An error occurred: ${err instanceof Error ? err.message : String(err)}`)
+      setDeletingSessionId(null)
+    }
   }
 
   // Update school settings
@@ -1445,6 +1532,21 @@ export default function AdminPortalPage() {
                                       >
                                         <Calendar className="w-3 h-3 md:w-4 md:h-4 md:mr-1" /><span className="hidden md:inline">Deadline</span>
                                       </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => deleteSession(d.id, `${d.class_name || 'Unknown'} - ${d.exam_type || ''} ${d.term} ${d.year}`)}
+                                        disabled={deletingSessionId === d.id}
+                                        className="whitespace-nowrap text-xs md:text-sm px-2 md:px-3 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
+                                        title="Delete session"
+                                      >
+                                        {deletingSessionId === d.id ? (
+                                          <span className="w-3 h-3 md:w-4 md:h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin md:mr-1" />
+                                        ) : (
+                                          <Trash2 className="w-3 h-3 md:w-4 md:h-4 md:mr-1" />
+                                        )}
+                                        <span className="hidden md:inline">Delete</span>
+                                      </Button>
                                     </>
                                   )}
                                 </div>
@@ -1869,82 +1971,138 @@ export default function AdminPortalPage() {
                     <ClipboardList className="w-5 h-5" />
                     Manage Exam Types
                   </CardTitle>
-                  <CardDescription>Add custom exam types like CAT, Weekly Test, etc.</CardDescription>
+                  <CardDescription>Add custom exam types like CAT, Weekly Test, etc. Choose which classes each exam type is available for.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-4 gap-2 mb-4">
+                  {/* Add new exam type */}
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-3">
                     <div>
                       <Label className="text-xs">Exam Type Name</Label>
-                      <Input
-                        placeholder="e.g., CAT 1, Weekly Test"
-                        value={newExamType}
-                        onChange={(e) => setNewExamType(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && addExamType()}
-                        className="text-sm"
-                      />
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="e.g., CAT 1, Weekly Test, JSS End Term"
+                          value={newExamType}
+                          onChange={(e) => setNewExamType(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && addExamType()}
+                          className="text-sm"
+                        />
+                        <Button onClick={addExamType} disabled={!newExamType.trim()} className="whitespace-nowrap">
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add
+                        </Button>
+                      </div>
                     </div>
                     <div>
-                      <Label className="text-xs">Year</Label>
-                      <select
-                        value={newExamTypeYear}
-                        onChange={(e) => setNewExamTypeYear(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                      >
-                        {[2024, 2025, 2026, 2027, 2028].map(year => (
-                          <option key={year} value={year}>{year}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <Label className="text-xs">Term</Label>
-                      <select
-                        value={newExamTypeTerm}
-                        onChange={(e) => setNewExamTypeTerm(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                      >
-                        <option value="Term 1">Term 1</option>
-                        <option value="Term 2">Term 2</option>
-                        <option value="Term 3">Term 3</option>
-                      </select>
-                    </div>
-                    <div className="flex items-end">
-                      <Button onClick={addExamType} disabled={!newExamType.trim()} className="w-full">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add
-                      </Button>
+                      <Label className="text-xs">Available for classes</Label>
+                      <p className="text-xs text-gray-500 mb-2">
+                        Leave all unchecked to make this exam type available to <strong>all classes</strong>. Otherwise, tick only the classes that should see it (e.g. tick Grade 7-9 for a JSS-only exam).
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {classes.map((cls) => {
+                          const checked = newExamTypeClasses.includes(cls.id)
+                          return (
+                            <button
+                              key={cls.id}
+                              type="button"
+                              onClick={() => setNewExamTypeClasses(checked ? newExamTypeClasses.filter(id => id !== cls.id) : [...newExamTypeClasses, cls.id])}
+                              className={`px-3 py-1 rounded-full text-xs border transition-colors ${checked ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'}`}
+                            >
+                              {cls.name}
+                            </button>
+                          )
+                        })}
+                      </div>
+                      {newExamTypeClasses.length === 0 && (
+                        <p className="text-xs text-blue-700 mt-2">Currently available to: <strong>All classes</strong></p>
+                      )}
                     </div>
                   </div>
 
+                  {/* Existing exam types */}
                   <div className="space-y-2">
-                    <div className="grid grid-cols-5 gap-2 p-3 bg-gray-100 rounded-lg font-semibold text-sm">
-                      <span>Exam Type</span>
-                      <span>Year</span>
-                      <span>Term</span>
-                      <span></span>
-                      <span></span>
+                    <div className="grid grid-cols-12 gap-2 p-3 bg-gray-100 rounded-lg font-semibold text-sm">
+                      <span className="col-span-4">Exam Type</span>
+                      <span className="col-span-6">Available For</span>
+                      <span className="col-span-2 text-right">Actions</span>
                     </div>
-                    {examTypes.map(e => (
-                      <div key={e.id} className="grid grid-cols-5 gap-2 p-3 bg-gray-50 rounded-lg items-center text-sm">
-                        <span className="font-medium">{e.name}</span>
-                        <span className="text-gray-600">{e.year || '-'}</span>
-                        <span className="text-gray-600">{e.term || '-'}</span>
-                        <span></span>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => deleteExamType(e.id)}
-                          disabled={deletingExamTypeId === e.id}
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Delete exam type"
-                        >
-                          {deletingExamTypeId === e.id ? (
-                            <span className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+                    {examTypes.map(e => {
+                      const allowed: string[] = Array.isArray((e as any).allowed_class_ids) ? (e as any).allowed_class_ids : []
+                      const isEditing = editingExamTypeId === e.id
+                      return (
+                        <div key={e.id} className="p-3 bg-gray-50 rounded-lg text-sm">
+                          {isEditing ? (
+                            <div className="space-y-3">
+                              <Input
+                                value={editingExamTypeName}
+                                onChange={(ev) => setEditingExamTypeName(ev.target.value)}
+                                className="text-sm"
+                                placeholder="Exam type name"
+                              />
+                              <div>
+                                <p className="text-xs text-gray-500 mb-2">Tick classes this exam type applies to (none = all classes):</p>
+                                <div className="flex flex-wrap gap-2">
+                                  {classes.map((cls) => {
+                                    const checked = editingExamTypeClasses.includes(cls.id)
+                                    return (
+                                      <button
+                                        key={cls.id}
+                                        type="button"
+                                        onClick={() => setEditingExamTypeClasses(checked ? editingExamTypeClasses.filter(id => id !== cls.id) : [...editingExamTypeClasses, cls.id])}
+                                        className={`px-3 py-1 rounded-full text-xs border transition-colors ${checked ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'}`}
+                                      >
+                                        {cls.name}
+                                      </button>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button size="sm" onClick={() => saveEditExamType(e.id)} disabled={savingExamTypeEdit} className="bg-green-600 hover:bg-green-700">
+                                  <Save className="w-4 h-4 mr-1" /> Save
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={cancelEditExamType} disabled={savingExamTypeEdit}>
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
                           ) : (
-                            <Trash2 className="w-4 h-4" />
+                            <div className="grid grid-cols-12 gap-2 items-center">
+                              <span className="col-span-4 font-medium">{e.name}</span>
+                              <span className="col-span-6 text-gray-600 text-xs">
+                                {allowed.length === 0
+                                  ? 'All classes'
+                                  : allowed.map(id => classes.find(c => c.id === id)?.name).filter(Boolean).join(', ') || 'All classes'}
+                              </span>
+                              <div className="col-span-2 flex justify-end gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => startEditExamType(e)}
+                                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                  title="Edit exam type"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => deleteExamType(e.id)}
+                                  disabled={deletingExamTypeId === e.id}
+                                  className="text-red-500 hover:text-red-700 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  title="Delete exam type"
+                                >
+                                  {deletingExamTypeId === e.id ? (
+                                    <span className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+                                  ) : (
+                                    <Trash2 className="w-4 h-4" />
+                                  )}
+                                </Button>
+                              </div>
+                            </div>
                           )}
-                        </Button>
-                      </div>
-                    ))}
+                        </div>
+                      )
+                    })}
                   </div>
                 </CardContent>
               </Card>

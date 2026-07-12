@@ -101,7 +101,11 @@ const { currentSchool } = useSchool();
   const [isEditExamDialogOpen, setIsEditExamDialogOpen] = useState(false);
   const [editingExamType, setEditingExamType] = useState<ExamType | null>(null);
   const [editExamName, setEditExamName] = useState("");
+  const [editExamClasses, setEditExamClasses] = useState<string[]>([]);
   const [editExamLoading, setEditExamLoading] = useState(false);
+
+  // Session deletion
+  const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     const supabase = createClient();
@@ -272,7 +276,10 @@ const { currentSchool } = useSchool();
     
     const { error } = await supabase
       .from("exam_types")
-      .update({ name: editExamName.trim() })
+      .update({
+        name: editExamName.trim(),
+        allowed_class_ids: editExamClasses.length > 0 ? editExamClasses : null,
+      })
       .eq("id", editingExamType.id);
 
     if (!error) {
@@ -280,19 +287,52 @@ const { currentSchool } = useSchool();
       await supabase.from("activity_logs").insert({
         school_id: currentSchool?.id,
         action: "exam_type_renamed",
-        details: `Renamed exam type from "${editingExamType.name}" to "${editExamName.trim()}"`,
+        details: `Updated exam type "${editExamName.trim()}" (classes: ${editExamClasses.length === 0 ? 'all' : editExamClasses.length})`,
         performed_by: "Admin",
       });
 
       setIsEditExamDialogOpen(false);
       setEditingExamType(null);
       setEditExamName("");
+      setEditExamClasses([]);
       fetchData();
     } else {
-      alert("Failed to update exam type name");
+      alert("Failed to update exam type: " + error.message);
     }
     
     setEditExamLoading(false);
+  };
+
+  // Delete an entire exam session (and its marks)
+  const handleDeleteSession = async (session: SessionWithDetails) => {
+    const label = `${session.classes?.name || 'Unknown'} - ${session.exam_types?.name || ''} ${session.term} ${session.year}`;
+    if (!confirm(`Are you sure you want to delete the exam session "${label}"?\n\nThis will permanently delete this session AND all marks entered for it.\n\nThis action cannot be undone.`)) {
+      return;
+    }
+
+    setDeletingSessionId(session.id);
+    const supabase = createClient();
+
+    // Delete marks tied to this session first
+    await supabase.from("marks").delete().eq("session_id", session.id);
+
+    const { error } = await supabase.from("sessions").delete().eq("id", session.id);
+    if (error) {
+      alert("Failed to delete session: " + error.message);
+      setDeletingSessionId(null);
+      return;
+    }
+
+    await supabase.from("activity_logs").insert({
+      school_id: currentSchool?.id,
+      class_id: session.class_id,
+      action: "session_deleted",
+      details: `Deleted exam session: ${label}`,
+      performed_by: "Admin",
+    });
+
+    setDeletingSessionId(null);
+    fetchData();
   };
 
   const getSessionStatus = (session: SessionWithDetails) => {
@@ -423,6 +463,7 @@ const { currentSchool } = useSchool();
                                 onClick={() => {
                                   setEditingExamType(session.exam_types!);
                                   setEditExamName(session.exam_types!.name);
+                                  setEditExamClasses(Array.isArray((session.exam_types as any).allowed_class_ids) ? (session.exam_types as any).allowed_class_ids : []);
                                   setIsEditExamDialogOpen(true);
                                 }}
                               >
@@ -473,6 +514,22 @@ const { currentSchool } = useSchool();
                               >
                                 <Calendar className="w-4 h-4 mr-1" />
                                 Deadline
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="min-w-max bg-transparent text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                                variant="outline"
+                                onClick={() => handleDeleteSession(session)}
+                                disabled={deletingSessionId === session.id}
+                              >
+                                {deletingSessionId === session.id ? (
+                                  <>
+                                    <div className="w-3 h-3 mr-1 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                    Deleting...
+                                  </>
+                                ) : (
+                                  <><Trash2 className="w-4 h-4 mr-1" />Delete</>
+                                )}
                               </Button>
                             </div>
                           </TableCell>
