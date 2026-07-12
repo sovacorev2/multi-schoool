@@ -30,8 +30,10 @@ interface LearnerReportData {
   }[]
   overallAverage: number | null
   totalPoints: number | null
-  classRank: number          // overall rank across all chosen sessions
+  classRank: number          // overall rank within the class
   totalInClass: number
+  crossStreamRank: number    // overall rank across all streams of the same level
+  totalInLevel: number       // total learners in all streams of the same level
   examRanks: Record<string, number | null>  // sessionId -> rank in that exam
   strengthSubjects: string[]
   prioritySubjects: string[]
@@ -153,7 +155,16 @@ export function GeneralReport({
     setIsGenerating(true)
 
     try {
-      // Fetch all marks for chosen sessions
+      // Fetch all learners from sibling classes (same level, different streams) for cross-stream ranking
+      const gradeLevel = currentClass.name.replace(/\s*(?:EAST|WEST|CENTRAL|NORTH|SOUTH)?\s*$/i, '').trim()
+      const { data: siblingClasses } = await supabase
+        .from('classes')
+        .select('id')
+        .eq('school_id', currentSchool.id)
+        .ilike('name', `%${gradeLevel}%`)
+      const siblingClassIds = siblingClasses?.map(c => c.id) ?? []
+
+      // Fetch all marks for chosen sessions across sibling classes
       const allMarks: Array<{ learner_id: string; subject_id: string; score: number; session_id: string }> = []
       for (const session of chosenSessions) {
         const { data } = await supabase
@@ -163,6 +174,16 @@ export function GeneralReport({
         if (data) {
           allMarks.push(...data.map(m => ({ ...m, session_id: session.id })))
         }
+      }
+
+      // Fetch all learners in sibling classes for cross-stream ranking
+      let allLearnersInLevel: any[] = []
+      if (siblingClassIds.length > 0) {
+        const { data: levelLearners } = await supabase
+          .from('learners')
+          .select('id, class_id')
+          .in('class_id', siblingClassIds)
+        allLearnersInLevel = levelLearners ?? []
       }
 
       // Build per-learner data
@@ -235,6 +256,8 @@ export function GeneralReport({
           autoComment,
           classRank: 0,
           totalInClass: learners.length,
+          crossStreamRank: 0,
+          totalInLevel: allLearnersInLevel.length,
           examRanks: {},
         }
       })
@@ -244,6 +267,31 @@ export function GeneralReport({
         .filter(l => l.overallAverage !== null)
         .sort((a, b) => (b.overallAverage ?? 0) - (a.overallAverage ?? 0))
       ranked.forEach((l, idx) => { l.classRank = idx + 1 })
+
+      // Calculate cross-stream rank if multiple streams exist
+      if (allLearnersInLevel.length > learners.length) {
+        // Fetch marks for all learners in the level to compute their averages
+        const levelLearnersAverages: Array<{ learnerId: string; avg: number | null }> = []
+        for (const levelLearner of allLearnersInLevel) {
+          const levelLearnerMarks = allMarks.filter(m => m.learner_id === levelLearner.id)
+          if (levelLearnerMarks.length > 0) {
+            const scores = levelLearnerMarks.map(m => m.score)
+            const avg = scores.reduce((a, b) => a + b, 0) / scores.length
+            levelLearnersAverages.push({ learnerId: levelLearner.id, avg })
+          }
+        }
+
+        // Rank learners across all streams by their average
+        const crossStreamRanked = levelLearnersAverages
+          .filter(la => la.avg !== null)
+          .sort((a, b) => (b.avg ?? 0) - (a.avg ?? 0))
+        
+        // Assign cross-stream ranks to our learners
+        learnersData.forEach(ld => {
+          const idx = crossStreamRanked.findIndex(csr => csr.learnerId === ld.learner.id)
+          ld.crossStreamRank = idx >= 0 ? idx + 1 : 0
+        })
+      }
 
       // Calculate per-exam ranks: for each session, rank learners by their
       // average score across all subjects in that session
@@ -477,7 +525,7 @@ function generateReportHTML(
 
   // Build individual pages
   const pages = learnersData.map(ld => {
-    const { learner, subjectMarks, overallAverage, classRank, totalInClass, examRanks, strengthSubjects, prioritySubjects, autoComment } = ld
+    const { learner, subjectMarks, overallAverage, classRank, totalInClass, crossStreamRank, totalInLevel, examRanks, strengthSubjects, prioritySubjects, autoComment } = ld
     const overallPoints = calcOverallPoints(overallAverage, currentClass.name, school?.name || '')
     const trendPoints = chosenSessions.map(s => {
       const sessionScores = subjectMarks.flatMap(sm => {
@@ -626,55 +674,76 @@ function generateReportHTML(
         </div>
       </div>
 
-      <!-- ACADEMIC PERFORMANCE SUMMARY — full width -->
-      <div style="border:1.5px solid #1e3a5f;border-radius:5px;display:flex;flex-direction:column;overflow:visible;flex-shrink:0;margin-bottom:6px;">
-        <div style="background:#1e3a5f;color:#fff;font-size:10px;font-weight:700;padding:5px 10px;letter-spacing:0.5px;flex-shrink:0;border-radius:3px 3px 0 0;">ACADEMIC PERFORMANCE SUMMARY</div>
-        <table style="width:100%;border-collapse:collapse;">
-          <thead>
-            <tr>
-              <th style="border:1px solid #d1d5db;padding:5px 7px;background:#e5e7eb;color:#1f2937;font-size:10px;text-align:left;">LEARNING AREA</th>
-              ${examHeaderCells}
-              <th style="border:1px solid #d1d5db;padding:5px 7px;background:#e5e7eb;color:#1f2937;font-size:10px;text-align:center;">AVG</th>
-              <th style="border:1px solid #d1d5db;padding:5px 7px;background:#e5e7eb;color:#1f2937;font-size:10px;text-align:center;">POINTS</th>
-              <th style="border:1px solid #d1d5db;padding:5px 7px;background:#e5e7eb;color:#1f2937;font-size:10px;text-align:center;">RUBRIC</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${subjectRows}
-            <tr style="background:#fef9c3;">
-              <td style="border:1px solid #d1d5db;padding:5px 7px;font-size:11px;font-weight:700;">OVERALL AVERAGE</td>
-              ${overallExamCells}
-              <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-size:11px;font-weight:700;">${overallAverage !== null ? overallAverage.toFixed(1) : '-'}</td>
-              <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-size:11px;font-weight:700;color:#15803d;">${overallPoints}</td>
-              <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;">
-                ${overallGrade ? `<span style="background:${overallBadgeColor};color:#fff;border-radius:3px;padding:2px 6px;font-size:10px;font-weight:700;">${overallGrade.level}</span>` : '-'}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <!-- ACADEMIC PERFORMANCE SUMMARY + TREND — natural height so table (incl. position row) is never squeezed -->
+      <div style="display:grid;grid-template-columns:1.8fr 1fr;gap:8px;margin-bottom:6px;flex-shrink:0;">
 
-      <!-- BEST EXAM + POSITIONS INFO BOXES -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:6px;flex-shrink:0;">
-        <!-- BEST EXAM -->
-        <div style="border:1.5px solid #16a34a;border-radius:5px;background:#f0fdf4;padding:10px;">
-          <div style="font-size:9px;color:#15803d;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">BEST EXAM</div>
-          <div style="font-size:14px;font-weight:800;color:#15803d;margin-bottom:2px;">${bestExamName}</div>
-          <div style="font-size:12px;color:#15803d;font-weight:700;">${bestExamScore}%</div>
+        <!-- ACADEMIC PERFORMANCE TABLE -->
+        <div style="border:1.5px solid #1e3a5f;border-radius:5px;display:flex;flex-direction:column;overflow:visible;">
+          <div style="background:#1e3a5f;color:#fff;font-size:10px;font-weight:700;padding:5px 10px;letter-spacing:0.5px;flex-shrink:0;border-radius:3px 3px 0 0;">ACADEMIC PERFORMANCE SUMMARY</div>
+          <table style="width:100%;border-collapse:collapse;">
+            <thead>
+              <tr>
+                <th style="border:1px solid #d1d5db;padding:5px 7px;background:#e5e7eb;color:#1f2937;font-size:10px;text-align:left;">LEARNING AREA</th>
+                ${examHeaderCells}
+                <th style="border:1px solid #d1d5db;padding:5px 7px;background:#e5e7eb;color:#1f2937;font-size:10px;text-align:center;">AVG</th>
+                <th style="border:1px solid #d1d5db;padding:5px 7px;background:#e5e7eb;color:#1f2937;font-size:10px;text-align:center;">POINTS</th>
+                <th style="border:1px solid #d1d5db;padding:5px 7px;background:#e5e7eb;color:#1f2937;font-size:10px;text-align:center;">RUBRIC</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${subjectRows}
+              <tr style="background:#fef9c3;">
+                <td style="border:1px solid #d1d5db;padding:5px 7px;font-size:11px;font-weight:700;">OVERALL AVERAGE</td>
+                ${overallExamCells}
+                <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-size:11px;font-weight:700;">${overallAverage !== null ? overallAverage.toFixed(1) : '-'}</td>
+                <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-size:11px;font-weight:700;color:#15803d;">${overallPoints}</td>
+                <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;">
+                  ${overallGrade ? `<span style="background:${overallBadgeColor};color:#fff;border-radius:3px;padding:2px 6px;font-size:10px;font-weight:700;">${overallGrade.level}</span>` : '-'}
+                </td>
+              </tr>
+              <tr style="background:#dbeafe;">
+                <td style="border:1.5px solid #93c5fd;padding:5px 7px;font-size:10px;font-weight:800;color:#1e40af;white-space:nowrap;">CLASS POSITION</td>
+                ${chosenSessions.map(s => {
+                  const rank = examRanks[s.id]
+                  return `<td style="border:1.5px solid #93c5fd;padding:5px 7px;text-align:center;font-size:11px;font-weight:800;color:#1e40af;">${rank != null ? `${rank}<span style="font-size:9px;font-weight:600;color:#3b82f6"> /${totalInClass}</span>` : '—'}</td>`
+                }).join('')}
+                <td colspan="2" style="border:1.5px solid #93c5fd;padding:5px 7px;text-align:center;font-size:11px;font-weight:800;color:#1e40af;">${totalInLevel > totalInClass && crossStreamRank > 0 ? `${crossStreamRank}<span style="font-size:9px;font-weight:600;color:#3b82f6"> /${totalInLevel}</span>` : (classRank > 0 ? `${classRank}<span style="font-size:9px;font-weight:600;color:#3b82f6"> /${totalInClass}</span>` : '—')}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-        
-        <!-- AVERAGE POINTS -->
-        <div style="border:1.5px solid #2563eb;border-radius:5px;background:#eff6ff;padding:10px;">
-          <div style="font-size:9px;color:#1e40af;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">AVERAGE POINTS</div>
-          <div style="font-size:16px;font-weight:800;color:#1e40af;">${overallPoints}</div>
-          <div style="font-size:10px;color:#3b82f6;font-weight:600;">Across all exams</div>
-        </div>
-        
-        <!-- CLASS POSITION -->
-        <div style="border:1.5px solid #dc2626;border-radius:5px;background:#fef2f2;padding:10px;">
-          <div style="font-size:9px;color:#7f1d1d;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">POSITION</div>
-          <div style="font-size:16px;font-weight:800;color:#dc2626;">${classRank > 0 ? `${classRank}/${totalInClass}` : 'N/A'}</div>
-          <div style="font-size:10px;color:#991b1b;font-weight:600;">Class rank</div>
+
+        <!-- PERFORMANCE TREND + INFO BOXES -->
+        <div style="border:1.5px solid #1e3a5f;border-radius:5px;overflow:hidden;display:flex;flex-direction:column;">
+          <div style="background:#1e3a5f;color:#fff;font-size:10px;font-weight:700;padding:5px 10px;letter-spacing:0.5px;flex-shrink:0;">PERFORMANCE TREND</div>
+          <div style="padding:8px;text-align:center;flex:1;display:flex;flex-direction:column;justify-content:space-between;">
+            <div style="font-size:8.5px;color:#4b5563;font-weight:600;margin-bottom:4px;">Average Score (%)</div>
+            ${trendSVG(trendPoints)}
+            
+            <!-- INFO BOXES (replacing BEST circle) -->
+            <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
+              <!-- BEST EXAM -->
+              <div style="border:1px solid #16a34a;border-radius:3px;background:#f0fdf4;padding:6px;text-align:center;">
+                <div style="font-size:7px;color:#15803d;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;">BEST EXAM</div>
+                <div style="font-size:11px;font-weight:800;color:#15803d;margin-top:2px;">${bestExamName}</div>
+                <div style="font-size:10px;color:#15803d;font-weight:700;">${bestExamScore}%</div>
+              </div>
+              
+              <!-- AVERAGE POINTS -->
+              <div style="border:1px solid #2563eb;border-radius:3px;background:#eff6ff;padding:6px;text-align:center;">
+                <div style="font-size:7px;color:#1e40af;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;">AVG POINTS</div>
+                <div style="font-size:11px;font-weight:800;color:#1e40af;margin-top:2px;">${overallPoints}</div>
+                <div style="font-size:8px;color:#3b82f6;font-weight:600;">All exams</div>
+              </div>
+              
+              <!-- POSITION -->
+              <div style="border:1px solid #dc2626;border-radius:3px;background:#fef2f2;padding:6px;text-align:center;">
+                <div style="font-size:7px;color:#7f1d1d;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;">POSITION</div>
+                <div style="font-size:11px;font-weight:800;color:#dc2626;margin-top:2px;">${totalInLevel > totalInClass && crossStreamRank > 0 ? `${crossStreamRank}/${totalInLevel}` : (classRank > 0 ? `${classRank}/${totalInClass}` : 'N/A')}</div>
+                <div style="font-size:8px;color:#991b1b;font-weight:600;">${totalInLevel > totalInClass ? 'Level rank' : 'Class rank'}</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
