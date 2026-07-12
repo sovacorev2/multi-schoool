@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import React from "react"
-import { formatGradeWithPoints, getPerformanceLevelWithPoints, getGradeLevelByClass, getLevelByTotalPoints } from '@/lib/grading-utils'
+import { formatGradeWithPoints, getPerformanceLevelWithPoints, getGradeLevelByClass, getLevelByTotalPoints, getGradingScale } from '@/lib/grading-utils'
 import { getSubjectDisplay, normalizeSubjectName, areSubjectsEqual } from '@/lib/subject-utils'
 import { sortClassesByLevel } from '@/lib/class-sort-utils'
 
@@ -567,14 +567,20 @@ export default function MarklistPage() {
           ? Math.round((learnersWithMarks.filter(l => l.average >= 50).length / learnersWithMarks.length) * 100)
           : 0
 
-        // Rubric distribution
+        // Rubric distribution — use the school's actual grading scale (not hardcoded thresholds)
+        // so Kimaeti, Kolanya Girls and all other schools get correct EE/ME/AE/BE counts
+        const scale = getGradingScale(cls.name, currentSchool?.name)
+        const maxPts = scale[0].points
+        const midHighPts = scale[Math.floor(scale.length / 4)].points
+        const midLowPts = scale[Math.floor(scale.length / 2)].points
         let r4 = 0, r3 = 0, r2 = 0, r1 = 0
         clsMarks.forEach(m => {
-          const score = m.score || 0
-          if (score >= 80) r4++
-          else if (score >= 50) r3++
-          else if (score >= 30) r2++
-          else if (score > 0) r1++
+          const g = getGradeLevelByClass(m.score, cls.name, currentSchool?.name)
+          if (!g) return
+          if (g.points >= midHighPts) r4++
+          else if (g.points >= midLowPts) r3++
+          else if (g.points > 1) r2++
+          else r1++
         })
 
         const streamName = cls.name.replace(new RegExp(`^${baseClassName}\\s*`, 'i'), '').trim()
@@ -1471,7 +1477,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                 <td style="text-align:center">${s.previousMean}</td>
                 <td style="text-align:center">${s.currentMean}</td>
                 <td style="text-align:center ${s.change > 0 ? ';color:#00aa00' : s.change < 0 ? ';color:#dd0000' : ''}">${s.change > 0 ? '+' : ''}${s.change}</td>
-                <td style="text-align:center" class="${s.change > 0 ? 'trend-up' : s.change < 0 ? 'trend-down' : 'trend-neutral'}">${s.change > 0 ? '📈 Improved' : s.change < 0 ? '📉 Declined' : '— No Change'}</td>
+                <td style="text-align:center" class="${s.change > 0 ? 'trend-up' : s.change < 0 ? 'trend-down' : 'trend-neutral'}">${s.change > 0 ? '📈 Improved' : s.change < 0 ? '�� Declined' : '— No Change'}</td>
               </tr>
             `).join('')}
           </table>
@@ -1808,17 +1814,53 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                   
                   console.log('[v0] Class analysis - Words:', classWords, 'IsStreamed:', isStreamedClass)
                   
+                  // Helper: given a list of class IDs, fetch all sessions for this exam
+                  // (matched by exam_type_id + term + year) then fetch marks by session_id.
+                  // This is the CORRECT approach — marks are stored by session_id, not by
+                  // year/term/exam_type_id directly. Using year/term/exam_type_id returns 0 rows
+                  // for schools like Kimaeti and Kolanya Girls.
+                  const fetchMarksByGradeClassIds = async (classIds: string[]): Promise<Record<string, number>> => {
+                    if (!classIds.length || !selectedSession) return {}
+                    
+                    // Step 1: find sessions for these classes matching this exam
+                    const { data: gradeSessions } = await supabase
+                      .from('sessions')
+                      .select('id, class_id')
+                      .in('class_id', classIds)
+                      .eq('exam_type_id', selectedSession.exam_type_id)
+                      .eq('term', selectedSession.term)
+                      .eq('year', selectedSession.year)
+                    
+                    const gradeSessionIds = (gradeSessions || []).map(s => s.id)
+                    if (!gradeSessionIds.length) return {}
+                    
+                    // Step 2: fetch marks by session_id (correct & reliable for all schools)
+                    const { data: marks } = await supabase
+                      .from('marks')
+                      .select('learner_id, score, subject_id')
+                      .in('session_id', gradeSessionIds)
+                    
+                    // Step 3: accumulate total points per learner (using rubric points, not raw scores)
+                    // so ranking is consistent with the on-screen rank
+                    const learnerPoints: Record<string, number> = {}
+                    for (const m of (marks || [])) {
+                      if (m?.learner_id && m.score !== null && m.score !== undefined) {
+                        if (!learnerPoints[m.learner_id]) learnerPoints[m.learner_id] = 0
+                        const gradeInfo = getGradeLevelByClass(Number(m.score), currentClass?.name, currentSchool?.name)
+                        learnerPoints[m.learner_id] += gradeInfo?.points ?? 0
+                      }
+                    }
+                    return learnerPoints
+                  }
+
                   // STEP 1: For streamed classes, calculate overall rank across all streams
                   if (isStreamedClass && selectedSessionId && currentSchool) {
-                    console.log('[v0] ✓ Processing STREAMED class')
-                    
                     try {
-                      const supabase = createClient()
-                      const gradeLevel = classWords.slice(0, -1).join(' ') // e.g., "Grade 7"
+                      // Extract grade level: everything except the last word (stream name)
+                      // e.g. "Grade 7 EAST" → "Grade 7", "Grade 3 GREEN" → "Grade 3"
+                      const gradeLevel = classWords.slice(0, -1).join(' ')
                       
-                      console.log('[v0] Grade level extracted:', gradeLevel)
-                      
-                      // Get all stream classes for this grade
+                      // Get all stream classes for this grade (any class starting with grade level)
                       const { data: allStreamClasses, error: streamError } = await supabase
                         .from('classes')
                         .select('id, name')
@@ -1827,180 +1869,84 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                       
                       if (streamError) throw streamError
                       
-                      console.log('[v0] All matching classes for grade:', allStreamClasses?.map(c => ({ name: c.name, id: c.id })))
-                      
-                      // Filter to only actual streams (3+ words)
-                      const streamClassIds = (allStreamClasses || [])
-                        .filter(c => {
-                          const words = c.name.trim().split(/\s+/)
-                          const isStream = words.length > 2
-                          console.log('[v0]   - Class:', c.name, 'Words:', words.length, 'IsStream:', isStream)
-                          return isStream
-                        })
-                        .map(c => c.id)
-                      
-                      console.log('[v0] Stream class IDs to use:', streamClassIds)
+                      // Include all classes that start with this grade level (they ARE streams)
+                      const streamClassIds = (allStreamClasses || []).map(c => c.id)
                       
                       if (streamClassIds.length > 0) {
-                        try {
-                          // Get ALL learners across all streams
-                          const { data: allLearners, error: learnersError } = await supabase
-                            .from('learners')
-                            .select('id, name, class_id')
-                            .in('class_id', streamClassIds)
+                        // Get ALL learners across all streams
+                        const { data: allLearners } = await supabase
+                          .from('learners')
+                          .select('id, class_id')
+                          .in('class_id', streamClassIds)
+                        
+                        const allLearnerIds = (allLearners || []).map(l => l.id)
+                        
+                        if (allLearnerIds.length > 0) {
+                          // Fetch marks by session_id (not year/term/exam_type_id)
+                          const learnerPoints = await fetchMarksByGradeClassIds(streamClassIds)
                           
-                          if (learnersError) throw learnersError
+                          // Rank by total rubric points (same basis as on-screen stream rank)
+                          const rankedLearners = Object.entries(learnerPoints)
+                            .sort(([, a], [, b]) => b - a)
+                            .map(([id, pts], index) => ({ id, pts, rank: index + 1 }))
                           
-                          console.log('[v0] All learners in streams:', allLearners?.length, 'Sample:', allLearners?.slice(0, 3).map(l => ({ name: l.name, class_id: l.class_id })))
-                          
-                          const allLearnerIds = (allLearners || []).map(l => l.id)
-                          
-                          if (allLearnerIds.length > 0) {
-                            // Get marks for all learners for this exam
-                            const { data: allMarks, error: marksError } = await supabase
-                              .from('marks')
-                              .select('learner_id, score')
-                              .in('learner_id', allLearnerIds)
-                              .eq('year', selectedSession?.year)
-                              .eq('term', selectedSession?.term)
-                              .eq('exam_type_id', selectedSession?.exam_type_id)
-                            
-                            if (marksError) throw marksError
-                            
-                            console.log('[v0] Marks fetched:', allMarks?.length, 'Type:', typeof allMarks, 'IsArray:', Array.isArray(allMarks), 'First 5:', allMarks?.slice(0, 5))
-                            
-                            if (!Array.isArray(allMarks)) {
-                              console.log('[v0] ✗ allMarks is not an array:', allMarks)
-                              throw new Error('allMarks is not an array')
+                          finalResults = results.map(r => {
+                            const ranked = rankedLearners.find(rl => rl.id === r.learner.id)
+                            return {
+                              ...r,
+                              overall_rank: ranked?.rank ?? r.rank,
+                              total_in_grade: allLearnerIds.length,
                             }
-                            
-                            // Calculate totals per learner
-                            const learnerTotals: Record<string, number> = {}
-                            
-                            for (let i = 0; i < allMarks.length; i++) {
-                              const m = allMarks[i]
-                              try {
-                                if (m && m.learner_id && m.score !== undefined) {
-                                  if (!learnerTotals[m.learner_id]) learnerTotals[m.learner_id] = 0
-                                  if (m.score !== null) learnerTotals[m.learner_id] += Number(m.score) || 0
-                                }
-                              } catch (markErr) {
-                                console.error('[v0] Error processing mark at index', i, ':', m, 'Error:', markErr)
-                              }
-                            }
-                            
-                            console.log('[v0] Learner totals calculated:', Object.keys(learnerTotals).length, 'Sample:', Object.entries(learnerTotals).slice(0, 5))
-                            
-                            // Create ranked list
-                            const rankedLearners = Object.entries(learnerTotals)
-                              .sort(([, a], [, b]) => (b as any) - (a as any))
-                              .map(([id, total], index) => ({ id, total, rank: index + 1 }))
-                            
-                            console.log('[v0] Top 5 ranked learners:', rankedLearners.slice(0, 5))
-                            
-                            // Update results with overall rank and total
-                            finalResults = results.map((r, idx) => {
-                              const ranked = rankedLearners.find(rl => rl.id === r.learner.id)
-                              const updated = {
-                                ...r,
-                                overall_rank: ranked?.rank || r.rank,
-                                total_in_grade: allLearnerIds.length
-                              }
-                              if (idx < 3) {
-                                console.log('[v0] Result', idx, ':', r.learner.name, '-> StreamRank:', r.rank, 'OverallRank:', updated.overall_rank, 'TotalInGrade:', updated.total_in_grade, 'Found:', !!ranked)
-                              }
-                              return updated
-                            })
-                          } else {
-                            console.log('[v0] ⚠ No learners found in streams')
-                          }
-                        } catch (innerErr) {
-                          console.error('[v0] ✗ Inner streamed class error:', innerErr)
+                          })
                         }
-                      } else {
-                        console.log('[v0] ⚠ No stream classes found (all classes have ≤2 words)')
                       }
                     } catch (err) {
-                      console.error('[v0] ✗ Overall rank error:', err)
+                      console.error('[v0] Overall rank (streamed) error:', err)
                     }
                   } else {
-                    console.log('[v0] ✓ Processing NON-STREAMED class')
                     // For non-streamed classes, rank across ALL classes in the same grade
                     try {
-                      const gradeName = currentClass?.name?.match(/^(Grade|PP)\s*\d+/i)?.[0] || currentClass?.name
-                      console.log('[v0] Non-streamed: extracting grade level:', gradeName, 'from class:', currentClass?.name)
+                      // Extract grade prefix: "Grade 7", "Grade 3", "PP1", "PP2" etc.
+                      // Works for all naming conventions including Kolanya Girls
+                      const gradePrefix = currentClass?.name?.match(/^(PP\s*\d+|Grade\s+\d+)/i)?.[0] || currentClass?.name
                       
-                      // Get all classes that match this grade (may have multiple single-stream classes)
                       const { data: gradeClasses } = await supabase
                         .from('classes')
                         .select('id, name')
                         .eq('school_id', currentSchool?.id)
-                        .ilike('name', `${gradeName}%`)
+                        .ilike('name', `${gradePrefix}%`)
                       
                       if (gradeClasses && gradeClasses.length > 0) {
                         const gradeClassIds = gradeClasses.map(c => c.id)
-                        console.log('[v0] Found', gradeClassIds.length, 'classes for grade:', gradeClasses.map(c => c.name))
                         
-                        // Get all learners in this grade
                         const { data: gradeLearners } = await supabase
                           .from('learners')
                           .select('id')
                           .in('class_id', gradeClassIds)
                         
                         const gradeLearnerIds = (gradeLearners || []).map(l => l.id)
-                        console.log('[v0] Total learners in grade:', gradeLearnerIds.length)
                         
                         if (gradeLearnerIds.length > 0) {
-                          // Get marks for all grade learners
-                          const { data: gradeMarks } = await supabase
-                            .from('marks')
-                            .select('learner_id, score')
-                            .in('learner_id', gradeLearnerIds)
-                            .eq('year', selectedSession?.year)
-                            .eq('term', selectedSession?.term)
-                            .eq('exam_type_id', selectedSession?.exam_type_id)
+                          // Fetch marks by session_id (not year/term/exam_type_id)
+                          const learnerPoints = await fetchMarksByGradeClassIds(gradeClassIds)
                           
-                          // Calculate totals per learner
-                          const learnerTotals: Record<string, number> = {}
-                          for (const m of (gradeMarks || [])) {
-                            if (m?.learner_id && m.score !== undefined) {
-                              if (!learnerTotals[m.learner_id]) learnerTotals[m.learner_id] = 0
-                              learnerTotals[m.learner_id] += Number(m.score) || 0
-                            }
-                          }
+                          const rankedGradeLearners = Object.entries(learnerPoints)
+                            .sort(([, a], [, b]) => b - a)
+                            .map(([id, pts], index) => ({ id, pts, rank: index + 1 }))
                           
-                          // Create ranked list for grade
-                          const rankedGradeLearners = Object.entries(learnerTotals)
-                            .sort(([, a], [, b]) => (b as any) - (a as any))
-                            .map(([id, total], index) => ({ id, total, rank: index + 1 }))
-                          
-                          console.log('[v0] Non-streamed: ranked learners in grade:', rankedGradeLearners.length, 'Top 3:', rankedGradeLearners.slice(0, 3))
-                          
-                          // Update results with grade-level ranking
-                          finalResults = results.map((r, idx) => {
+                          finalResults = results.map(r => {
                             const ranked = rankedGradeLearners.find(rl => rl.id === r.learner.id)
                             return {
                               ...r,
-                              overall_rank: ranked?.rank || r.rank,
-                              total_in_grade: gradeLearnerIds.length
+                              overall_rank: ranked?.rank ?? r.rank,
+                              total_in_grade: gradeLearnerIds.length,
                             }
                           })
-                          console.log('[v0] Non-streamed: updated results with grade ranks')
                         } else {
-                          // Fallback: use class ranking only
-                          finalResults = results.map(r => ({
-                            ...r,
-                            overall_rank: r.rank,
-                            total_in_grade: results.length
-                          }))
+                          finalResults = results.map(r => ({ ...r, overall_rank: r.rank, total_in_grade: results.length }))
                         }
                       } else {
-                        // Fallback: use class ranking only
-                        finalResults = results.map(r => ({
-                          ...r,
-                          overall_rank: r.rank,
-                          total_in_grade: results.length
-                        }))
+                        finalResults = results.map(r => ({ ...r, overall_rank: r.rank, total_in_grade: results.length }))
                       }
                     } catch (gradeRankErr) {
                       console.error('[v0] Non-streamed grade ranking error:', gradeRankErr)
@@ -3513,7 +3459,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                               <tr style="background: ${idx === 0 ? '#dcfce7' : idx % 2 === 0 ? '#fff' : '#f9fafb'};">
                                 <td style="border: 1px solid #333; padding: 6px; text-align: center; font-weight: bold;">${idx + 1}</td>
                                 <td style="border: 1px solid #333; padding: 6px; font-weight: ${idx === 0 ? 'bold' : 'normal'};">${stream.className || '-'}</td>
-                                <td style="border: 1px solid #333; padding: 6px; text-align: center;">${stream.learnerCount || '-'}</td>
+                                <td style="border: 1px solid #333; padding: 6px; text-align: center;">${stream.totalLearners ?? '-'}</td>
                                 <td style="border: 1px solid #333; padding: 6px; text-align: center; font-weight: bold;">${stream.classAvg ? stream.classAvg.toFixed(1) : '-'}</td>
                                 <td style="border: 1px solid #333; padding: 6px; text-align: center;">${typeof stream.passRate === 'number' ? stream.passRate.toFixed(0) + '%' : (stream.passRate ? stream.passRate + '%' : '-')}</td>
                                 <td style="border: 1px solid #333; padding: 6px;">${stream.topPerformer || '-'}</td>
