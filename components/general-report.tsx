@@ -135,11 +135,14 @@ export function GeneralReport({
   }, [availableExamSessions.length, selectedYear, selectedTerm])
 
   function toggleSession(sessionId: string) {
-    setSelectedSessionIds(prev =>
-      prev.includes(sessionId)
-        ? prev.filter(id => id !== sessionId)
-        : [...prev, sessionId]
-    )
+    setSelectedSessionIds(prev => {
+      if (prev.includes(sessionId)) {
+        return prev.filter(id => id !== sessionId)
+      }
+      // Only allow max 3 exams
+      if (prev.length >= 3) return prev
+      return [...prev, sessionId]
+    })
   }
 
   // Derive selected sessions (in order)
@@ -487,9 +490,10 @@ function generateReportHTML(
     const bestExamName = bestExamIdx >= 0 ? (chosenSessions[bestExamIdx]?.exam_types?.name || `Exam ${bestExamIdx + 1}`) : '-'
     const bestExamScore = bestExamIdx >= 0 && trendPoints[bestExamIdx] !== null ? (trendPoints[bestExamIdx] as number).toFixed(1) : '-'
 
-    // Subject rows — comfortable padding
+    // Subject rows — comfortable padding with points
     const subjectRows = subjectMarks.map(sm => {
       const avgGrade = getRubricLabel(sm.average, currentClass.name, school?.name || '')
+      const subjectPoints = avgGrade ? avgGrade.points.toFixed(1) : '-'
       const examCells = chosenSessions.map(s => {
         const v = sm.marksByExam[s.id]
         return `<td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-size:11px;">${v !== null && v !== undefined ? v : '-'}</td>`
@@ -499,6 +503,7 @@ function generateReportHTML(
         <td style="border:1px solid #d1d5db;padding:5px 7px;font-size:11px;">${sm.subjectName}</td>
         ${examCells}
         <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-size:11px;font-weight:600;">${sm.average !== null ? sm.average.toFixed(1) : '-'}</td>
+        <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-size:11px;font-weight:600;color:#15803d;">${subjectPoints}</td>
         <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;">
           ${avgGrade ? `<span style="background:${badgeColor};color:#fff;border-radius:3px;padding:2px 6px;font-size:10px;font-weight:700;">${avgGrade.level}</span>` : '-'}
         </td>
@@ -616,74 +621,60 @@ function generateReportHTML(
             <div style="margin-bottom:6px;">
               <span style="border:1.5px solid ${overallRubricColor(overallAverage)};color:${overallRubricColor(overallAverage)};border-radius:16px;padding:4px 12px;font-size:10px;font-weight:700;">${overallRubricLabel(overallAverage)}</span>
             </div>
-            <div style="font-size:9.5px;color:#374151;margin-bottom:4px;">Overall Position: <strong>${classRank > 0 ? `${classRank} out of ${totalInClass}` : 'N/A'}</strong></div>
-            <div style="text-align:left;font-size:9px;line-height:1.6;">
-              <div><span style="color:#16a34a;font-weight:700;">●</span> EE: Exceeding Expectation (≥75%)</div>
-              <div><span style="color:#2563eb;font-weight:700;">●</span> ME: Meeting Expectation (58–74%)</div>
-              <div><span style="color:#d97706;font-weight:700;">●</span> AE: Approaching Expectation (41–57%)</div>
-              <div><span style="color:#dc2626;font-weight:700;">●</span> BE: Below Expectation (&lt;41%)</div>
-            </div>
+            <div style="font-size:9.5px;color:#374151;">Overall Position: <strong>${classRank > 0 ? `${classRank} out of ${totalInClass}` : 'N/A'}</strong></div>
           </div>
         </div>
       </div>
 
-      <!-- ACADEMIC PERFORMANCE SUMMARY + TREND — natural height so table (incl. position row) is never squeezed -->
-      <div style="display:grid;grid-template-columns:1.8fr 1fr;gap:8px;margin-bottom:6px;flex-shrink:0;">
+      <!-- ACADEMIC PERFORMANCE SUMMARY — full width -->
+      <div style="border:1.5px solid #1e3a5f;border-radius:5px;display:flex;flex-direction:column;overflow:visible;flex-shrink:0;margin-bottom:6px;">
+        <div style="background:#1e3a5f;color:#fff;font-size:10px;font-weight:700;padding:5px 10px;letter-spacing:0.5px;flex-shrink:0;border-radius:3px 3px 0 0;">ACADEMIC PERFORMANCE SUMMARY</div>
+        <table style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr>
+              <th style="border:1px solid #d1d5db;padding:5px 7px;background:#e5e7eb;color:#1f2937;font-size:10px;text-align:left;">LEARNING AREA</th>
+              ${examHeaderCells}
+              <th style="border:1px solid #d1d5db;padding:5px 7px;background:#e5e7eb;color:#1f2937;font-size:10px;text-align:center;">AVG</th>
+              <th style="border:1px solid #d1d5db;padding:5px 7px;background:#e5e7eb;color:#1f2937;font-size:10px;text-align:center;">POINTS</th>
+              <th style="border:1px solid #d1d5db;padding:5px 7px;background:#e5e7eb;color:#1f2937;font-size:10px;text-align:center;">RUBRIC</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${subjectRows}
+            <tr style="background:#fef9c3;">
+              <td style="border:1px solid #d1d5db;padding:5px 7px;font-size:11px;font-weight:700;">OVERALL AVERAGE</td>
+              ${overallExamCells}
+              <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-size:11px;font-weight:700;">${overallAverage !== null ? overallAverage.toFixed(1) : '-'}</td>
+              <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-size:11px;font-weight:700;color:#15803d;">${overallPoints}</td>
+              <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;">
+                ${overallGrade ? `<span style="background:${overallBadgeColor};color:#fff;border-radius:3px;padding:2px 6px;font-size:10px;font-weight:700;">${overallGrade.level}</span>` : '-'}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
-        <!-- ACADEMIC PERFORMANCE TABLE -->
-        <div style="border:1.5px solid #1e3a5f;border-radius:5px;display:flex;flex-direction:column;overflow:visible;">
-          <div style="background:#1e3a5f;color:#fff;font-size:10px;font-weight:700;padding:5px 10px;letter-spacing:0.5px;flex-shrink:0;border-radius:3px 3px 0 0;">ACADEMIC PERFORMANCE SUMMARY</div>
-          <table style="width:100%;border-collapse:collapse;">
-            <thead>
-              <tr>
-                <th style="border:1px solid #d1d5db;padding:5px 7px;background:#e5e7eb;color:#1f2937;font-size:10px;text-align:left;">LEARNING AREA</th>
-                ${examHeaderCells}
-                <th style="border:1px solid #d1d5db;padding:5px 7px;background:#e5e7eb;color:#1f2937;font-size:10px;text-align:center;">AVG</th>
-                <th style="border:1px solid #d1d5db;padding:5px 7px;background:#e5e7eb;color:#1f2937;font-size:10px;text-align:center;">RUBRIC</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${subjectRows}
-              <tr style="background:#fef9c3;">
-                <td style="border:1px solid #d1d5db;padding:5px 7px;font-size:11px;font-weight:700;">OVERALL AVERAGE</td>
-                ${overallExamCells}
-                <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-size:11px;font-weight:700;">${overallAverage !== null ? overallAverage.toFixed(1) : '-'}</td>
-                <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;">
-                  ${overallGrade ? `<span style="background:${overallBadgeColor};color:#fff;border-radius:3px;padding:2px 6px;font-size:10px;font-weight:700;">${overallGrade.level}</span>` : '-'}
-                </td>
-              </tr>
-              <tr style="background:#f0fdf4;border:1px solid #dcfce7;">
-                <td style="border:1px solid #d1d5db;padding:5px 7px;font-size:11px;font-weight:700;color:#15803d;">AVERAGE POINTS</td>
-                ${overallExamPointsCells}
-                <td colspan="2" style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-size:11px;font-weight:700;color:#15803d;">${overallPoints}</td>
-              </tr>
-              <tr style="background:#dbeafe;">
-                <td style="border:1.5px solid #93c5fd;padding:5px 7px;font-size:10px;font-weight:800;color:#1e40af;white-space:nowrap;">CLASS POSITION</td>
-                ${chosenSessions.map(s => {
-                  const rank = examRanks[s.id]
-                  return `<td style="border:1.5px solid #93c5fd;padding:5px 7px;text-align:center;font-size:11px;font-weight:800;color:#1e40af;">${rank != null ? `${rank}<span style="font-size:9px;font-weight:600;color:#3b82f6"> /${totalInClass}</span>` : '—'}</td>`
-                }).join('')}
-                <td colspan="2" style="border:1.5px solid #93c5fd;padding:5px 7px;text-align:center;font-size:11px;font-weight:800;color:#1e40af;">${classRank > 0 ? `${classRank}<span style="font-size:9px;font-weight:600;color:#3b82f6"> /${totalInClass}</span>` : '—'}</td>
-              </tr>
-            </tbody>
-          </table>
+      <!-- BEST EXAM + POSITIONS INFO BOXES -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:6px;flex-shrink:0;">
+        <!-- BEST EXAM -->
+        <div style="border:1.5px solid #16a34a;border-radius:5px;background:#f0fdf4;padding:10px;">
+          <div style="font-size:9px;color:#15803d;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">BEST EXAM</div>
+          <div style="font-size:14px;font-weight:800;color:#15803d;margin-bottom:2px;">${bestExamName}</div>
+          <div style="font-size:12px;color:#15803d;font-weight:700;">${bestExamScore}%</div>
         </div>
-
-        <!-- PERFORMANCE TREND -->
-        <div style="border:1.5px solid #1e3a5f;border-radius:5px;overflow:hidden;display:flex;flex-direction:column;">
-          <div style="background:#1e3a5f;color:#fff;font-size:10px;font-weight:700;padding:5px 10px;letter-spacing:0.5px;flex-shrink:0;">PERFORMANCE TREND</div>
-          <div style="padding:10px;text-align:center;flex:1;display:flex;flex-direction:column;justify-content:space-around;">
-            <div style="font-size:9px;color:#4b5563;font-weight:600;margin-bottom:4px;">Average Score (%)</div>
-            ${trendSVG(trendPoints)}
-            <!-- BEST PERFORMANCE CIRCLE -->
-            <div style="display:flex;justify-content:center;margin-top:10px;">
-              <div style="width:88px;height:88px;border-radius:50%;background:#16a34a;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 0 0 4px #bbf7d0;">
-                <div style="font-size:9px;color:#fff;font-weight:700;letter-spacing:0.3px;">BEST:</div>
-                <div style="font-size:9.5px;color:#fff;font-weight:800;text-align:center;line-height:1.2;padding:0 6px;">${bestExamName}</div>
-                <div style="font-size:11px;color:#fff;font-weight:800;">(${bestExamScore}%)</div>
-              </div>
-            </div>
-          </div>
+        
+        <!-- AVERAGE POINTS -->
+        <div style="border:1.5px solid #2563eb;border-radius:5px;background:#eff6ff;padding:10px;">
+          <div style="font-size:9px;color:#1e40af;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">AVERAGE POINTS</div>
+          <div style="font-size:16px;font-weight:800;color:#1e40af;">${overallPoints}</div>
+          <div style="font-size:10px;color:#3b82f6;font-weight:600;">Across all exams</div>
+        </div>
+        
+        <!-- CLASS POSITION -->
+        <div style="border:1.5px solid #dc2626;border-radius:5px;background:#fef2f2;padding:10px;">
+          <div style="font-size:9px;color:#7f1d1d;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">POSITION</div>
+          <div style="font-size:16px;font-weight:800;color:#dc2626;">${classRank > 0 ? `${classRank}/${totalInClass}` : 'N/A'}</div>
+          <div style="font-size:10px;color:#991b1b;font-weight:600;">Class rank</div>
         </div>
       </div>
 
