@@ -536,21 +536,7 @@ function generateReportHTML(
     const { learner, subjectMarks, overallAverage, classRank, totalInClass, crossStreamRank, totalInLevel, examRanks, strengthSubjects, prioritySubjects, autoComment } = ld
     const overallPoints = calcOverallPoints(overallAverage, currentClass.name, school?.name || '')
     
-    // Calculate total marks and total points across ALL exams (not average)
-    let totalMarksAllExams = 0
-    let totalPointsAllExams = 0
-    chosenSessions.forEach(s => {
-      subjectMarks.forEach(sm => {
-        const mark = sm.marksByExam[s.id]
-        if (mark !== null && mark !== undefined) {
-          totalMarksAllExams += mark
-          const gradeInfo = getRubricLabel(mark, currentClass.name, school?.name || '')
-          if (gradeInfo?.points) {
-            totalPointsAllExams += gradeInfo.points
-          }
-        }
-      })
-    })
+
     
     const trendPoints = chosenSessions.map(s => {
       const sessionScores = subjectMarks.flatMap(sm => {
@@ -754,11 +740,11 @@ function generateReportHTML(
                 <div style="font-size:10px;color:#15803d;font-weight:700;">${bestExamScore}%</div>
               </div>
               
-              <!-- TOTAL MARKS AND POINTS -->
+              <!-- TOTAL MARKS AND POINTS FOR AVERAGE EXAM -->
               <div style="border:1px solid #2563eb;border-radius:3px;background:#eff6ff;padding:6px;text-align:center;">
                 <div style="font-size:7px;color:#1e40af;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;">TOTAL MKS / PTS</div>
-                <div style="font-size:11px;font-weight:800;color:#1e40af;margin-top:2px;">${totalMarksAllExams > 0 ? totalMarksAllExams.toFixed(1) : '0'} / ${totalPointsAllExams > 0 ? totalPointsAllExams.toFixed(1) : '0'}</div>
-                <div style="font-size:8px;color:#3b82f6;font-weight:600;">All exams</div>
+                <div style="font-size:11px;font-weight:800;color:#1e40af;margin-top:2px;">${overallAverage !== null ? overallAverage.toFixed(1) : '0'} / ${overallPoints !== null ? overallPoints : '0'}</div>
+                <div style="font-size:8px;color:#3b82f6;font-weight:600;">Average exam</div>
               </div>
               
               <!-- POSITION -->
