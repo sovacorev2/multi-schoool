@@ -269,7 +269,14 @@ export default function MarksPage() {
       });
     }
 
-    setExamTypes(examTypesRes.data || []);
+    // Only show exam types available to this class. An empty/null allowed_class_ids
+    // means the exam type is available to ALL classes.
+    const visibleExamTypes = (examTypesRes.data || []).filter((et: any) => {
+      const allowed = et.allowed_class_ids
+      if (!allowed || !Array.isArray(allowed) || allowed.length === 0) return true
+      return allowed.includes(currentClass.id)
+    });
+    setExamTypes(visibleExamTypes);
     setSessions(fetchedSessions);
     setSubjects(subjectsRes.data || []);
     setLearners(learnersRes.data || []);

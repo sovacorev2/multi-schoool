@@ -997,9 +997,12 @@ export default function MarklistPage() {
 
             subjects.forEach((subject) => {
               const mark = marksArray.find((m) => m.learner_id === learner.id && m.subject_id === subject.id)
-              learnerMarks[subject.id] = mark?.score ?? null
-              if (mark?.score !== null && mark?.score !== undefined) {
-                total += mark.score
+              // Coerce to number defensively — numeric DB columns can arrive as strings,
+              // which would turn `total += score` into string concatenation and corrupt ranking.
+              const numericScore = mark?.score !== null && mark?.score !== undefined ? Number(mark.score) : null
+              learnerMarks[subject.id] = numericScore !== null && !Number.isNaN(numericScore) ? numericScore : null
+              if (numericScore !== null && !Number.isNaN(numericScore)) {
+                total += numericScore
                 subjectsWithMarks++
               }
             })
