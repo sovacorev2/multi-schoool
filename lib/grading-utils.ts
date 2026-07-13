@@ -76,10 +76,15 @@ export function getPerformanceLevelWithPoints(marks: number | null | undefined):
 }
 
 // Helper to determine if a class uses extended grading (upper classes)
+// Upper classes are Grade/Form 7-9, or any class containing secondary/upper class numbers
 export function isUpperClass(className: string): boolean {
   if (!className) return false
-  const upperClassPatterns = ['Grade 7', 'Grade 8', 'Grade 9', 'GRD7', 'GRD8', 'GRD9', 'Form 1', 'Form 2', 'Form 3', 'Form 4', 'JSS', 'Class 7', 'Class 8', 'Class 9']
-  return upperClassPatterns.some(grade => className.includes(grade))
+  // Check explicit patterns first
+  const upperClassPatterns = ['Grade 7', 'Grade 8', 'Grade 9', 'GRD7', 'GRD8', 'GRD9', 'Form 1', 'Form 2', 'Form 3', 'Form 4', 'JSS', 'Class 7', 'Class 8', 'Class 9', 'Form 5', 'Form 6']
+  if (upperClassPatterns.some(grade => className.includes(grade))) return true
+  
+  // Also check for patterns like "STD 7", "P7", "S3" or anything ending in 7,8,9 after a word
+  return /\b(STD|P|S|Form|Grade|Class|GRD|JSS)[\s\-]*[7-9]\b/i.test(className)
 }
 
 // Get the appropriate grading scale based on school and class
@@ -93,6 +98,8 @@ export function getGradingScale(className?: string, schoolName?: string): GradeL
     return isUpper ? GRADING_SCALE_KOLANYA_GIRLS_JSS : GRADING_SCALE_KOLANYA_GIRLS_PRIMARY
   }
   
+  // Kimaeti and other schools use the default extended/simple scales
+  // (Kimaeti uses same scale as Amagoro)
   if (!className) return GRADING_SCALE_EXTENDED
   const isUpper = isUpperClass(className)
   return isUpper ? GRADING_SCALE_EXTENDED : GRADING_SCALE_SIMPLE
