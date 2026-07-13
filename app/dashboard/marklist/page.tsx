@@ -755,13 +755,18 @@ export default function MarklistPage() {
           const learnerMarks: { [subjectId: string]: number | null } = {}
           let total = 0
           let count = 0
+          let totalPoints = 0
 
           clsSubjects.forEach(subj => {
             const mark = clsMarks.find(m => m.learner_id === learner.id && m.subject_id === subj.id)
             learnerMarks[subj.name] = mark?.score ?? null
             if (mark?.score !== null && mark?.score !== undefined) {
-              total += mark.score
+              const numScore = Number(mark.score) || 0
+              total += numScore
               count++
+              // Accumulate rubric points for each subject (matching regular marklist logic)
+              const gradeInfo = getGradeLevelByClass(numScore, cls.name, currentSchool?.name)
+              if (gradeInfo?.points) totalPoints += gradeInfo.points
             }
           })
 
@@ -774,6 +779,7 @@ export default function MarklistPage() {
             marks: learnerMarks,
             total,
             average: count > 0 ? Math.round((total / count) * 10) / 10 : 0,
+            totalPoints,
           })
         })
       }
