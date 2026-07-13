@@ -564,17 +564,24 @@ export default function MarklistPage() {
         const clsMarks = marksBySessionId.get(sessionId) || []
 
         // Calculate per-subject stats for ALL subjects discovered from marks.
-        // Don't filter by class ownership — if marks exist for a subject in this session,
-        // show the data. This handles cross-stream subject definitions and ensures no dashes.
+        // Use ALL marks from ALL sessions (not just this class's session), filtered by
+        // subject name. This ensures we show data even if a subject's marks are recorded
+        // in a different session or if marks exist in other streams but not this one.
         const subjectStats = allSubjectNamesOrdered.map(subjName => {
           const key = subjName.trim().toUpperCase()
           // All subject IDs (across all classes) that share this name
           const allIdsForName = subjectNameToIds.get(key) || []
-          // Get marks for ANY of these subject IDs in this session (no class ownership filter)
-          const subjMarks = clsMarks.filter((m: any) => allIdsForName.includes(m.subject_id) && m.score !== null)
+          // Get marks for ANY of these subject IDs in ANY session in this stream's class
+          // (marks may be in a different session but still belong to learners in this class)
+          const clsLearnerIds = new Set(clsLearners.map((l: any) => l.id))
+          const subjMarks = (allMarks || []).filter((m: any) => 
+            allIdsForName.includes(m.subject_id) && 
+            clsLearnerIds.has(m.learner_id) && 
+            m.score !== null
+          )
           
           if (subjMarks.length === 0) {
-            // No marks for this subject in this session — show nulls (renders as dashes only if truly no data)
+            // No marks for this subject from this class's learners
             return {
               name: subjName,
               mean: null,
