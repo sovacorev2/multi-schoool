@@ -563,22 +563,18 @@ export default function MarklistPage() {
         const clsLearners = learnersByClassId.get(cls.id) || []
         const clsMarks = marksBySessionId.get(sessionId) || []
 
-        // Build a set of subject IDs that belong to THIS class's session
-        const clsSubjectIds = new Set(clsSubjects.map((s: any) => s.id))
-
-        // Calculate per-subject stats using name-based matching so every stream
-        // shows data for every subject that exists anywhere in the grade, not just
-        // the subjects that happen to be stored under that class's own IDs.
-        // Important: DO NOT filter out nulls — we want to show all subjects in
-        // allSubjectNamesOrdered, even if a particular stream has no data for it.
+        // Calculate per-subject stats for ALL subjects discovered from marks.
+        // Don't filter by class ownership — if marks exist for a subject in this session,
+        // show the data. This handles cross-stream subject definitions and ensures no dashes.
         const subjectStats = allSubjectNamesOrdered.map(subjName => {
           const key = subjName.trim().toUpperCase()
           // All subject IDs (across all classes) that share this name
           const allIdsForName = subjectNameToIds.get(key) || []
-          // Restrict to IDs that belong to this class's subjects
-          const relevantIds = allIdsForName.filter(id => clsSubjectIds.has(id))
-          // If this class doesn't have this subject, return placeholder with null values
-          if (relevantIds.length === 0) {
+          // Get marks for ANY of these subject IDs in this session (no class ownership filter)
+          const subjMarks = clsMarks.filter((m: any) => allIdsForName.includes(m.subject_id) && m.score !== null)
+          
+          if (subjMarks.length === 0) {
+            // No marks for this subject in this session — show nulls (renders as dashes only if truly no data)
             return {
               name: subjName,
               mean: null,
@@ -586,7 +582,7 @@ export default function MarklistPage() {
               lowest: null,
             }
           }
-          const subjMarks = clsMarks.filter((m: any) => relevantIds.includes(m.subject_id) && m.score !== null)
+          
           const scores = subjMarks.map((m: any) => Number(m.score) || 0)
           return {
             name: subjName,
