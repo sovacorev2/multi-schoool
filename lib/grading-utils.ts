@@ -93,6 +93,8 @@ export function getGradingScale(className?: string, schoolName?: string): GradeL
     return isUpper ? GRADING_SCALE_KOLANYA_GIRLS_JSS : GRADING_SCALE_KOLANYA_GIRLS_PRIMARY
   }
   
+  // Kimaeti and other schools use the default extended/simple scales
+  // (Kimaeti uses same scale as Amagoro)
   if (!className) return GRADING_SCALE_EXTENDED
   const isUpper = isUpperClass(className)
   return isUpper ? GRADING_SCALE_EXTENDED : GRADING_SCALE_SIMPLE
