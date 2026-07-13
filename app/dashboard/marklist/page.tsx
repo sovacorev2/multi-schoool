@@ -511,23 +511,29 @@ export default function MarklistPage() {
         marksBySessionId.get(m.session_id).push(m)
       })
 
-      // Build a global map: normalised subject name → list of subject IDs across ALL streams
-      // This is the key fix: subjects are per-class, so "ENGLISH" in BLUE has a different id
-      // than "ENGLISH" in GREEN. We must match by name, not by id.
+      // Build subject list from MARKS (not from subjects table), since marks are the source of truth
+      // This ensures we show subjects even if they're not explicitly defined in that class,
+      // and we don't miss subjects that exist in some streams but not others.
+      const subjectIdToName = new Map<string, string>()
       const subjectNameToIds = new Map<string, string[]>()
-      allSubjects?.forEach(s => {
-        const key = s.name.trim().toUpperCase()
-        if (!subjectNameToIds.has(key)) subjectNameToIds.set(key, [])
-        subjectNameToIds.get(key)!.push(s.id)
-      })
-
-      // Union of all subject names in display order (preserve first-seen ordering)
       const allSubjectNamesOrdered: string[] = []
       const seenNames = new Set<string>()
-      allSubjects?.forEach(s => {
-        const key = s.name.trim().toUpperCase()
-        if (!seenNames.has(key)) { seenNames.add(key); allSubjectNamesOrdered.push(s.name.trim()) }
+      
+      // Scan all marks to build subject name→IDs map and collect all subject names
+      allMarks?.forEach((mark: any) => {
+        const subj = allSubjects?.find((s: any) => s.id === mark.subject_id)
+        if (subj) {
+          subjectIdToName.set(subj.id, subj.name.trim())
+          const key = subj.name.trim().toUpperCase()
+          if (!subjectNameToIds.has(key)) subjectNameToIds.set(key, [])
+          if (!subjectNameToIds.get(key)!.includes(subj.id)) subjectNameToIds.get(key)!.push(subj.id)
+          
+          if (!seenNames.has(key)) { seenNames.add(key); allSubjectNamesOrdered.push(subj.name.trim()) }
+        }
       })
+      
+      // Sort subject names to ensure consistent display order
+      allSubjectNamesOrdered.sort((a, b) => a.localeCompare(b))
 
       const streamsData = []
 
