@@ -584,14 +584,14 @@ function generateReportHTML(
       </tr>`
     }).join('')
 
-    // Overall average row
+    // Overall total marks row (sum instead of average)
     const overallGrade = getRubricLabel(overallAverage, currentClass.name, school?.name || '')
     const overallExamAvgs = chosenSessions.map(s => {
       const sessionScores = subjectMarks.flatMap(sm => {
         const v = sm.marksByExam[s.id]
         return v !== null && v !== undefined ? [v] : []
       })
-      return sessionScores.length > 0 ? (sessionScores.reduce((a, b) => a + b, 0) / sessionScores.length).toFixed(1) : '-'
+      return sessionScores.length > 0 ? sessionScores.reduce((a, b) => a + b, 0).toFixed(0) : '-'
     })
     const overallExamCells = overallExamAvgs.map(v =>
       `<td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-size:11px;font-weight:700;">${v}</td>`
@@ -719,7 +719,7 @@ function generateReportHTML(
             <tbody>
               ${subjectRows}
               <tr style="background:#fef9c3;">
-                <td style="border:1px solid #d1d5db;padding:5px 7px;font-size:11px;font-weight:700;">OVERALL AVERAGE</td>
+                <td style="border:1px solid #d1d5db;padding:5px 7px;font-size:11px;font-weight:700;">OVERALL TOTAL</td>
                 ${overallExamCells}
                 <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-size:11px;font-weight:700;">${overallAverage !== null ? overallAverage.toFixed(1) : '-'}</td>
                 <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-size:11px;font-weight:700;color:#15803d;">${overallPoints}</td>
