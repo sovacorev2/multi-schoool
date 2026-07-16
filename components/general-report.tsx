@@ -163,12 +163,15 @@ export function GeneralReport({
 
     try {
       // Fetch all learners from sibling classes (same level, different streams) for cross-stream ranking
-      const gradeLevel = currentClass.name.replace(/\s*(?:EAST|WEST|CENTRAL|NORTH|SOUTH)?\s*$/i, '').trim()
+      // Extract base grade level by removing stream suffixes (ACHIEVERS, EXCELLERS, EAST, WEST, etc.)
+      const gradeLevel = currentClass.name
+        .replace(/\s*(?:ACHIEVERS|EXCELLERS|EAST|WEST|CENTRAL|NORTH|SOUTH|A|B|GREEN|BLUE|YELLOW)?\s*$/i, '')
+        .trim()
       const { data: siblingClasses } = await supabase
         .from('classes')
         .select('id')
         .eq('school_id', currentSchool.id)
-        .ilike('name', `%${gradeLevel}%`)
+        .ilike('name', `${gradeLevel}%`)
       const siblingClassIds = siblingClasses?.map(c => c.id) ?? []
 
       // Fetch all marks for chosen sessions across sibling classes
