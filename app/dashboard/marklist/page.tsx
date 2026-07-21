@@ -1067,9 +1067,17 @@ export default function MarklistPage() {
               if (numericScore !== null && !Number.isNaN(numericScore)) {
                 total += numericScore
                 subjectsWithMarks++
-                // Accumulate rubric points for this subject score
-                const gradeInfo = getGradeLevelByClass(numericScore, currentClass?.name, currentSchool?.name)
-                if (gradeInfo?.points) totalPoints += gradeInfo.points
+                // In points-entry mode (Kimwanga lower grades), scores ARE rubric points (1-4 scale).
+                // Don't run them through the percentage-based scale lookup — use them directly.
+                if (isLowerGradePointsEntry) {
+                  // Clamp to valid rubric range 1-4
+                  const pts = Math.min(4, Math.max(1, numericScore))
+                  totalPoints += pts
+                } else {
+                  // Normal mode: derive rubric points from the percentage score via grading scale
+                  const gradeInfo = getGradeLevelByClass(numericScore, currentClass?.name, currentSchool?.name)
+                  if (gradeInfo?.points) totalPoints += gradeInfo.points
+                }
               }
             })
 
@@ -1242,11 +1250,25 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
       }
     }).join('')
     
+    // Helper: in points-entry mode, the stored score IS the rubric point (1-4).
+    // Map it directly to the correct level label without using the percentage-based scale.
+    const pointsEntryLevel = (pts: number | null): { level: string; points: number } | null => {
+      if (pts === null || pts === undefined) return null
+      const p = Math.round(pts)
+      if (p >= 4) return { level: 'EE', points: 4 }
+      if (p === 3) return { level: 'ME', points: 3 }
+      if (p === 2) return { level: 'AE', points: 2 }
+      return { level: 'BE', points: 1 }
+    }
+
     // Build student rows
     const studentRows = results.map((result, idx) => {
       const subjectCells = subjects.map(subject => {
         const score = result.marks[subject.id]
-        const performanceLevel = getGradeLevelByClass(score, currentClass?.name, currentSchool?.name)
+        // In points-entry mode use the score directly as the rubric point; otherwise derive from percentage scale
+        const performanceLevel = isLowerGradePointsEntry
+          ? pointsEntryLevel(score)
+          : getGradeLevelByClass(score, currentClass?.name, currentSchool?.name)
         if (isLowerGradePointsEntry) {
           // For Kimwangarc lower grades: show only Level and Points
           return `<td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 9px; font-weight: bold; color: #000000;">${performanceLevel ? performanceLevel.level : '-'}</td>
@@ -1275,8 +1297,10 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
     const meanCells = subjects.map(subject => {
       const subjectScores = results.map(r => r.marks[subject.id]).filter((s): s is number => s !== null && s !== undefined)
       const meanScore = subjectScores.length > 0 ? (subjectScores.reduce((a, b) => a + b, 0) / subjectScores.length).toFixed(1) : '-'
-      const mean = subjectScores.length > 0 ? Math.round(subjectScores.reduce((a, b) => a + b, 0) / subjectScores.length) : null
-      const meanPerformance = getGradeLevelByClass(mean, currentClass?.name, currentSchool?.name)
+      const mean = subjectScores.length > 0 ? subjectScores.reduce((a, b) => a + b, 0) / subjectScores.length : null
+      const meanPerformance = isLowerGradePointsEntry
+        ? pointsEntryLevel(mean)
+        : getGradeLevelByClass(mean !== null ? Math.round(mean) : null, currentClass?.name, currentSchool?.name)
       if (isLowerGradePointsEntry) {
         // For Kimwangarc lower grades: show only Level and Points
         return `<td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; font-weight: bold; background: #e5e7eb; color: #000000;">${meanPerformance ? meanPerformance.level : '-'}</td>
@@ -2371,7 +2395,16 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                     </td>
                     {subjects.map((subject) => {
                       const score = result.marks[subject.id]
-                      const performanceLevel = getGradeLevelByClass(score, currentClass?.name, currentSchool?.name)
+                      // In points-entry mode, score IS the rubric point — don't run through percentage scale
+                      const performanceLevel = isLowerGradePointsEntry
+                        ? (score !== null && score !== undefined ? (() => {
+                            const p = Math.round(score as number)
+                            if (p >= 4) return { level: 'EE', points: 4 }
+                            if (p === 3) return { level: 'ME', points: 3 }
+                            if (p === 2) return { level: 'AE', points: 2 }
+                            return { level: 'BE', points: 1 }
+                          })() : null)
+                        : getGradeLevelByClass(score, currentClass?.name, currentSchool?.name)
                       return (
                         <React.Fragment key={subject.id}>
                           {!isLowerGradePointsEntry && (
