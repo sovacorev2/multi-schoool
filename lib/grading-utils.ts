@@ -105,10 +105,38 @@ export function getGradingScale(className?: string, schoolName?: string): GradeL
   return isUpper ? GRADING_SCALE_EXTENDED : GRADING_SCALE_SIMPLE
 }
 
+// Overall performance level based on TOTAL MARKS across all subjects.
+// These fixed bands apply school-wide regardless of class or school:
+//   0–98   → BE2   (points 1)
+//   99–188  → BE1   (points 2)
+//   189–278 → AE2   (points 3)
+//   279–368 → AE1   (points 4)
+//   369–521 → ME2   (points 5)
+//   522–674 → ME1   (points 6)
+//   675–809 → EE2   (points 7)
+//   810–900 → EE1   (points 8)
+export const OVERALL_TOTAL_MARKS_SCALE = [
+  { level: 'EE1', minTotal: 810, maxTotal: Infinity, points: 8 },
+  { level: 'EE2', minTotal: 675, maxTotal: 809,      points: 7 },
+  { level: 'ME1', minTotal: 522, maxTotal: 674,      points: 6 },
+  { level: 'ME2', minTotal: 369, maxTotal: 521,      points: 5 },
+  { level: 'AE1', minTotal: 279, maxTotal: 368,      points: 4 },
+  { level: 'AE2', minTotal: 189, maxTotal: 278,      points: 3 },
+  { level: 'BE1', minTotal:  99, maxTotal: 188,      points: 2 },
+  { level: 'BE2', minTotal:   0, maxTotal:  98,      points: 1 },
+]
+
+export function getLevelByTotalMarksRange(
+  totalMarks: number | null | undefined
+): { level: string; points: number } | null {
+  if (totalMarks === null || totalMarks === undefined || isNaN(Number(totalMarks))) return null
+  const t = Number(totalMarks)
+  const band = OVERALL_TOTAL_MARKS_SCALE.find(b => t >= b.minTotal && t <= b.maxTotal)
+  return band ? { level: band.level, points: band.points } : null
+}
+
 // Derive the overall performance level from the average RAW MARK (total marks / subjects).
-// This is the correct approach: a learner who averaged 85% should get EE2 regardless of
-// how many subjects they sat. Using points-averaging could give wrong results when two
-// learners with the same rubric points have very different raw marks totals.
+// Kept for backward compatibility — prefer getLevelByTotalMarksRange for overall level.
 export function getLevelByAverageMark(
   totalMarks: number,
   subjectCount: number,

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { getGradeLevelByClass } from '@/lib/grading-utils'
+import { getGradeLevelByClass, getLevelByTotalMarksRange } from '@/lib/grading-utils'
 import { getSubjectDisplay } from '@/lib/subject-utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -482,25 +482,30 @@ function generateReportHTML(
     return '#dc2626'
   }
 
-  function overallRubricLabel(avg: number | null): string {
-    if (avg === null) return 'N/A'
-    if (avg >= 75) return 'EXCEEDING EXPECTATION'
-    if (avg >= 58) return 'MEETING EXPECTATION'
-    if (avg >= 41) return 'APPROACHING EXPECTATION'
+  // Derive overall label/color/points from total marks using the fixed band scale
+  function overallRubricLabel(total: number | null): string {
+    if (total === null) return 'N/A'
+    const g = getLevelByTotalMarksRange(total)
+    if (!g) return 'N/A'
+    if (g.level.startsWith('EE')) return 'EXCEEDING EXPECTATION'
+    if (g.level.startsWith('ME')) return 'MEETING EXPECTATION'
+    if (g.level.startsWith('AE')) return 'APPROACHING EXPECTATION'
     return 'BELOW EXPECTATION'
   }
 
-  function overallRubricColor(avg: number | null): string {
-    if (avg === null) return '#6b7280'
-    if (avg >= 75) return '#16a34a'
-    if (avg >= 58) return '#2563eb'
-    if (avg >= 41) return '#d97706'
+  function overallRubricColor(total: number | null): string {
+    if (total === null) return '#6b7280'
+    const g = getLevelByTotalMarksRange(total)
+    if (!g) return '#6b7280'
+    if (g.level.startsWith('EE')) return '#16a34a'
+    if (g.level.startsWith('ME')) return '#2563eb'
+    if (g.level.startsWith('AE')) return '#d97706'
     return '#dc2626'
   }
 
-  function calcOverallPoints(avg: number | null, className: string, schoolNameStr: string): string {
-    if (avg === null) return '-'
-    const g = getGradeLevelByClass(Math.round(avg), className, schoolNameStr)
+  function calcOverallPoints(total: number | null): string {
+    if (total === null) return '-'
+    const g = getLevelByTotalMarksRange(total)
     return g ? String(g.points) : '-'
   }
 
@@ -543,7 +548,7 @@ function generateReportHTML(
   // Build individual pages
   const pages = learnersData.map(ld => {
     const { learner, subjectMarks, overallAverage, classRank, totalInClass, crossStreamRank, totalInLevel, examRanks, strengthSubjects, prioritySubjects, autoComment } = ld
-    const overallPoints = calcOverallPoints(overallAverage, currentClass.name, school?.name || '')
+    const overallPoints = calcOverallPoints(overallTotal)
     
 
     
@@ -593,8 +598,8 @@ function generateReportHTML(
       </tr>`
     }).join('')
 
-    // Overall total marks row (sum instead of average)
-    const overallGrade = getRubricLabel(overallAverage, currentClass.name, school?.name || '')
+    // Overall total marks row — level derived from total marks band
+    const overallGrade = getLevelByTotalMarksRange(overallTotal)
     const overallExamAvgs = chosenSessions.map(s => {
       const sessionScores = subjectMarks.flatMap(sm => {
         const v = sm.marksByExam[s.id]
@@ -702,7 +707,7 @@ function generateReportHTML(
             <div style="font-size:36px;font-weight:800;color:#1e3a5f;line-height:1;">${overallAverage !== null ? overallAverage.toFixed(1) : '—'}</div>
             <div style="font-size:9px;color:#6b7280;margin-bottom:5px;">Overall Points: ${overallPoints}</div>
             <div style="margin-bottom:6px;">
-              <span style="border:1.5px solid ${overallRubricColor(overallAverage)};color:${overallRubricColor(overallAverage)};border-radius:16px;padding:4px 12px;font-size:10px;font-weight:700;">${overallRubricLabel(overallAverage)}</span>
+              <span style="border:1.5px solid ${overallRubricColor(overallTotal)};color:${overallRubricColor(overallTotal)};border-radius:16px;padding:4px 12px;font-size:10px;font-weight:700;">${overallRubricLabel(overallTotal)}</span>
             </div>
             <div style="font-size:9.5px;color:#374151;">Overall Position: <strong>${totalInLevel > totalInClass && crossStreamRank > 0 ? `${crossStreamRank} out of ${totalInLevel}` : (classRank > 0 ? `${classRank} out of ${totalInClass}` : 'N/A')}</strong></div>
           </div>
