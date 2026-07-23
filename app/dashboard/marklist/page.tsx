@@ -46,7 +46,8 @@ interface LearnerResult {
   marks: Record<string, number | null>
   total: number
   average: number
-  totalPoints: number   // sum of rubric points for each subject scored (used for ranking & performance level)
+  totalPoints: number       // sum of rubric points for each subject scored
+  subjectsWithMarks: number // count of subjects that have an actual mark (not null)
   rank: number
   overall_rank?: number
   total_in_grade?: number
