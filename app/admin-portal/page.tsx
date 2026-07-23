@@ -682,8 +682,11 @@ export default function AdminPortalPage() {
       console.log('[v0] Error fetching class:', error)
     }
     
-    // Set admin bypass flag in localStorage so it persists
+    // Set admin bypass flag in localStorage so it persists across navigation
     localStorage.setItem("success_academy_admin_bypass", "true")
+    // Store school code so the dashboard can link back to admin portal without re-login
+    const schoolParam = new URLSearchParams(window.location.search).get('school')
+    if (schoolParam) localStorage.setItem("admin_bypass_school", schoolParam)
     
     // Redirect to dashboard with admin bypass flag and classId
     router.push(`/dashboard?adminBypass=true&classId=${classId}`)
