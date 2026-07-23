@@ -18,6 +18,8 @@ export default function DashboardLayout({
   const [sessionDropdown, setSessionDropdown] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [isAdminBypassMode, setIsAdminBypassMode] = useState(false)
+  const [adminBypassSchool, setAdminBypassSchool] = useState<string | null>(null)
   const [upcomingDeadline, setUpcomingDeadline] = useState<{
     exam_type: string;
     term: string;
@@ -73,12 +75,15 @@ export default function DashboardLayout({
       }
 
       const isStoredAdminBypass = localStorage.getItem("success_academy_admin_bypass") === "true"
+      const storedBypassSchool = localStorage.getItem("admin_bypass_school")
       
       // Admin bypass takes priority over everything
       if (adminBypass || isStoredAdminBypass) {
         // Admin is accessing from admin portal - class is in localStorage, just authenticate
         if (adminBypass) setIsAdminBypass(true)
         setIsAdmin(false)
+        setIsAdminBypassMode(true)
+        setAdminBypassSchool(storedBypassSchool)
         setIsAuthenticated(true)
         return
       }
@@ -261,8 +266,41 @@ export default function DashboardLayout({
                 </button>
               )}
 
+              {/* For Admin Bypass Mode: Back to Admin Portal button + Logout */}
+              {isAdminBypassMode && isAuthenticated === true && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      const school = adminBypassSchool || currentSchool?.code
+                      if (school) {
+                        router.push(`/admin-portal?school=${school}`)
+                      } else {
+                        router.push('/admin-portal')
+                      }
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-600 border border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30 rounded-lg transition-all"
+                  >
+                    <Shield className="w-4 h-4" />
+                    Back to Admin Portal
+                  </button>
+                  <button
+                    onClick={() => {
+                      localStorage.removeItem('success_academy_admin_bypass')
+                      localStorage.removeItem('admin_bypass_school')
+                      setIsAdminBypassMode(false)
+                      const school = adminBypassSchool || currentSchool?.code
+                      router.push(school ? `/?school=${school}` : '/')
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-all"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Logout
+                  </button>
+                </div>
+              )}
+
               {/* For Teachers ONLY: Session Dropdown and Logout - Strict condition */}
-              {isAdmin === false && isAuthenticated === true && (
+              {isAdmin === false && isAdminBypassMode === false && isAuthenticated === true && (
                 <>
                   {/* Session Dropdown */}
                   <div className="relative">
