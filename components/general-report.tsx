@@ -223,8 +223,9 @@ export function GeneralReport({
         const totalSubjectsWithMarks = subjectMarks.filter(sm =>
           Object.values(sm.marksByExam).some(v => v !== null)
         ).length
+        const overallTotal = allScores.reduce((a, b) => a + b, 0)
         const overallAverage = totalSubjectsWithMarks > 0
-          ? allScores.reduce((a, b) => a + b, 0) / allScores.length
+          ? overallTotal / allScores.length
           : null
 
         // Total points from average
@@ -260,6 +261,7 @@ export function GeneralReport({
           learner,
           subjectMarks,
           overallAverage,
+          overallTotal,
           totalPoints,
           strengthSubjects,
           prioritySubjects,
@@ -272,10 +274,13 @@ export function GeneralReport({
         }
       })
 
-      // Calculate overall class rank based on overall average
+      // Calculate overall class rank based on total raw marks; use average as tiebreaker
       const ranked = [...learnersData]
         .filter(l => l.overallAverage !== null)
-        .sort((a, b) => (b.overallAverage ?? 0) - (a.overallAverage ?? 0))
+        .sort((a, b) =>
+          (b.overallTotal ?? 0) - (a.overallTotal ?? 0) ||
+          (b.overallAverage ?? 0) - (a.overallAverage ?? 0)
+        )
       ranked.forEach((l, idx) => { l.classRank = idx + 1 })
 
       // Calculate cross-stream rank if multiple streams exist
@@ -286,15 +291,16 @@ export function GeneralReport({
           const levelLearnerMarks = allMarks.filter(m => m.learner_id === levelLearner.id)
           if (levelLearnerMarks.length > 0) {
             const scores = levelLearnerMarks.map(m => m.score)
-            const avg = scores.reduce((a, b) => a + b, 0) / scores.length
-            levelLearnersAverages.push({ learnerId: levelLearner.id, avg })
+            const total = scores.reduce((a, b) => a + b, 0)
+            const avg = total / scores.length
+            levelLearnersAverages.push({ learnerId: levelLearner.id, avg, total })
           }
         }
 
-        // Rank learners across all streams by their average
+        // Rank learners across all streams by total raw marks; average as tiebreaker
         const crossStreamRanked = levelLearnersAverages
           .filter(la => la.avg !== null)
-          .sort((a, b) => (b.avg ?? 0) - (a.avg ?? 0))
+          .sort((a, b) => (b.total ?? 0) - (a.total ?? 0) || (b.avg ?? 0) - (a.avg ?? 0))
         
         // Assign cross-stream ranks to our learners
         learnersData.forEach(ld => {
