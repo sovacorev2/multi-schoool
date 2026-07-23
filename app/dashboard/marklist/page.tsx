@@ -784,15 +784,19 @@ export default function MarklistPage() {
         })
       }
 
-      allLearners.sort((a, b) => b.total - a.total)
+      // Sort by total raw marks; use totalPoints as tiebreaker when marks are equal
+      allLearners.sort((a, b) => b.total - a.total || ((b as any).totalPoints ?? 0) - ((a as any).totalPoints ?? 0))
       let rank = 1
       let prevTotal = -1
+      let prevPoints = -1
       allLearners.forEach((learner, idx) => {
-        if (learner.total !== prevTotal) {
+        const lPoints = (learner as any).totalPoints ?? 0
+        if (learner.total !== prevTotal || lPoints !== prevPoints) {
           rank = idx + 1
         }
         (learner as any).rank = rank
         prevTotal = learner.total
+        prevPoints = lPoints
       })
 
       const subjectsArray = Array.from(allSubjectsMap.values()).sort((a, b) => a.name.localeCompare(b.name))
@@ -1096,13 +1100,12 @@ export default function MarklistPage() {
             }
           })
           .filter((result) => Object.values(result.marks).some((m) => m !== null))
-          // Rank by totalPoints (sum of subject rubric points) so a learner who
-          // sat fewer exams cannot rank higher than one with more subjects/exams done.
-          .sort((a, b) => b.totalPoints - a.totalPoints)
+          // Rank by total raw marks. When marks are tied, use totalPoints as tiebreaker.
+          .sort((a, b) => b.total - a.total || b.totalPoints - a.totalPoints)
           .map((result, index, arr) => {
             if (index === 0) {
               result.rank = 1
-            } else if (result.totalPoints === arr[index - 1].totalPoints) {
+            } else if (result.total === arr[index - 1].total && result.totalPoints === arr[index - 1].totalPoints) {
               result.rank = arr[index - 1].rank
             } else {
               result.rank = index + 1
@@ -1918,14 +1921,14 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                       .select('learner_id, score, subject_id')
                       .in('session_id', gradeSessionIds)
                     
-                    // Step 3: accumulate total points per learner (using rubric points, not raw scores)
-                    // so ranking is consistent with the on-screen rank
+                    // Step 3: accumulate raw mark totals per learner.
+                    // Ranking is based on total raw marks (not rubric points) — higher marks = higher rank.
+                    // Rubric points are only used for performance level display, not ranking.
                     const learnerPoints: Record<string, number> = {}
                     for (const m of (marks || [])) {
                       if (m?.learner_id && m.score !== null && m.score !== undefined) {
                         if (!learnerPoints[m.learner_id]) learnerPoints[m.learner_id] = 0
-                        const gradeInfo = getGradeLevelByClass(Number(m.score), currentClass?.name, currentSchool?.name)
-                        learnerPoints[m.learner_id] += gradeInfo?.points ?? 0
+                        learnerPoints[m.learner_id] += Number(m.score) || 0
                       }
                     }
                     return learnerPoints
@@ -1963,10 +1966,10 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                           // Fetch marks by session_id (not year/term/exam_type_id)
                           const learnerPoints = await fetchMarksByGradeClassIds(streamClassIds)
                           
-                          // Rank by total rubric points (same basis as on-screen stream rank)
+                          // Rank by total raw marks (same basis as on-screen stream rank)
                           const rankedLearners = Object.entries(learnerPoints)
                             .sort(([, a], [, b]) => b - a)
-                            .map(([id, pts], index) => ({ id, pts, rank: index + 1 }))
+                            .map(([id, total], index) => ({ id, total, rank: index + 1 }))
                           
                           finalResults = results.map(r => {
                             const ranked = rankedLearners.find(rl => rl.id === r.learner.id)
@@ -2010,7 +2013,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                           
                           const rankedGradeLearners = Object.entries(learnerPoints)
                             .sort(([, a], [, b]) => b - a)
-                            .map(([id, pts], index) => ({ id, pts, rank: index + 1 }))
+                            .map(([id, total], index) => ({ id, total, rank: index + 1 }))
                           
                           finalResults = results.map(r => {
                             const ranked = rankedGradeLearners.find(rl => rl.id === r.learner.id)
