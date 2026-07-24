@@ -109,7 +109,7 @@ export default function LearnersPage() {
     try {
       const { data: learnersData, error: learnersError } = await supabase
         .from('learners')
-        .select('id, name, class_id, admission_number, date_of_birth, gender')
+        .select('id, name, class_id, admission_number, gender')
         .eq('class_id', currentClass.id)
         .order('name', { ascending: true })
 
@@ -172,7 +172,7 @@ export default function LearnersPage() {
     try {
       const { data, error } = await supabase
         .from('classes')
-        .select('id, name, school_id, display_order, grade_level')
+        .select('id, name, school_id, display_order')
         .eq('school_id', currentSchool.id)
         .order('display_order', { ascending: true })
       
