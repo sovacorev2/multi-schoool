@@ -12,6 +12,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useClass } from '@/lib/class-context'
 import { useSchool } from '@/lib/school-context'
 import { isNetworkError, getFallbackData, cacheFallbackData } from '@/lib/fallback-data'
+import { cachedFetch, cacheInvalidatePrefix, TTL } from '@/lib/query-cache'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -194,11 +195,16 @@ export default function MarklistPage() {
     const supabase = createClient()
 
     try {
-      const [sessionsRes, subjectsRes, learnersRes] = await Promise.all([
-        supabase.from('sessions').select('id, class_id, school_id, exam_type_id, term, year, teacher_name, is_locked, deadline_datetime, exam_types(id, name, display_order)').eq('class_id', currentClass.id),
-        supabase.from('subjects').select('id, name, class_id, display_order').eq('class_id', currentClass.id).order('name'),
-        supabase.from('learners').select('id, name, class_id').eq('class_id', currentClass.id).order('name'),
+      const classId = currentClass.id
+      const [sessionsData, subjectsData, learnersData] = await Promise.all([
+        cachedFetch(`sessions:${classId}`, () => supabase.from('sessions').select('id, class_id, school_id, exam_type_id, term, year, teacher_name, is_locked, deadline_datetime, exam_types(id, name, display_order)').eq('class_id', classId).then(r => r.data ?? []), TTL.SHORT),
+        cachedFetch(`subjects:${classId}`, () => supabase.from('subjects').select('id, name, class_id, display_order').eq('class_id', classId).order('name').then(r => r.data ?? []), TTL.STATIC),
+        cachedFetch(`learners:${classId}`, () => supabase.from('learners').select('id, name, class_id').eq('class_id', classId).order('name').then(r => r.data ?? []), TTL.STATIC),
       ])
+      // Wrap in response-shaped objects so existing destructuring still works
+      const sessionsRes = { data: sessionsData, error: null }
+      const subjectsRes = { data: subjectsData, error: null }
+      const learnersRes = { data: learnersData, error: null }
 
       // Only show exam sessions (those with exam_type_id) - these are created by teachers
       setSessions((sessionsRes.data || []).filter(s => s.exam_type_id !== null))
@@ -223,12 +229,12 @@ export default function MarklistPage() {
 
     async function fetchMarks() {
       const supabase = createClient()
-      const { data } = await supabase
-        .from('marks')
-        .select('id, session_id, learner_id, subject_id, score')
-        .eq('session_id', selectedSessionId)
-
-      setMarks(data || [])
+      const data = await cachedFetch(
+        `marks:${selectedSessionId}`,
+        () => supabase.from('marks').select('id, session_id, learner_id, subject_id, score').eq('session_id', selectedSessionId).then(r => r.data ?? []),
+        TTL.MARKS
+      )
+      setMarks(data)
       const session = sessions.find((s) => s.id === selectedSessionId)
       setSelectedSession(session || null)
       setTeacherName(session?.teacher_name || '')
@@ -259,8 +265,12 @@ export default function MarklistPage() {
       if (isPinAuthenticated) {
       }
 
-      // Fetch all classes initially
-      let { data: allClasses } = await supabase.from('classes').select('*').eq('school_id', currentSchool?.id).order('display_order')
+      // Fetch all classes initially (cached — rarely changes during a session)
+      let allClasses = await cachedFetch(
+        `classes:${currentSchool?.id}`,
+        () => supabase.from('classes').select('id, name, school_id, display_order, grade_level').eq('school_id', currentSchool?.id).order('display_order').then(r => r.data ?? []),
+        TTL.STATIC
+      )
       if (!allClasses) return
       
       // For PIN teachers: filter to only assigned classes
@@ -727,15 +737,13 @@ export default function MarklistPage() {
 
         const sessionId = classSessions?.[0]?.id
 
-        const [subjectsRes, learnersRes, marksRes] = await Promise.all([
-          supabase.from('subjects').select('*').eq('class_id', cls.id).order('name'),
-          supabase.from('learners').select('*').eq('class_id', cls.id).order('name'),
-          sessionId ? supabase.from('marks').select('*').eq('session_id', sessionId) : Promise.resolve({ data: [] }),
+        const [clsSubjects, clsLearners, clsMarks] = await Promise.all([
+          cachedFetch(`subjects:${cls.id}`, () => supabase.from('subjects').select('id, name, class_id, display_order').eq('class_id', cls.id).order('name').then(r => r.data ?? []), TTL.STATIC),
+          cachedFetch(`learners:${cls.id}`, () => supabase.from('learners').select('id, name, class_id').eq('class_id', cls.id).order('name').then(r => r.data ?? []), TTL.STATIC),
+          sessionId
+            ? cachedFetch(`marks:${sessionId}`, () => supabase.from('marks').select('id, session_id, learner_id, subject_id, score').eq('session_id', sessionId).then(r => r.data ?? []), TTL.MARKS)
+            : Promise.resolve([]),
         ])
-
-        const clsSubjects = subjectsRes.data || []
-        const clsLearners = learnersRes.data || []
-        const clsMarks = marksRes.data || []
 
         clsSubjects.forEach(subj => {
           if (!allSubjectsMap.has(subj.name)) {
