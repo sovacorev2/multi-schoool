@@ -525,11 +525,9 @@ export default function LearnersPage() {
       const normalized = normalizeHeader(variation)
       const index = headers.findIndex(h => normalizeHeader(h) === normalized)
       if (index !== -1) {
-        console.log(`[v0] Found "${variation}" at column ${index}`)
         return index
       }
     }
-    console.log(`[v0] Column "${variations.join('|')}" not found. Headers:`, headers.map(h => `"${h}"(norm: "${normalizeHeader(h)}")`))
     return -1
   }
 

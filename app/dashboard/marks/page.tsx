@@ -190,23 +190,11 @@ export default function MarksPage() {
       .order("term");
 
     const [examTypesRes, sessionsRes, subjectsRes, learnersRes, schoolRes] = await Promise.all([
-      supabase.from("exam_types").select("*").eq("school_id", currentSchool.id).order("display_order", { ascending: true }),
+      supabase.from("exam_types").select("id, name, display_order").eq("school_id", currentSchool.id).order("display_order", { ascending: true }),
       sessionsQuery,
-      supabase
-        .from("subjects")
-        .select("*")
-        .eq("class_id", currentClass.id)
-        .order("name"),
-      supabase
-        .from("learners")
-        .select("*")
-        .eq("class_id", currentClass.id)
-        .order("name"),
-      supabase
-        .from("schools")
-        .select("feature_pin_management")
-        .eq("id", currentSchool.id)
-        .single()
+      supabase.from("subjects").select("id, name, class_id, display_order").eq("class_id", currentClass.id).order("name"),
+      supabase.from("learners").select("id, name, class_id").eq("class_id", currentClass.id).order("name"),
+      supabase.from("schools").select("feature_pin_management").eq("id", currentSchool.id).single()
     ]);
 
     // Check if PIN management is enabled for this school - this is the ONLY gate
@@ -336,7 +324,7 @@ export default function MarksPage() {
       const supabase = createClient();
       
       // Fetch marks
-      const { data: marksRes } = await supabase.from("marks").select("*").eq("session_id", selectedSessionId);
+      const { data: marksRes } = await supabase.from("marks").select("id, session_id, learner_id, subject_id, score").eq("session_id", selectedSessionId);
 
       const marksMap: Record<string, Record<string, number | null>> = {};
       (marksRes || []).forEach((mark: Mark) => {

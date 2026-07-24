@@ -168,7 +168,6 @@ export default function AdminPage() {
   const handleConfirmUnlock = async () => {
     if (!selectedSession) return;
 
-    console.log("[v0] Confirming unlock for session:", selectedSession.id);
     setToggleLoading(selectedSession.id);
     const supabase = createClient();
     
@@ -182,13 +181,11 @@ export default function AdminPage() {
       .eq("id", selectedSession.id);
 
     if (error) {
-      console.log("[v0] Error unlocking session:", error);
       alert("Failed to unlock: " + error.message);
       setToggleLoading(null);
       return;
     }
 
-    console.log("[v0] Session unlocked successfully");
 
     // Log the action with teacher PIN
     const teacherPin = typeof window !== 'undefined' ? localStorage.getItem('teacher_pin') : null
@@ -209,7 +206,6 @@ export default function AdminPage() {
 
   const handleSetDeadline = async () => {
     if (!selectedSession || !deadlineForm.date) {
-      console.log("[v0] Cannot set deadline - missing session or date", { selectedSession: !!selectedSession, date: deadlineForm.date });
       alert("Please select a date for the deadline");
       return;
     }
@@ -222,7 +218,6 @@ export default function AdminPage() {
     const deadline = new Date(`${deadlineForm.date}`);
     deadline.setHours(hours, minutes, 0, 0);
     
-    console.log("[v0] Setting deadline:", deadline.toISOString(), "for session:", selectedSession.id);
     
     const { data, error } = await supabase
       .from("sessions")
@@ -237,7 +232,6 @@ export default function AdminPage() {
       return;
     }
 
-    console.log("[v0] Deadline set successfully:", data);
 
     // Log the action
     await supabase.from("activity_logs").insert({
