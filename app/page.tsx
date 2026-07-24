@@ -161,7 +161,7 @@ function HomePageContent() {
         
         // Filter data by school_id
         const [classesRes, examTypesRes] = await Promise.all([
-          supabase.from('classes').select('id, name, school_id, display_order, grade_level').eq('school_id', currentSchool.id).order('display_order'),
+          supabase.from('classes').select('id, name, school_id, display_order').eq('school_id', currentSchool.id).order('display_order'),
           supabase.from('exam_types').select('id, name, display_order, school_id').eq('school_id', currentSchool.id).order('name'),
         ])
 
