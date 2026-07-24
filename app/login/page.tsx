@@ -52,7 +52,7 @@ export default function LoginPage() {
         const supabase = createClient()
         
         const [classesRes, examTypesRes] = await Promise.all([
-          supabase.from('classes').select('id, name, school_id, display_order, grade_level').order('display_order'),
+          supabase.from('classes').select('id, name, school_id, display_order').order('display_order'),
           supabase.from('exam_types').select('id, name, display_order, school_id').order('name'),
         ])
 
