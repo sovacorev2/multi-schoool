@@ -197,8 +197,8 @@ export default function MarklistPage() {
     try {
       const classId = currentClass.id
       const [sessionsData, subjectsData, learnersData] = await Promise.all([
-        cachedFetch(`sessions:${classId}`, () => supabase.from('sessions').select('id, class_id, school_id, exam_type_id, term, year, teacher_name, is_locked, deadline_datetime, exam_types(id, name, display_order)').eq('class_id', classId).then(r => r.data ?? []), TTL.SHORT),
-        cachedFetch(`subjects:${classId}`, () => supabase.from('subjects').select('id, name, class_id, display_order').eq('class_id', classId).order('name').then(r => r.data ?? []), TTL.STATIC),
+        cachedFetch(`sessions:${classId}`, () => supabase.from('sessions').select('id, class_id, school_id, exam_type_id, term, year, is_locked, deadline_datetime, exam_types(id, name, display_order)').eq('class_id', classId).then(r => r.data ?? []), TTL.SHORT),
+        cachedFetch(`subjects:${classId}`, () => supabase.from('subjects').select('id, name, class_id').eq('class_id', classId).order('name').then(r => r.data ?? []), TTL.STATIC),
         cachedFetch(`learners:${classId}`, () => supabase.from('learners').select('id, name, class_id').eq('class_id', classId).order('name').then(r => r.data ?? []), TTL.STATIC),
       ])
       // Wrap in response-shaped objects so existing destructuring still works
@@ -237,7 +237,7 @@ export default function MarklistPage() {
       setMarks(data)
       const session = sessions.find((s) => s.id === selectedSessionId)
       setSelectedSession(session || null)
-      setTeacherName(session?.teacher_name || '')
+      setTeacherName(currentClass?.teacher_name || '')
     }
 
     fetchMarks()
@@ -268,7 +268,7 @@ export default function MarklistPage() {
       // Fetch all classes initially (cached — rarely changes during a session)
       let allClasses = await cachedFetch(
         `classes:${currentSchool?.id}`,
-        () => supabase.from('classes').select('id, name, school_id, display_order, grade_level').eq('school_id', currentSchool?.id).order('display_order').then(r => r.data ?? []),
+        () => supabase.from('classes').select('id, name, school_id, display_order').eq('school_id', currentSchool?.id).order('display_order').then(r => r.data ?? []),
         TTL.STATIC
       )
       if (!allClasses) return
@@ -733,7 +733,7 @@ export default function MarklistPage() {
         const sessionId = classSessions?.[0]?.id
 
         const [clsSubjects, clsLearners, clsMarks] = await Promise.all([
-          cachedFetch(`subjects:${cls.id}`, () => supabase.from('subjects').select('id, name, class_id, display_order').eq('class_id', cls.id).order('name').then(r => r.data ?? []), TTL.STATIC),
+          cachedFetch(`subjects:${cls.id}`, () => supabase.from('subjects').select('id, name, class_id').eq('class_id', cls.id).order('name').then(r => r.data ?? []), TTL.STATIC),
           cachedFetch(`learners:${cls.id}`, () => supabase.from('learners').select('id, name, class_id').eq('class_id', cls.id).order('name').then(r => r.data ?? []), TTL.STATIC),
           sessionId
             ? cachedFetch(`marks:${sessionId}`, () => supabase.from('marks').select('id, session_id, learner_id, subject_id, score').eq('session_id', sessionId).then(r => r.data ?? []), TTL.MARKS)

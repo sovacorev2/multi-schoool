@@ -313,11 +313,11 @@ export default function AdminPortalPage() {
       const supabase = createClient()
 
       const [classesRes, examTypesRes, subjectsRes, schoolRes, teachersRes, assignmentsRes] = await Promise.all([
-        supabase.from('classes').select('id, name, school_id, display_order, grade_level').eq('school_id', currentSchool.id).order('display_order'),
+        supabase.from('classes').select('id, name, school_id, display_order').eq('school_id', currentSchool.id).order('display_order'),
         supabase.from('exam_types').select('id, name, display_order, school_id').eq('school_id', currentSchool.id).order('name'),
-        supabase.from('subjects').select('id, name, class_id, display_order').order('name'),
+        supabase.from('subjects').select('id, name, class_id').order('name'),
         supabase.from('schools').select('id, name, code, admin_password, logo_url, feature_pin_management, is_active').eq('id', currentSchool.id).single(),
-        supabase.from('teacher_accounts').select('id, name, email, school_id, pin, is_active').eq('school_id', currentSchool.id),
+        supabase.from('teacher_accounts').select('id, first_name, last_name, email, school_id, pin, is_active').eq('school_id', currentSchool.id),
         supabase.from('teacher_assignments').select('id, user_id, class_id, school_id, subject_id').eq('school_id', currentSchool.id),
       ])
 
