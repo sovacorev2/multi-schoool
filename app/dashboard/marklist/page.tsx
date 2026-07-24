@@ -1237,22 +1237,29 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
       return
     }
     
+    // Scale font size down dynamically based on subject count to ensure everything fits on the page
+    const subjectCount = subjects.length
+    // With many subjects (>8) reduce font further; with >11 subjects go very compact
+    const baseFontSize = subjectCount > 11 ? 7 : subjectCount > 8 ? 8 : 9
+    const subHeaderFontSize = subjectCount > 8 ? 6 : 7
+    const cellPad = subjectCount > 8 ? '1px 2px' : '2px 3px'
+    const headerPad = subjectCount > 8 ? '2px' : '3px'
+    const nameFontSize = subjectCount > 11 ? 7 : subjectCount > 8 ? 8 : 9
+
     // Build subject headers (two rows: subject name spanning 2-3 columns based on whether marks shown, then LVL/PTS or MKS/LVL/PTS)
     const colSpan = isLowerGradePointsEntry ? 2 : 3
     const subjectHeadersRow1 = subjects.map(s => 
-      `<th colSpan="${colSpan}" style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9px; background: #e5e7eb;">${getSubjectDisplay(s.name).toUpperCase()}</th>`
+      `<th colSpan="${colSpan}" style="border: 1px solid #333; padding: ${headerPad}; text-align: center; font-size: ${baseFontSize}px; background: #e5e7eb;">${getSubjectDisplay(s.name).toUpperCase()}</th>`
     ).join('')
     
     const subjectHeadersRow2 = subjects.map(s => {
       if (isLowerGradePointsEntry) {
-        // For Kimwangarc lower grades: show only LVL and PTS, no MKS
-        return `<th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 8px; background: #e5e7eb; color: #000000;">LVL</th>
-         <th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 8px; background: #e5e7eb; color: #d97706;">PTS</th>`
+        return `<th style="border: 1px solid #333; padding: ${headerPad}; text-align: center; font-size: ${subHeaderFontSize}px; background: #e5e7eb; color: #000000;">LVL</th>
+         <th style="border: 1px solid #333; padding: ${headerPad}; text-align: center; font-size: ${subHeaderFontSize}px; background: #e5e7eb; color: #d97706;">PTS</th>`
       } else {
-        // For all other classes: show MKS, LVL, and PTS
-        return `<th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 8px; background: #e5e7eb;">MKS</th>
-         <th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 8px; background: #e5e7eb; color: #000000;">LVL</th>
-         <th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 8px; background: #e5e7eb; color: #d97706;">PTS</th>`
+        return `<th style="border: 1px solid #333; padding: ${headerPad}; text-align: center; font-size: ${subHeaderFontSize}px; background: #e5e7eb;">MKS</th>
+         <th style="border: 1px solid #333; padding: ${headerPad}; text-align: center; font-size: ${subHeaderFontSize}px; background: #e5e7eb; color: #000000;">LVL</th>
+         <th style="border: 1px solid #333; padding: ${headerPad}; text-align: center; font-size: ${subHeaderFontSize}px; background: #e5e7eb; color: #d97706;">PTS</th>`
       }
     }).join('')
     
@@ -1276,26 +1283,22 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
           ? pointsEntryLevel(score)
           : getGradeLevelByClass(score, currentClass?.name, currentSchool?.name)
         if (isLowerGradePointsEntry) {
-          // For Kimwangarc lower grades: show only Level and Points
-          return `<td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 9px; font-weight: bold; color: #000000;">${performanceLevel ? performanceLevel.level : '-'}</td>
-                  <td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; color: #d97706; font-weight: bold;">${performanceLevel ? performanceLevel.points : '-'}</td>`
+          return `<td style="border: 1px solid #333; padding: ${cellPad}; text-align: center; font-size: ${baseFontSize}px; font-weight: bold; color: #000000;">${performanceLevel ? performanceLevel.level : '-'}</td>
+                  <td style="border: 1px solid #333; padding: ${cellPad}; text-align: center; font-size: ${subHeaderFontSize}px; color: #d97706; font-weight: bold;">${performanceLevel ? performanceLevel.points : '-'}</td>`
         } else {
-          // For all other classes: show Marks, Level, and Points
-          return `<td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 9px;">${score ?? '-'}</td>
-                  <td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 9px; font-weight: bold; color: #000000;">${performanceLevel ? performanceLevel.level : '-'}</td>
-                  <td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; color: #d97706; font-weight: bold;">${performanceLevel ? performanceLevel.points : '-'}</td>`
+          return `<td style="border: 1px solid #333; padding: ${cellPad}; text-align: center; font-size: ${baseFontSize}px;">${score ?? '-'}</td>
+                  <td style="border: 1px solid #333; padding: ${cellPad}; text-align: center; font-size: ${baseFontSize}px; font-weight: bold; color: #000000;">${performanceLevel ? performanceLevel.level : '-'}</td>
+                  <td style="border: 1px solid #333; padding: ${cellPad}; text-align: center; font-size: ${subHeaderFontSize}px; color: #d97706; font-weight: bold;">${performanceLevel ? performanceLevel.points : '-'}</td>`
         }
       }).join('')
       
-      // Performance level is derived from average raw mark (total / subjects with marks).
-      // Only count subjects the learner has marks in, allowing partial mark entry.
       const avgPerformanceLevel = getLevelByTotalMarksRange(result.total)
       return `<tr style="background: ${idx % 2 === 0 ? '#fff' : '#f3f4f6'};">
-        <td style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9px;">${idx + 1}</td>
-        <td style="border: 1px solid #333; padding: 4px; text-align: left; font-size: 9px; font-weight: 500;">${result.learner.name}</td>
+        <td style="border: 1px solid #333; padding: ${cellPad}; text-align: center; font-size: ${baseFontSize}px;">${idx + 1}</td>
+        <td style="border: 1px solid #333; padding: ${cellPad}; text-align: left; font-size: ${nameFontSize}px; font-weight: 500; white-space: nowrap;">${result.learner.name}</td>
         ${subjectCells}
-        <td style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9px; font-weight: bold;">${result.total}</td>
-        <td style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9px; font-weight: bold; color: #000000;">${avgPerformanceLevel ? avgPerformanceLevel.level : '-'}</td>
+        <td style="border: 1px solid #333; padding: ${cellPad}; text-align: center; font-size: ${baseFontSize}px; font-weight: bold;">${result.total}</td>
+        <td style="border: 1px solid #333; padding: ${cellPad}; text-align: center; font-size: ${baseFontSize}px; font-weight: bold; color: #000000;">${avgPerformanceLevel ? avgPerformanceLevel.level : '-'}</td>
       </tr>`
     }).join('')
     
@@ -1308,14 +1311,12 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
         ? pointsEntryLevel(mean)
         : getGradeLevelByClass(mean !== null ? Math.round(mean) : null, currentClass?.name, currentSchool?.name)
       if (isLowerGradePointsEntry) {
-        // For Kimwangarc lower grades: show only Level and Points
-        return `<td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; font-weight: bold; background: #e5e7eb; color: #000000;">${meanPerformance ? meanPerformance.level : '-'}</td>
-                <td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; background: #e5e7eb; color: #d97706; font-weight: bold;">${meanPerformance ? meanPerformance.points : '-'}</td>`
+        return `<td style="border: 1px solid #333; padding: ${cellPad}; text-align: center; font-size: ${baseFontSize}px; font-weight: bold; background: #e5e7eb; color: #000000;">${meanPerformance ? meanPerformance.level : '-'}</td>
+                <td style="border: 1px solid #333; padding: ${cellPad}; text-align: center; font-size: ${subHeaderFontSize}px; background: #e5e7eb; color: #d97706; font-weight: bold;">${meanPerformance ? meanPerformance.points : '-'}</td>`
       } else {
-        // For all other classes: show Marks, Level, and Points
-        return `<td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; font-weight: bold; background: #e5e7eb;">${meanScore}</td>
-                <td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; font-weight: bold; background: #e5e7eb; color: #000000;">${meanPerformance ? meanPerformance.level : '-'}</td>
-                <td style="border: 1px solid #333; padding: 3px; text-align: center; font-size: 8px; background: #e5e7eb; color: #d97706; font-weight: bold;">${meanPerformance ? meanPerformance.points : '-'}</td>`
+        return `<td style="border: 1px solid #333; padding: ${cellPad}; text-align: center; font-size: ${baseFontSize}px; font-weight: bold; background: #e5e7eb;">${meanScore}</td>
+                <td style="border: 1px solid #333; padding: ${cellPad}; text-align: center; font-size: ${baseFontSize}px; font-weight: bold; background: #e5e7eb; color: #000000;">${meanPerformance ? meanPerformance.level : '-'}</td>
+                <td style="border: 1px solid #333; padding: ${cellPad}; text-align: center; font-size: ${subHeaderFontSize}px; background: #e5e7eb; color: #d97706; font-weight: bold;">${meanPerformance ? meanPerformance.points : '-'}</td>`
       }
     }).join('')
     
@@ -1325,49 +1326,50 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
         <title>${filename}</title>
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
-          body { padding: 5px; background: white; line-height: 1; }
-          table { border-collapse: collapse; width: 100%; }
-          tbody tr { page-break-inside: avoid; orphans: 1; widows: 1; }
+          body { padding: 0; background: white; line-height: 1.1; }
+          table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+          td, th { overflow: hidden; }
+          tbody tr { page-break-inside: avoid; }
           @media print { 
-            body { padding: 3px; margin: 0; }
-            @page { size: landscape; margin: 2mm; padding: 0; }
+            body { padding: 0; margin: 0; }
+            @page { size: A4 landscape; margin: 4mm 4mm 4mm 4mm; }
             html, body { height: auto; margin: 0; padding: 0; }
-            table { page-break-inside: auto; }
+            table { page-break-inside: auto; width: 100%; }
             tbody tr { page-break-inside: avoid; }
           }
         </style>
       </head>
       <body>
-        <div style="text-align: center; margin-bottom: 3px;">
-          <h1 style="font-size: 13px; font-weight: bold; margin: 0 0 2px 0; padding: 0;">${currentSchool?.name || 'School'.toUpperCase()}</h1>
-          <p style="font-size: 10px; font-weight: bold; margin: 0 0 1px 0; padding: 0;">${gradeName} - ${examType} - ${term} ${year}</p>
-          <p style="font-size: 8px; color: #666; margin: 0; padding: 0;">Teacher: ${teacherName || 'N/A'} | Date: ${new Date().toLocaleDateString()}</p>
+        <div style="text-align: center; margin-bottom: 2px;">
+          <h1 style="font-size: 11px; font-weight: bold; margin: 0 0 1px 0; padding: 0; text-transform: uppercase;">${currentSchool?.name || 'School'}</h1>
+          <p style="font-size: 9px; font-weight: bold; margin: 0 0 1px 0; padding: 0;">${gradeName} &mdash; ${examType} &mdash; ${term} ${year}</p>
+          <p style="font-size: 7px; color: #666; margin: 0; padding: 0;">Teacher: ${teacherName || 'N/A'} &nbsp;|&nbsp; Date: ${new Date().toLocaleDateString()}</p>
         </div>
         
-        <table style="width: 100%; border-collapse: collapse; border: 2px solid #333;">
+        <table style="width: 100%; border-collapse: collapse; border: 1px solid #333; table-layout: auto;">
           <thead>
             <tr style="background: #e5e7eb;">
-              <th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9px; width: 30px;">No.</th>
-              <th style="border: 1px solid #333; padding: 4px; text-align: left; font-size: 9px; min-width: 100px;">Name</th>
+              <th style="border: 1px solid #333; padding: ${headerPad}; text-align: center; font-size: ${baseFontSize}px; white-space: nowrap;">No.</th>
+              <th style="border: 1px solid #333; padding: ${headerPad}; text-align: left; font-size: ${nameFontSize}px;">Name</th>
               ${subjectHeadersRow1}
-              <th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9px; background: #e5e7eb;">Total</th>
-              <th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9px; background: #e5e7eb;">Avg</th>
+              <th style="border: 1px solid #333; padding: ${headerPad}; text-align: center; font-size: ${baseFontSize}px; background: #e5e7eb; white-space: nowrap;">Total</th>
+              <th style="border: 1px solid #333; padding: ${headerPad}; text-align: center; font-size: ${baseFontSize}px; background: #e5e7eb; white-space: nowrap;">Level</th>
             </tr>
             <tr style="background: #e5e7eb;">
-              <th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 8px;"></th>
-              <th style="border: 1px solid #333; padding: 4px; text-align: left; font-size: 8px;"></th>
+              <th style="border: 1px solid #333; padding: ${headerPad}; font-size: ${subHeaderFontSize}px;"></th>
+              <th style="border: 1px solid #333; padding: ${headerPad}; font-size: ${subHeaderFontSize}px;"></th>
               ${subjectHeadersRow2}
-              <th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 8px;"></th>
-              <th style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 8px;"></th>
+              <th style="border: 1px solid #333; padding: ${headerPad}; font-size: ${subHeaderFontSize}px;"></th>
+              <th style="border: 1px solid #333; padding: ${headerPad}; font-size: ${subHeaderFontSize}px;"></th>
             </tr>
           </thead>
           <tbody>
             ${studentRows}
             <tr style="background: #e5e7eb; font-weight: bold;">
-              <td colspan="2" style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9px;">MEAN</td>
+              <td colspan="2" style="border: 1px solid #333; padding: ${cellPad}; text-align: center; font-size: ${baseFontSize}px;">MEAN</td>
               ${meanCells}
-              <td style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9px;"></td>
-              <td style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9px; color: #000000;">${classAveragePerformanceLevel ? classAveragePerformanceLevel.level : '-'}</td>
+              <td style="border: 1px solid #333; padding: ${cellPad}; text-align: center; font-size: ${baseFontSize}px;"></td>
+              <td style="border: 1px solid #333; padding: ${cellPad}; text-align: center; font-size: ${baseFontSize}px; color: #000000;">${classAveragePerformanceLevel ? classAveragePerformanceLevel.level : '-'}</td>
             </tr>
           </tbody>
         </table>
