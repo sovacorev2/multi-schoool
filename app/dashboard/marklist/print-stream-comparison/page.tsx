@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useSchool } from '@/lib/school-context'
+import { cachedFetch, TTL } from '@/lib/query-cache'
 
 interface StreamData {
   name: string
@@ -45,44 +46,55 @@ export default function PrintStreamComparisonPage() {
 
       setSessionInfo(sessionData)
 
-      // Find all classes matching the base class
-      const { data: allClasses } = await supabase
-        .from('classes')
-        .select('*')
-        .eq('school_id', currentSchool.id)
-        .order('name')
+      // Find all classes matching the base class — batch everything, no per-class loops
+      const allClasses = await cachedFetch(
+        `classes:${currentSchool.id}`,
+        () => supabase.from('classes').select('id, name, school_id, display_order').eq('school_id', currentSchool.id).order('name').then(r => r.data ?? []),
+        TTL.STATIC
+      )
 
       if (!allClasses) return
 
-      const streamClasses = allClasses.filter(c => {
+      const streamClasses = allClasses.filter((c: any) => {
         const pattern = new RegExp(`^${baseClass}(\\s+.+)?$`, 'i')
         return pattern.test(c.name)
       })
 
       const streamsData: StreamData[] = []
 
-      for (const cls of streamClasses) {
-        // Get matching session for this class
-        const { data: classSessions } = await supabase
-          .from('sessions')
-          .select('*, exam_types(*)')
-          .eq('class_id', cls.id)
+      if (streamClasses.length === 0) return
+
+      const streamClassIds = streamClasses.map((c: any) => c.id)
+
+      // 3 parallel batch queries instead of N×3 sequential queries
+      const [streamSessions, allSubjectsData, allLearnersData] = await Promise.all([
+        supabase.from('sessions').select('id, class_id')
+          .in('class_id', streamClassIds)
           .eq('term', sessionData?.term)
           .eq('year', sessionData?.year)
           .eq('exam_type_id', sessionData?.exam_type_id)
+          .then(r => r.data ?? []),
+        cachedFetch(`subjects:batch:${streamClassIds.join(',')}`, () =>
+          supabase.from('subjects').select('id, name, class_id').in('class_id', streamClassIds).then(r => r.data ?? []),
+          TTL.STATIC),
+        cachedFetch(`learners:batch:${streamClassIds.join(',')}`, () =>
+          supabase.from('learners').select('id, name, class_id').in('class_id', streamClassIds).then(r => r.data ?? []),
+          TTL.STATIC),
+      ])
 
-        const clsSessionId = classSessions?.[0]?.id
+      const sessionByClassId = new Map(streamSessions.map((s: any) => [s.class_id, s.id]))
+      const sessionIds = streamSessions.map((s: any) => s.id)
+      const allMarksData = sessionIds.length > 0
+        ? await cachedFetch(`marks:batch:${sessionIds.join(',')}`, () =>
+            supabase.from('marks').select('learner_id, subject_id, score, session_id').in('session_id', sessionIds).then(r => r.data ?? []),
+            TTL.MARKS)
+        : []
 
-        // Fetch data for this stream
-        const [subjectsRes, learnersRes, marksRes] = await Promise.all([
-          supabase.from('subjects').select('*').eq('class_id', cls.id),
-          supabase.from('learners').select('*').eq('class_id', cls.id),
-          clsSessionId ? supabase.from('marks').select('*').eq('session_id', clsSessionId) : Promise.resolve({ data: [] }),
-        ])
-
-        const clsSubjects = subjectsRes.data || []
-        const clsLearners = learnersRes.data || []
-        const clsMarks = marksRes.data || []
+      for (const cls of streamClasses) {
+        const clsSessionId = sessionByClassId.get(cls.id)
+        const clsSubjects = allSubjectsData.filter((s: any) => s.class_id === cls.id)
+        const clsLearners = allLearnersData.filter((l: any) => l.class_id === cls.id)
+        const clsMarks = clsSessionId ? allMarksData.filter((m: any) => m.session_id === clsSessionId) : []
 
         // Calculate per-subject stats
         const subjectStats = clsSubjects.map(subj => {

@@ -129,7 +129,7 @@ function HomePageContent() {
       const supabase = createClient()
       const { data: school } = await supabase
         .from('schools')
-        .select('*')
+        .select('id, name, code, admin_password, logo_url, feature_pin_management, is_active')
         .eq('code', schoolCode)
         .eq('is_active', true)
         .single()
@@ -161,8 +161,8 @@ function HomePageContent() {
         
         // Filter data by school_id
         const [classesRes, examTypesRes] = await Promise.all([
-          supabase.from('classes').select('*').eq('school_id', currentSchool.id).order('display_order'),
-          supabase.from('exam_types').select('*').eq('school_id', currentSchool.id).order('name'),
+          supabase.from('classes').select('id, name, school_id, display_order, grade_level').eq('school_id', currentSchool.id).order('display_order'),
+          supabase.from('exam_types').select('id, name, display_order, school_id').eq('school_id', currentSchool.id).order('name'),
         ])
 
         if (classesRes.error) {

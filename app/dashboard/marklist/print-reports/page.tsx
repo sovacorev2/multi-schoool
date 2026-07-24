@@ -83,27 +83,22 @@ export default function PrintReportsPage() {
         // Fetch subjects for the specific class
         const { data: subjectsData } = await supabase
           .from('subjects')
-          .select('*')
+          .select('id, name, class_id, display_order')
           .eq('class_id', classId)
           .order('name')
         setSubjects(subjectsData || [])
 
         // Fetch marks and learner data
         if (isBulk && classId && sessionId) {
-          // Get all learners for the class
-          const { data: learners } = await supabase
-            .from('learners')
-            .select('id, name, admission_number')
-            .eq('class_id', classId)
-            .order('name')
+          // Batch fetch learners and marks in parallel
+          const [learnersRes, marksRes] = await Promise.all([
+            supabase.from('learners').select('id, name, admission_number').eq('class_id', classId).order('name'),
+            supabase.from('marks').select('learner_id, subject_id, score').eq('session_id', sessionId),
+          ])
+          const learners = learnersRes.data
+          const marksData = marksRes.data
 
           if (learners) {
-            // Fetch marks for all learners
-            const { data: marksData } = await supabase
-              .from('marks')
-              .select('*')
-              .eq('session_id', sessionId)
-              .in('learner_id', learners.map(l => l.id))
 
             const reportsList = learners.map(learner => {
               const learnerMarks: Record<string, number | null> = {}

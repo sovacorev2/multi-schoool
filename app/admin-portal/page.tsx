@@ -265,7 +265,7 @@ export default function AdminPortalPage() {
     const supabase = createClient()
     const { data } = await supabase
       .from('schools')
-      .select('*')
+      .select('id, name, code, admin_password, logo_url, feature_pin_management, is_active')
       .eq('code', code)
       .eq('is_active', true)
       .single()
@@ -286,7 +286,7 @@ export default function AdminPortalPage() {
       const supabase = createClient()
       const { data: schoolData } = await supabase
         .from('schools')
-        .select('*')
+        .select('id, name, code, admin_password, logo_url, feature_pin_management, is_active')
         .eq('id', currentSchool?.id)
         .single()
 
@@ -313,13 +313,12 @@ export default function AdminPortalPage() {
       const supabase = createClient()
 
       const [classesRes, examTypesRes, subjectsRes, schoolRes, teachersRes, assignmentsRes] = await Promise.all([
-        supabase.from('classes').select('*').eq('school_id', currentSchool.id).order('display_order'),
-        supabase.from('exam_types').select('*').eq('school_id', currentSchool.id).order('name'),
-        // Subjects don't have school_id - they belong to classes. Query without school filter.
-        supabase.from('subjects').select('*').order('name'),
-        supabase.from('schools').select('*').eq('id', currentSchool.id).single(),
-        supabase.from('teacher_accounts').select('*').eq('school_id', currentSchool.id),
-        supabase.from('teacher_assignments').select('*').eq('school_id', currentSchool.id),
+        supabase.from('classes').select('id, name, school_id, display_order, grade_level').eq('school_id', currentSchool.id).order('display_order'),
+        supabase.from('exam_types').select('id, name, display_order, school_id').eq('school_id', currentSchool.id).order('name'),
+        supabase.from('subjects').select('id, name, class_id, display_order').order('name'),
+        supabase.from('schools').select('id, name, code, admin_password, logo_url, feature_pin_management, is_active').eq('id', currentSchool.id).single(),
+        supabase.from('teacher_accounts').select('id, name, email, school_id, pin, is_active').eq('school_id', currentSchool.id),
+        supabase.from('teacher_assignments').select('id, user_id, class_id, school_id, subject_id').eq('school_id', currentSchool.id),
       ])
 
       if (classesRes.data) setClasses(sortClassesByLevel(classesRes.data))
