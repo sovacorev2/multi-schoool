@@ -195,9 +195,9 @@ export default function MarklistPage() {
 
     try {
       const [sessionsRes, subjectsRes, learnersRes] = await Promise.all([
-        supabase.from('sessions').select('*, exam_types(*)').eq('class_id', currentClass.id),
-        supabase.from('subjects').select('*').eq('class_id', currentClass.id).order('name'),
-        supabase.from('learners').select('*').eq('class_id', currentClass.id).order('name'),
+        supabase.from('sessions').select('id, class_id, school_id, exam_type_id, term, year, teacher_name, is_locked, deadline_datetime, exam_types(id, name, display_order)').eq('class_id', currentClass.id),
+        supabase.from('subjects').select('id, name, class_id, display_order').eq('class_id', currentClass.id).order('name'),
+        supabase.from('learners').select('id, name, class_id').eq('class_id', currentClass.id).order('name'),
       ])
 
       // Only show exam sessions (those with exam_type_id) - these are created by teachers
@@ -206,7 +206,6 @@ export default function MarklistPage() {
       setLearners(learnersRes.data || [])
     } catch (err) {
       // Network error - use empty data for now
-      console.log('[v0] Network error fetching data, using empty sets:', err)
       setSessions([])
       setSubjects([])
       setLearners([])
@@ -226,7 +225,7 @@ export default function MarklistPage() {
       const supabase = createClient()
       const { data } = await supabase
         .from('marks')
-        .select('*')
+        .select('id, session_id, learner_id, subject_id, score')
         .eq('session_id', selectedSessionId)
 
       setMarks(data || [])
@@ -258,7 +257,6 @@ export default function MarklistPage() {
       const isPinAuthenticated = !!teacherId && !isAdminBypass
       
       if (isPinAuthenticated) {
-        console.log('[v0] PIN teacher access restricted to assigned classes only, id:', teacherId)
       }
 
       // Fetch all classes initially
@@ -274,7 +272,6 @@ export default function MarklistPage() {
         
         const assignedClassIds = new Set(teacherAssignments?.map(a => a.class_id) || [])
         allClasses = allClasses.filter(cls => assignedClassIds.has(cls.id))
-        console.log('[v0] PIN teacher restricted to', allClasses.length, 'assigned classes')
       }
 
       // Get ALL matching sessions at once instead of per-class
@@ -285,24 +282,20 @@ export default function MarklistPage() {
         .eq('year', selectedSession.year)
         .eq('exam_type_id', selectedSession.exam_type_id)
       
-      // Get ALL subjects and learners for all classes at once
+      // Get ALL subjects, learners and marks for all classes at once — minimal columns only
       const classIds = allClasses.map(c => c.id)
-      const { data: allSubjects } = await supabase
-        .from('subjects')
-        .select('*')
-        .in('class_id', classIds)
-      
-      const { data: allLearners } = await supabase
-        .from('learners')
-        .select('*')
-        .in('class_id', classIds)
-      
-      // Get ALL marks for the selected exam sessions
       const sessionIds = allSessions?.map(s => s.id) || []
-      const { data: allMarks } = await supabase
-        .from('marks')
-        .select('*')
-        .in('session_id', sessionIds)
+
+      const [subjectsRes2, learnersRes2, marksRes2] = await Promise.all([
+        supabase.from('subjects').select('id, name, class_id').in('class_id', classIds),
+        supabase.from('learners').select('id, class_id').in('class_id', classIds),
+        sessionIds.length > 0
+          ? supabase.from('marks').select('session_id, subject_id, score').in('session_id', sessionIds)
+          : Promise.resolve({ data: [] }),
+      ])
+      const allSubjects = subjectsRes2.data
+      const allLearners = learnersRes2.data
+      const allMarks = marksRes2.data
 
       // Create lookup maps for fast access
       const sessionsByClassId = new Map()
@@ -818,16 +811,13 @@ export default function MarklistPage() {
   // Exam comparison: find the previous session and compare
   const fetchExamComparison = useCallback(async (overrideClassId?: string) => {
     if (!selectedSession) {
-      console.log('[v0] No selectedSession, skipping comparison')
       return
     }
     const targetClassId = overrideClassId || currentClass?.id
     if (!targetClassId) {
-      console.log('[v0] No targetClassId, skipping comparison')
       return
     }
     
-    console.log('[v0] Starting comparison fetch for class:', targetClassId, 'session:', selectedSession.id)
     setIsLoadingComparison(true)
     setComparisonData(null)
 
@@ -856,16 +846,13 @@ export default function MarklistPage() {
       }
 
       if (!allSessions || allSessions.length === 0) {
-        console.log('[v0] No sessions found for class:', targetClassId)
         setIsLoadingComparison(false)
         return
       }
 
-      console.log('[v0] Found', allSessions.length, 'sessions for class')
 
       // Need at least 2 sessions to compare
       if (allSessions.length < 2) {
-        console.log('[v0] Only 1 session exists, cannot compare (need at least 2)')
         setIsLoadingComparison(false)
         return
       }
@@ -885,16 +872,12 @@ export default function MarklistPage() {
         }))
         .sort((a, b) => a.sortKey - b.sortKey)
 
-      console.log('[v0] Sessions ordered:', ordered.map(s => `${s.exam_types?.name} ${s.term} ${s.year}`))
-      console.log('[v0] Looking for session ID:', selectedSession.id)
 
       let currentIdx = ordered.findIndex(s => s.id === selectedSession.id)
-      console.log('[v0] Current session index:', currentIdx)
 
       // If the selected session is not in this class's sessions, find the matching one by term/year/exam_type
       let currentSessionForComparison = selectedSession
       if (currentIdx === -1) {
-        console.log('[v0] Selected session not found in class sessions, finding matching session...')
         // Find session with same term, year, exam_type for the target class
         const match = ordered.find(s =>
           s.term === selectedSession.term &&
@@ -904,18 +887,15 @@ export default function MarklistPage() {
         if (match) {
           currentSessionForComparison = match
           currentIdx = ordered.indexOf(match)
-          console.log('[v0] Found matching session at index:', currentIdx)
         } else {
           // Use the most recent session as current
           currentIdx = ordered.length - 1
           currentSessionForComparison = ordered[currentIdx]
-          console.log('[v0] No exact match, using most recent session at index:', currentIdx)
         }
       }
 
       // Check if we can do comparison (need a previous session)
       if (currentIdx <= 0) {
-        console.log('[v0] Current session is first or not found, no previous session available')
         setIsLoadingComparison(false)
         return
       }
@@ -925,32 +905,28 @@ export default function MarklistPage() {
       if (comparisonSessionId) {
         previousSession = ordered.find(s => s.id === comparisonSessionId)
         if (!previousSession) {
-          console.log('[v0] Selected comparison session not found in ordered list')
           setIsLoadingComparison(false)
           return
         }
-        console.log('[v0] Using teacher-selected comparison exam:', previousSession.exam_types?.name)
       } else {
         previousSession = ordered[currentIdx - 1]
-        console.log('[v0] Using previous exam (auto-select):', previousSession.exam_types?.name)
       }
       
-      console.log('[v0] Comparing:', previousSession.exam_types?.name, 'vs', currentSessionForComparison.exam_types?.name)
 
-  // Fetch subjects, learners, and marks for both sessions (for the target class)
-  const [targetSubjectsRes, targetLearnersRes, currentMarksRes, previousMarksRes] = await Promise.all([
-    supabase.from('subjects').select('*').eq('class_id', targetClassId).order('name'),
-        supabase.from('learners').select('*').eq('class_id', targetClassId).order('name'),
-        supabase.from('marks').select('*').eq('session_id', currentSessionForComparison.id),
-        supabase.from('marks').select('*').eq('session_id', previousSession.id),
-      ])
+  // Re-use already-loaded subjects/learners for the current class; only fetch marks (2 sessions in parallel)
+  const isSameClass = targetClassId === currentClass?.id
+  const [currentMarksRes, previousMarksRes, targetSubjectsRes, targetLearnersRes] = await Promise.all([
+    supabase.from('marks').select('learner_id, subject_id, score').eq('session_id', currentSessionForComparison.id),
+    supabase.from('marks').select('learner_id, subject_id, score').eq('session_id', previousSession.id),
+    isSameClass ? Promise.resolve({ data: subjects }) : supabase.from('subjects').select('id, name, class_id').eq('class_id', targetClassId).order('name'),
+    isSameClass ? Promise.resolve({ data: learners }) : supabase.from('learners').select('id, name, class_id').eq('class_id', targetClassId).order('name'),
+  ])
 
-      const targetSubjects = targetSubjectsRes.data || []
-      const targetLearners = targetLearnersRes.data || []
+      const targetSubjects = (targetSubjectsRes.data || []) as typeof subjects
+      const targetLearners = (targetLearnersRes.data || []) as typeof learners
       const currentMarks = currentMarksRes.data || []
       const previousMarks = previousMarksRes.data || []
 
-      console.log('[v0] Fetched:', { subjects: targetSubjects.length, learners: targetLearners.length, currentMarks: currentMarks.length, previousMarks: previousMarks.length })
 
       // Subject comparisons - use whatever data exists (even partial)
       const subjectComparisons = targetSubjects.map(subject => {
@@ -992,7 +968,6 @@ export default function MarklistPage() {
       const currentClassAvgVal = curClassTotal.length > 0 ? Math.round((curClassTotal.reduce((a, b) => a + b.currentTotal, 0) / curClassTotal.length) * 10) / 10 : 0
       const previousClassAvgVal = prevClassTotal.length > 0 ? Math.round((prevClassTotal.reduce((a, b) => a + b.previousTotal, 0) / prevClassTotal.length) * 10) / 10 : 0
 
-      console.log('[v0] Comparison data prepared:', { topImprovers: topImprovers.length, topDroppers: topDroppers.length })
 
       setComparisonData({
         currentSession: { name: currentSessionForComparison.exam_types?.name || '', term: currentSessionForComparison.term, year: currentSessionForComparison.year },
@@ -1016,7 +991,6 @@ export default function MarklistPage() {
     if (selectedSession) {
       const classToCompare = comparisonClassId || currentClass?.id
       if (classToCompare) {
-        console.log('[v0] Fetching comparison for class:', classToCompare)
         fetchExamComparison(comparisonClassId || undefined)
       }
     }
@@ -1886,19 +1860,12 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
             {currentSchool?.feature_report_cards && (
               <Button 
                 onClick={() => attemptPrint(async () => {
-                  console.log('[v0] === PRINT REPORTS STARTED ===')
-                  console.log('[v0] School:', currentSchool?.name, 'ID:', currentSchool?.id)
-                  console.log('[v0] Class:', currentClass?.name, 'ID:', currentClass?.id)
-                  console.log('[v0] Session:', selectedSession?.term, selectedSession?.year, 'Exam Type ID:', selectedSession?.exam_type_id)
-                  console.log('[v0] Current results count:', results.length)
-                  console.log('[v0] School Logo URL:', currentSchool?.logo_url)
                   
                   let finalResults = [...results]
                   const className = currentClass?.name || ''
                   const classWords = className.trim().split(/\s+/)
                   const isStreamedClass = classWords.length > 2
                   
-                  console.log('[v0] Class analysis - Words:', classWords, 'IsStreamed:', isStreamedClass)
                   
                   // Helper: given a list of class IDs, fetch all sessions for this exam
                   // (matched by exam_type_id + term + year) then fetch marks by session_id.
@@ -1908,23 +1875,15 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                   const fetchMarksByGradeClassIds = async (classIds: string[]): Promise<Record<string, number>> => {
                     if (!classIds.length || !selectedSession) return {}
                     
-                    // Step 1: find sessions for these classes matching this exam
-                    const { data: gradeSessions } = await supabase
-                      .from('sessions')
-                      .select('id, class_id')
-                      .in('class_id', classIds)
-                      .eq('exam_type_id', selectedSession.exam_type_id)
-                      .eq('term', selectedSession.term)
-                      .eq('year', selectedSession.year)
-                    
-                    const gradeSessionIds = (gradeSessions || []).map(s => s.id)
-                    if (!gradeSessionIds.length) return {}
-                    
-                    // Step 2: fetch marks by session_id (correct & reliable for all schools)
+                    // Single query: join marks → sessions, filter by class_ids + exam context
+                    // avoids a sequential sessions-then-marks round-trip
                     const { data: marks } = await supabase
                       .from('marks')
-                      .select('learner_id, score, subject_id')
-                      .in('session_id', gradeSessionIds)
+                      .select('learner_id, score, sessions!inner(class_id, exam_type_id, term, year)')
+                      .in('sessions.class_id', classIds)
+                      .eq('sessions.exam_type_id', selectedSession.exam_type_id)
+                      .eq('sessions.term', selectedSession.term)
+                      .eq('sessions.year', selectedSession.year)
                     
                     // Step 3: accumulate raw mark totals per learner.
                     // Ranking is based on total raw marks (not rubric points) — higher marks = higher rank.
@@ -2044,7 +2003,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                     }
                   }
                   
-                  console.log('[v0] Final results - Count:', finalResults.length, 'Sample:', finalResults.slice(0, 2).map(r => ({
+                  setPrintData(finalResults.map(r => ({
                     name: r.learner.name,
                     streamRank: r.rank,
                     overallRank: r.overall_rank,
@@ -2075,10 +2034,8 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                         
                         if (historyError) throw historyError
                         
-                        console.log('[v0] History marks fetched:', historyMarks?.length, 'Type:', typeof historyMarks, 'IsArray:', Array.isArray(historyMarks))
                         
                         if (!Array.isArray(historyMarks)) {
-                          console.log('[v0] ✗ historyMarks is not an array:', historyMarks)
                           throw new Error('historyMarks is not an array')
                         }
                         
@@ -2135,7 +2092,6 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                             }
                           })
                           
-                          console.log('[v0] History built for', Object.keys(termHistory).length, 'learners')
                         }
                       } catch (historyFetchErr) {
                         console.error('[v0] ✗ History marks fetch error:', historyFetchErr)
@@ -2145,7 +2101,6 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                     console.error('[v0] ✗ History outer error:', err)
                   }
                   
-                  console.log('[v0] === SETTING REPORT DATA AND OPENING MODAL ===')
                   setReportModalData(finalResults)
                   setTermHistory(termHistory)
 
