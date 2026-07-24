@@ -443,12 +443,12 @@ export default function MarklistPage() {
     const supabase = createClient()
 
     try {
-      // Find all classes that start with the base class name
-      const { data: allClasses } = await supabase
-        .from('classes')
-        .select('*')
-        .eq('school_id', currentSchool?.id)
-        .order('name')
+      // Find all classes that start with the base class name (cached)
+      const allClasses = await cachedFetch(
+        `classes:${currentSchool?.id}`,
+        () => supabase.from('classes').select('id, name, school_id, display_order').eq('school_id', currentSchool?.id).order('name').then(r => r.data ?? []),
+        TTL.STATIC
+      )
       
       if (!allClasses) return
 
@@ -463,33 +463,28 @@ export default function MarklistPage() {
         return
       }
 
-      // Batch fetch all sessions for stream classes at once
       const streamClassIds = streamClasses.map(c => c.id)
-      const { data: allSessions } = await supabase
-        .from('sessions')
-        .select('*, exam_types(*)')
-        .in('class_id', streamClassIds)
-        .eq('term', selectedSession.term)
-        .eq('year', selectedSession.year)
-        .eq('exam_type_id', selectedSession.exam_type_id)
 
-      // Batch fetch all subjects and learners
-      const { data: allSubjects } = await supabase
-        .from('subjects')
-        .select('*')
-        .in('class_id', streamClassIds)
-      
-      const { data: allLearners } = await supabase
-        .from('learners')
-        .select('*')
-        .in('class_id', streamClassIds)
-      
-      // Batch fetch all marks for matching sessions
+      // 4 parallel batch queries instead of sequential per-class fetches
+      const [allSessions, allSubjects, allLearners] = await Promise.all([
+        supabase.from('sessions').select('id, class_id, exam_type_id, term, year, exam_types(id, name, display_order)')
+          .in('class_id', streamClassIds)
+          .eq('term', selectedSession.term)
+          .eq('year', selectedSession.year)
+          .eq('exam_type_id', selectedSession.exam_type_id)
+          .then(r => r.data),
+        cachedFetch(`subjects:batch:${streamClassIds.join(',')}`, () =>
+          supabase.from('subjects').select('id, name, class_id').in('class_id', streamClassIds).then(r => r.data ?? []),
+          TTL.STATIC),
+        cachedFetch(`learners:batch:${streamClassIds.join(',')}`, () =>
+          supabase.from('learners').select('id, name, class_id').in('class_id', streamClassIds).then(r => r.data ?? []),
+          TTL.STATIC),
+      ])
+
       const sessionIds = allSessions?.map(s => s.id) || []
-      const { data: allMarks } = await supabase
-        .from('marks')
-        .select('*')
-        .in('session_id', sessionIds)
+      const { data: allMarks } = sessionIds.length > 0
+        ? await supabase.from('marks').select('learner_id, subject_id, score, session_id').in('session_id', sessionIds)
+        : { data: [] }
 
       // Create lookup maps
       const sessionsByClassId = new Map()
@@ -696,11 +691,11 @@ export default function MarklistPage() {
     const supabase = createClient()
 
     try {
-      const { data: allClassesData } = await supabase
-        .from('classes')
-        .select('*')
-        .eq('school_id', currentSchool?.id)
-        .order('name')
+      const allClassesData = await cachedFetch(
+        `classes:${currentSchool?.id}`,
+        () => supabase.from('classes').select('id, name, school_id, display_order').eq('school_id', currentSchool?.id).order('name').then(r => r.data ?? []),
+        TTL.STATIC
+      )
 
       if (!allClassesData) return
 
