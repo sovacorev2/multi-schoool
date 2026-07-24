@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { cacheInvalidate, cachedFetch, TTL } from "@/lib/query-cache";
 import { useClass } from "@/lib/class-context";
 import { useSchool } from "@/lib/school-context";
 import { Button } from "@/components/ui/button";
@@ -189,13 +190,16 @@ export default function MarksPage() {
       .order("year", { ascending: false })
       .order("term");
 
-    const [examTypesRes, sessionsRes, subjectsRes, learnersRes, schoolRes] = await Promise.all([
-      supabase.from("exam_types").select("id, name, display_order").eq("school_id", currentSchool.id).order("display_order", { ascending: true }),
+    const [examTypesData, sessionsRes, subjectsData, learnersData, schoolRes] = await Promise.all([
+      cachedFetch(`exam_types:${currentSchool.id}`, () => supabase.from("exam_types").select("id, name, display_order").eq("school_id", currentSchool.id).order("display_order", { ascending: true }).then(r => r.data ?? []), TTL.STATIC),
       sessionsQuery,
-      supabase.from("subjects").select("id, name, class_id, display_order").eq("class_id", currentClass.id).order("name"),
-      supabase.from("learners").select("id, name, class_id").eq("class_id", currentClass.id).order("name"),
+      cachedFetch(`subjects:${currentClass.id}`, () => supabase.from("subjects").select("id, name, class_id, display_order").eq("class_id", currentClass.id).order("name").then(r => r.data ?? []), TTL.STATIC),
+      cachedFetch(`learners:${currentClass.id}`, () => supabase.from("learners").select("id, name, class_id").eq("class_id", currentClass.id).order("name").then(r => r.data ?? []), TTL.STATIC),
       supabase.from("schools").select("feature_pin_management").eq("id", currentSchool.id).single()
     ]);
+    const examTypesRes = { data: examTypesData }
+    const subjectsRes = { data: subjectsData }
+    const learnersRes = { data: learnersData }
 
     // Check if PIN management is enabled for this school - this is the ONLY gate
     // that should enable subject restrictions. A stored teacher ID alone is NOT
@@ -324,7 +328,11 @@ export default function MarksPage() {
       const supabase = createClient();
       
       // Fetch marks
-      const { data: marksRes } = await supabase.from("marks").select("id, session_id, learner_id, subject_id, score").eq("session_id", selectedSessionId);
+      const marksRes = await cachedFetch(
+        `marks:${selectedSessionId}`,
+        () => supabase.from("marks").select("id, session_id, learner_id, subject_id, score").eq("session_id", selectedSessionId).then(r => r.data ?? []),
+        TTL.MARKS
+      );
 
       const marksMap: Record<string, Record<string, number | null>> = {};
       (marksRes || []).forEach((mark: Mark) => {
@@ -479,6 +487,8 @@ export default function MarksPage() {
         console.error("[v0] Error saving marks:", error);
         return false;
       }
+      // Bust the marks cache for this session so the marklist sees fresh data
+      cacheInvalidate(`marks:${selectedSessionId}`)
       return true;
     },
     [selectedSessionId, sessions, isAdminBypass, pinManagementEnabled, isClassTeacher, assignedSubjectIds]
