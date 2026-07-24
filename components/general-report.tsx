@@ -547,7 +547,7 @@ function generateReportHTML(
 
   // Build individual pages
   const pages = learnersData.map(ld => {
-    const { learner, subjectMarks, overallAverage, classRank, totalInClass, crossStreamRank, totalInLevel, examRanks, strengthSubjects, prioritySubjects, autoComment } = ld
+    const { learner, subjectMarks, overallAverage, overallTotal, classRank, totalInClass, crossStreamRank, totalInLevel, examRanks, strengthSubjects, prioritySubjects, autoComment } = ld
     const overallPoints = calcOverallPoints(overallTotal)
     
 
