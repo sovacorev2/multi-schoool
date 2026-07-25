@@ -1864,6 +1864,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
               <Button 
                 onClick={() => attemptPrint(async () => {
                   
+                  const supabase = createClient()
                   let finalResults = [...results]
                   const className = currentClass?.name || ''
                   const classWords = className.trim().split(/\s+/)
@@ -2006,18 +2007,10 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                     }
                   }
                   
-                  setPrintData(finalResults.map(r => ({
-                    name: r.learner.name,
-                    streamRank: r.rank,
-                    overallRank: r.overall_rank,
-                    totalInGrade: r.total_in_grade
-                  })))
-                  
                   // STEP 2: Fetch term history for trend graph
                   const termHistory: Record<string, any[]> = {}
                   
                   try {
-                    const supabase = createClient()
                     const learnerIds = finalResults.map(r => r.learner.id)
                     
                     if (learnerIds.length > 0) {
