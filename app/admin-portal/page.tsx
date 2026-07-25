@@ -265,7 +265,7 @@ export default function AdminPortalPage() {
     const supabase = createClient()
     const { data } = await supabase
       .from('schools')
-      .select('id, name, code, admin_password, logo_url, feature_pin_management, is_active')
+      .select('id, name, short_name, code, tagline, email, phone, address, logo_url, primary_color, admin_password, is_active, feature_report_cards, feature_whatsapp_reports, feature_bulk_sms, feature_certificates, feature_pin_management, subscription_plan, subscription_expires_at, enable_pin_login, pin_login_enabled_at')
       .eq('code', code)
       .eq('is_active', true)
       .single()
@@ -286,7 +286,7 @@ export default function AdminPortalPage() {
       const supabase = createClient()
       const { data: schoolData } = await supabase
         .from('schools')
-        .select('id, name, code, admin_password, logo_url, feature_pin_management, is_active')
+        .select('id, name, short_name, code, tagline, email, phone, address, logo_url, primary_color, admin_password, is_active, feature_report_cards, feature_whatsapp_reports, feature_bulk_sms, feature_certificates, feature_pin_management, subscription_plan, subscription_expires_at, enable_pin_login, pin_login_enabled_at')
         .eq('id', currentSchool?.id)
         .single()
 
