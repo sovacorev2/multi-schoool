@@ -88,45 +88,71 @@ export default function PrintReportsPage() {
           .order('name')
         setSubjects(subjectsData || [])
 
-        // Fetch marks and learner data
-        if (isBulk && classId && sessionId) {
-          // Batch fetch learners and marks in parallel
-          const [learnersRes, marksRes] = await Promise.all([
-            supabase.from('learners').select('id, name, admission_number').eq('class_id', classId).order('name'),
-            supabase.from('marks').select('learner_id, subject_id, score').eq('session_id', sessionId),
-          ])
-          const learners = learnersRes.data
-          const marksData = marksRes.data
+        // Fetch marks and learner data — handles both bulk (all class) and single student
+        if (classId && sessionId) {
+          if (isBulk) {
+            // Bulk: fetch all learners in the class + all marks in parallel
+            const [learnersRes, marksRes] = await Promise.all([
+              supabase.from('learners').select('id, name, admission_number').eq('class_id', classId).order('name'),
+              supabase.from('marks').select('learner_id, subject_id, score').eq('session_id', sessionId),
+            ])
+            const learners = learnersRes.data
+            const marksData = marksRes.data
 
-          if (learners) {
-
-            const reportsList = learners.map(learner => {
-              const learnerMarks: Record<string, number | null> = {}
-              let total = 0
-              subjectsData?.forEach(subject => {
-                const mark = marksData?.find(m => m.learner_id === learner.id && m.subject_id === subject.id)
-                learnerMarks[subject.id] = mark?.score ?? null
-                if (mark?.score) total += mark.score
+            if (learners) {
+              const reportsList = learners.map(learner => {
+                const learnerMarks: Record<string, number | null> = {}
+                let total = 0
+                subjectsData?.forEach(subject => {
+                  const mark = marksData?.find(m => m.learner_id === learner.id && m.subject_id === subject.id)
+                  learnerMarks[subject.id] = mark?.score ?? null
+                  if (mark?.score) total += mark.score
+                })
+                const average = subjectsData ? total / subjectsData.length : 0
+                const rank = learners.filter(l => {
+                  const lTotal = subjectsData?.reduce((sum, s) => {
+                    const m = marksData?.find(ma => ma.learner_id === l.id && ma.subject_id === s.id)
+                    return sum + (m?.score || 0)
+                  }, 0) || 0
+                  return lTotal > total
+                }).length + 1
+                return { learner, marks: learnerMarks, total, rank, average }
               })
+              setReports(reportsList)
+            }
+          } else if (studentIds.length > 0) {
+            // Single / selected students: fetch only those learners + all class marks for ranking
+            const [learnersRes, allLearnersRes, marksRes] = await Promise.all([
+              supabase.from('learners').select('id, name, admission_number').in('id', studentIds),
+              supabase.from('learners').select('id').eq('class_id', classId),
+              supabase.from('marks').select('learner_id, subject_id, score').eq('session_id', sessionId),
+            ])
+            const learners = learnersRes.data
+            const allLearners = allLearnersRes.data || []
+            const marksData = marksRes.data
 
-              const average = subjectsData ? total / subjectsData.length : 0
-              const rank = learners.filter(l => {
-                const lTotal = subjectsData?.reduce((sum, s) => {
-                  const m = marksData?.find(ma => ma.learner_id === l.id && ma.subject_id === s.id)
-                  return sum + (m?.score || 0)
-                }, 0) || 0
-                return lTotal > total
-              }).length + 1
-
-              return {
-                learner,
-                marks: learnerMarks,
-                total,
-                rank,
-                average
-              }
-            })
-            setReports(reportsList)
+            if (learners) {
+              const reportsList = learners.map(learner => {
+                const learnerMarks: Record<string, number | null> = {}
+                let total = 0
+                subjectsData?.forEach(subject => {
+                  const mark = marksData?.find(m => m.learner_id === learner.id && m.subject_id === subject.id)
+                  learnerMarks[subject.id] = mark?.score ?? null
+                  if (mark?.score) total += mark.score
+                })
+                const average = subjectsData ? total / subjectsData.length : 0
+                // Rank against entire class
+                const rank = allLearners.filter(l => {
+                  const lTotal = subjectsData?.reduce((sum, s) => {
+                    const m = marksData?.find(ma => ma.learner_id === l.id && ma.subject_id === s.id)
+                    return sum + (m?.score || 0)
+                  }, 0) || 0
+                  return lTotal > total
+                }).length + 1
+                return { learner, marks: learnerMarks, total, rank, average }
+              })
+              setReports(reportsList)
+            }
           }
         }
 

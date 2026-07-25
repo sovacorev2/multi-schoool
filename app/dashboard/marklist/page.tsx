@@ -199,7 +199,7 @@ export default function MarklistPage() {
       const [sessionsData, subjectsData, learnersData] = await Promise.all([
         cachedFetch(`sessions:${classId}`, () => supabase.from('sessions').select('id, class_id, school_id, exam_type_id, term, year, is_locked, deadline_datetime, exam_types(id, name, display_order)').eq('class_id', classId).then(r => r.data ?? []), TTL.SHORT),
         cachedFetch(`subjects:${classId}`, () => supabase.from('subjects').select('id, name, class_id').eq('class_id', classId).order('name').then(r => r.data ?? []), TTL.STATIC),
-        cachedFetch(`learners:${classId}`, () => supabase.from('learners').select('id, name, class_id').eq('class_id', classId).order('name').then(r => r.data ?? []), TTL.STATIC),
+        cachedFetch(`learners:v2:${classId}`, () => supabase.from('learners').select('id, name, class_id, parent_phone').eq('class_id', classId).order('name').then(r => r.data ?? []), TTL.STATIC),
       ])
       // Wrap in response-shaped objects so existing destructuring still works
       const sessionsRes = { data: sessionsData, error: null }
@@ -734,7 +734,7 @@ export default function MarklistPage() {
 
         const [clsSubjects, clsLearners, clsMarks] = await Promise.all([
           cachedFetch(`subjects:${cls.id}`, () => supabase.from('subjects').select('id, name, class_id').eq('class_id', cls.id).order('name').then(r => r.data ?? []), TTL.STATIC),
-          cachedFetch(`learners:${cls.id}`, () => supabase.from('learners').select('id, name, class_id').eq('class_id', cls.id).order('name').then(r => r.data ?? []), TTL.STATIC),
+          cachedFetch(`learners:v2:${cls.id}`, () => supabase.from('learners').select('id, name, class_id, parent_phone').eq('class_id', cls.id).order('name').then(r => r.data ?? []), TTL.STATIC),
           sessionId
             ? cachedFetch(`marks:${sessionId}`, () => supabase.from('marks').select('id, session_id, learner_id, subject_id, score').eq('session_id', sessionId).then(r => r.data ?? []), TTL.MARKS)
             : Promise.resolve([]),
@@ -922,7 +922,7 @@ export default function MarklistPage() {
     supabase.from('marks').select('learner_id, subject_id, score').eq('session_id', currentSessionForComparison.id),
     supabase.from('marks').select('learner_id, subject_id, score').eq('session_id', previousSession.id),
     isSameClass ? Promise.resolve({ data: subjects }) : supabase.from('subjects').select('id, name, class_id').eq('class_id', targetClassId).order('name'),
-    isSameClass ? Promise.resolve({ data: learners }) : supabase.from('learners').select('id, name, class_id').eq('class_id', targetClassId).order('name'),
+    isSameClass ? Promise.resolve({ data: learners }) : supabase.from('learners').select('id, name, class_id, parent_phone').eq('class_id', targetClassId).order('name'),
   ])
 
       const targetSubjects = (targetSubjectsRes.data || []) as typeof subjects
