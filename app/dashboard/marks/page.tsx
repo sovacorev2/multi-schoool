@@ -194,7 +194,7 @@ export default function MarksPage() {
       cachedFetch(`exam_types:${currentSchool.id}`, () => supabase.from("exam_types").select("id, name, display_order").eq("school_id", currentSchool.id).order("display_order", { ascending: true }).then(r => r.data ?? []), TTL.STATIC),
       sessionsQuery,
       cachedFetch(`subjects:${currentClass.id}`, () => supabase.from("subjects").select("id, name, class_id").eq("class_id", currentClass.id).order("name").then(r => r.data ?? []), TTL.STATIC),
-      cachedFetch(`learners:${currentClass.id}`, () => supabase.from("learners").select("id, name, class_id").eq("class_id", currentClass.id).order("name").then(r => r.data ?? []), TTL.STATIC),
+      cachedFetch(`learners:v2:${currentClass.id}`, () => supabase.from("learners").select("id, name, class_id, parent_phone").eq("class_id", currentClass.id).order("name").then(r => r.data ?? []), TTL.STATIC),
       supabase.from("schools").select("feature_pin_management").eq("id", currentSchool.id).single()
     ]);
     const examTypesRes = { data: examTypesData }
