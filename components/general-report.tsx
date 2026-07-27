@@ -267,14 +267,15 @@ export function GeneralReport({
           prioritySubjects,
           autoComment,
           classRank: 0,
-          totalInClass: learners.length,
+          totalInClass: 0,   // set after ranking pass below
           crossStreamRank: 0,
-          totalInLevel: allLearnersInLevel.length,
+          totalInLevel: 0,   // set after cross-stream pass below
           examRanks: {},
         }
       })
 
-      // Calculate overall class rank based on total raw marks; use average as tiebreaker
+      // Calculate overall class rank based on total raw marks; use average as tiebreaker.
+      // Only rank learners who have at least one mark (overallAverage !== null).
       const ranked = [...learnersData]
         .filter(l => l.overallAverage !== null)
         .sort((a, b) =>
@@ -283,10 +284,14 @@ export function GeneralReport({
         )
       ranked.forEach((l, idx) => { l.classRank = idx + 1 })
 
+      // totalInClass = learners who have marks (same denominator as classRank)
+      const totalWithMarksInClass = ranked.length
+      learnersData.forEach(ld => { ld.totalInClass = totalWithMarksInClass })
+
       // Calculate cross-stream rank if multiple streams exist
       if (allLearnersInLevel.length > learners.length) {
         // Fetch marks for all learners in the level to compute their averages
-        const levelLearnersAverages: Array<{ learnerId: string; avg: number | null }> = []
+        const levelLearnersAverages: Array<{ learnerId: string; avg: number; total: number }> = []
         for (const levelLearner of allLearnersInLevel) {
           const levelLearnerMarks = allMarks.filter(m => m.learner_id === levelLearner.id)
           if (levelLearnerMarks.length > 0) {
@@ -299,13 +304,20 @@ export function GeneralReport({
 
         // Rank learners across all streams by total raw marks; average as tiebreaker
         const crossStreamRanked = levelLearnersAverages
-          .filter(la => la.avg !== null)
           .sort((a, b) => (b.total ?? 0) - (a.total ?? 0) || (b.avg ?? 0) - (a.avg ?? 0))
-        
-        // Assign cross-stream ranks to our learners
+
+        // Assign cross-stream ranks and use count-with-marks as denominator
+        const totalWithMarksInLevel = crossStreamRanked.length
         learnersData.forEach(ld => {
           const idx = crossStreamRanked.findIndex(csr => csr.learnerId === ld.learner.id)
           ld.crossStreamRank = idx >= 0 ? idx + 1 : 0
+          ld.totalInLevel = totalWithMarksInLevel
+        })
+      } else {
+        // Single stream or no sibling data — overall = class rank
+        learnersData.forEach(ld => {
+          ld.crossStreamRank = ld.classRank
+          ld.totalInLevel = totalWithMarksInClass
         })
       }
 
