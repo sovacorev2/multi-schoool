@@ -339,7 +339,8 @@ export function GeneralReport({
         currentSchool,
         chosenSessions,
         customTeacherName || currentClass.teacher_name || '',
-        termDisplay
+        termDisplay,
+        subjects.length
       )
 
       const win = window.open('', '_blank')
@@ -453,7 +454,8 @@ function generateReportHTML(
   school: School | null,
   chosenSessions: Array<{ id: string; term: string; year: number; exam_types?: { id: string; name: string } | null }>,
   teacherName: string,
-  termDisplay: string
+  termDisplay: string,
+  subjectCount: number
 ): string {
   // Extract stream from class name e.g. "Grade 7 RED" -> "RED"
   const classWords = currentClass.name.trim().split(/\s+/)
@@ -484,19 +486,9 @@ function generateReportHTML(
 
   // Derive overall label/color/points from average mark (total / subjectCount)
   // so schools with fewer than 9 subjects get the correct level band.
-  if (!subjects || subjects.length === 0) {
-    return (
-      <Card>
-        <CardContent className="pt-6 text-center text-muted-foreground">
-          No subjects configured for this class. Please add subjects first.
-        </CardContent>
-      </Card>
-    )
-  }
-
-  const _overallSubjectCount = subjects.length || 1
+  const _overallSubjectCount = subjectCount || 1
   const _overallClassName = currentClass?.name || ''
-  const _overallSchoolName = currentSchool?.name || ''
+  const _overallSchoolName = school?.name || ''
 
   function overallRubricLabel(total: number | null): string {
     if (total === null) return 'N/A'
