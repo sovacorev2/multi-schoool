@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { getGradeLevelByClass, getLevelByTotalMarksRange } from '@/lib/grading-utils'
+import { getGradeLevelByClass, getLevelByTotal } from '@/lib/grading-utils'
 import { getSubjectDisplay } from '@/lib/subject-utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -482,10 +482,15 @@ function generateReportHTML(
     return '#dc2626'
   }
 
-  // Derive overall label/color/points from total marks using the fixed band scale
+  // Derive overall label/color/points from average mark (total / subjectCount)
+  // so schools with fewer than 9 subjects get the correct level band.
+  const _overallSubjectCount = subjects.length || 1
+  const _overallClassName = currentClass?.name || ''
+  const _overallSchoolName = currentSchool?.name || ''
+
   function overallRubricLabel(total: number | null): string {
     if (total === null) return 'N/A'
-    const g = getLevelByTotalMarksRange(total)
+    const g = getLevelByTotal(total, _overallSubjectCount, _overallClassName, _overallSchoolName)
     if (!g) return 'N/A'
     if (g.level.startsWith('EE')) return 'EXCEEDING EXPECTATION'
     if (g.level.startsWith('ME')) return 'MEETING EXPECTATION'
@@ -495,7 +500,7 @@ function generateReportHTML(
 
   function overallRubricColor(total: number | null): string {
     if (total === null) return '#6b7280'
-    const g = getLevelByTotalMarksRange(total)
+    const g = getLevelByTotal(total, _overallSubjectCount, _overallClassName, _overallSchoolName)
     if (!g) return '#6b7280'
     if (g.level.startsWith('EE')) return '#16a34a'
     if (g.level.startsWith('ME')) return '#2563eb'
@@ -505,7 +510,7 @@ function generateReportHTML(
 
   function calcOverallPoints(total: number | null): string {
     if (total === null) return '-'
-    const g = getLevelByTotalMarksRange(total)
+    const g = getLevelByTotal(total, _overallSubjectCount, _overallClassName, _overallSchoolName)
     return g ? String(g.points) : '-'
   }
 
@@ -598,8 +603,8 @@ function generateReportHTML(
       </tr>`
     }).join('')
 
-    // Overall total marks row — level derived from total marks band
-    const overallGrade = getLevelByTotalMarksRange(overallTotal)
+    // Overall total marks row — level derived from average mark (total / subjectCount)
+    const overallGrade = getLevelByTotal(overallTotal, _overallSubjectCount, _overallClassName, _overallSchoolName)
     const overallExamAvgs = chosenSessions.map(s => {
       const sessionScores = subjectMarks.flatMap(sm => {
         const v = sm.marksByExam[s.id]

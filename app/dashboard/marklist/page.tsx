@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import React from "react"
-import { formatGradeWithPoints, getPerformanceLevelWithPoints, getGradeLevelByClass, getLevelByTotalPoints, getLevelByAverageMark, getLevelByTotalMarksRange, getGradingScale } from '@/lib/grading-utils'
+import { formatGradeWithPoints, getPerformanceLevelWithPoints, getGradeLevelByClass, getLevelByTotalPoints, getLevelByAverageMark, getLevelByTotal, getGradingScale } from '@/lib/grading-utils'
 import { getSubjectDisplay, normalizeSubjectName, areSubjectsEqual } from '@/lib/subject-utils'
 import { sortClassesByLevel } from '@/lib/class-sort-utils'
 
@@ -1269,7 +1269,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
         }
       }).join('')
       
-      const avgPerformanceLevel = getLevelByTotalMarksRange(result.total)
+      const avgPerformanceLevel = getLevelByTotal(result.total, subjects.length, currentClass?.name, currentSchool?.name)
       return `<tr style="background: ${idx % 2 === 0 ? '#fff' : '#f3f4f6'};">
         <td style="border: 1px solid #333; padding: ${cellPad}; text-align: center; font-size: ${baseFontSize}px;">${idx + 1}</td>
         <td style="border: 1px solid #333; padding: ${cellPad}; text-align: left; font-size: ${nameFontSize}px; font-weight: 500; white-space: nowrap;">${result.learner.name}</td>
@@ -2383,7 +2383,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                     <td className="border border-border dark:border-border p-2 text-center font-bold text-foreground dark:text-foreground">{result.total}</td>
                     <td className="border border-border dark:border-border p-2 text-center font-bold" style={{ color: '#000000' }}>
                       {(() => {
-                        const avgPerformanceLevel = getLevelByTotalMarksRange(result.total)
+                        const avgPerformanceLevel = getLevelByTotal(result.total, subjects.length, currentClass?.name, currentSchool?.name)
                         return avgPerformanceLevel ? avgPerformanceLevel.level : '-'
                       })()}
                     </td>
@@ -2522,7 +2522,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                             <td className="border border-gray-500 p-2 text-center font-bold">{result.total}</td>
                             <td className="border border-gray-500 p-2 text-center font-bold" style={{ color: '#000000' }}>
                               {(() => {
-                                const avgPerformanceLevel = getLevelByTotalMarksRange(result.total)
+                                const avgPerformanceLevel = getLevelByTotal(result.total, subjects.length, currentClass?.name, currentSchool?.name)
                                 return avgPerformanceLevel ? avgPerformanceLevel.level : '-'
                               })()}
                             </td>
@@ -2576,7 +2576,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                     onClick={() => {
                                       const phone = result.learner.parent_phone?.replace(/[^0-9]/g, '')
                                       const formattedPhone = phone?.startsWith('0') ? `254${phone.substring(1)}` : phone
-                                      const gradeInfo = getLevelByTotalMarksRange(result.total)
+                                      const gradeInfo = getLevelByTotal(result.total, subjects.length, currentClass?.name, currentSchool?.name)
                                       const performanceLevel = gradeInfo?.level || '-'
                                       
                                       // Build subject details
@@ -2624,7 +2624,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                     size="sm"
                                     variant="outline"
                                     onClick={async () => {
-                                      const gradeInfo = getLevelByTotalMarksRange(result.total)
+                                      const gradeInfo = getLevelByTotal(result.total, subjects.length, currentClass?.name, currentSchool?.name)
                                       const performanceLevel = gradeInfo?.level || '-'
                                       const subjectDetails = subjects.map(subject => {
                                         const score = result.marks[subject.id]
@@ -2847,7 +2847,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                           </thead>
                           <tbody>
                             {topPerformers.map((r, i) => {
-                              const performanceLevel = getLevelByTotalMarksRange(r.total)
+                              const performanceLevel = getLevelByTotal(r.total, subjects.length, currentClass?.name, currentSchool?.name)
                               return (
                                 <tr key={r.learner.id} className="border-t border-green-200">
                                   <td className="p-2">{i + 1}</td>
@@ -2875,7 +2875,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                           </thead>
                           <tbody>
                             {bottomPerformers.map((r, i) => {
-                              const performanceLevel = getLevelByTotalMarksRange(r.total)
+                              const performanceLevel = getLevelByTotal(r.total, subjects.length, currentClass?.name, currentSchool?.name)
                               return (
                                 <tr key={r.learner.id} className="border-t border-red-200">
                                   <td className="p-2">{results.length - 4 + i}</td>
@@ -3386,7 +3386,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                 }
                               }).join('')
                               
-                              const overallLevel = getLevelByTotalMarksRange((learner as any).total ?? 0)?.level || '-'
+                              const overallLevel = getLevelByTotal((learner as any).total ?? 0, subjects.length, currentClass?.name, currentSchool?.name)?.level || '-'
                               
                               return `
                                 <tr style="background: ${rowBg};">
@@ -4156,7 +4156,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                         const result = whatsappQueue[whatsappCurrentIndex]
                         const phone = result.learner.parent_phone?.replace(/[^0-9]/g, '')
                         const formattedPhone = phone?.startsWith('0') ? `254${phone.substring(1)}` : phone
-                        const gradeInfo = getLevelByTotalMarksRange(result.total)
+                        const gradeInfo = getLevelByTotal(result.total, subjects.length, currentClass?.name, currentSchool?.name)
                         const performanceLevel = gradeInfo?.level || '-'
                         
                         const subjectDetails = subjects.map(subject => {
@@ -4242,7 +4242,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
         const isDone = smsCurrentIndex >= smsQueue.length
 
         const buildMessage = (result: LearnerResult) => {
-          const gradeInfo = getLevelByTotalMarksRange(result.total)
+          const gradeInfo = getLevelByTotal(result.total, subjects.length, currentClass?.name, currentSchool?.name)
           const performanceLevel = gradeInfo?.level || '-'
           const subjectDetails = subjects.map(subject => {
             const score = result.marks[subject.id]

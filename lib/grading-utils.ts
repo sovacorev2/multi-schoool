@@ -135,6 +135,30 @@ export function getLevelByTotalMarksRange(
   return band ? { level: band.level, points: band.points } : null
 }
 
+/**
+ * Get overall performance level from a raw total, accounting for the actual
+ * number of subjects the school has configured.
+ *
+ * This replaces `getLevelByTotalMarksRange` which used hardcoded absolute bands
+ * built for exactly 9 subjects (max 900). Schools with fewer subjects (e.g. 6)
+ * had their totals fall into wrong bands because 540/600 (90%) was compared
+ * against a 900-point scale.
+ *
+ * The fix: divide total by subjectCount to get the average mark (0-100), then
+ * use the same per-subject grading scale — identical logic to how individual
+ * subject grades are calculated.
+ */
+export function getLevelByTotal(
+  totalMarks: number | null | undefined,
+  subjectCount: number,
+  className?: string,
+  schoolName?: string
+): { level: string; points: number } | null {
+  if (totalMarks === null || totalMarks === undefined || isNaN(Number(totalMarks))) return null
+  if (!subjectCount || subjectCount <= 0) return null
+  return getLevelByAverageMark(Number(totalMarks), subjectCount, className, schoolName)
+}
+
 // Derive the overall performance level from the average RAW MARK (total marks / subjects).
 // Kept for backward compatibility — prefer getLevelByTotalMarksRange for overall level.
 export function getLevelByAverageMark(
