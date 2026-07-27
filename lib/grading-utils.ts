@@ -170,11 +170,11 @@ export function getLevelByTotal(
   if (!subjectCount || subjectCount <= 0) return null
 
   const t = Number(totalMarks)
-  const school = (schoolName || '').toLowerCase()
+  const school = (schoolName || '').toLowerCase().trim()
 
   // St Mary's Nambale primary (Grades 4–8): use absolute total-mark bands
   // provided by the school — do NOT convert to average.
-  if (school.includes('stmarysnambale') || school.includes("st mary's nambale") || school.includes('st marys nambale')) {
+  if ((school.includes('mary') && school.includes('nambale')) || school.includes('stmarysnambale')) {
     if (!isUpperClass(className || '')) {
       const band = OVERALL_TOTAL_MARKS_SCALE_STMARYSNAMBALE_PRIMARY.find(b => t >= b.minTotal && t <= b.maxTotal)
       return band ? { level: band.level, points: band.points } : null

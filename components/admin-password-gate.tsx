@@ -130,7 +130,7 @@ export function AdminPasswordGate({ isOpen, onClose, onVerified, actionLabel = '
  */
 export function useAdminPrintGate() {
   const [gateOpen, setGateOpen] = useState(false)
-  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null)
+  const [pendingAction, setPendingAction] = useState<((() => void) | (() => Promise<void>)) | null>(null)
   const [actionLabel, setActionLabel] = useState('Print Report')
 
   const isSessionValid = () => {
@@ -139,7 +139,7 @@ export function useAdminPrintGate() {
     return Date.now() - Number(ts) < SESSION_DURATION_MS
   }
 
-  const attemptPrint = (action: () => void, label = 'Print Report') => {
+  const attemptPrint = (action: (() => void) | (() => Promise<void>), label = 'Print Report') => {
     if (isSessionValid()) {
       // Already verified recently — proceed immediately
       action()
@@ -150,8 +150,12 @@ export function useAdminPrintGate() {
     }
   }
 
-  const handleVerified = () => {
-    pendingAction?.()
+  const handleVerified = async () => {
+    const result = pendingAction?.()
+    // Handle both sync and async actions
+    if (result instanceof Promise) {
+      await result
+    }
     setPendingAction(null)
   }
 
