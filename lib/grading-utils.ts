@@ -176,11 +176,14 @@ export function getLevelByTotal(
   // provided by the school — do NOT convert to average.
   if ((school.includes('mary') && school.includes('nambale')) || school.includes('stmarysnambale')) {
     if (!isUpperClass(className || '')) {
+      console.log('[v0] St Marys Nambale primary detected - using absolute scale:', { school, className, t, isUpper: isUpperClass(className || '') })
       const band = OVERALL_TOTAL_MARKS_SCALE_STMARYSNAMBALE_PRIMARY.find(b => t >= b.minTotal && t <= b.maxTotal)
+      console.log('[v0] St Marys scale band found:', band)
       return band ? { level: band.level, points: band.points } : null
     }
   }
 
+  console.log('[v0] Using average-based scale for:', { school, className, t, subjectCount })
   return getLevelByAverageMark(t, subjectCount, className, schoolName)
 }
 
