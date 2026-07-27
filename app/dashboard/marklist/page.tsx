@@ -2532,7 +2532,82 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                   size="sm" 
                                   variant="outline"
                                   onClick={() => attemptPrint(async () => {
-                                    setReportModalData([result])
+                                    // Compute cross-stream overall rank so STREAM POS ≠ OVERALL POS
+                                    let enrichedResult = { ...result }
+                                    try {
+                                      const supabaseRank = createClient()
+                                      const cn = currentClass?.name || ''
+                                      const cw = cn.trim().split(/\s+/)
+                                      const isStreamed = cw.length > 2
+
+                                      if (isStreamed && selectedSession && currentSchool) {
+                                        const gradeLevel = cw.slice(0, -1).join(' ')
+                                        const { data: streamClasses } = await supabaseRank
+                                          .from('classes').select('id').eq('school_id', currentSchool.id).ilike('name', `${gradeLevel} %`)
+                                        const streamIds = (streamClasses || []).map((c: any) => c.id)
+                                        if (streamIds.length > 0) {
+                                          const { data: allLearners } = await supabaseRank
+                                            .from('learners').select('id').in('class_id', streamIds)
+                                          const { data: streamMarks } = await supabaseRank
+                                            .from('marks')
+                                            .select('learner_id, score, sessions!inner(class_id, exam_type_id, term, year)')
+                                            .in('sessions.class_id', streamIds)
+                                            .eq('sessions.exam_type_id', selectedSession.exam_type_id)
+                                            .eq('sessions.term', selectedSession.term)
+                                            .eq('sessions.year', selectedSession.year)
+                                          const totals: Record<string, number> = {}
+                                          for (const m of (streamMarks || [])) {
+                                            if (m?.learner_id && m.score != null) {
+                                              totals[m.learner_id] = (totals[m.learner_id] || 0) + Number(m.score)
+                                            }
+                                          }
+                                          const ranked = Object.entries(totals)
+                                            .sort(([, a], [, b]) => b - a)
+                                            .map(([id, , ], idx) => ({ id, rank: idx + 1 }))
+                                          const myRank = ranked.find(r => r.id === result.learner.id)
+                                          enrichedResult = {
+                                            ...enrichedResult,
+                                            overall_rank: myRank?.rank ?? result.rank,
+                                            total_in_grade: (allLearners || []).length || results.length,
+                                          }
+                                        }
+                                      } else if (!isStreamed && selectedSession && currentSchool) {
+                                        // Non-streamed: rank across all classes in the same grade
+                                        const gradePrefix = cn.match(/^(PP\s*\d+|Grade\s+\d+)/i)?.[0] || cn
+                                        const { data: gradeClasses } = await supabaseRank
+                                          .from('classes').select('id').eq('school_id', currentSchool.id).ilike('name', `${gradePrefix}%`)
+                                        const gradeIds = (gradeClasses || []).map((c: any) => c.id)
+                                        if (gradeIds.length > 0) {
+                                          const { data: gradeLearners } = await supabaseRank
+                                            .from('learners').select('id').in('class_id', gradeIds)
+                                          const { data: gradeMarks } = await supabaseRank
+                                            .from('marks')
+                                            .select('learner_id, score, sessions!inner(class_id, exam_type_id, term, year)')
+                                            .in('sessions.class_id', gradeIds)
+                                            .eq('sessions.exam_type_id', selectedSession.exam_type_id)
+                                            .eq('sessions.term', selectedSession.term)
+                                            .eq('sessions.year', selectedSession.year)
+                                          const totals: Record<string, number> = {}
+                                          for (const m of (gradeMarks || [])) {
+                                            if (m?.learner_id && m.score != null) {
+                                              totals[m.learner_id] = (totals[m.learner_id] || 0) + Number(m.score)
+                                            }
+                                          }
+                                          const ranked = Object.entries(totals)
+                                            .sort(([, a], [, b]) => b - a)
+                                            .map(([id], idx) => ({ id, rank: idx + 1 }))
+                                          const myRank = ranked.find(r => r.id === result.learner.id)
+                                          enrichedResult = {
+                                            ...enrichedResult,
+                                            overall_rank: myRank?.rank ?? result.rank,
+                                            total_in_grade: (gradeLearners || []).length || results.length,
+                                          }
+                                        }
+                                      }
+                                    } catch (rankErr) {
+                                      // fall back to class rank silently
+                                    }
+                                    setReportModalData([enrichedResult])
                                     // Fetch teacher initials for this class
                                     try {
                                       const supabaseForInitials = createClient()
