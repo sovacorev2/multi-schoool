@@ -48,8 +48,6 @@ interface GeneralReportProps {
   sessions: Array<Session & { exam_types?: { id: string; name: string } | null }>
   selectedYear: string
   selectedTerm: string
-  chosenSessionIds?: string[] // preserve selection order for exam columns
-  genderAnalysis?: { maleCount: number; femaleCount: number; maleAverage: number; femaleAverage: number }
 }
 
 // --- Auto-comment generator ---
@@ -114,8 +112,6 @@ export function GeneralReport({
   sessions,
   selectedYear,
   selectedTerm,
-  chosenSessionIds,
-  genderAnalysis,
 }: GeneralReportProps) {
   const supabase = createClient()
 
@@ -874,25 +870,6 @@ function generateReportHTML(
           </div>
         </div>
       </div>
-
-      <!-- GENDER ANALYSIS -->
-      ${genderAnalysis ? `
-      <div style="border:1.5px solid #8b5cf6;border-radius:5px;overflow:hidden;margin-bottom:6px;">
-        <div style="background:#8b5cf6;color:#fff;font-size:10px;font-weight:700;padding:5px 10px;letter-spacing:0.5px;">GENDER ANALYSIS</div>
-        <div style="padding:8px 10px;display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:9px;">
-          <div style="text-align:center;">
-            <div style="color:#6b7280;font-weight:600;margin-bottom:3px;">MALE</div>
-            <div style="font-size:10px;font-weight:700;color:#2563eb;margin-bottom:2px;">${genderAnalysis.maleCount}</div>
-            <div style="color:#6b7280;font-size:8px;">Avg: ${genderAnalysis.maleAverage > 0 ? genderAnalysis.maleAverage.toFixed(1) : '0'}%</div>
-          </div>
-          <div style="text-align:center;">
-            <div style="color:#6b7280;font-weight:600;margin-bottom:3px;">FEMALE</div>
-            <div style="font-size:10px;font-weight:700;color:#ec4899;margin-bottom:2px;">${genderAnalysis.femaleCount}</div>
-            <div style="color:#6b7280;font-size:8px;">Avg: ${genderAnalysis.femaleAverage > 0 ? genderAnalysis.femaleAverage.toFixed(1) : '0'}%</div>
-          </div>
-        </div>
-      </div>
-      ` : ''}
 
       <!-- COMMENTS — flex:1 with 2-column layout -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;flex:1;min-height:0;">

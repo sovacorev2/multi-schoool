@@ -1170,6 +1170,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
   const femaleStudents = results.filter(r => r.learner.gender === 'Female' || r.learner.gender === 'female' || r.learner.gender === 'F')
   const maleAverage = maleStudents.length > 0 ? (maleStudents.reduce((sum, r) => sum + r.average, 0) / maleStudents.length).toFixed(1) : '0'
   const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r) => sum + r.average, 0) / femaleStudents.length).toFixed(1) : '0'
+  console.log('[v0] Gender Analysis Debug:', { totalResults: results.length, maleCount: maleStudents.length, femaleCount: femaleStudents.length, sampleGenders: results.slice(0, 3).map(r => r.learner.gender) })
 
   const handleDownloadCSV = () => {
     const headers = ['No.', 'Name', ...subjects.map((s) => s.name), 'Total', 'Average']
@@ -2712,13 +2713,6 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                 sessions={sessions}
                 selectedYear={selectedYear}
                 selectedTerm={selectedTerm}
-                chosenSessionIds={selectedSessionIds}
-                genderAnalysis={{
-                  maleCount: maleStudents.length,
-                  femaleCount: femaleStudents.length,
-                  maleAverage: parseFloat(maleAverage),
-                  femaleAverage: parseFloat(femaleAverage),
-                }}
               />
             </TabsContent>
 
