@@ -2540,35 +2540,42 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                       const cw = cn.trim().split(/\s+/)
                                       const isStreamed = cw.length > 2
 
+                                      // Helper: fetch mark totals per learner for a set of class IDs
+                                      // using sessions!inner so only learners with actual marks are counted —
+                                      // this keeps total_in_grade consistent with the in-memory stream rank.
+                                      const fetchTotalsForClasses = async (classIds: string[]): Promise<Record<string, number>> => {
+                                        if (!classIds.length || !selectedSession) return {}
+                                        const { data: mks } = await supabaseRank
+                                          .from('marks')
+                                          .select('learner_id, score, sessions!inner(class_id, exam_type_id, term, year)')
+                                          .in('sessions.class_id', classIds)
+                                          .eq('sessions.exam_type_id', selectedSession.exam_type_id)
+                                          .eq('sessions.term', selectedSession.term)
+                                          .eq('sessions.year', selectedSession.year)
+                                        const acc: Record<string, number> = {}
+                                        for (const m of (mks || [])) {
+                                          if (m?.learner_id && m.score != null) {
+                                            acc[m.learner_id] = (acc[m.learner_id] || 0) + Number(m.score)
+                                          }
+                                        }
+                                        return acc
+                                      }
+
                                       if (isStreamed && selectedSession && currentSchool) {
                                         const gradeLevel = cw.slice(0, -1).join(' ')
                                         const { data: streamClasses } = await supabaseRank
                                           .from('classes').select('id').eq('school_id', currentSchool.id).ilike('name', `${gradeLevel} %`)
                                         const streamIds = (streamClasses || []).map((c: any) => c.id)
                                         if (streamIds.length > 0) {
-                                          const { data: allLearners } = await supabaseRank
-                                            .from('learners').select('id').in('class_id', streamIds)
-                                          const { data: streamMarks } = await supabaseRank
-                                            .from('marks')
-                                            .select('learner_id, score, sessions!inner(class_id, exam_type_id, term, year)')
-                                            .in('sessions.class_id', streamIds)
-                                            .eq('sessions.exam_type_id', selectedSession.exam_type_id)
-                                            .eq('sessions.term', selectedSession.term)
-                                            .eq('sessions.year', selectedSession.year)
-                                          const totals: Record<string, number> = {}
-                                          for (const m of (streamMarks || [])) {
-                                            if (m?.learner_id && m.score != null) {
-                                              totals[m.learner_id] = (totals[m.learner_id] || 0) + Number(m.score)
-                                            }
-                                          }
+                                          const totals = await fetchTotalsForClasses(streamIds)
                                           const ranked = Object.entries(totals)
                                             .sort(([, a], [, b]) => b - a)
-                                            .map(([id, , ], idx) => ({ id, rank: idx + 1 }))
+                                            .map(([id], idx) => ({ id, rank: idx + 1 }))
                                           const myRank = ranked.find(r => r.id === result.learner.id)
                                           enrichedResult = {
                                             ...enrichedResult,
                                             overall_rank: myRank?.rank ?? result.rank,
-                                            total_in_grade: (allLearners || []).length || results.length,
+                                            total_in_grade: Object.keys(totals).length || results.length,
                                           }
                                         }
                                       } else if (!isStreamed && selectedSession && currentSchool) {
@@ -2578,21 +2585,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                           .from('classes').select('id').eq('school_id', currentSchool.id).ilike('name', `${gradePrefix}%`)
                                         const gradeIds = (gradeClasses || []).map((c: any) => c.id)
                                         if (gradeIds.length > 0) {
-                                          const { data: gradeLearners } = await supabaseRank
-                                            .from('learners').select('id').in('class_id', gradeIds)
-                                          const { data: gradeMarks } = await supabaseRank
-                                            .from('marks')
-                                            .select('learner_id, score, sessions!inner(class_id, exam_type_id, term, year)')
-                                            .in('sessions.class_id', gradeIds)
-                                            .eq('sessions.exam_type_id', selectedSession.exam_type_id)
-                                            .eq('sessions.term', selectedSession.term)
-                                            .eq('sessions.year', selectedSession.year)
-                                          const totals: Record<string, number> = {}
-                                          for (const m of (gradeMarks || [])) {
-                                            if (m?.learner_id && m.score != null) {
-                                              totals[m.learner_id] = (totals[m.learner_id] || 0) + Number(m.score)
-                                            }
-                                          }
+                                          const totals = await fetchTotalsForClasses(gradeIds)
                                           const ranked = Object.entries(totals)
                                             .sort(([, a], [, b]) => b - a)
                                             .map(([id], idx) => ({ id, rank: idx + 1 }))
@@ -2600,7 +2593,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                           enrichedResult = {
                                             ...enrichedResult,
                                             overall_rank: myRank?.rank ?? result.rank,
-                                            total_in_grade: (gradeLearners || []).length || results.length,
+                                            total_in_grade: Object.keys(totals).length || results.length,
                                           }
                                         }
                                       }
