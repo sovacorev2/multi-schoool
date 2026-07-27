@@ -151,7 +151,7 @@ export function GeneralReport({
   const chosenSessions = availableExamSessions.filter(s => selectedSessionIds.includes(s.id))
 
   async function handlePrintAll() {
-    if (!currentClass || !currentSchool || chosenSessions.length === 0 || learners.length === 0) return
+    if (!currentClass || !currentSchool || !subjects || subjects.length === 0 || chosenSessions.length === 0 || learners.length === 0) return
     
     // Enforce max 3 exams constraint
     if (chosenSessions.length > 3) {
