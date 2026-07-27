@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { getGradeLevelByClass, getLevelByTotal } from '@/lib/grading-utils'
+import { getGradeLevelByClass } from '@/lib/grading-utils'
 import { getSubjectDisplay } from '@/lib/subject-utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -484,15 +484,15 @@ function generateReportHTML(
     return '#dc2626'
   }
 
-  // Derive overall label/color/points from average mark (total / subjectCount)
-  // so schools with fewer than 9 subjects get the correct level band.
-  const _overallSubjectCount = subjectCount || 1
+  // Derive overall label/color/points from the average mark (0-100).
+  // We pass the pre-computed overallAverage directly so multi-session totals
+  // (sum of all raw scores across sessions) don't overflow the 0-100 scale.
   const _overallClassName = currentClass?.name || ''
   const _overallSchoolName = school?.name || ''
 
-  function overallRubricLabel(total: number | null): string {
-    if (total === null) return 'N/A'
-    const g = getLevelByTotal(total, _overallSubjectCount, _overallClassName, _overallSchoolName)
+  function overallRubricLabel(avg: number | null): string {
+    if (avg === null) return 'N/A'
+    const g = getGradeLevelByClass(avg, _overallClassName, _overallSchoolName)
     if (!g) return 'N/A'
     if (g.level.startsWith('EE')) return 'EXCEEDING EXPECTATION'
     if (g.level.startsWith('ME')) return 'MEETING EXPECTATION'
@@ -500,9 +500,9 @@ function generateReportHTML(
     return 'BELOW EXPECTATION'
   }
 
-  function overallRubricColor(total: number | null): string {
-    if (total === null) return '#6b7280'
-    const g = getLevelByTotal(total, _overallSubjectCount, _overallClassName, _overallSchoolName)
+  function overallRubricColor(avg: number | null): string {
+    if (avg === null) return '#6b7280'
+    const g = getGradeLevelByClass(avg, _overallClassName, _overallSchoolName)
     if (!g) return '#6b7280'
     if (g.level.startsWith('EE')) return '#16a34a'
     if (g.level.startsWith('ME')) return '#2563eb'
@@ -510,9 +510,9 @@ function generateReportHTML(
     return '#dc2626'
   }
 
-  function calcOverallPoints(total: number | null): string {
-    if (total === null) return '-'
-    const g = getLevelByTotal(total, _overallSubjectCount, _overallClassName, _overallSchoolName)
+  function calcOverallPoints(avg: number | null): string {
+    if (avg === null) return '-'
+    const g = getGradeLevelByClass(avg, _overallClassName, _overallSchoolName)
     return g ? String(g.points) : '-'
   }
 
@@ -555,7 +555,7 @@ function generateReportHTML(
   // Build individual pages
   const pages = learnersData.map(ld => {
     const { learner, subjectMarks, overallAverage, overallTotal, classRank, totalInClass, crossStreamRank, totalInLevel, examRanks, strengthSubjects, prioritySubjects, autoComment } = ld
-    const overallPoints = calcOverallPoints(overallTotal)
+    const overallPoints = calcOverallPoints(overallAverage)
     
 
     
@@ -605,8 +605,11 @@ function generateReportHTML(
       </tr>`
     }).join('')
 
-    // Overall total marks row — level derived from average mark (total / subjectCount)
-    const overallGrade = getLevelByTotal(overallTotal, _overallSubjectCount, _overallClassName, _overallSchoolName)
+    // Overall grade — derived directly from overallAverage (0–100) so multi-session
+    // totals (sum across all sessions) don't inflate past 100 and return null.
+    const overallGrade = overallAverage !== null
+      ? getGradeLevelByClass(overallAverage, _overallClassName, _overallSchoolName)
+      : null
     const overallExamAvgs = chosenSessions.map(s => {
       const sessionScores = subjectMarks.flatMap(sm => {
         const v = sm.marksByExam[s.id]
@@ -714,7 +717,7 @@ function generateReportHTML(
             <div style="font-size:36px;font-weight:800;color:#1e3a5f;line-height:1;">${overallAverage !== null ? overallAverage.toFixed(1) : '—'}</div>
             <div style="font-size:9px;color:#6b7280;margin-bottom:5px;">Overall Points: ${overallPoints}</div>
             <div style="margin-bottom:6px;">
-              <span style="border:1.5px solid ${overallRubricColor(overallTotal)};color:${overallRubricColor(overallTotal)};border-radius:16px;padding:4px 12px;font-size:10px;font-weight:700;">${overallRubricLabel(overallTotal)}</span>
+              <span style="border:1.5px solid ${overallRubricColor(overallAverage)};color:${overallRubricColor(overallAverage)};border-radius:16px;padding:4px 12px;font-size:10px;font-weight:700;">${overallRubricLabel(overallAverage)}</span>
             </div>
             <div style="font-size:9.5px;color:#374151;">Overall Position: <strong>${totalInLevel > totalInClass && crossStreamRank > 0 ? `${crossStreamRank} out of ${totalInLevel}` : (classRank > 0 ? `${classRank} out of ${totalInClass}` : 'N/A')}</strong></div>
           </div>
