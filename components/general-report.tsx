@@ -163,9 +163,9 @@ export function GeneralReport({
 
     try {
       // Fetch all learners from sibling classes (same level, different streams) for cross-stream ranking
-      // Extract base grade level by removing stream suffixes (ACHIEVERS, EXCELLERS, EAST, WEST, etc.)
+      // Extract base grade level by removing stream suffixes (colors, directions, or letters)
       const gradeLevel = currentClass.name
-        .replace(/\s*(?:ACHIEVERS|EXCELLERS|EAST|WEST|CENTRAL|NORTH|SOUTH|A|B|GREEN|BLUE|YELLOW)?\s*$/i, '')
+        .replace(/\s*(?:RED|GREEN|BLUE|YELLOW|ACHIEVERS|EXCELLERS|EAST|WEST|CENTRAL|NORTH|SOUTH|A|B)?\s*$/i, '')
         .trim()
       const { data: siblingClasses } = await supabase
         .from('classes')
@@ -294,13 +294,11 @@ export function GeneralReport({
       let crossStreamDone = false
       if (allLearnersInLevel.length > learners.length && chosenSessions.length > 0) {
         try {
-          console.log('[v0] Attempting cross-stream rank. allLearnersInLevel:', allLearnersInLevel.length, 'learners:', learners.length, 'currentClass.id:', currentClass.id)
           // Collect sibling class IDs (exclude current class)
           const siblingOnlyIds = allLearnersInLevel
             .map((l: any) => l.class_id)
             .filter((id: string) => id !== currentClass.id)
           const uniqueSiblingIds = [...new Set(siblingOnlyIds)] as string[]
-          console.log('[v0] uniqueSiblingIds:', uniqueSiblingIds)
 
           if (uniqueSiblingIds.length > 0) {
             // Use same exam_type/term/year as chosen sessions but for sibling classes
@@ -363,9 +361,6 @@ export function GeneralReport({
           ld.crossStreamRank = ld.classRank
           ld.totalInLevel = totalWithMarksInClass
         })
-        console.log('[v0] Cross-stream failed or no siblings - using class rank for all. totalInClass:', totalWithMarksInClass, 'allLearnersInLevel.length:', allLearnersInLevel.length, 'learners.length:', learners.length)
-      } else {
-        console.log('[v0] Cross-stream succeeded. totalInLevel samples:', learnersData.slice(0, 2).map(ld => ({ name: ld.learner.name, totalInLevel: ld.totalInLevel, totalInClass, classRank: ld.classRank, crossStreamRank: ld.crossStreamRank })))
       }
 
       // Calculate per-exam ranks: for each session, rank learners by their
