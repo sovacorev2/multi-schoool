@@ -484,6 +484,16 @@ function generateReportHTML(
 
   // Derive overall label/color/points from average mark (total / subjectCount)
   // so schools with fewer than 9 subjects get the correct level band.
+  if (!subjects || subjects.length === 0) {
+    return (
+      <Card>
+        <CardContent className="pt-6 text-center text-muted-foreground">
+          No subjects configured for this class. Please add subjects first.
+        </CardContent>
+      </Card>
+    )
+  }
+
   const _overallSubjectCount = subjects.length || 1
   const _overallClassName = currentClass?.name || ''
   const _overallSchoolName = currentSchool?.name || ''
