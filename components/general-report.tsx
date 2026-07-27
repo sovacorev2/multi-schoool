@@ -288,33 +288,75 @@ export function GeneralReport({
       const totalWithMarksInClass = ranked.length
       learnersData.forEach(ld => { ld.totalInClass = totalWithMarksInClass })
 
-      // Calculate cross-stream rank if multiple streams exist
-      if (allLearnersInLevel.length > learners.length) {
-        // Fetch marks for all learners in the level to compute their averages
-        const levelLearnersAverages: Array<{ learnerId: string; avg: number; total: number }> = []
-        for (const levelLearner of allLearnersInLevel) {
-          const levelLearnerMarks = allMarks.filter(m => m.learner_id === levelLearner.id)
-          if (levelLearnerMarks.length > 0) {
-            const scores = levelLearnerMarks.map(m => m.score)
-            const total = scores.reduce((a, b) => a + b, 0)
-            const avg = total / scores.length
-            levelLearnersAverages.push({ learnerId: levelLearner.id, avg, total })
+      // Cross-stream ranking: fetch marks for sibling classes using their own session IDs.
+      // allMarks only contains sessions for the current class, so sibling learners
+      // need a separate query keyed on their sessions (same exam_type/term/year).
+      let crossStreamDone = false
+      if (allLearnersInLevel.length > learners.length && chosenSessions.length > 0) {
+        try {
+          // Collect sibling class IDs (exclude current class)
+          const siblingOnlyIds = allLearnersInLevel
+            .map((l: any) => l.class_id)
+            .filter((id: string) => id !== currentClass.id)
+          const uniqueSiblingIds = [...new Set(siblingOnlyIds)] as string[]
+
+          if (uniqueSiblingIds.length > 0) {
+            // Use same exam_type/term/year as chosen sessions but for sibling classes
+            const siblingMarksAll: Array<{ learner_id: string; score: number }> = []
+            for (const chosenSession of chosenSessions) {
+              // Find sibling sessions with same exam type, term, year
+              const { data: sibSessions } = await supabase
+                .from('sessions')
+                .select('id')
+                .in('class_id', uniqueSiblingIds)
+                .eq('exam_type_id', chosenSession.exam_types?.id ?? chosenSession.exam_type_id ?? '')
+                .eq('term', chosenSession.term)
+                .eq('year', chosenSession.year)
+              const sibSessionIds = (sibSessions ?? []).map((s: any) => s.id)
+              if (sibSessionIds.length > 0) {
+                const { data: sibMarks } = await supabase
+                  .from('marks')
+                  .select('learner_id, score')
+                  .in('session_id', sibSessionIds)
+                if (sibMarks) siblingMarksAll.push(...sibMarks)
+              }
+            }
+
+            // Build totals for sibling learners
+            const siblingTotals: Record<string, number> = {}
+            for (const m of siblingMarksAll) {
+              if (m.learner_id && m.score != null) {
+                siblingTotals[m.learner_id] = (siblingTotals[m.learner_id] ?? 0) + Number(m.score)
+              }
+            }
+
+            // Build totals for current class learners using same overallTotal
+            const levelEntries: Array<{ learnerId: string; total: number }> = [
+              // Current class — use the already-computed overallTotal (consistent with classRank)
+              ...learnersData
+                .filter(ld => ld.overallTotal !== null && ld.overallTotal > 0)
+                .map(ld => ({ learnerId: ld.learner.id, total: ld.overallTotal ?? 0 })),
+              // Sibling classes
+              ...Object.entries(siblingTotals).map(([id, total]) => ({ learnerId: id, total })),
+            ]
+
+            const crossStreamRanked = levelEntries.sort((a, b) => b.total - a.total)
+            const totalWithMarksInLevel = crossStreamRanked.length
+
+            learnersData.forEach(ld => {
+              const idx = crossStreamRanked.findIndex(e => e.learnerId === ld.learner.id)
+              ld.crossStreamRank = idx >= 0 ? idx + 1 : ld.classRank
+              ld.totalInLevel = totalWithMarksInLevel
+            })
+            crossStreamDone = true
           }
+        } catch {
+          // fall through to same-as-class fallback
         }
+      }
 
-        // Rank learners across all streams by total raw marks; average as tiebreaker
-        const crossStreamRanked = levelLearnersAverages
-          .sort((a, b) => (b.total ?? 0) - (a.total ?? 0) || (b.avg ?? 0) - (a.avg ?? 0))
-
-        // Assign cross-stream ranks and use count-with-marks as denominator
-        const totalWithMarksInLevel = crossStreamRanked.length
-        learnersData.forEach(ld => {
-          const idx = crossStreamRanked.findIndex(csr => csr.learnerId === ld.learner.id)
-          ld.crossStreamRank = idx >= 0 ? idx + 1 : 0
-          ld.totalInLevel = totalWithMarksInLevel
-        })
-      } else {
-        // Single stream or no sibling data — overall = class rank
+      if (!crossStreamDone) {
+        // Single stream, no siblings, or fetch failed — overall equals class rank
         learnersData.forEach(ld => {
           ld.crossStreamRank = ld.classRank
           ld.totalInLevel = totalWithMarksInClass
