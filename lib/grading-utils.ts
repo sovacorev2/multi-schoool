@@ -105,6 +105,18 @@ export function getGradingScale(className?: string, schoolName?: string): GradeL
   return isUpper ? GRADING_SCALE_EXTENDED : GRADING_SCALE_SIMPLE
 }
 
+// St Mary's Nambale primary absolute total marks scale (Grades 4–8, 6 subjects × 100 = 600 max)
+export const OVERALL_TOTAL_MARKS_SCALE_STMARYSNAMBALE_PRIMARY = [
+  { level: 'EE1', minTotal: 526, maxTotal: Infinity, points: 8 },
+  { level: 'EE2', minTotal: 451, maxTotal: 525,      points: 7 },
+  { level: 'ME1', minTotal: 376, maxTotal: 450,      points: 6 },
+  { level: 'ME2', minTotal: 300, maxTotal: 375,      points: 5 },
+  { level: 'AE1', minTotal: 226, maxTotal: 299,      points: 4 },
+  { level: 'AE2', minTotal: 151, maxTotal: 225,      points: 3 },
+  { level: 'BE1', minTotal:  76, maxTotal: 150,      points: 2 },
+  { level: 'BE2', minTotal:   1, maxTotal:  75,      points: 1 },
+]
+
 // Overall performance level based on TOTAL MARKS across all subjects.
 // These fixed bands apply school-wide regardless of class or school:
 //   0–98   → BE2   (points 1)
@@ -156,7 +168,20 @@ export function getLevelByTotal(
 ): { level: string; points: number } | null {
   if (totalMarks === null || totalMarks === undefined || isNaN(Number(totalMarks))) return null
   if (!subjectCount || subjectCount <= 0) return null
-  return getLevelByAverageMark(Number(totalMarks), subjectCount, className, schoolName)
+
+  const t = Number(totalMarks)
+  const school = (schoolName || '').toLowerCase()
+
+  // St Mary's Nambale primary (Grades 4–8): use absolute total-mark bands
+  // provided by the school — do NOT convert to average.
+  if (school.includes('stmarysnambale') || school.includes("st mary's nambale") || school.includes('st marys nambale')) {
+    if (!isUpperClass(className || '')) {
+      const band = OVERALL_TOTAL_MARKS_SCALE_STMARYSNAMBALE_PRIMARY.find(b => t >= b.minTotal && t <= b.maxTotal)
+      return band ? { level: band.level, points: band.points } : null
+    }
+  }
+
+  return getLevelByAverageMark(t, subjectCount, className, schoolName)
 }
 
 // Derive the overall performance level from the average RAW MARK (total marks / subjects).
