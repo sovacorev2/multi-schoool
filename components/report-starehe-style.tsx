@@ -5,7 +5,7 @@ import { getSubjectDisplay } from '@/lib/subject-utils'
 import { useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { X, Printer, Download } from 'lucide-react'
-import { getGradeLevelByClass, isUpperClass, GRADING_SCALE_SIMPLE, GRADING_SCALE_EXTENDED } from '@/lib/grading-utils'
+import { getGradeLevelByClass, isUpperClass, GRADING_SCALE_SIMPLE, GRADING_SCALE_EXTENDED, getLevelByTotal } from '@/lib/grading-utils'
 import { PathwayAnalysis } from '@/components/pathway-analysis'
 import { calculatePathwayScores } from '@/lib/pathways'
 
@@ -424,7 +424,10 @@ export function ReportStareheStyle({
               const maxPointsPerSubject = isUpperClass(className) ? 8 : 4
               const maxPoints = subjects.length * maxPointsPerSubject
               const meanMark = report.average
-              const meanPerf = getCBCPerformanceLevel(meanMark, className, currentSchool?.name)
+              // Use getLevelByTotal so school-specific absolute scales (e.g. St Mary's Nambale)
+              // are applied correctly. Falls back to average-based grading for all other schools.
+              const meanPerf = getLevelByTotal(report.total, subjects.length, className, currentSchool?.name)
+                ?? getCBCPerformanceLevel(meanMark, className, currentSchool?.name)
 
               return (
                 <div key={report.learner.id || idx} className="bg-white page-break" style={{ padding: '12px', minHeight: '100vh', pageBreakInside: 'avoid', fontFamily: 'Times New Roman, serif' }}>
