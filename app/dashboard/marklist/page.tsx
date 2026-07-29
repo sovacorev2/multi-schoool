@@ -2713,6 +2713,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                 sessions={sessions}
                 selectedYear={selectedYear}
                 selectedTerm={selectedTerm}
+                isLevelOnly={isLowerGradePointsEntry}
               />
             </TabsContent>
 
@@ -4116,6 +4117,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
             classTeacherName={currentClass?.teacher_name}
             subjectInitialsMap={subjectInitialsMap}
             termHistory={termHistory || {}}
+            isLevelOnly={isLowerGradePointsEntry}
           />
       )}
 

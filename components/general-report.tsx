@@ -48,6 +48,7 @@ interface GeneralReportProps {
   sessions: Array<Session & { exam_types?: { id: string; name: string } | null }>
   selectedYear: string
   selectedTerm: string
+  isLevelOnly?: boolean // scores are direct rubric values 1-4, not percentages
 }
 
 // --- Auto-comment generator ---
@@ -104,6 +105,15 @@ function generateAutoComment(
 }
 
 // --- Main Component ---
+// Map a raw rubric value 1-4 to level label + points for level-only schools
+function levelOnlyGrade(score: number | null): { level: string; points: number } | null {
+  if (score === null || score === undefined) return null
+  if (score >= 3.5) return { level: 'EE', points: 4 }
+  if (score >= 2.5) return { level: 'ME', points: 3 }
+  if (score >= 1.5) return { level: 'AE', points: 2 }
+  return { level: 'BE', points: 1 }
+}
+
 export function GeneralReport({
   currentClass,
   currentSchool,
@@ -112,6 +122,7 @@ export function GeneralReport({
   sessions,
   selectedYear,
   selectedTerm,
+  isLevelOnly = false,
 }: GeneralReportProps) {
   const supabase = createClient()
 
@@ -238,14 +249,11 @@ export function GeneralReport({
 
         // Strength subjects (top performers: EE range or >= 75%)
         const strengthSubjects = subjectMarks
-          .filter(sm => sm.average !== null && sm.average >= 58)
-          .sort((a, b) => (b.average ?? 0) - (a.average ?? 0))
-          .slice(0, 4)
+          .filter(sm => sm.average !== null && (isLevelOnly ? sm.average >= 3 : sm.average >= 58))
           .map(sm => sm.subjectName)
 
-        // Priority subjects (below average: AE/BE range or < 41%)
         const prioritySubjects = subjectMarks
-          .filter(sm => sm.average !== null && sm.average < 41)
+          .filter(sm => sm.average !== null && (isLevelOnly ? sm.average < 2 : sm.average < 41))
           .sort((a, b) => (a.average ?? 0) - (b.average ?? 0))
           .slice(0, 3)
           .map(sm => sm.subjectName)
@@ -530,6 +538,7 @@ function generateReportHTML(
   // Max points for scale detection (use first learner's first subject to detect scale)
   function getRubricLabel(avg: number | null, className: string, schoolName: string): { level: string; points: number } | null {
     if (avg === null) return null
+    if (isLevelOnly) return levelOnlyGrade(avg)
     return getGradeLevelByClass(Math.round(avg), className, schoolName)
   }
 
@@ -548,7 +557,7 @@ function generateReportHTML(
 
   function overallRubricLabel(avg: number | null): string {
     if (avg === null) return 'N/A'
-    const g = getGradeLevelByClass(avg, _overallClassName, _overallSchoolName)
+    const g = isLevelOnly ? levelOnlyGrade(avg) : getGradeLevelByClass(avg, _overallClassName, _overallSchoolName)
     if (!g) return 'N/A'
     if (g.level.startsWith('EE')) return 'EXCEEDING EXPECTATION'
     if (g.level.startsWith('ME')) return 'MEETING EXPECTATION'
@@ -647,7 +656,10 @@ function generateReportHTML(
       const subjectPoints = avgGrade ? avgGrade.points.toFixed(1) : '-'
       const examCells = chosenSessions.map(s => {
         const v = sm.marksByExam[s.id]
-        return `<td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-size:11px;">${v !== null && v !== undefined ? v : '-'}</td>`
+        const display = v !== null && v !== undefined
+          ? (isLevelOnly ? (levelOnlyGrade(v)?.level ?? v) : v)
+          : '-'
+        return `<td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-size:11px;">${display}</td>`
       }).join('')
       const badgeColor = avgGrade ? rubricBadgeColor(avgGrade.level) : '#6b7280'
       return `<tr>
@@ -671,7 +683,12 @@ function generateReportHTML(
         const v = sm.marksByExam[s.id]
         return v !== null && v !== undefined ? [v] : []
       })
-      return sessionScores.length > 0 ? sessionScores.reduce((a, b) => a + b, 0).toFixed(0) : '-'
+      if (sessionScores.length === 0) return '-'
+      if (isLevelOnly) {
+        const avg = sessionScores.reduce((a, b) => a + b, 0) / sessionScores.length
+        return levelOnlyGrade(avg)?.level ?? '-'
+      }
+      return sessionScores.reduce((a, b) => a + b, 0).toFixed(0)
     })
     const overallExamCells = overallExamAvgs.map(v =>
       `<td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-size:11px;font-weight:700;">${v}</td>`
