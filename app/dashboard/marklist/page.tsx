@@ -2384,6 +2384,11 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                     <td className="border border-border dark:border-border p-2 text-center font-bold text-foreground dark:text-foreground">{result.total}</td>
                     <td className="border border-border dark:border-border p-2 text-center font-bold" style={{ color: '#000000' }}>
                       {(() => {
+                        if (isLowerGradePointsEntry) {
+                          const avg = result.total / subjects.length
+                          const perf = avg >= 3.5 ? 'EE' : avg >= 2.5 ? 'ME' : avg >= 1.5 ? 'AE' : 'BE'
+                          return perf
+                        }
                         const avgPerformanceLevel = getLevelByTotal(result.total, subjects.length, currentClass?.name, currentSchool?.name)
                         return avgPerformanceLevel ? avgPerformanceLevel.level : '-'
                       })()}
@@ -2396,10 +2401,17 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                   {subjects.map((subject) => {
                     const scores = results.map(r => r.marks[subject.id]).filter((m): m is number => m !== null && m !== undefined)
                     const mean = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length) : 0
-                    const meanPerformance = getGradeLevelByClass(Math.round(mean), currentClass?.name, currentSchool?.name)
+                    const meanPerformance = isLowerGradePointsEntry
+                      ? { level: mean >= 3.5 ? 'EE' : mean >= 2.5 ? 'ME' : mean >= 1.5 ? 'AE' : 'BE', points: mean >= 3.5 ? 4 : mean >= 2.5 ? 3 : mean >= 1.5 ? 2 : 1 }
+                      : getGradeLevelByClass(Math.round(mean), currentClass?.name, currentSchool?.name)
                     return (
                       <React.Fragment key={`mean-${subject.id}`}>
                         {!isLowerGradePointsEntry && (
+                          <td className="border border-border dark:border-border p-2 text-center text-sm text-foreground dark:text-foreground">
+                            {scores.length > 0 ? mean.toFixed(1) : '-'}
+                          </td>
+                        )}
+                        {isLowerGradePointsEntry && (
                           <td className="border border-border dark:border-border p-2 text-center text-sm text-foreground dark:text-foreground">
                             {scores.length > 0 ? mean.toFixed(1) : '-'}
                           </td>
@@ -2417,7 +2429,14 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                     {results.length > 0 ? results.reduce((a, b) => a + b.total, 0) : '-'}
                   </td>
                   <td className="border border-border dark:border-border p-2 text-center font-bold" style={{ color: '#000000' }}>
-                    {classAverage}
+                    {(() => {
+                      if (!results.length) return '-'
+                      if (isLowerGradePointsEntry) {
+                        const totalAvg = results.reduce((a, b) => a + b.average, 0) / results.length
+                        return totalAvg >= 3.5 ? 'EE' : totalAvg >= 2.5 ? 'ME' : totalAvg >= 1.5 ? 'AE' : 'BE'
+                      }
+                      return classAverage
+                    })()}
                   </td>
                 </tr>
               </tbody>
