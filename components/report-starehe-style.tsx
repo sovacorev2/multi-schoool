@@ -55,7 +55,6 @@ interface ReportStareheStyleProps {
   termHistory?: Record<string, TermHistory[]>
   classTeacherName?: string | null
   subjectInitialsMap?: Record<string, string>
-  isLevelOnly?: boolean // scores are direct rubric values 1-4, not percentages
 }
 
 // CBC Performance Level helper
@@ -141,15 +140,6 @@ function isJSSClass(className: string): boolean {
   return /GRADE\s*[7-9]|CLASS\s*[7-9]|FORM\s*[1-3]|JSS\s*[1-3]/i.test(normalized)
 }
 
-// Map a raw rubric value (1-4) to the correct level label and points
-function levelOnlyPerf(score: number | null): { level: string; points: number } {
-  if (score === null || score === undefined) return { level: '-', points: 0 }
-  if (score >= 3.5) return { level: 'EE', points: 4 }
-  if (score >= 2.5) return { level: 'ME', points: 3 }
-  if (score >= 1.5) return { level: 'AE', points: 2 }
-  return { level: 'BE', points: 1 }
-}
-
 export function ReportStareheStyle({
   isOpen,
   onClose,
@@ -160,16 +150,14 @@ export function ReportStareheStyle({
   totalStudents,
   termHistory = {},
   classTeacherName,
-  subjectInitialsMap = {},
-  isLevelOnly = false,
+  subjectInitialsMap = {}
 }: ReportStareheStyleProps) {
   const { currentSchool } = useSchool()
   const reportRef = useRef<HTMLDivElement>(null)
 
   if (!isOpen || reports.length === 0) return null
   
-  // eslint-disable-next-line no-constant-condition
-  if (false) console.log('[v0] ReportStareheStyle rendering:', {
+  console.log('[v0] ReportStareheStyle rendering:', {
     schoolName: currentSchool?.name,
     schoolLogoUrl: currentSchool?.logo_url,
     reportsCount: reports.length,
@@ -427,10 +415,8 @@ export function ReportStareheStyle({
 
               const subjectData = subjects.map(subject => {
                 const score = report.marks[subject.id]
-                const perf = isLevelOnly
-                  ? levelOnlyPerf(score)
-                  : getCBCPerformanceLevel(score || 0, className, currentSchool?.name)
-                const remarks = getCBCRemarks(isLevelOnly ? (score !== null ? (score >= 3.5 ? 80 : score >= 2.5 ? 60 : score >= 1.5 ? 40 : 20) : null) : score, className, currentSchool?.name)
+                const perf = getCBCPerformanceLevel(score || 0, className, currentSchool?.name)
+                const remarks = getCBCRemarks(score, className, currentSchool?.name)
                 return { subject, score, level: perf.level, points: perf.points, remarks }
               })
 
@@ -438,11 +424,10 @@ export function ReportStareheStyle({
               const maxPointsPerSubject = isUpperClass(className) ? 8 : 4
               const maxPoints = subjects.length * maxPointsPerSubject
               const meanMark = report.average
-              // For level-only entry, average is already in 1-4 rubric scale
-              const meanPerf = isLevelOnly
-                ? levelOnlyPerf(meanMark)
-                : (getLevelByTotal(report.total, subjects.length, className, currentSchool?.name)
-                    ?? getCBCPerformanceLevel(meanMark, className, currentSchool?.name))
+              // Use getLevelByTotal so school-specific absolute scales (e.g. St Mary's Nambale)
+              // are applied correctly. Falls back to average-based grading for all other schools.
+              const meanPerf = getLevelByTotal(report.total, subjects.length, className, currentSchool?.name)
+                ?? getCBCPerformanceLevel(meanMark, className, currentSchool?.name)
 
               return (
                 <div key={report.learner.id || idx} className="bg-white page-break" style={{ padding: '12px', minHeight: '100vh', pageBreakInside: 'avoid', fontFamily: 'Times New Roman, serif' }}>
@@ -506,7 +491,7 @@ export function ReportStareheStyle({
                     <thead>
                       <tr style={{ backgroundColor: '#ddd' }}>
                         <th style={{ border: '1px solid #666', padding: '7px', textAlign: 'left', fontWeight: 'bold', fontSize: '12px' }}>SUBJECT</th>
-                        {!isLevelOnly && <th style={{ border: '1px solid #666', padding: '7px', textAlign: 'center', fontWeight: 'bold', fontSize: '12px' }}>SCORE (%)</th>}
+                        <th style={{ border: '1px solid #666', padding: '7px', textAlign: 'center', fontWeight: 'bold', fontSize: '12px' }}>SCORE (%)</th>
                         <th style={{ border: '1px solid #666', padding: '7px', textAlign: 'center', fontWeight: 'bold', fontSize: '12px' }}>LEVEL</th>
                         <th style={{ border: '1px solid #666', padding: '7px', textAlign: 'center', fontWeight: 'bold', fontSize: '12px' }}>PTS</th>
                         {/* Hide CLASS POS column for individual reports */}
@@ -521,7 +506,7 @@ export function ReportStareheStyle({
                       {subjectData.map((item, i) => (
                         <tr key={item.subject.id} style={{ backgroundColor: i % 2 === 0 ? '#fff' : '#f9f9f9' }}>
                           <td style={{ border: '1px solid #666', padding: '7px', textAlign: 'left', fontWeight: 'bold', fontSize: '12px' }}>{item.subject.name.toUpperCase()}</td>
-                          {!isLevelOnly && <td style={{ border: '1px solid #666', padding: '7px', textAlign: 'center', fontSize: '12px' }}>{item.score ?? '-'}</td>}
+                          <td style={{ border: '1px solid #666', padding: '7px', textAlign: 'center', fontSize: '12px' }}>{item.score ?? '-'}</td>
                           <td style={{ border: '1px solid #666', padding: '7px', textAlign: 'center', fontWeight: 'bold', fontSize: '12px' }}>{item.level}</td>
                           <td style={{ border: '1px solid #666', padding: '7px', textAlign: 'center', fontSize: '12px' }}>{item.points}</td>
                           {/* Hide CLASS POS cell for individual reports */}
@@ -536,9 +521,10 @@ export function ReportStareheStyle({
                       ))}
                       <tr style={{ backgroundColor: '#ffeb3b', fontWeight: 'bold' }}>
                         <td style={{ border: '1px solid #666', padding: '7px', textAlign: 'left', fontSize: '12px' }}>TOTAL</td>
-                        {!isLevelOnly && <td style={{ border: '1px solid #666', padding: '7px', textAlign: 'center', fontSize: '12px' }}>{report.total}</td>}
+                        <td style={{ border: '1px solid #666', padding: '7px', textAlign: 'center', fontSize: '12px' }}>{report.total}</td>
                         <td style={{ border: '1px solid #666', padding: '7px', fontSize: '12px' }}></td>
                         <td style={{ border: '1px solid #666', padding: '7px', textAlign: 'center', fontSize: '12px' }}>{totalPoints}</td>
+                        {/* Hide CLASS POS column for individual reports */}
                         {reports.length > 1 && (
                           <td style={{ border: '1px solid #666', padding: '7px', fontSize: '12px' }}></td>
                         )}

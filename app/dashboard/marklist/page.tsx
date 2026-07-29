@@ -199,7 +199,7 @@ export default function MarklistPage() {
       const [sessionsData, subjectsData, learnersData] = await Promise.all([
         cachedFetch(`sessions:${classId}`, () => supabase.from('sessions').select('id, class_id, school_id, exam_type_id, term, year, is_locked, deadline_datetime, exam_types(id, name, display_order)').eq('class_id', classId).then(r => r.data ?? []), TTL.SHORT),
         cachedFetch(`subjects:${classId}`, () => supabase.from('subjects').select('id, name, class_id').eq('class_id', classId).order('name').then(r => r.data ?? []), TTL.STATIC),
-        cachedFetch(`learners:v3:${classId}`, () => supabase.from('learners').select('id, name, class_id, parent_phone, gender').eq('class_id', classId).order('name').then(r => r.data ?? []), TTL.STATIC),
+        cachedFetch(`learners:v2:${classId}`, () => supabase.from('learners').select('id, name, class_id, parent_phone').eq('class_id', classId).order('name').then(r => r.data ?? []), TTL.STATIC),
       ])
       // Wrap in response-shaped objects so existing destructuring still works
       const sessionsRes = { data: sessionsData, error: null }
@@ -734,7 +734,7 @@ export default function MarklistPage() {
 
         const [clsSubjects, clsLearners, clsMarks] = await Promise.all([
           cachedFetch(`subjects:${cls.id}`, () => supabase.from('subjects').select('id, name, class_id').eq('class_id', cls.id).order('name').then(r => r.data ?? []), TTL.STATIC),
-          cachedFetch(`learners:v3:${cls.id}`, () => supabase.from('learners').select('id, name, class_id, parent_phone, gender').eq('class_id', cls.id).order('name').then(r => r.data ?? []), TTL.STATIC),
+          cachedFetch(`learners:v2:${cls.id}`, () => supabase.from('learners').select('id, name, class_id, parent_phone').eq('class_id', cls.id).order('name').then(r => r.data ?? []), TTL.STATIC),
           sessionId
             ? cachedFetch(`marks:${sessionId}`, () => supabase.from('marks').select('id, session_id, learner_id, subject_id, score').eq('session_id', sessionId).then(r => r.data ?? []), TTL.MARKS)
             : Promise.resolve([]),
@@ -922,7 +922,7 @@ export default function MarklistPage() {
     supabase.from('marks').select('learner_id, subject_id, score').eq('session_id', currentSessionForComparison.id),
     supabase.from('marks').select('learner_id, subject_id, score').eq('session_id', previousSession.id),
     isSameClass ? Promise.resolve({ data: subjects }) : supabase.from('subjects').select('id, name, class_id').eq('class_id', targetClassId).order('name'),
-    isSameClass ? Promise.resolve({ data: learners }) : supabase.from('learners').select('id, name, class_id, parent_phone, gender').eq('class_id', targetClassId).order('name'),
+    isSameClass ? Promise.resolve({ data: learners }) : supabase.from('learners').select('id, name, class_id, parent_phone').eq('class_id', targetClassId).order('name'),
   ])
 
       const targetSubjects = (targetSubjectsRes.data || []) as typeof subjects
@@ -1170,7 +1170,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
   const femaleStudents = results.filter(r => r.learner.gender === 'Female' || r.learner.gender === 'female' || r.learner.gender === 'F')
   const maleAverage = maleStudents.length > 0 ? (maleStudents.reduce((sum, r) => sum + r.average, 0) / maleStudents.length).toFixed(1) : '0'
   const femaleAverage = femaleStudents.length > 0 ? (femaleStudents.reduce((sum, r) => sum + r.average, 0) / femaleStudents.length).toFixed(1) : '0'
-
+  console.log('[v0] Gender Analysis Debug:', { totalResults: results.length, maleCount: maleStudents.length, femaleCount: femaleStudents.length, sampleGenders: results.slice(0, 3).map(r => r.learner.gender) })
 
   const handleDownloadCSV = () => {
     const headers = ['No.', 'Name', ...subjects.map((s) => s.name), 'Total', 'Average']
@@ -2384,11 +2384,6 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                     <td className="border border-border dark:border-border p-2 text-center font-bold text-foreground dark:text-foreground">{result.total}</td>
                     <td className="border border-border dark:border-border p-2 text-center font-bold" style={{ color: '#000000' }}>
                       {(() => {
-                        if (isLowerGradePointsEntry) {
-                          const avg = result.total / subjects.length
-                          const perf = avg >= 3.5 ? 'EE' : avg >= 2.5 ? 'ME' : avg >= 1.5 ? 'AE' : 'BE'
-                          return perf
-                        }
                         const avgPerformanceLevel = getLevelByTotal(result.total, subjects.length, currentClass?.name, currentSchool?.name)
                         return avgPerformanceLevel ? avgPerformanceLevel.level : '-'
                       })()}
@@ -2401,17 +2396,10 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                   {subjects.map((subject) => {
                     const scores = results.map(r => r.marks[subject.id]).filter((m): m is number => m !== null && m !== undefined)
                     const mean = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length) : 0
-                    const meanPerformance = isLowerGradePointsEntry
-                      ? { level: mean >= 3.5 ? 'EE' : mean >= 2.5 ? 'ME' : mean >= 1.5 ? 'AE' : 'BE', points: mean >= 3.5 ? 4 : mean >= 2.5 ? 3 : mean >= 1.5 ? 2 : 1 }
-                      : getGradeLevelByClass(Math.round(mean), currentClass?.name, currentSchool?.name)
+                    const meanPerformance = getGradeLevelByClass(Math.round(mean), currentClass?.name, currentSchool?.name)
                     return (
                       <React.Fragment key={`mean-${subject.id}`}>
                         {!isLowerGradePointsEntry && (
-                          <td className="border border-border dark:border-border p-2 text-center text-sm text-foreground dark:text-foreground">
-                            {scores.length > 0 ? mean.toFixed(1) : '-'}
-                          </td>
-                        )}
-                        {isLowerGradePointsEntry && (
                           <td className="border border-border dark:border-border p-2 text-center text-sm text-foreground dark:text-foreground">
                             {scores.length > 0 ? mean.toFixed(1) : '-'}
                           </td>
@@ -2429,14 +2417,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                     {results.length > 0 ? results.reduce((a, b) => a + b.total, 0) : '-'}
                   </td>
                   <td className="border border-border dark:border-border p-2 text-center font-bold" style={{ color: '#000000' }}>
-                    {(() => {
-                      if (!results.length) return '-'
-                      if (isLowerGradePointsEntry) {
-                        const totalAvg = results.reduce((a, b) => a + b.average, 0) / results.length
-                        return totalAvg >= 3.5 ? 'EE' : totalAvg >= 2.5 ? 'ME' : totalAvg >= 1.5 ? 'AE' : 'BE'
-                      }
-                      return classAverage
-                    })()}
+                    {classAverage}
                   </td>
                 </tr>
               </tbody>
@@ -2732,7 +2713,6 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                 sessions={sessions}
                 selectedYear={selectedYear}
                 selectedTerm={selectedTerm}
-                isLevelOnly={isLowerGradePointsEntry}
               />
             </TabsContent>
 
@@ -4136,7 +4116,6 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
             classTeacherName={currentClass?.teacher_name}
             subjectInitialsMap={subjectInitialsMap}
             termHistory={termHistory || {}}
-            isLevelOnly={isLowerGradePointsEntry}
           />
       )}
 
