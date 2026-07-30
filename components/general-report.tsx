@@ -113,6 +113,10 @@ export function GeneralReport({
   selectedYear,
   selectedTerm,
 }: GeneralReportProps) {
+  // Detect Kimwanga lower grades (level-only entry mode)
+  const isKimwangarc = currentSchool?.code?.toLowerCase() === 'kimwangarc'
+  const lowerGradePatterns = /^(PP1|PP2|Grade\s*1|Grade\s*2|Grade\s*3|Grade\s*4|Grade\s*5|Grade\s*6)$/i
+  const isLowerGradePointsEntry = isKimwangarc && lowerGradePatterns.test(currentClass?.name || '')
   const supabase = createClient()
 
   // All sessions for this year+term — each becomes a selectable "exam column"
@@ -207,7 +211,17 @@ export function GeneralReport({
             marksByExam[session.id] = mark ? mark.score : null
           }
           const scores = Object.values(marksByExam).filter((v): v is number => v !== null)
-          const average = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : null
+          let average: number | null = null
+          if (scores.length > 0) {
+            const scoreSum = scores.reduce((a, b) => a + b, 0)
+            if (isLowerGradePointsEntry) {
+              // Level-only mode: scores are 1-4, convert to percentage
+              average = (scoreSum / (scores.length * 4)) * 100
+            } else {
+              // Normal mode: scores are 0-100
+              average = scoreSum / scores.length
+            }
+          }
           return {
             subjectId: subject.id,
             subjectName: getSubjectDisplay(subject.name),
@@ -224,9 +238,17 @@ export function GeneralReport({
           Object.values(sm.marksByExam).some(v => v !== null)
         ).length
         const overallTotal = allScores.reduce((a, b) => a + b, 0)
-        const overallAverage = totalSubjectsWithMarks > 0
-          ? overallTotal / allScores.length
-          : null
+        let overallAverage: number | null = null
+        if (totalSubjectsWithMarks > 0) {
+          if (isLowerGradePointsEntry) {
+            // Level-only mode: total is sum of 1-4 levels, max is 4 per subject
+            const maxPossibleLevels = allScores.length * 4
+            overallAverage = (overallTotal / maxPossibleLevels) * 100
+          } else {
+            // Normal mode: average of all marks
+            overallAverage = overallTotal / allScores.length
+          }
+        }
 
         // Total points from average
         const avgGrade = overallAverage !== null
