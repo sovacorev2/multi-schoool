@@ -151,8 +151,10 @@ export function GeneralReport({
     })
   }
 
-  // Derive selected sessions (in order)
-  const chosenSessions = availableExamSessions.filter(s => selectedSessionIds.includes(s.id))
+  // Derive selected sessions preserving user's selection order (not database order)
+  const chosenSessions = selectedSessionIds
+    .map(id => availableExamSessions.find(s => s.id === id))
+    .filter((s): s is typeof availableExamSessions[0] => s !== undefined)
 
   async function handlePrintAll() {
     if (!currentClass || !currentSchool || !subjects || subjects.length === 0 || chosenSessions.length === 0 || learners.length === 0) return
