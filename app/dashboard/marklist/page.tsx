@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import React from "react"
-import { formatGradeWithPoints, getPerformanceLevelWithPoints, getGradeLevelByClass, getLevelByTotalPoints, getLevelByAverageMark, getLevelByTotal, getGradingScale } from '@/lib/grading-utils'
+import { formatGradeWithPoints, getPerformanceLevelWithPoints, getGradeLevelByClass, getSubjectLevelPoints, getLevelByTotalPoints, getLevelByAverageMark, getLevelByTotal, getGradingScale } from '@/lib/grading-utils'
 import { getSubjectDisplay, normalizeSubjectName, areSubjectsEqual } from '@/lib/subject-utils'
 import { sortClassesByLevel } from '@/lib/class-sort-utils'
 
@@ -2524,7 +2524,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                             <td className="border border-gray-500 p-2 text-left font-medium">{result.learner.name}</td>
                             {subjects.map((subject) => {
                               const score = result.marks[subject.id]
-                              const performanceLevel = getGradeLevelByClass(score, currentClass?.name, currentSchool?.name)
+                              const performanceLevel = getSubjectLevelPoints(score, currentClass?.name, currentSchool?.name)
                               return (
                                 <React.Fragment key={subject.id}>
                                   <td className="border border-gray-500 p-2 text-center">
@@ -2611,7 +2611,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                       const subjectDetails = subjects.map(subject => {
                                         const score = result.marks[subject.id]
                                         if (score === null || score === undefined) return null
-                                        const subjectGrade = getGradeLevelByClass(Math.round(score), currentClass?.name, currentSchool?.name)
+                                        const subjectGrade = getSubjectLevelPoints(score, currentClass?.name, currentSchool?.name)
                                         return `• ${subject.name}: *${score}%* (${subjectGrade?.level || '-'})`
                                       }).filter(Boolean).join('\n')
                                       
@@ -2657,7 +2657,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                       const subjectDetails = subjects.map(subject => {
                                         const score = result.marks[subject.id]
                                         if (score === null || score === undefined) return null
-                                        const subjectGrade = getGradeLevelByClass(Math.round(score), currentClass?.name, currentSchool?.name)
+                                        const subjectGrade = getSubjectLevelPoints(score, currentClass?.name, currentSchool?.name)
                                         return `${subject.name}: ${score}% (${subjectGrade?.level || '-'})`
                                       }).filter(Boolean).join(', ')
                                       const message =
@@ -2694,9 +2694,10 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                             let mean = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length) : 0
                             let meanPerformance
                             if (isLowerGradePointsEntry) {
-                              // For level-only mode: mean is 1-4 scale, convert to 25-100 for getGradeLevelByClass
-                              const meanAsPercentage = (mean / 4) * 100
-                              meanPerformance = getGradeLevelByClass(Math.round(meanAsPercentage), currentClass?.name, currentSchool?.name)
+                              // Points-entry mode: mean is already on the 1-4 rubric scale —
+                              // map it directly instead of converting to a percentage, so it
+                              // uses the same EE/ME/AE/BE labels as the per-student rows above.
+                              meanPerformance = getSubjectLevelPoints(mean, currentClass?.name, currentSchool?.name)
                             } else {
                               // Normal mode: mean is already 0-100 percentage
                               meanPerformance = getGradeLevelByClass(Math.round(mean), currentClass?.name, currentSchool?.name)
@@ -4198,7 +4199,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                         const subjectDetails = subjects.map(subject => {
                           const score = result.marks[subject.id]
                           if (score === null || score === undefined) return null
-                          const subjectGrade = getGradeLevelByClass(Math.round(score), currentClass?.name, currentSchool?.name)
+                          const subjectGrade = getSubjectLevelPoints(score, currentClass?.name, currentSchool?.name)
                           return `• ${subject.name}: *${score}%* (${subjectGrade?.level || '-'})`
                         }).filter(Boolean).join('\n')
                         
@@ -4283,7 +4284,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
           const subjectDetails = subjects.map(subject => {
             const score = result.marks[subject.id]
             if (score === null || score === undefined) return null
-            const subjectGrade = getGradeLevelByClass(Math.round(score), currentClass?.name, currentSchool?.name)
+            const subjectGrade = getSubjectLevelPoints(score, currentClass?.name, currentSchool?.name)
             return `${subject.name}: ${score}% (${subjectGrade?.level || '-'})`
           }).filter(Boolean).join(', ')
           return (

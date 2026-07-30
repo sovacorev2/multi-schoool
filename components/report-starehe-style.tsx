@@ -5,7 +5,7 @@ import { getSubjectDisplay } from '@/lib/subject-utils'
 import { useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { X, Printer, Download } from 'lucide-react'
-import { getGradeLevelByClass, isUpperClass, GRADING_SCALE_SIMPLE, GRADING_SCALE_EXTENDED, getLevelByTotal } from '@/lib/grading-utils'
+import { getGradeLevelByClass, getSubjectLevelPoints, isUpperClass, GRADING_SCALE_SIMPLE, GRADING_SCALE_EXTENDED, getLevelByTotal } from '@/lib/grading-utils'
 import { PathwayAnalysis } from '@/components/pathway-analysis'
 import { calculatePathwayScores } from '@/lib/pathways'
 
@@ -59,7 +59,7 @@ interface ReportStareheStyleProps {
 
 // CBC Performance Level helper
 function getCBCPerformanceLevel(score: number, className: string, schoolName?: string): { level: string; points: number } {
-  const result = getGradeLevelByClass(score, className, schoolName)
+  const result = getSubjectLevelPoints(score, className, schoolName)
   return result || { level: '-', points: 0 }
 }
 

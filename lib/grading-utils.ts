@@ -250,3 +250,30 @@ export function getGradeLevelByClass(marks: number | string | null | undefined, 
   const grade = scale.find(g => score >= g.minMark && score <= g.maxMark)
   return grade ? { level: grade.level, points: grade.points } : null
 }
+
+// Get a per-subject performance level from a raw score, aware of schools that enter
+// rubric points (1-4) directly instead of marks (0-100) for each subject.
+// Currently only Kimwanga RC's lower grades (PP1, PP2, Grade 1-6) use points entry —
+// deliberately kept separate from getGradeLevelByClass so we don't affect other
+// callers that intentionally pre-convert a points value to a percentage before
+// calling getGradeLevelByClass (e.g. class mean rows built before this helper existed).
+export function getSubjectLevelPoints(
+  score: number | string | null | undefined,
+  className?: string,
+  schoolName?: string
+): { level: string; points: number } | null {
+  if (score === null || score === undefined) return null
+  const value = typeof score === 'string' ? parseFloat(score) : score
+  if (typeof value !== 'number' || Number.isNaN(value)) return null
+
+  const school = (schoolName || '').toLowerCase()
+  if (school.includes('kimwanga') && !isUpperClass(className || '')) {
+    const p = Math.round(value)
+    if (p >= 4) return { level: 'EE', points: 4 }
+    if (p === 3) return { level: 'ME', points: 3 }
+    if (p === 2) return { level: 'AE', points: 2 }
+    return { level: 'BE', points: 1 }
+  }
+
+  return getGradeLevelByClass(value, className, schoolName)
+}
