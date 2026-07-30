@@ -246,8 +246,16 @@ export function getGradeLevelByClass(marks: number | string | null | undefined, 
   const score = typeof marks === 'string' ? parseFloat(marks) : marks
   if (typeof score !== 'number' || Number.isNaN(score)) return null
 
+  // Round before matching. The scale bands are adjacent integers (e.g. ME1: 58-74,
+  // EE2: 75-89) with no band covering the gap between them — an unrounded average
+  // like 74.33 (e.g. 669 marks / 9 subjects) matches neither band and silently
+  // returns null, rendering as a blank "-" instead of a level. Most callers already
+  // round before calling this function; rounding here too is a no-op for them and
+  // fixes any caller (like getLevelByAverageMark) that doesn't.
+  const rounded = Math.round(score)
+
   const scale = getGradingScale(className, schoolName)
-  const grade = scale.find(g => score >= g.minMark && score <= g.maxMark)
+  const grade = scale.find(g => rounded >= g.minMark && rounded <= g.maxMark)
   return grade ? { level: grade.level, points: grade.points } : null
 }
 
