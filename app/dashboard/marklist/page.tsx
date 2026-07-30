@@ -173,7 +173,8 @@ export default function MarklistPage() {
   
   useEffect(() => {
     setIsLowerGradePointsEntry(isKimwangaraLowerGrade)
-  }, [isKimwangaraLowerGrade])
+    console.log('[v0] School detection:', { schoolCode: currentSchool?.code, isKimwangarc, className: currentClass?.name, isLowerGradePointsEntry: isKimwangaraLowerGrade })
+  }, [isKimwangaraLowerGrade, currentSchool?.code, currentClass?.name])
 
   const getRubric = (score: number | null): number | null => {
     if (score === null || score === undefined) return null
