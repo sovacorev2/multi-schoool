@@ -194,6 +194,21 @@ export function getLevelByAverageMark(
 ): { level: string; points: number } | null {
   if (!subjectCount || subjectCount === 0) return null
   const avgMark = totalMarks / subjectCount
+
+  // Kimwanga RC lower grades (PP1, PP2, Grade 1-6) enter rubric points (1-4) directly
+  // instead of raw marks (0-100). Their "total" is a sum of 1-4 points, so the average
+  // must be mapped on that same 1-4 scale — running it through the percentage-based
+  // grading scale (which expects 0-100 marks) misclassifies a near-max average like
+  // 3.8 as BE2 (that scale's 0-10 band).
+  const school = (schoolName || '').toLowerCase()
+  if (school.includes('kimwanga') && !isUpperClass(className || '')) {
+    const p = Math.round(avgMark)
+    if (p >= 4) return { level: 'EE', points: 4 }
+    if (p === 3) return { level: 'ME', points: 3 }
+    if (p === 2) return { level: 'AE', points: 2 }
+    return { level: 'BE', points: 1 }
+  }
+
   return getGradeLevelByClass(avgMark, className, schoolName)
 }
 

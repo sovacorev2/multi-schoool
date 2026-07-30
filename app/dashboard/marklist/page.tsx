@@ -2406,7 +2406,16 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                   {subjects.map((subject) => {
                     const scores = results.map(r => r.marks[subject.id]).filter((m): m is number => m !== null && m !== undefined)
                     const mean = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length) : 0
-                    const meanPerformance = getGradeLevelByClass(Math.round(mean), currentClass?.name, currentSchool?.name)
+                    // In points-entry mode, the mean is on the 1-4 rubric scale, not 0-100 marks
+                    const meanPerformance = isLowerGradePointsEntry
+                      ? (() => {
+                          const p = Math.round(mean)
+                          if (p >= 4) return { level: 'EE', points: 4 }
+                          if (p === 3) return { level: 'ME', points: 3 }
+                          if (p === 2) return { level: 'AE', points: 2 }
+                          return { level: 'BE', points: 1 }
+                        })()
+                      : getGradeLevelByClass(Math.round(mean), currentClass?.name, currentSchool?.name)
                     return (
                       <React.Fragment key={`mean-${subject.id}`}>
                         {!isLowerGradePointsEntry && (
