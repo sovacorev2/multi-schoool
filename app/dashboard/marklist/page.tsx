@@ -2682,8 +2682,16 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                           <td className="border border-gray-600 p-2" colSpan={2}>MEAN</td>
                           {subjects.map((subject) => {
                             const scores = results.map(r => r.marks[subject.id]).filter((m): m is number => m !== null && m !== undefined)
-                            const mean = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length) : 0
-                            const meanPerformance = getGradeLevelByClass(Math.round(mean), currentClass?.name, currentSchool?.name)
+                            let mean = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length) : 0
+                            let meanPerformance
+                            if (isLowerGradePointsEntry) {
+                              // For level-only mode: mean is 1-4 scale, convert to 25-100 for getGradeLevelByClass
+                              const meanAsPercentage = (mean / 4) * 100
+                              meanPerformance = getGradeLevelByClass(Math.round(meanAsPercentage), currentClass?.name, currentSchool?.name)
+                            } else {
+                              // Normal mode: mean is already 0-100 percentage
+                              meanPerformance = getGradeLevelByClass(Math.round(mean), currentClass?.name, currentSchool?.name)
+                            }
                             return (
                               <React.Fragment key={`mean-${subject.id}`}>
                   <td className="border border-gray-600 p-2 text-center text-base">
@@ -2699,7 +2707,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                             )
                           })}
                           <td className="border border-gray-600 p-2 text-center">
-                            {results.length > 0 ? results.reduce((a, b) => a + b.total, 0) : '-'}
+                            {results.length > 0 ? (isLowerGradePointsEntry ? results.reduce((a, b) => a + b.totalPoints, 0).toFixed(1) : results.reduce((a, b) => a + b.total, 0)) : '-'}
                           </td>
                           <td className="border border-gray-600 p-2 text-center">
                             {classAverage}
