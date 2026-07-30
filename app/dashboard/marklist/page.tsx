@@ -1065,9 +1065,18 @@ export default function MarklistPage() {
             })
 
             // Average as percentage: (total / max possible marks) * 100
-            // Max possible = 100 marks per subject × number of subjects
-            const maxPossibleMarks = subjectsWithMarks * 100
-            const average = subjectsWithMarks > 0 ? (total / maxPossibleMarks) * 100 : 0
+            // For Kimwanga level-only mode: levels are 1-4, convert to percentage (1→25, 2→50, 3→75, 4→100)
+            // For normal mode: marks are 0-100
+            let average = 0
+            if (isLowerGradePointsEntry) {
+              // Level-only mode: total is sum of 1-4 levels, max is 4 per subject
+              const maxPossibleLevels = subjectsWithMarks * 4
+              average = subjectsWithMarks > 0 ? (total / maxPossibleLevels) * 100 : 0
+            } else {
+              // Normal mode: total is sum of 0-100 marks
+              const maxPossibleMarks = subjectsWithMarks * 100
+              average = subjectsWithMarks > 0 ? (total / maxPossibleMarks) * 100 : 0
+            }
 
             return {
               learner,
