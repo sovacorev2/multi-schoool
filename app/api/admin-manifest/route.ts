@@ -7,29 +7,36 @@ export async function GET(request: Request) {
     const schoolId = searchParams.get('schoolId')
     const schoolName = searchParams.get('schoolName') || 'Admin Portal'
 
-    // Fetch school info for colors if schoolId is provided
+    // Fetch school info for colors/code if schoolId is provided
     let primaryColor = '#2563eb' // default blue
     let schoolShortName = 'Admin'
+    let schoolCode = ''
 
     if (schoolId) {
       const supabase = await createClient()
       const { data: school } = await supabase
         .from('schools')
-        .select('primary_color, short_name')
+        .select('primary_color, short_name, code')
         .eq('id', schoolId)
         .single()
 
       if (school) {
         primaryColor = school.primary_color || primaryColor
         schoolShortName = school.short_name || 'Admin'
+        schoolCode = school.code || ''
       }
     }
+
+    // The admin-portal reads the school from the `school` (code) query param,
+    // not `schoolId` — without the code, launching the installed PWA lands on
+    // an unrecognized URL and shows "no school selected".
+    const schoolQuery = schoolCode ? `?school=${schoolCode}` : ''
 
     const manifest = {
       name: `${schoolName} - Admin Portal`,
       short_name: schoolShortName,
       description: 'School Management Admin Portal',
-      start_url: schoolId ? `/admin-portal?schoolId=${schoolId}` : '/admin-portal',
+      start_url: `/admin-portal${schoolQuery}`,
       scope: '/admin-portal',
       display: 'standalone',
       orientation: 'portrait-primary',
@@ -51,22 +58,22 @@ export async function GET(request: Request) {
         },
       ],
       categories: ['education', 'productivity'],
-      shortcuts: [
+      shortcuts: schoolCode ? [
         {
-          name: 'Classes',
+          name: 'Classes & Exams',
           short_name: 'Classes',
-          description: 'View and manage classes',
-          url: '/admin-portal?tab=classes',
+          description: 'View and manage classes and exam types',
+          url: `/admin-portal/classes-exams${schoolQuery}`,
           icons: [{ src: '/icon-192.png', sizes: '192x192' }],
         },
         {
           name: 'Teachers',
           short_name: 'Teachers',
           description: 'Manage teachers and assignments',
-          url: '/admin-portal?tab=teachers',
+          url: `/admin-portal/teachers${schoolQuery}`,
           icons: [{ src: '/icon-192.png', sizes: '192x192' }],
         },
-      ],
+      ] : [],
     }
 
     return NextResponse.json(manifest, {
