@@ -14,6 +14,7 @@ import { useClass } from '@/lib/class-context'
 import { useSchool } from '@/lib/school-context'
 import { isNetworkError, getFallbackData, cacheFallbackData } from '@/lib/fallback-data'
 import { cachedFetch, cacheInvalidatePrefix, TTL } from '@/lib/query-cache'
+import { fetchAllRows } from '@/lib/fetch-all-rows'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -307,16 +308,21 @@ export default function MarklistPage() {
       const classIds = allClasses.map(c => c.id)
       const sessionIds = allSessions?.map(s => s.id) || []
 
-      const [subjectsRes2, learnersRes2, marksRes2] = await Promise.all([
+      // Marks and learners can each easily exceed Supabase's 1000-row default
+      // page cap across a whole school — must paginate or large schools silently
+      // lose data past row 1000 and everything past it looks "not entered".
+      const [subjectsRes2, allLearners, allMarks] = await Promise.all([
         supabase.from('subjects').select('id, name, class_id').in('class_id', classIds),
-        supabase.from('learners').select('id, name, class_id, gender').in('class_id', classIds),
+        fetchAllRows<{ id: string; name: string; class_id: string; gender: string | null }>((from, to) =>
+          supabase.from('learners').select('id, name, class_id, gender').in('class_id', classIds).range(from, to)
+        ),
         sessionIds.length > 0
-          ? supabase.from('marks').select('session_id, subject_id, score, learner_id').in('session_id', sessionIds)
-          : Promise.resolve({ data: [] }),
+          ? fetchAllRows<{ session_id: string; subject_id: string; score: number | null; learner_id: string }>((from, to) =>
+              supabase.from('marks').select('session_id, subject_id, score, learner_id').in('session_id', sessionIds).range(from, to)
+            )
+          : Promise.resolve([]),
       ])
       const allSubjects = subjectsRes2.data
-      const allLearners = learnersRes2.data
-      const allMarks = marksRes2.data
 
       // Create lookup maps for fast access
       const sessionsByClassId = new Map()
@@ -575,9 +581,13 @@ export default function MarklistPage() {
       ])
 
       const sessionIds = allSessions?.map(s => s.id) || []
-      const { data: allMarks } = sessionIds.length > 0
-        ? await supabase.from('marks').select('learner_id, subject_id, score, session_id').in('session_id', sessionIds)
-        : { data: [] }
+      // Paginated — marks across several streams' worth of learners × subjects
+      // can exceed Supabase's 1000-row default page cap.
+      const allMarks = sessionIds.length > 0
+        ? await fetchAllRows<{ learner_id: string; subject_id: string; score: number | null; session_id: string }>((from, to) =>
+            supabase.from('marks').select('learner_id, subject_id, score, session_id').in('session_id', sessionIds).range(from, to)
+          )
+        : []
 
       // Create lookup maps
       const sessionsByClassId = new Map()

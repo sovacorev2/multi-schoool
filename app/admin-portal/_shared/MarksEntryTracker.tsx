@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ClipboardCheck, ChevronDown, ChevronRight } from 'lucide-react'
 import { sortClasses } from './utils'
 import type { Deadline } from './types'
+import { fetchAllRows } from '@/lib/fetch-all-rows'
 
 type SubjectStatus = 'none' | 'partial' | 'complete' | 'unassigned'
 
@@ -85,21 +86,26 @@ export function MarksEntryTracker({ schoolId, deadlines }: { schoolId: string; d
     const sessionIds = sessions.map((s: any) => s.id)
     const sessionByClassId = new Map(sessions.map((s: any) => [s.class_id, s.id]))
 
-    const [subjectsRes, learnersRes, assignmentsRes, teachersRes, marksRes] = await Promise.all([
+    // Marks and learners can each easily exceed Supabase's 1000-row default
+    // page cap across a whole school — must paginate or large schools silently
+    // lose data past row 1000 and everything past it looks "not entered".
+    const [subjectsRes, learners, assignmentsRes, teachersRes, marks] = await Promise.all([
       supabase.from('subjects').select('id, name, class_id').in('class_id', classIds),
-      supabase.from('learners').select('id, class_id').in('class_id', classIds),
+      fetchAllRows<{ id: string; class_id: string }>((from, to) =>
+        supabase.from('learners').select('id, class_id').in('class_id', classIds).range(from, to)
+      ),
       supabase.from('teacher_assignments').select('user_id, class_id, subject_id').eq('school_id', schoolId).eq('is_active', true).not('subject_id', 'is', null),
       supabase.from('teacher_accounts').select('id, first_name, last_name').eq('school_id', schoolId),
       sessionIds.length > 0
-        ? supabase.from('marks').select('session_id, subject_id, learner_id, score').in('session_id', sessionIds)
-        : Promise.resolve({ data: [] }),
+        ? fetchAllRows<{ session_id: string; subject_id: string; learner_id: string; score: number | null }>((from, to) =>
+            supabase.from('marks').select('session_id, subject_id, learner_id, score').in('session_id', sessionIds).range(from, to)
+          )
+        : Promise.resolve([]),
     ])
 
     const subjects = subjectsRes.data || []
-    const learners = learnersRes.data || []
     const assignments = assignmentsRes.data || []
     const teachers = teachersRes.data || []
-    const marks = marksRes.data || []
 
     const teacherNameById = new Map<string, string>(
       teachers.map((t: any) => [t.id, [t.first_name, t.last_name].filter(Boolean).join(' ')])

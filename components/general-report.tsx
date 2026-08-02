@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getGradeLevelByClass } from '@/lib/grading-utils'
 import { getSubjectDisplay } from '@/lib/subject-utils'
+import { fetchAllRows } from '@/lib/fetch-all-rows'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
@@ -357,11 +358,12 @@ export function GeneralReport({
                 .eq('year', chosenSession.year)
               const sibSessionIds = (sibSessions ?? []).map((s: any) => s.id)
               if (sibSessionIds.length > 0) {
-                const { data: sibMarks } = await supabase
-                  .from('marks')
-                  .select('learner_id, score')
-                  .in('session_id', sibSessionIds)
-                if (sibMarks) siblingMarksAll.push(...sibMarks)
+                // Paginated — marks across several sibling streams can exceed
+                // Supabase's 1000-row default page cap.
+                const sibMarks = await fetchAllRows<{ learner_id: string; score: number | null }>((from, to) =>
+                  supabase.from('marks').select('learner_id, score').in('session_id', sibSessionIds).range(from, to)
+                )
+                siblingMarksAll.push(...sibMarks)
               }
             }
 
