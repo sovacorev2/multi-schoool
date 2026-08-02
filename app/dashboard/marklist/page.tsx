@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import React from "react"
 import { formatGradeWithPoints, getPerformanceLevelWithPoints, getGradeLevelByClass, getSubjectLevelPoints, getLevelByTotalPoints, getLevelByAverageMark, getLevelByTotal, getGradingScale } from '@/lib/grading-utils'
+import { generateSchoolAnalysisHTML } from '@/lib/school-analysis-report'
 import { getSubjectDisplay, normalizeSubjectName, areSubjectsEqual } from '@/lib/subject-utils'
 import { sortClassesByLevel } from '@/lib/class-sort-utils'
 
@@ -83,6 +84,15 @@ export default function MarklistPage() {
     categoryAvg: number
     totalLearners: number
   }[]>([])
+  const [schoolAnalysisExtra, setSchoolAnalysisExtra] = useState<{
+    overallSchoolAvg: number
+    passRate: number
+    totalLearnersWithMarks: number
+    genderStats: { maleAvg: number; femaleAvg: number; maleCount: number; femaleCount: number }
+    subjectRankings: { name: string; avg: number; classCount: number }[]
+    topLearners: { name: string; className: string; total: number; average: number }[]
+    bottomLearners: { name: string; className: string; total: number; average: number }[]
+  } | null>(null)
   const [isLoadingSchool, setIsLoadingSchool] = useState(false)
   const [comparisonData, setComparisonData] = useState<{
     currentSession: { name: string; term: string; year: number } | null
@@ -299,9 +309,9 @@ export default function MarklistPage() {
 
       const [subjectsRes2, learnersRes2, marksRes2] = await Promise.all([
         supabase.from('subjects').select('id, name, class_id').in('class_id', classIds),
-        supabase.from('learners').select('id, class_id').in('class_id', classIds),
+        supabase.from('learners').select('id, name, class_id, gender').in('class_id', classIds),
         sessionIds.length > 0
-          ? supabase.from('marks').select('session_id, subject_id, score').in('session_id', sessionIds)
+          ? supabase.from('marks').select('session_id, subject_id, score, learner_id').in('session_id', sessionIds)
           : Promise.resolve({ data: [] }),
       ])
       const allSubjects = subjectsRes2.data
@@ -427,6 +437,88 @@ export default function MarklistPage() {
           })
         }
       }
+
+      // --- Extra school-wide analysis: gender, subject rankings, top/bottom learners ---
+      // Note: like the rest of this function, this treats every score as a raw 0-100
+      // mark — schools using rubric-points entry (e.g. Kimwanga's lower grades) aren't
+      // converted here, matching this function's existing per-class average calc above.
+      const classNameById = new Map<string, string>(allClasses.map((c: any) => [c.id, c.name]))
+      const learnerById = new Map((allLearners || []).map(l => [l.id, l]))
+
+      const learnerTotals = new Map<string, { total: number; count: number }>()
+      for (const m of (allMarks || [])) {
+        if (m.score === null || m.score === undefined || !(m as any).learner_id) continue
+        const learnerId = (m as any).learner_id as string
+        const entry = learnerTotals.get(learnerId) || { total: 0, count: 0 }
+        entry.total += Number(m.score)
+        entry.count += 1
+        learnerTotals.set(learnerId, entry)
+      }
+
+      const learnerPerformance = Array.from(learnerTotals.entries())
+        .map(([learnerId, { total, count }]) => {
+          const learner = learnerById.get(learnerId) as any
+          if (!learner) return null
+          return {
+            name: learner.name as string,
+            className: classNameById.get(learner.class_id) || 'Unknown',
+            gender: learner.gender as string | null,
+            total,
+            average: count > 0 ? total / count : 0,
+          }
+        })
+        .filter((l): l is NonNullable<typeof l> => l !== null)
+
+      const maleLearners = learnerPerformance.filter(l => l.gender === 'Male' || l.gender === 'male' || l.gender === 'M')
+      const femaleLearners = learnerPerformance.filter(l => l.gender === 'Female' || l.gender === 'female' || l.gender === 'F')
+      const maleAvg = maleLearners.length > 0 ? maleLearners.reduce((a, b) => a + b.average, 0) / maleLearners.length : 0
+      const femaleAvg = femaleLearners.length > 0 ? femaleLearners.reduce((a, b) => a + b.average, 0) / femaleLearners.length : 0
+
+      const sortedByAvg = [...learnerPerformance].sort((a, b) => b.average - a.average)
+      const topLearners = sortedByAvg.slice(0, 10).map(l => ({ name: l.name, className: l.className, total: l.total, average: Math.round(l.average * 10) / 10 }))
+      const bottomLearners = sortedByAvg.slice(-10).reverse().map(l => ({ name: l.name, className: l.className, total: l.total, average: Math.round(l.average * 10) / 10 }))
+
+      const overallSchoolAvg = learnerPerformance.length > 0
+        ? learnerPerformance.reduce((a, b) => a + b.average, 0) / learnerPerformance.length
+        : 0
+      const passRate = learnerPerformance.length > 0
+        ? (learnerPerformance.filter(l => l.average >= 50).length / learnerPerformance.length) * 100
+        : 0
+
+      // School-wide subject rankings: aggregate same-named subjects across all classes
+      const subjectAgg = new Map<string, { sum: number; count: number; classIds: Set<string> }>()
+      for (const subj of (allSubjects || [])) {
+        const subjMarks = (allMarks || []).filter(m => m.subject_id === subj.id && m.score !== null)
+        if (subjMarks.length === 0) continue
+        const key = subj.name.trim().toUpperCase()
+        const entry = subjectAgg.get(key) || { sum: 0, count: 0, classIds: new Set<string>() }
+        entry.sum += subjMarks.reduce((a, m) => a + Number(m.score || 0), 0)
+        entry.count += subjMarks.length
+        entry.classIds.add(subj.class_id)
+        subjectAgg.set(key, entry)
+      }
+      const subjectRankings = Array.from(subjectAgg.entries())
+        .map(([name, { sum, count, classIds }]) => ({
+          name,
+          avg: count > 0 ? Math.round((sum / count) * 10) / 10 : 0,
+          classCount: classIds.size,
+        }))
+        .sort((a, b) => b.avg - a.avg)
+
+      setSchoolAnalysisExtra({
+        overallSchoolAvg: Math.round(overallSchoolAvg * 10) / 10,
+        passRate: Math.round(passRate * 10) / 10,
+        totalLearnersWithMarks: learnerPerformance.length,
+        genderStats: {
+          maleAvg: Math.round(maleAvg * 10) / 10,
+          femaleAvg: Math.round(femaleAvg * 10) / 10,
+          maleCount: maleLearners.length,
+          femaleCount: femaleLearners.length,
+        },
+        subjectRankings,
+        topLearners,
+        bottomLearners,
+      })
 
       setSchoolPerformance(categoryResults)
     } catch (err) {
@@ -3889,9 +3981,28 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                     <School className="w-5 h-5" />
                     School Performance Analysis (CBC)
                   </CardTitle>
-                  <Button size="sm" onClick={fetchSchoolPerformance} disabled={isLoadingSchool}>
-                    {isLoadingSchool ? 'Loading...' : 'Load School Data'}
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={fetchSchoolPerformance} disabled={isLoadingSchool}>
+                      {isLoadingSchool ? 'Loading...' : 'Load School Data'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={schoolPerformance.length === 0 || !schoolAnalysisExtra}
+                      onClick={() => {
+                        if (!schoolAnalysisExtra) return
+                        const html = generateSchoolAnalysisHTML(schoolPerformance, schoolAnalysisExtra, currentSchool, selectedSession)
+                        const win = window.open('', '_blank')
+                        if (win) {
+                          win.document.write(html)
+                          win.document.close()
+                          setTimeout(() => win.print(), 800)
+                        }
+                      }}
+                    >
+                      <FileText className="w-4 h-4 mr-1" /> Download PDF
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {/* Header */}
