@@ -139,6 +139,9 @@ export default function AdminPortalPage() {
   const [passwordError, setPasswordError] = useState('')
   const [isAuthenticating, setIsAuthenticating] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [isRestoringSession, setIsRestoringSession] = useState(true)
+
+  const sessionAuthKey = (code: string) => `admin_portal_authed_${code}`
 
   // Data state
   const [school, setSchool] = useState<School | null>(null)
@@ -260,8 +263,9 @@ export default function AdminPortalPage() {
     setSubjects([])
     setSchool(null)
     setIsAuthenticated(false)
+    setIsRestoringSession(true)
     setPassword('')
-    
+
     const supabase = createClient()
     const { data } = await supabase
       .from('schools')
@@ -272,9 +276,47 @@ export default function AdminPortalPage() {
     
     if (data) {
       setCurrentSchool(data)
+    } else {
+      setIsRestoringSession(false)
     }
     // If school not found, stay on page
   }
+
+  // Restore an already-authenticated session for this school (e.g. an admin who
+  // just entered the password, peeked into a class via the bypass flow, and is now
+  // navigating back via "Back to Admin Portal" — they shouldn't have to re-enter it).
+  useEffect(() => {
+    if (!currentSchool) return
+    if (isAuthenticated) {
+      setIsRestoringSession(false)
+      return
+    }
+    if (typeof window === 'undefined' || sessionStorage.getItem(sessionAuthKey(currentSchool.code)) !== 'true') {
+      setIsRestoringSession(false)
+      return
+    }
+
+    let cancelled = false
+    ;(async () => {
+      const supabase = createClient()
+      const { data: schoolData } = await supabase
+        .from('schools')
+        .select('id, name, short_name, code, tagline, email, phone, address, logo_url, primary_color, admin_password, is_active, feature_report_cards, feature_whatsapp_reports, feature_bulk_sms, feature_certificates, feature_pin_management, subscription_plan, subscription_expires_at, enable_pin_login, pin_login_enabled_at')
+        .eq('id', currentSchool.id)
+        .single()
+      if (cancelled) return
+      if (schoolData) {
+        setSchool(schoolData)
+        setIsAuthenticated(true)
+        loadAdminData()
+      } else {
+        sessionStorage.removeItem(sessionAuthKey(currentSchool.code))
+      }
+      setIsRestoringSession(false)
+    })()
+
+    return () => { cancelled = true }
+  }, [currentSchool?.id])
 
   // Handle password authentication
   const handlePasswordSubmit = async (e: React.FormEvent) => {
@@ -293,6 +335,9 @@ export default function AdminPortalPage() {
       if (schoolData && schoolData.admin_password === password) {
         setSchool(schoolData)
         setIsAuthenticated(true)
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem(sessionAuthKey(schoolData.code), 'true')
+        }
         loadAdminData()
       } else {
         setPasswordError('Incorrect admin password')
@@ -1156,7 +1201,7 @@ export default function AdminPortalPage() {
     }
   }
 
-  if (!currentSchool) {
+  if (!currentSchool || (isRestoringSession && !isAuthenticated)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full"></div>
@@ -1325,6 +1370,9 @@ export default function AdminPortalPage() {
               onClick={() => {
                 setIsAuthenticated(false)
                 setPassword('')
+                if (currentSchool && typeof window !== 'undefined') {
+                  sessionStorage.removeItem(sessionAuthKey(currentSchool.code))
+                }
                 // Redirect to school's home page
                 if (currentSchool) {
                   window.location.href = `/?school=${currentSchool.code}`

@@ -1,15 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { Resend } from 'resend'
 
 export const dynamic = 'force-dynamic'
-
-interface TeacherAssignment {
-  teacher_id: string
-  teacher_email?: string
-  teacher_name?: string
-  class_id: string
-  class_name?: string
-}
 
 export async function GET(request: Request) {
   // Verify authorization (Vercel Cron Secret)
@@ -21,16 +14,16 @@ export async function GET(request: Request) {
   try {
     const supabase = await createClient()
 
-    // Get all sessions with deadlines set to close within 24 hours
+    // Get all sessions with deadlines closing within the next 24 hours
     const now = new Date()
     const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000)
 
     const { data: upcomingDeadlines, error: deadlineError } = await supabase
       .from('sessions')
       .select('*, classes(name), exam_types(name)')
-      .not('deadline', 'is', null)
-      .gte('deadline', now.toISOString())
-      .lte('deadline', tomorrow.toISOString())
+      .not('deadline_datetime', 'is', null)
+      .gte('deadline_datetime', now.toISOString())
+      .lte('deadline_datetime', tomorrow.toISOString())
 
     if (deadlineError) {
       console.error('[v0] Error fetching deadlines:', deadlineError)
@@ -52,6 +45,7 @@ export async function GET(request: Request) {
         .from('teacher_assignments')
         .select('user_id')
         .eq('class_id', deadline.class_id)
+        .eq('is_active', true)
         .not('user_id', 'is', null)
 
       if (assignmentError) {
@@ -64,11 +58,12 @@ export async function GET(request: Request) {
       // Get unique teacher IDs
       const teacherIds = [...new Set(assignments.map(a => a.user_id))]
 
-      // Get teacher emails
+      // Get teacher emails — teachers are stored in teacher_accounts, not a "users" table
       const { data: teachers, error: teacherError } = await supabase
-        .from('users')
-        .select('id, email, name')
+        .from('teacher_accounts')
+        .select('id, email, first_name, last_name')
         .in('id', teacherIds)
+        .eq('is_active', true)
 
       if (teacherError) {
         console.error('[v0] Error fetching teachers:', teacherError)
@@ -82,15 +77,14 @@ export async function GET(request: Request) {
         if (!teacher.email) continue
 
         try {
-          // Send email via Resend (if configured) or log for now
           const emailResponse = await sendDeadlineEmail({
             teacherEmail: teacher.email,
-            teacherName: teacher.name || 'Teacher',
+            teacherName: [teacher.first_name, teacher.last_name].filter(Boolean).join(' ') || 'Teacher',
             className: (deadline.classes as any)?.name || 'Class',
             examType: (deadline.exam_types as any)?.name || 'Exam',
-            deadline: new Date(deadline.deadline).toLocaleString(),
+            deadline: new Date(deadline.deadline_datetime).toLocaleString(),
             hoursUntilDeadline: Math.ceil(
-              (new Date(deadline.deadline).getTime() - now.getTime()) / (1000 * 60 * 60)
+              (new Date(deadline.deadline_datetime).getTime() - now.getTime()) / (1000 * 60 * 60)
             ),
           })
 
@@ -133,50 +127,43 @@ async function sendDeadlineEmail({
   deadline: string
   hoursUntilDeadline: number
 }): Promise<{ success: boolean }> {
+  const emailHTML = `
+    <h2>Deadline Reminder</h2>
+    <p>Dear ${teacherName},</p>
+    <p>This is a reminder that the deadline for entering marks for <strong>${examType}</strong> in <strong>${className}</strong> is approaching.</p>
+    <div style="background: #f0f9ff; border-left: 4px solid #0284c7; padding: 15px; margin: 20px 0;">
+      <p><strong>Class:</strong> ${className}</p>
+      <p><strong>Exam:</strong> ${examType}</p>
+      <p><strong>Deadline:</strong> ${deadline}</p>
+      <p><strong>Time remaining:</strong> ${hoursUntilDeadline} hour${hoursUntilDeadline === 1 ? '' : 's'}</p>
+    </div>
+    <p>Please log in to ShuleTech and complete the marks entry before the deadline.</p>
+    <p>Best regards,<br/>ShuleTech</p>
+  `
+
   try {
-    // If Resend is configured, use it
-    if (process.env.RESEND_API_KEY) {
-      const response = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-        },
-        body: JSON.stringify({
-          from: process.env.RESEND_FROM_EMAIL || 'noreply@exam-system.com',
-          to: teacherEmail,
-          subject: `Deadline Reminder: ${examType} - ${className}`,
-          html: `
-            <h2>Deadline Reminder</h2>
-            <p>Dear ${teacherName},</p>
-            <p>This is a reminder that the deadline for entering marks for <strong>${examType}</strong> in <strong>${className}</strong> is approaching.</p>
-            <div style="background: #f0f9ff; border-left: 4px solid #0284c7; padding: 15px; margin: 20px 0;">
-              <p><strong>Class:</strong> ${className}</p>
-              <p><strong>Exam:</strong> ${examType}</p>
-              <p><strong>Deadline:</strong> ${deadline}</p>
-              <p><strong>Time remaining:</strong> ${hoursUntilDeadline} hours</p>
-            </div>
-            <p>Please log in to the exam system and complete the marks entry before the deadline.</p>
-            <p>Best regards,<br/>Exam System</p>
-          `,
-        }),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        console.error('[v0] Resend API error:', error)
-        return { success: false }
-      }
-
+    if (!process.env.RESEND_API_KEY) {
+      // Fallback: log only (development, or Resend not configured yet)
+      console.log(`[v0] Email reminder (RESEND_API_KEY not set):
+        To: ${teacherEmail}
+        Subject: Deadline Reminder: ${examType} - ${className}
+        Hours until deadline: ${hoursUntilDeadline}
+      `)
       return { success: true }
     }
 
-    // Fallback: Just log (for development without email service)
-    console.log(`[v0] Email reminder (development mode):
-      To: ${teacherEmail}
-      Subject: Deadline Reminder: ${examType} - ${className}
-      Hours until deadline: ${hoursUntilDeadline}
-    `)
+    const resend = new Resend(process.env.RESEND_API_KEY)
+    const response = await resend.emails.send({
+      from: 'ShuleTech <noreply@shuletechsolutions.co.ke>',
+      to: teacherEmail,
+      subject: `Deadline Reminder: ${examType} - ${className}`,
+      html: emailHTML,
+    })
+
+    if (response.error) {
+      console.error('[v0] Resend API error:', response.error)
+      return { success: false }
+    }
 
     return { success: true }
   } catch (error) {

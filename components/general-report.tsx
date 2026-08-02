@@ -8,6 +8,15 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 import { FileText, Printer, Loader2 } from 'lucide-react'
 import type { School } from '@/lib/school-context'
 import type { Session, Subject, Learner } from '@/lib/types'
@@ -129,6 +138,9 @@ export function GeneralReport({
   const [isGenerating, setIsGenerating] = useState(false)
   const [customTeacherName, setCustomTeacherName] = useState('')
   const [termDisplay, setTermDisplay] = useState('')
+  const [showDateDialog, setShowDateDialog] = useState(false)
+  const [dateClosed, setDateClosed] = useState('')
+  const [nextTermBegins, setNextTermBegins] = useState('')
 
   // Auto-select all available sessions when they change
   useEffect(() => {
@@ -156,15 +168,22 @@ export function GeneralReport({
     .map(id => availableExamSessions.find(s => s.id === id))
     .filter((s): s is typeof availableExamSessions[0] => s !== undefined)
 
-  async function handlePrintAll() {
+  function handlePrintAll() {
     if (!currentClass || !currentSchool || !subjects || subjects.length === 0 || chosenSessions.length === 0 || learners.length === 0) return
-    
+
     // Enforce max 3 exams constraint
     if (chosenSessions.length > 3) {
       alert('⚠️ Maximum 3 exam types allowed. Please select only 3 or fewer exams.')
       return
     }
-    
+
+    // Ask for the term-close/next-term dates before generating so the report
+    // doesn't ship with blank "___/___/____" placeholders.
+    setShowDateDialog(true)
+  }
+
+  async function generateReport() {
+    setShowDateDialog(false)
     setIsGenerating(true)
 
     try {
@@ -418,7 +437,9 @@ export function GeneralReport({
         chosenSessions,
         customTeacherName || currentClass.teacher_name || '',
         termDisplay,
-        subjects.length
+        subjects.length,
+        dateClosed,
+        nextTermBegins
       )
 
       const win = window.open('', '_blank')
@@ -460,27 +481,40 @@ export function GeneralReport({
 
           {/* Exam session selector */}
           <div className="space-y-3">
-            <Label className="text-sm font-semibold">Select Exam Sessions to Include in Academic Summary</Label>
+            <div>
+              <Label className="text-sm font-semibold">Select Exam Sessions to Include in Academic Summary</Label>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                The numbered badge shows the column order in the report. Uncheck and re-check in your preferred order to reorder — all sessions are selected by default in database order.
+              </p>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              {availableExamSessions.map(session => (
-                <label
-                  key={session.id}
-                  className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                    selectedSessionIds.includes(session.id)
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30'
-                      : 'border-border hover:border-muted-foreground'
-                  }`}
-                >
-                  <Checkbox
-                    checked={selectedSessionIds.includes(session.id)}
-                    onCheckedChange={() => toggleSession(session.id)}
-                  />
-                  <div className="flex flex-col">
-                    <span className="text-sm font-medium">{session.exam_types?.name}</span>
-                    <span className="text-xs text-muted-foreground">{session.term} {session.year}</span>
-                  </div>
-                </label>
-              ))}
+              {availableExamSessions.map(session => {
+                const orderIndex = selectedSessionIds.indexOf(session.id)
+                return (
+                  <label
+                    key={session.id}
+                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      orderIndex >= 0
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30'
+                        : 'border-border hover:border-muted-foreground'
+                    }`}
+                  >
+                    <Checkbox
+                      checked={orderIndex >= 0}
+                      onCheckedChange={() => toggleSession(session.id)}
+                    />
+                    <div className="flex flex-col flex-1">
+                      <span className="text-sm font-medium">{session.exam_types?.name}</span>
+                      <span className="text-xs text-muted-foreground">{session.term} {session.year}</span>
+                    </div>
+                    {orderIndex >= 0 && (
+                      <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-xs font-bold flex-shrink-0">
+                        {orderIndex + 1}
+                      </span>
+                    )}
+                  </label>
+                )
+              })}
             </div>
             {chosenSessions.length === 0 && (
               <p className="text-sm text-red-500">Please select at least one exam session.</p>
@@ -520,6 +554,45 @@ export function GeneralReport({
 
         </CardContent>
       </Card>
+
+      {/* Term dates prompt — collected before generating so the report doesn't
+          ship with blank "___/___/____" placeholders */}
+      <Dialog open={showDateDialog} onOpenChange={setShowDateDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Term Dates</DialogTitle>
+            <DialogDescription>
+              These dates are printed on every report card. Leave blank to print them as ___/___/____ instead.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="date-closed" className="text-sm font-semibold">Date Closed</Label>
+              <Input
+                id="date-closed"
+                type="date"
+                value={dateClosed}
+                onChange={e => setDateClosed(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="next-term-begins" className="text-sm font-semibold">Next Term Begins From</Label>
+              <Input
+                id="next-term-begins"
+                type="date"
+                value={nextTermBegins}
+                onChange={e => setNextTermBegins(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDateDialog(false)}>Cancel</Button>
+            <Button onClick={generateReport} className="gap-2">
+              <Printer className="w-4 h-4" /> Generate {learners.length} Report Cards
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -533,8 +606,19 @@ function generateReportHTML(
   chosenSessions: Array<{ id: string; term: string; year: number; exam_types?: { id: string; name: string } | null }>,
   teacherName: string,
   termDisplay: string,
-  subjectCount: number
+  subjectCount: number,
+  dateClosed: string,
+  nextTermBegins: string
 ): string {
+  // Format a yyyy-mm-dd value (from <input type="date">) into a readable date;
+  // falls back to the blank placeholder if the admin left it empty.
+  function formatReportDate(value: string): string {
+    if (!value) return '___/___/____'
+    const d = new Date(`${value}T00:00:00`)
+    if (Number.isNaN(d.getTime())) return '___/___/____'
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+  }
+
   // Extract stream from class name e.g. "Grade 7 RED" -> "RED"
   const classWords = currentClass.name.trim().split(/\s+/)
   const streamName = classWords.length > 2 ? classWords.slice(2).join(' ') : ''
@@ -920,8 +1004,8 @@ function generateReportHTML(
 
       <!-- CALENDAR DATES FOOTER -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;flex-shrink:0;text-align:center;font-size:10px;font-weight:700;color:#1f2937;">
-        <div>DATE CLOSED: ___/___/____</div>
-        <div>NEXT TERM BEGINS FROM: ___/___/____</div>
+        <div>DATE CLOSED: ${formatReportDate(dateClosed)}</div>
+        <div>NEXT TERM BEGINS FROM: ${formatReportDate(nextTermBegins)}</div>
       </div>
 
       <!-- FOOTER — pinned at bottom -->

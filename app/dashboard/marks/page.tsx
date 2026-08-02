@@ -149,6 +149,7 @@ export default function MarksPage() {
   const [sessions, setSessions] = useState<SessionWithExamType[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [learners, setLearners] = useState<Learner[]>([]);
+  const [learnerSearch, setLearnerSearch] = useState("");
   const [marks, setMarks] = useState<Record<string, Record<string, number | null>>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -596,6 +597,15 @@ export default function MarksPage() {
     return <Badge variant="default" className="ml-2 bg-primary"><Unlock className="w-3 h-3 mr-1" />Open</Badge>;
   };
 
+  // Filter learners by search while preserving each learner's original roster
+  // position (idx), so row numbers stay stable instead of renumbering to the
+  // filtered list's position.
+  const filteredLearners = learners
+    .map((learner, idx) => ({ learner, idx }))
+    .filter(({ learner }) =>
+      learner.name.toLowerCase().includes(learnerSearch.trim().toLowerCase())
+    );
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -770,6 +780,17 @@ export default function MarksPage() {
               </div>
               {getSessionStatus(selectedSession)}
             </div>
+            {learners.length > 0 && (
+              <div className="mt-3">
+                <Input
+                  type="text"
+                  placeholder="Search learner by name..."
+                  value={learnerSearch}
+                  onChange={(e) => setLearnerSearch(e.target.value)}
+                  className="max-w-xs"
+                />
+              </div>
+            )}
           </CardHeader>
           <CardContent className="p-0">
             {subjects.length === 0 ? (
@@ -784,6 +805,13 @@ export default function MarksPage() {
                 <AlertCircle className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
                 <p className="text-muted-foreground">
                   No learners in this class. Please add learners first.
+                </p>
+              </div>
+            ) : filteredLearners.length === 0 ? (
+              <div className="p-8 text-center">
+                <AlertCircle className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+                <p className="text-muted-foreground">
+                  No learners match &quot;{learnerSearch}&quot;.
                 </p>
               </div>
             ) : (
@@ -822,7 +850,7 @@ export default function MarksPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {learners.map((learner, idx) => {
+                    {filteredLearners.map(({ learner, idx }) => {
                       const learnerMarks = marks[learner.id] || {};
                       const totalMarks = Object.values(learnerMarks).reduce(
                         (sum, m) => sum + (m || 0),
