@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Clock, Lock, Unlock, Calendar, Trash2, GraduationCap, Users, ClipboardList } from 'lucide-react'
 import type { Deadline } from './_shared/types'
+import { MarksEntryTracker } from './_shared/MarksEntryTracker'
 
 export default function AdminOverviewPage() {
   const { currentSchool } = useSchool()
@@ -392,6 +393,8 @@ export default function AdminOverviewPage() {
           )}
         </CardContent>
       </Card>
+
+      {currentSchool && <MarksEntryTracker schoolId={currentSchool.id} deadlines={deadlines} />}
     </div>
   )
 }
