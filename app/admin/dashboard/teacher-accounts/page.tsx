@@ -531,7 +531,7 @@ export default function TeacherAccountsPage() {
                             })}
                           </div>
                         ) : (
-                          <span className="text-gray-400 text-sm">—</span>
+                          <span className="text-gray-400 text-sm">-</span>
                         )}
                       </TableCell>
                       <TableCell>

@@ -61,7 +61,7 @@ function generateRecommendations(
   } else if (overallAvg >= 41) {
     recs.push(`The school's overall mean of ${overallAvg}% shows learners are approaching expectations. A structured remedial program focused on the weakest subjects and grade levels is recommended.`)
   } else if (overallAvg > 0) {
-    recs.push(`The school's overall mean of ${overallAvg}% indicates significant support is needed across most learning areas. Immediate intervention — additional teacher support, parent engagement, and structured revision programs — is strongly recommended.`)
+    recs.push(`The school's overall mean of ${overallAvg}% indicates significant support is needed across most learning areas. Immediate intervention - additional teacher support, parent engagement, and structured revision programs - is strongly recommended.`)
   }
 
   if (overallAvg > 0 && passRate < 50) {
@@ -72,7 +72,7 @@ function generateRecommendations(
   if (validCats.length > 1) {
     const weakest = validCats[0]
     const strongest = validCats[validCats.length - 1]
-    recs.push(`${weakest.category} has the lowest mean score (${weakest.categoryAvg}%) among all levels — consider allocating additional teaching resources or peer-mentoring support here. ${strongest.category} is the school's strongest level (${strongest.categoryAvg}%) and its teaching approaches may be worth sharing across other levels.`)
+    recs.push(`${weakest.category} has the lowest mean score (${weakest.categoryAvg}%) among all levels - consider allocating additional teaching resources or peer-mentoring support here. ${strongest.category} is the school's strongest level (${strongest.categoryAvg}%) and its teaching approaches may be worth sharing across other levels.`)
   }
 
   // Split into a "strongest" and "weakest" group without overlap — with few
@@ -125,7 +125,7 @@ export function generateSchoolAnalysisHTML(
     ? `<img src="${school.logo_url}" alt="School Logo" style="width:56px;height:56px;object-fit:contain;" crossorigin="anonymous"/>`
     : `<div style="width:56px;height:56px;background:#1e3a5f;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:8px;font-weight:700;text-align:center;padding:3px;">${schoolName.split(' ').map(w => w[0]).join('').slice(0, 4)}</div>`
 
-  const examLabel = `${session?.exam_types?.name || 'Exam'} — ${session?.term || ''} ${session?.year || ''}`.trim()
+  const examLabel = `${session?.exam_types?.name || 'Exam'} - ${session?.term || ''} ${session?.year || ''}`.trim()
   const generatedOn = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
 
   const recommendations = generateRecommendations(
@@ -141,7 +141,7 @@ export function generateSchoolAnalysisHTML(
       <td style="border:1px solid #d1d5db;padding:6px 8px;font-weight:700;color:${categoryColors[cat.category] || '#1e3a5f'};">${cat.category}</td>
       <td style="border:1px solid #d1d5db;padding:6px 8px;text-align:center;">${cat.classes.length}</td>
       <td style="border:1px solid #d1d5db;padding:6px 8px;text-align:center;">${cat.totalLearners}</td>
-      <td style="border:1px solid #d1d5db;padding:6px 8px;text-align:center;font-weight:700;">${cat.categoryAvg || '—'}</td>
+      <td style="border:1px solid #d1d5db;padding:6px 8px;text-align:center;font-weight:700;">${cat.categoryAvg || '-'}</td>
     </tr>
   `).join('')
 
@@ -152,10 +152,10 @@ export function generateSchoolAnalysisHTML(
       const pct = (n: number) => total > 0 ? Math.round((n / total) * 100) : 0
       return `
         <tr>
-          <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;">${cls.classAvg > 0 ? idx + 1 : '—'}</td>
+          <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;">${cls.classAvg > 0 ? idx + 1 : '-'}</td>
           <td style="border:1px solid #d1d5db;padding:5px 7px;font-weight:600;">${cls.name}</td>
           <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;">${cls.totalLearners}</td>
-          <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-weight:700;">${cls.classAvg || '—'}</td>
+          <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-weight:700;">${cls.classAvg || '-'}</td>
           <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;">${cls.rubricDistribution.r4} <span style="color:#6b7280;font-size:9px;">(${pct(cls.rubricDistribution.r4)}%)</span></td>
           <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;">${cls.rubricDistribution.r1} <span style="color:#6b7280;font-size:9px;">(${pct(cls.rubricDistribution.r1)}%)</span></td>
           <td style="border:1px solid #d1d5db;padding:5px 7px;font-size:10px;color:#15803d;">${cls.topSubject}</td>
@@ -167,7 +167,7 @@ export function generateSchoolAnalysisHTML(
     return `
       <div style="margin-bottom:14px;">
         <div style="background:${categoryColors[cat.category] || '#1e3a5f'};color:#fff;font-size:11px;font-weight:700;padding:6px 10px;border-radius:4px 4px 0 0;">
-          ${cat.category} — ${cat.totalLearners} learners, ${cat.classes.length} classes, mean ${cat.categoryAvg || '—'}%
+          ${cat.category} - ${cat.totalLearners} learners, ${cat.classes.length} classes, mean ${cat.categoryAvg || '-'}%
         </div>
         <table style="width:100%;border-collapse:collapse;font-size:11px;">
           <thead>
@@ -225,7 +225,7 @@ export function generateSchoolAnalysisHTML(
 <html>
 <head>
 <meta charset="UTF-8"/>
-<title>School Analysis — ${schoolName}</title>
+<title>School Analysis - ${schoolName}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   body { background: #f3f4f6; font-family: 'Helvetica Neue', Arial, sans-serif; color: #1f2937; }
@@ -268,11 +268,11 @@ export function generateSchoolAnalysisHTML(
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
     <div style="border:1.5px solid #1e3a5f;border-radius:5px;padding:10px;text-align:center;">
       <div style="font-size:9px;color:#6b7280;font-weight:600;">SCHOOL-WIDE MEAN</div>
-      <div style="font-size:24px;font-weight:800;color:#1e3a5f;">${extra.overallSchoolAvg || '—'}%</div>
+      <div style="font-size:24px;font-weight:800;color:#1e3a5f;">${extra.overallSchoolAvg || '-'}%</div>
     </div>
     <div style="border:1.5px solid #1e3a5f;border-radius:5px;padding:10px;text-align:center;">
       <div style="font-size:9px;color:#6b7280;font-weight:600;">PASS RATE (&ge;50%)</div>
-      <div style="font-size:24px;font-weight:800;color:#1e3a5f;">${extra.passRate || '—'}%</div>
+      <div style="font-size:24px;font-weight:800;color:#1e3a5f;">${extra.passRate || '-'}%</div>
     </div>
     <div style="border:1.5px solid #1e3a5f;border-radius:5px;padding:10px;text-align:center;">
       <div style="font-size:9px;color:#6b7280;font-weight:600;">LEARNERS ASSESSED</div>
@@ -307,13 +307,13 @@ export function generateSchoolAnalysisHTML(
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px 0;">
     <div style="border:1px solid #d1d5db;border-radius:5px;padding:10px;">
       <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:600;margin-bottom:4px;">
-        <span>Boys (${extra.genderStats.maleCount})</span><span>${extra.genderStats.maleAvg || '—'}%</span>
+        <span>Boys (${extra.genderStats.maleCount})</span><span>${extra.genderStats.maleAvg || '-'}%</span>
       </div>
       <div style="background:#e5e7eb;border-radius:4px;height:10px;overflow:hidden;"><div style="background:#2563eb;height:100%;width:${Math.min(100, maleBarPct)}%;"></div></div>
     </div>
     <div style="border:1px solid #d1d5db;border-radius:5px;padding:10px;">
       <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:600;margin-bottom:4px;">
-        <span>Girls (${extra.genderStats.femaleCount})</span><span>${extra.genderStats.femaleAvg || '—'}%</span>
+        <span>Girls (${extra.genderStats.femaleCount})</span><span>${extra.genderStats.femaleAvg || '-'}%</span>
       </div>
       <div style="background:#e5e7eb;border-radius:4px;height:10px;overflow:hidden;"><div style="background:#db2777;height:100%;width:${Math.min(100, femaleBarPct)}%;"></div></div>
     </div>
@@ -360,7 +360,7 @@ export function generateSchoolAnalysisHTML(
 
   <!-- FOOTER -->
   <div style="border-top:1.5px solid #1e3a5f;padding-top:6px;margin-top:20px;display:flex;justify-content:space-between;font-size:9px;color:#4b5563;">
-    <div><strong>Powered by ShuleTech</strong> — Smart Schools, Better Results</div>
+    <div><strong>Powered by ShuleTech</strong> - Smart Schools, Better Results</div>
     <div>${schoolName} &bull; ${examLabel} &bull; Generated ${generatedOn}</div>
   </div>
 

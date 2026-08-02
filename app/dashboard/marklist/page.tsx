@@ -1643,7 +1643,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                 <td style="text-align:center">${s.previousMean}</td>
                 <td style="text-align:center">${s.currentMean}</td>
                 <td style="text-align:center ${s.change > 0 ? ';color:#00aa00' : s.change < 0 ? ';color:#dd0000' : ''}">${s.change > 0 ? '+' : ''}${s.change}</td>
-                <td style="text-align:center" class="${s.change > 0 ? 'trend-up' : s.change < 0 ? 'trend-down' : 'trend-neutral'}">${s.change > 0 ? '📈 Improved' : s.change < 0 ? '�� Declined' : '— No Change'}</td>
+                <td style="text-align:center" class="${s.change > 0 ? 'trend-up' : s.change < 0 ? 'trend-down' : 'trend-neutral'}">${s.change > 0 ? '📈 Improved' : s.change < 0 ? '📉 Declined' : '- No Change'}</td>
               </tr>
             `).join('')}
           </table>

@@ -471,7 +471,7 @@ export function GeneralReport({
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <FileText className="w-5 h-5" />
-            General Report — Class Report Cards
+            General Report - Class Report Cards
           </CardTitle>
           <p className="text-sm text-muted-foreground">
             Prints individual report cards for all {learners.length} learners in {currentClass?.name}. Select which exam sessions to include in the Academic Performance Summary.
@@ -484,7 +484,7 @@ export function GeneralReport({
             <div>
               <Label className="text-sm font-semibold">Select Exam Sessions to Include in Academic Summary</Label>
               <p className="text-xs text-muted-foreground mt-0.5">
-                The numbered badge shows the column order in the report. Uncheck and re-check in your preferred order to reorder — all sessions are selected by default in database order.
+                The numbered badge shows the column order in the report. Uncheck and re-check in your preferred order to reorder - all sessions are selected by default in database order.
               </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -809,7 +809,7 @@ function generateReportHTML(
 
     const priorityList = prioritySubjects.length > 0
       ? prioritySubjects.map(s => `<li style="margin-bottom:2px;">${s}</li>`).join('')
-      : '<li style="color:#9ca3af;">No priority areas — keep it up!</li>'
+      : '<li style="color:#9ca3af;">No priority areas - keep it up!</li>'
 
     const logoHTML = logoUrl
       ? `<img src="${logoUrl}" alt="School Logo" style="width:56px;height:56px;object-fit:contain;" crossorigin="anonymous"/>`
@@ -845,15 +845,15 @@ function generateReportHTML(
             </div>
             <div>
               <div style="font-size:8.5px;color:#6b7280;font-weight:600;">Class Teacher:</div>
-              <div style="font-size:11px;font-weight:600;">${teacherName || '—'}</div>
+              <div style="font-size:11px;font-weight:600;">${teacherName || '-'}</div>
             </div>
             <div>
               <div style="font-size:8.5px;color:#6b7280;font-weight:600;">Admission No.:</div>
-              <div style="font-size:11px;">${learner.admission_number || '—'}</div>
+              <div style="font-size:11px;">${learner.admission_number || '-'}</div>
             </div>
             <div>
               <div style="font-size:8.5px;color:#6b7280;font-weight:600;">Academic Year:</div>
-              <div style="font-size:11px;">${chosenSessions[0]?.year || '—'}</div>
+              <div style="font-size:11px;">${chosenSessions[0]?.year || '-'}</div>
             </div>
             <div>
               <div style="font-size:8.5px;color:#6b7280;font-weight:600;">Grade:</div>
@@ -861,7 +861,7 @@ function generateReportHTML(
             </div>
             <div>
               <div style="font-size:8.5px;color:#6b7280;font-weight:600;">Gender:</div>
-              <div style="font-size:11px;">${learner.gender || '—'}</div>
+              <div style="font-size:11px;">${learner.gender || '-'}</div>
             </div>
             ${streamName ? `<div><div style="font-size:8.5px;color:#6b7280;font-weight:600;">Stream:</div><div style="font-size:11px;">${streamName}</div></div>` : ''}
             <div>
@@ -876,7 +876,7 @@ function generateReportHTML(
           <div style="background:#1e3a5f;color:#fff;font-size:10px;font-weight:700;padding:5px 10px;letter-spacing:0.5px;">OVERALL ACHIEVEMENT</div>
           <div style="padding:8px 12px;text-align:center;">
             <div style="font-size:9.5px;color:#6b7280;margin-bottom:2px;">Overall Average (%)</div>
-            <div style="font-size:36px;font-weight:800;color:#1e3a5f;line-height:1;">${overallAverage !== null ? overallAverage.toFixed(1) : '—'}</div>
+            <div style="font-size:36px;font-weight:800;color:#1e3a5f;line-height:1;">${overallAverage !== null ? overallAverage.toFixed(1) : '-'}</div>
             <div style="font-size:9px;color:#6b7280;margin-bottom:5px;">Overall Points: ${overallPoints}</div>
             <div style="margin-bottom:6px;">
               <span style="border:1.5px solid ${overallRubricColor(overallAverage)};color:${overallRubricColor(overallAverage)};border-radius:16px;padding:4px 12px;font-size:10px;font-weight:700;">${overallRubricLabel(overallAverage)}</span>
@@ -917,9 +917,9 @@ function generateReportHTML(
                 <td style="border:1.5px solid #93c5fd;padding:5px 7px;font-size:10px;font-weight:800;color:#1e40af;white-space:nowrap;">CLASS POSITION</td>
                 ${chosenSessions.map(s => {
                   const rank = examRanks[s.id]
-                  return `<td style="border:1.5px solid #93c5fd;padding:5px 7px;text-align:center;font-size:11px;font-weight:800;color:#1e40af;">${rank != null ? `${rank}<span style="font-size:9px;font-weight:600;color:#3b82f6"> /${totalInClass}</span>` : '—'}</td>`
+                  return `<td style="border:1.5px solid #93c5fd;padding:5px 7px;text-align:center;font-size:11px;font-weight:800;color:#1e40af;">${rank != null ? `${rank}<span style="font-size:9px;font-weight:600;color:#3b82f6"> /${totalInClass}</span>` : '-'}</td>`
                 }).join('')}
-                <td colspan="2" style="border:1.5px solid #93c5fd;padding:5px 7px;text-align:center;font-size:11px;font-weight:800;color:#1e40af;">${totalInLevel > totalInClass && crossStreamRank > 0 ? `${crossStreamRank}<span style="font-size:9px;font-weight:600;color:#3b82f6"> /${totalInLevel}</span>` : (classRank > 0 ? `${classRank}<span style="font-size:9px;font-weight:600;color:#3b82f6"> /${totalInClass}</span>` : '—')}</td>
+                <td colspan="2" style="border:1.5px solid #93c5fd;padding:5px 7px;text-align:center;font-size:11px;font-weight:800;color:#1e40af;">${totalInLevel > totalInClass && crossStreamRank > 0 ? `${crossStreamRank}<span style="font-size:9px;font-weight:600;color:#3b82f6"> /${totalInLevel}</span>` : (classRank > 0 ? `${classRank}<span style="font-size:9px;font-weight:600;color:#3b82f6"> /${totalInClass}</span>` : '-')}</td>
               </tr>
             </tbody>
           </table>
@@ -1010,7 +1010,7 @@ function generateReportHTML(
 
       <!-- FOOTER — pinned at bottom -->
       <div style="border-top:1.5px solid #1e3a5f;padding-top:4px;display:flex;justify-content:space-between;font-size:8px;color:#4b5563;flex-shrink:0;margin-top:auto;">
-        <div><strong>Powered by ShuleTech</strong> — Smart Schools, Better Results</div>
+        <div><strong>Powered by ShuleTech</strong> - Smart Schools, Better Results</div>
         <div style="text-align:right;">${schoolName} &bull; ${gradeLabel} &bull; ${termDisplay}</div>
       </div>
 
@@ -1021,7 +1021,7 @@ function generateReportHTML(
 <html>
 <head>
 <meta charset="UTF-8"/>
-<title>General Report — ${currentClass.name} — ${school?.name || ''}</title>
+<title>General Report - ${currentClass.name} - ${school?.name || ''}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
   body { background: #f3f4f6; font-family: 'Helvetica Neue', Arial, sans-serif; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
