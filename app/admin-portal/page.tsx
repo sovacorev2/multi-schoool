@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Clock, Lock, Unlock, Calendar, Trash2, GraduationCap, Users, ClipboardList } from 'lucide-react'
 import type { Deadline } from './_shared/types'
 import { MarksEntryTracker } from './_shared/MarksEntryTracker'
+import { TeacherDeadlineDialog } from './_shared/TeacherDeadlineDialog'
 
 export default function AdminOverviewPage() {
   const { currentSchool } = useSchool()
@@ -20,6 +21,7 @@ export default function AdminOverviewPage() {
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null)
   const [editingDeadlineId, setEditingDeadlineId] = useState<string | null>(null)
   const [editingDeadlineValue, setEditingDeadlineValue] = useState('')
+  const [perTeacherSession, setPerTeacherSession] = useState<Deadline | null>(null)
 
   const [deadlineFilters, setDeadlineFilters] = useState({
     className: '',
@@ -353,6 +355,15 @@ export default function AdminOverviewPage() {
                                   <Button
                                     size="sm"
                                     variant="outline"
+                                    onClick={() => setPerTeacherSession(d)}
+                                    className="whitespace-nowrap text-xs md:text-sm px-2 md:px-3"
+                                    title="Set a different deadline for one teacher's subject"
+                                  >
+                                    <Users className="w-3 h-3 md:w-4 md:h-4 md:mr-1" /><span className="hidden md:inline">Per-Teacher</span>
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
                                     onClick={() => deleteSession(d.id, `${d.class_name || 'Unknown'} - ${d.exam_type || ''} ${d.term} ${d.year}`)}
                                     disabled={deletingSessionId === d.id}
                                     className="whitespace-nowrap text-xs md:text-sm px-2 md:px-3 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
@@ -395,6 +406,17 @@ export default function AdminOverviewPage() {
       </Card>
 
       {currentSchool && <MarksEntryTracker schoolId={currentSchool.id} deadlines={deadlines} />}
+
+      {perTeacherSession && (
+        <TeacherDeadlineDialog
+          open={!!perTeacherSession}
+          onOpenChange={(open) => { if (!open) setPerTeacherSession(null) }}
+          sessionId={perTeacherSession.id}
+          classId={perTeacherSession.class_id}
+          sessionLabel={`${perTeacherSession.class_name || 'Unknown'} - ${perTeacherSession.exam_type || ''} ${perTeacherSession.term} ${perTeacherSession.year}`}
+          classDeadline={perTeacherSession.deadline_date ? new Date(perTeacherSession.deadline_date).toLocaleString() : 'Not set'}
+        />
+      )}
     </div>
   )
 }

@@ -158,6 +158,9 @@ export default function MarksPage() {
   const [pinManagementEnabled, setPinManagementEnabled] = useState(false);
   const [isClassTeacher, setIsClassTeacher] = useState(false);
   const [isLowerGradePointsEntry, setIsLowerGradePointsEntry] = useState(false);
+  // subject_id -> ISO deadline string. Lets an admin grant one subject's teacher a
+  // different deadline than the rest of the class (set via admin-portal Overview).
+  const [subjectDeadlineOverrides, setSubjectDeadlineOverrides] = useState<Record<string, string>>({});
 
   // Autosave state
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -351,6 +354,24 @@ export default function MarksPage() {
 
     fetchMarks();
   }, [selectedSessionId, currentClass, currentSchool]);
+
+  useEffect(() => {
+    async function fetchOverrides() {
+      if (!selectedSessionId) {
+        setSubjectDeadlineOverrides({});
+        return;
+      }
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("teacher_deadline_overrides")
+        .select("subject_id, deadline_datetime")
+        .eq("session_id", selectedSessionId);
+      const map: Record<string, string> = {};
+      (data || []).forEach((o: any) => { map[o.subject_id] = o.deadline_datetime; });
+      setSubjectDeadlineOverrides(map);
+    }
+    fetchOverrides();
+  }, [selectedSessionId]);
 
   const handleCreateSession = async () => {
     if (!currentClass || !currentSchool || !newSession.exam_type_id || !newSession.term || !newSession.year) return;
@@ -877,13 +898,24 @@ export default function MarksPage() {
                             // For ShuleTech: only show cells for assigned subjects
                             // If PIN management is disabled: show all cells
                             let showCell = true;
-                            let canEdit = !editStatus.editable;
-                            
+
+                            // A per-subject deadline override (set by the admin for this
+                            // one teacher) takes precedence over the class's own deadline —
+                            // an admin's explicit lock still always wins.
+                            const overrideDeadline = subjectDeadlineOverrides[subject.id];
+                            const subjectEditable = selectedSession?.is_locked
+                              ? false
+                              : overrideDeadline
+                              ? new Date(overrideDeadline) >= new Date()
+                              : editStatus.editable;
+
+                            let canEdit = !subjectEditable;
+
                             if (pinManagementEnabled) {
                               showCell = isClassTeacher || isAssigned;
-                              canEdit = !editStatus.editable || (!isClassTeacher && !isAssigned);
+                              canEdit = !subjectEditable || (!isClassTeacher && !isAssigned);
                             }
-                            
+
                             return showCell ? (
                               <TableCell key={subject.id} className="p-1 opacity-100">
                                 <Input
@@ -901,7 +933,7 @@ export default function MarksPage() {
                                   }
                                   placeholder={isLowerGradePointsEntry ? "1-4" : "-"}
                                   disabled={canEdit}
-                                  title={!isAssigned && pinManagementEnabled ? 'Not assigned to you' : editStatus.editable ? 'Exam closed - cannot edit' : isLowerGradePointsEntry ? 'Enter performance points (1-4)' : ''}
+                                  title={!isAssigned && pinManagementEnabled ? 'Not assigned to you' : overrideDeadline ? `Your deadline for this subject: ${new Date(overrideDeadline).toLocaleString()}` : editStatus.editable ? 'Exam closed - cannot edit' : isLowerGradePointsEntry ? 'Enter performance points (1-4)' : ''}
                                 />
                               </TableCell>
                             ) : null;
