@@ -91,8 +91,8 @@ export default function MarklistPage() {
     totalLearnersWithMarks: number
     genderStats: { maleAvg: number; femaleAvg: number; maleCount: number; femaleCount: number }
     subjectRankings: { name: string; avg: number; classCount: number }[]
-    topLearners: { name: string; className: string; total: number; average: number }[]
-    bottomLearners: { name: string; className: string; total: number; average: number }[]
+    topLearnersByCategory: Record<string, { name: string; className: string; totalPoints: number; average: number }[]>
+    bottomLearnersByCategory: Record<string, { name: string; className: string; totalPoints: number; average: number }[]>
   } | null>(null)
   const [isLoadingSchool, setIsLoadingSchool] = useState(false)
   const [comparisonData, setComparisonData] = useState<{
@@ -349,14 +349,16 @@ export default function MarklistPage() {
       })
 
       const categoryResults = []
+      const classIdToCategory = new Map<string, string>()
 
       for (const category of CATEGORIES) {
         const catClasses = allClasses.filter(c => {
           const className = c.name.trim()
-          return category.classNames.some(catName => 
+          return category.classNames.some(catName =>
             className === catName || className.startsWith(catName + ' ')
           )
         })
+        catClasses.forEach(c => classIdToCategory.set(c.id, category.name))
         const classResults = []
 
         for (const cls of catClasses) {
@@ -445,32 +447,40 @@ export default function MarklistPage() {
       }
 
       // --- Extra school-wide analysis: gender, subject rankings, top/bottom learners ---
-      // Note: like the rest of this function, this treats every score as a raw 0-100
-      // mark — schools using rubric-points entry (e.g. Kimwanga's lower grades) aren't
-      // converted here, matching this function's existing per-class average calc above.
+      // Note: like the rest of this function, average/total (marks-based) treats every
+      // score as a raw 0-100 mark — schools using rubric-points entry (e.g. Kimwanga's
+      // lower grades) aren't converted here, matching this function's existing per-class
+      // average calc above. totalPoints (used for the CBC-style top/bottom rankings) is
+      // correct for points-entry schools since it goes through getSubjectLevelPoints,
+      // which already knows how to convert those schools' 1-4 rubric entries.
       const classNameById = new Map<string, string>(allClasses.map((c: any) => [c.id, c.name]))
       const learnerById = new Map((allLearners || []).map(l => [l.id, l]))
 
-      const learnerTotals = new Map<string, { total: number; count: number }>()
+      const learnerTotals = new Map<string, { total: number; count: number; points: number }>()
       for (const m of (allMarks || [])) {
         if (m.score === null || m.score === undefined || !(m as any).learner_id) continue
         const learnerId = (m as any).learner_id as string
-        const entry = learnerTotals.get(learnerId) || { total: 0, count: 0 }
+        const learner = learnerById.get(learnerId) as any
+        const className = learner ? classNameById.get(learner.class_id) : undefined
+        const entry = learnerTotals.get(learnerId) || { total: 0, count: 0, points: 0 }
         entry.total += Number(m.score)
         entry.count += 1
+        entry.points += getSubjectLevelPoints(m.score, className, currentSchool?.name)?.points || 0
         learnerTotals.set(learnerId, entry)
       }
 
       const learnerPerformance = Array.from(learnerTotals.entries())
-        .map(([learnerId, { total, count }]) => {
+        .map(([learnerId, { total, count, points }]) => {
           const learner = learnerById.get(learnerId) as any
           if (!learner) return null
           return {
             name: learner.name as string,
             className: classNameById.get(learner.class_id) || 'Unknown',
+            category: classIdToCategory.get(learner.class_id) || 'Other',
             gender: learner.gender as string | null,
             total,
             average: count > 0 ? total / count : 0,
+            totalPoints: points,
           }
         })
         .filter((l): l is NonNullable<typeof l> => l !== null)
@@ -480,9 +490,23 @@ export default function MarklistPage() {
       const maleAvg = maleLearners.length > 0 ? maleLearners.reduce((a, b) => a + b.average, 0) / maleLearners.length : 0
       const femaleAvg = femaleLearners.length > 0 ? femaleLearners.reduce((a, b) => a + b.average, 0) / femaleLearners.length : 0
 
-      const sortedByAvg = [...learnerPerformance].sort((a, b) => b.average - a.average)
-      const topLearners = sortedByAvg.slice(0, 10).map(l => ({ name: l.name, className: l.className, total: l.total, average: Math.round(l.average * 10) / 10 }))
-      const bottomLearners = sortedByAvg.slice(-10).reverse().map(l => ({ name: l.name, className: l.className, total: l.total, average: Math.round(l.average * 10) / 10 }))
+      // CBC weighs total rubric points more than raw percentage — rank each level
+      // (Pre-School/Lower/Upper Primary/Junior Secondary) separately since their point
+      // scales differ (e.g. JSS subjects max at 8pts, lower grades max at 4pts).
+      const topLearnersByCategory: Record<string, { name: string; className: string; totalPoints: number; average: number }[]> = {}
+      const bottomLearnersByCategory: Record<string, { name: string; className: string; totalPoints: number; average: number }[]> = {}
+      for (const category of CATEGORIES) {
+        const group = learnerPerformance.filter(l => l.category === category.name)
+        const sortedByPoints = [...group].sort((a, b) => b.totalPoints - a.totalPoints)
+        const toDisplay = (l: typeof group[number]) => ({
+          name: l.name,
+          className: l.className,
+          totalPoints: Math.round(l.totalPoints * 10) / 10,
+          average: Math.round(l.average * 10) / 10,
+        })
+        topLearnersByCategory[category.name] = sortedByPoints.slice(0, 10).map(toDisplay)
+        bottomLearnersByCategory[category.name] = sortedByPoints.slice(-10).reverse().map(toDisplay)
+      }
 
       const overallSchoolAvg = learnerPerformance.length > 0
         ? learnerPerformance.reduce((a, b) => a + b.average, 0) / learnerPerformance.length
@@ -522,8 +546,8 @@ export default function MarklistPage() {
           femaleCount: femaleLearners.length,
         },
         subjectRankings,
-        topLearners,
-        bottomLearners,
+        topLearnersByCategory,
+        bottomLearnersByCategory,
       })
 
       setSchoolPerformance(categoryResults)

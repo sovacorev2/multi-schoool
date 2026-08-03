@@ -26,8 +26,12 @@ export interface SchoolAnalysisExtra {
   totalLearnersWithMarks: number
   genderStats: { maleAvg: number; femaleAvg: number; maleCount: number; femaleCount: number }
   subjectRankings: { name: string; avg: number; classCount: number }[]
-  topLearners: { name: string; className: string; total: number; average: number }[]
-  bottomLearners: { name: string; className: string; total: number; average: number }[]
+  // Keyed by CBC level ('Pre-School', 'Lower Primary', 'Upper Primary', 'Junior Secondary').
+  // Ranked by total rubric points, not average % — CBC weighs points more heavily, and the
+  // point scales differ by level (e.g. JSS subjects max at 8pts, lower grades at 4pts), so
+  // rankings only make sense within a level, not pooled school-wide.
+  topLearnersByCategory: Record<string, { name: string; className: string; totalPoints: number; average: number }[]>
+  bottomLearnersByCategory: Record<string, { name: string; className: string; totalPoints: number; average: number }[]>
 }
 
 interface SchoolInfo {
@@ -197,23 +201,78 @@ export function generateSchoolAnalysisHTML(
     </tr>
   `).join('')
 
-  const topLearnerRows = extra.topLearners.map((l, idx) => `
-    <tr>
-      <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;">${idx + 1}</td>
-      <td style="border:1px solid #d1d5db;padding:5px 7px;font-weight:600;">${l.name}</td>
-      <td style="border:1px solid #d1d5db;padding:5px 7px;">${l.className}</td>
-      <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-weight:700;color:#15803d;">${l.average}%</td>
-    </tr>
-  `).join('')
+  // Simple horizontal SVG bar chart — no charting library dependency, matches the
+  // plain-SVG pattern already used elsewhere in this app's print reports.
+  function barChart(items: { label: string; value: number; color: string }[], unit = '%'): string {
+    if (items.length === 0) return '<p style="font-size:10px;color:#9ca3af;">No data</p>'
+    const barHeight = 20
+    const gap = 8
+    const labelWidth = 130
+    const chartWidth = 480
+    const barMaxWidth = chartWidth - labelWidth - 50
+    const maxValue = Math.max(...items.map(i => i.value), 1)
+    const chartHeight = items.length * (barHeight + gap)
 
-  const bottomLearnerRows = extra.bottomLearners.map((l, idx) => `
-    <tr>
-      <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;">${idx + 1}</td>
-      <td style="border:1px solid #d1d5db;padding:5px 7px;font-weight:600;">${l.name}</td>
-      <td style="border:1px solid #d1d5db;padding:5px 7px;">${l.className}</td>
-      <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-weight:700;color:#dc2626;">${l.average}%</td>
-    </tr>
-  `).join('')
+    const bars = items.map((item, i) => {
+      const y = i * (barHeight + gap)
+      const barWidth = maxValue > 0 ? (item.value / maxValue) * barMaxWidth : 0
+      return `
+        <text x="0" y="${y + barHeight / 2 + 4}" font-size="10" fill="#1f2937">${item.label}</text>
+        <rect x="${labelWidth}" y="${y}" width="${Math.max(barWidth, 1)}" height="${barHeight}" fill="${item.color}" rx="3"/>
+        <text x="${labelWidth + barWidth + 6}" y="${y + barHeight / 2 + 4}" font-size="10" font-weight="700" fill="#1f2937">${item.value || '-'}${item.value ? unit : ''}</text>
+      `
+    }).join('')
+
+    return `<svg width="${chartWidth}" height="${chartHeight}" style="overflow:visible;max-width:100%;">${bars}</svg>`
+  }
+
+  const categoryComparisonChart = barChart(
+    categories.map(cat => ({ label: cat.category, value: cat.categoryAvg, color: categoryColors[cat.category] || '#1e3a5f' }))
+  )
+
+  const subjectComparisonChart = barChart(
+    extra.subjectRankings.slice(0, 8).map(s => ({
+      label: s.name,
+      value: s.avg,
+      color: s.avg >= 58 ? '#15803d' : s.avg >= 41 ? '#b45309' : '#dc2626',
+    }))
+  )
+
+  function learnerRows(list: { name: string; className: string; totalPoints: number; average: number }[], color: string): string {
+    return list.map((l, idx) => `
+      <tr>
+        <td style="border:1px solid #d1d5db;padding:4px 6px;text-align:center;">${idx + 1}</td>
+        <td style="border:1px solid #d1d5db;padding:4px 6px;font-weight:600;">${l.name}</td>
+        <td style="border:1px solid #d1d5db;padding:4px 6px;">${l.className}</td>
+        <td style="border:1px solid #d1d5db;padding:4px 6px;text-align:center;font-weight:700;color:${color};">${l.totalPoints} pts</td>
+        <td style="border:1px solid #d1d5db;padding:4px 6px;text-align:center;color:#6b7280;">${l.average}%</td>
+      </tr>
+    `).join('')
+  }
+
+  const topBottomByCategorySections = categories.map(cat => {
+    const top = extra.topLearnersByCategory[cat.category] || []
+    const bottom = extra.bottomLearnersByCategory[cat.category] || []
+    const color = categoryColors[cat.category] || '#1e3a5f'
+    const emptyRow = `<tr><td colspan="5" style="border:1px solid #d1d5db;padding:8px;text-align:center;color:#9ca3af;">No data</td></tr>`
+    const headerRow = `<tr style="background:#e5e7eb;"><th style="border:1px solid #d1d5db;padding:4px 6px;">#</th><th style="border:1px solid #d1d5db;padding:4px 6px;text-align:left;">Learner</th><th style="border:1px solid #d1d5db;padding:4px 6px;text-align:left;">Class</th><th style="border:1px solid #d1d5db;padding:4px 6px;">Points</th><th style="border:1px solid #d1d5db;padding:4px 6px;">Avg</th></tr>`
+
+    return `
+      <div class="avoid-break" style="margin-bottom:14px;">
+        <div style="background:${color};color:#fff;font-size:11px;font-weight:700;padding:6px 10px;border-radius:4px 4px 0 0;">${cat.category} - Top &amp; Bottom Performers (by total points)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;border:1px solid #d1d5db;border-top:none;padding:8px;">
+          <div>
+            <div style="font-size:10px;font-weight:700;color:#16a34a;margin-bottom:4px;">TOP 10</div>
+            <table style="font-size:10px;"><thead>${headerRow}</thead><tbody>${learnerRows(top, '#15803d') || emptyRow}</tbody></table>
+          </div>
+          <div>
+            <div style="font-size:10px;font-weight:700;color:#dc2626;margin-bottom:4px;">NEEDS SUPPORT (BOTTOM 10)</div>
+            <table style="font-size:10px;"><thead>${headerRow}</thead><tbody>${learnerRows(bottom, '#dc2626') || emptyRow}</tbody></table>
+          </div>
+        </div>
+      </div>
+    `
+  }).join('')
 
   const genderTotal = extra.genderStats.maleCount + extra.genderStats.femaleCount
   const maleBarPct = extra.genderStats.maleAvg
@@ -297,6 +356,7 @@ export function generateSchoolAnalysisHTML(
     </thead>
     <tbody>${categoryRows}</tbody>
   </table>
+  <div style="padding:12px 0 4px;">${categoryComparisonChart}</div>
 
   <!-- CLASS BREAKDOWN -->
   <div class="section-title avoid-break">CLASS-BY-CLASS BREAKDOWN</div>
@@ -333,23 +393,12 @@ export function generateSchoolAnalysisHTML(
     </thead>
     <tbody>${subjectRankingRows}</tbody>
   </table>
+  <div style="padding:12px 0 4px;">${subjectComparisonChart}</div>
 
-  <!-- TOP / BOTTOM PERFORMERS -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px;">
-    <div class="avoid-break">
-      <div style="background:#16a34a;color:#fff;font-size:11px;font-weight:700;padding:6px 10px;border-radius:4px 4px 0 0;">TOP 10 PERFORMERS (SCHOOL-WIDE)</div>
-      <table style="font-size:10px;">
-        <thead><tr style="background:#e5e7eb;"><th style="border:1px solid #d1d5db;padding:4px 6px;">#</th><th style="border:1px solid #d1d5db;padding:4px 6px;text-align:left;">Learner</th><th style="border:1px solid #d1d5db;padding:4px 6px;text-align:left;">Class</th><th style="border:1px solid #d1d5db;padding:4px 6px;">Avg</th></tr></thead>
-        <tbody>${topLearnerRows || `<tr><td colspan="4" style="border:1px solid #d1d5db;padding:8px;text-align:center;color:#9ca3af;">No data</td></tr>`}</tbody>
-      </table>
-    </div>
-    <div class="avoid-break">
-      <div style="background:#dc2626;color:#fff;font-size:11px;font-weight:700;padding:6px 10px;border-radius:4px 4px 0 0;">LEARNERS NEEDING SUPPORT (BOTTOM 10)</div>
-      <table style="font-size:10px;">
-        <thead><tr style="background:#e5e7eb;"><th style="border:1px solid #d1d5db;padding:4px 6px;">#</th><th style="border:1px solid #d1d5db;padding:4px 6px;text-align:left;">Learner</th><th style="border:1px solid #d1d5db;padding:4px 6px;text-align:left;">Class</th><th style="border:1px solid #d1d5db;padding:4px 6px;">Avg</th></tr></thead>
-        <tbody>${bottomLearnerRows || `<tr><td colspan="4" style="border:1px solid #d1d5db;padding:8px;text-align:center;color:#9ca3af;">No data</td></tr>`}</tbody>
-      </table>
-    </div>
+  <!-- TOP / BOTTOM PERFORMERS BY LEVEL -->
+  <div class="section-title avoid-break" style="background:#7c3aed;">TOP &amp; BOTTOM PERFORMERS BY LEVEL (RANKED BY TOTAL POINTS)</div>
+  <div style="padding-top:10px;">
+    ${topBottomByCategorySections}
   </div>
 
   <!-- RECOMMENDATIONS -->
