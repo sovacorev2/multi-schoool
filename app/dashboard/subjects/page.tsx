@@ -65,7 +65,7 @@ export default function SubjectsPage() {
       return
     }
 
-    // Step 4: PIN-enabled school — apply restrictions
+    // Step 4: PIN-enabled school - apply restrictions
     if (isAdminBypass) {
       setIsClassTeacher(true)
       setAssignedSubjectIds(new Set())

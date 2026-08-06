@@ -17,8 +17,8 @@ const cache = new Map<string, CacheEntry<unknown>>()
 
 /** Default TTLs in milliseconds */
 export const TTL = {
-  STATIC: 5 * 60 * 1000,   // subjects, learners, classes, exam_types — rarely change
-  MARKS:  60 * 1000,         // marks — can change as teachers enter scores
+  STATIC: 5 * 60 * 1000,   // subjects, learners, classes, exam_types - rarely change
+  MARKS:  60 * 1000,         // marks - can change as teachers enter scores
   SHORT:  30 * 1000,         // sessions, school config
 }
 

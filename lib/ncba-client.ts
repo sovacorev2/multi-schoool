@@ -1,4 +1,4 @@
-// NCBA Till STK Push client — server-side only. Never import this from a 'use
+// NCBA Till STK Push client - server-side only. Never import this from a 'use
 // client' component; the credentials below must never reach the browser.
 //
 // Requires these env vars (server-only, no NEXT_PUBLIC_ prefix):

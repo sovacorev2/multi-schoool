@@ -42,7 +42,7 @@ CREATE INDEX IF NOT EXISTS idx_payment_transactions_status ON payment_transactio
 -- other tables are reached directly from the browser via the publishable/anon key.
 -- The payment-initiating and webhook-verifying logic itself lives server-side in
 -- Next.js API routes (never in client components), so this table isn't written to
--- from the browser regardless of RLS — but if your other tables DO have RLS
+-- from the browser regardless of RLS - but if your other tables DO have RLS
 -- policies enabled, add an equivalent one here:
 --   ALTER TABLE payment_transactions ENABLE ROW LEVEL SECURITY;
 --   CREATE POLICY "Payment transactions accessible to app" ON payment_transactions

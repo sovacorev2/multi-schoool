@@ -87,7 +87,7 @@ export function MarksEntryTracker({ schoolId, deadlines }: { schoolId: string; d
     const sessionByClassId = new Map(sessions.map((s: any) => [s.class_id, s.id]))
 
     // Marks and learners can each easily exceed Supabase's 1000-row default
-    // page cap across a whole school — must paginate or large schools silently
+    // page cap across a whole school - must paginate or large schools silently
     // lose data past row 1000 and everything past it looks "not entered".
     const [subjectsRes, learners, assignmentsRes, teachersRes, marks] = await Promise.all([
       supabase.from('subjects').select('id, name, class_id').in('class_id', classIds),

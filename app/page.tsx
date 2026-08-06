@@ -129,7 +129,7 @@ function HomePageContent() {
       setLockedSchoolInfo(null)
 
       const supabase = createClient()
-      // Note: no longer filtering by is_active here — a locked school must still
+      // Note: no longer filtering by is_active here - a locked school must still
       // be found so we can show a "Payment Required" screen instead of a blank
       // page. Access itself is gated below by checking school.is_active.
       const { data: school } = await supabase

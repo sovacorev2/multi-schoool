@@ -177,7 +177,7 @@ export default function MarklistPage() {
   const PRESCHOOL_CLASSES = ['playgroup', 'pp1', 'pp2']
   const isPreschool = PRESCHOOL_CLASSES.includes(currentClass?.name?.toLowerCase() || '')
 
-  // Kimwangarc lower grades (PP1, PP2, Grade 1-6) use points entry only — matched by school code
+  // Kimwangarc lower grades (PP1, PP2, Grade 1-6) use points entry only - matched by school code
   const isKimwangarc = currentSchool?.code?.toLowerCase() === 'kimwangarc'
   const lowerGradePatterns = /^(PP1|PP2|Grade\s*1|Grade\s*2|Grade\s*3|Grade\s*4|Grade\s*5|Grade\s*6)$/i
   const isKimwangaraLowerGrade = isKimwangarc && lowerGradePatterns.test(currentClass?.name || '')
@@ -277,7 +277,7 @@ export default function MarklistPage() {
       if (isPinAuthenticated) {
       }
 
-      // Fetch all classes initially (cached — rarely changes during a session)
+      // Fetch all classes initially (cached - rarely changes during a session)
       let allClasses = await cachedFetch(
         `classes:${currentSchool?.id}`,
         () => supabase.from('classes').select('id, name, school_id, display_order').eq('school_id', currentSchool?.id).order('display_order').then(r => r.data ?? []),
@@ -304,12 +304,12 @@ export default function MarklistPage() {
         .eq('year', selectedSession.year)
         .eq('exam_type_id', selectedSession.exam_type_id)
       
-      // Get ALL subjects, learners and marks for all classes at once — minimal columns only
+      // Get ALL subjects, learners and marks for all classes at once - minimal columns only
       const classIds = allClasses.map(c => c.id)
       const sessionIds = allSessions?.map(s => s.id) || []
 
       // Marks and learners can each easily exceed Supabase's 1000-row default
-      // page cap across a whole school — must paginate or large schools silently
+      // page cap across a whole school - must paginate or large schools silently
       // lose data past row 1000 and everything past it looks "not entered".
       const [subjectsRes2, allLearners, allMarks] = await Promise.all([
         supabase.from('subjects').select('id, name, class_id').in('class_id', classIds),
@@ -448,7 +448,7 @@ export default function MarklistPage() {
 
       // --- Extra school-wide analysis: gender, subject rankings, top/bottom learners ---
       // Note: like the rest of this function, average/total (marks-based) treats every
-      // score as a raw 0-100 mark — schools using rubric-points entry (e.g. Kimwanga's
+      // score as a raw 0-100 mark - schools using rubric-points entry (e.g. Kimwanga's
       // lower grades) aren't converted here, matching this function's existing per-class
       // average calc above. totalPoints (used for the CBC-style top/bottom rankings) is
       // correct for points-entry schools since it goes through getSubjectLevelPoints,
@@ -490,7 +490,7 @@ export default function MarklistPage() {
       const maleAvg = maleLearners.length > 0 ? maleLearners.reduce((a, b) => a + b.average, 0) / maleLearners.length : 0
       const femaleAvg = femaleLearners.length > 0 ? femaleLearners.reduce((a, b) => a + b.average, 0) / femaleLearners.length : 0
 
-      // CBC weighs total rubric points more than raw percentage — rank each level
+      // CBC weighs total rubric points more than raw percentage - rank each level
       // (Pre-School/Lower/Upper Primary/Junior Secondary) separately since their point
       // scales differ (e.g. JSS subjects max at 8pts, lower grades max at 4pts).
       const topLearnersByCategory: Record<string, { name: string; className: string; totalPoints: number; average: number }[]> = {}
@@ -605,7 +605,7 @@ export default function MarklistPage() {
       ])
 
       const sessionIds = allSessions?.map(s => s.id) || []
-      // Paginated — marks across several streams' worth of learners × subjects
+      // Paginated - marks across several streams' worth of learners × subjects
       // can exceed Supabase's 1000-row default page cap.
       const allMarks = sessionIds.length > 0
         ? await fetchAllRows<{ learner_id: string; subject_id: string; score: number | null; session_id: string }>((from, to) =>
@@ -741,7 +741,7 @@ export default function MarklistPage() {
           ? Math.round((learnersWithMarks.filter(l => l.average >= 50).length / learnersWithMarks.length) * 100)
           : 0
 
-        // Rubric distribution — use the school's actual grading scale (not hardcoded thresholds)
+        // Rubric distribution - use the school's actual grading scale (not hardcoded thresholds)
         // so Kimaeti, Kolanya Girls and all other schools get correct EE/ME/AE/BE counts
         const scale = getGradingScale(cls.name, currentSchool?.name)
         const maxPts = scale[0].points
@@ -1170,7 +1170,7 @@ export default function MarklistPage() {
 
             subjects.forEach((subject) => {
               const mark = marksArray.find((m) => m.learner_id === learner.id && m.subject_id === subject.id)
-              // Coerce to number defensively — numeric DB columns can arrive as strings,
+              // Coerce to number defensively - numeric DB columns can arrive as strings,
               // which would turn `total += score` into string concatenation and corrupt ranking.
               const numericScore = mark?.score !== null && mark?.score !== undefined ? Number(mark.score) : null
               learnerMarks[subject.id] = numericScore !== null && !Number.isNaN(numericScore) ? numericScore : null
@@ -1178,7 +1178,7 @@ export default function MarklistPage() {
                 total += numericScore
                 subjectsWithMarks++
                 // In points-entry mode (Kimwanga lower grades), scores ARE rubric points (1-4 scale).
-                // Don't run them through the percentage-based scale lookup — use them directly.
+                // Don't run them through the percentage-based scale lookup - use them directly.
                 if (isLowerGradePointsEntry) {
                   // Clamp to valid rubric range 1-4
                   const pts = Math.min(4, Math.max(1, numericScore))
@@ -1495,7 +1495,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
     printWindow.document.write(marklistContent)
     printWindow.document.close()
 
-    // onload is unreliable on mobile — use setTimeout directly after close()
+    // onload is unreliable on mobile - use setTimeout directly after close()
     setTimeout(() => {
       printWindow.focus()
       printWindow.print()
@@ -2010,7 +2010,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                   
                   // Helper: given a list of class IDs, fetch all sessions for this exam
                   // (matched by exam_type_id + term + year) then fetch marks by session_id.
-                  // This is the CORRECT approach — marks are stored by session_id, not by
+                  // This is the CORRECT approach - marks are stored by session_id, not by
                   // year/term/exam_type_id directly. Using year/term/exam_type_id returns 0 rows
                   // for schools like Kimaeti and Kolanya Girls.
                   const fetchMarksByGradeClassIds = async (classIds: string[]): Promise<Record<string, number>> => {
@@ -2027,7 +2027,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                       .eq('sessions.year', selectedSession.year)
                     
                     // Step 3: accumulate raw mark totals per learner.
-                    // Ranking is based on total raw marks (not rubric points) — higher marks = higher rank.
+                    // Ranking is based on total raw marks (not rubric points) - higher marks = higher rank.
                     // Rubric points are only used for performance level display, not ranking.
                     const learnerPoints: Record<string, number> = {}
                     for (const m of (marks || [])) {
@@ -2491,7 +2491,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                     </td>
                     {subjects.map((subject) => {
                       const score = result.marks[subject.id]
-                      // In points-entry mode, score IS the rubric point — don't run through percentage scale
+                      // In points-entry mode, score IS the rubric point - don't run through percentage scale
                       const performanceLevel = isLowerGradePointsEntry
                         ? (score !== null && score !== undefined ? (() => {
                             const p = Math.round(score as number)
@@ -2678,7 +2678,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                   size="sm" 
                                   variant="outline"
                                   onClick={() => attemptPrint(async () => {
-                                    // Use in-memory results for rank — consistent with the marklist table.
+                                    // Use in-memory results for rank - consistent with the marklist table.
                                     // overall_rank = rank within this class (results are already sorted+ranked).
                                     // total_in_grade = results.length (learners with at least one mark).
                                     const enrichedResult = {
@@ -2820,7 +2820,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                             let mean = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length) : 0
                             let meanPerformance
                             if (isLowerGradePointsEntry) {
-                              // Points-entry mode: mean is already on the 1-4 rubric scale —
+                              // Points-entry mode: mean is already on the 1-4 rubric scale -
                               // map it directly instead of converting to a percentage, so it
                               // uses the same EE/ME/AE/BE labels as the per-student rows above.
                               meanPerformance = getSubjectLevelPoints(mean, currentClass?.name, currentSchool?.name)

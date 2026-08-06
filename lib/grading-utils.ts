@@ -157,7 +157,7 @@ export function getLevelByTotalMarksRange(
  * against a 900-point scale.
  *
  * The fix: divide total by subjectCount to get the average mark (0-100), then
- * use the same per-subject grading scale — identical logic to how individual
+ * use the same per-subject grading scale - identical logic to how individual
  * subject grades are calculated.
  */
 export function getLevelByTotal(
@@ -173,7 +173,7 @@ export function getLevelByTotal(
   const school = (schoolName || '').toLowerCase().trim()
 
   // St Mary's Nambale primary (Grades 4–8): use absolute total-mark bands
-  // provided by the school — do NOT convert to average.
+  // provided by the school - do NOT convert to average.
   if ((school.includes('mary') && school.includes('nambale')) || school.includes('stmarysnambale')) {
     if (!isUpperClass(className || '')) {
       const band = OVERALL_TOTAL_MARKS_SCALE_STMARYSNAMBALE_PRIMARY.find(b => t >= b.minTotal && t <= b.maxTotal)
@@ -185,7 +185,7 @@ export function getLevelByTotal(
 }
 
 // Derive the overall performance level from the average RAW MARK (total marks / subjects).
-// Kept for backward compatibility — prefer getLevelByTotalMarksRange for overall level.
+// Kept for backward compatibility - prefer getLevelByTotalMarksRange for overall level.
 export function getLevelByAverageMark(
   totalMarks: number,
   subjectCount: number,
@@ -197,7 +197,7 @@ export function getLevelByAverageMark(
 
   // Kimwanga RC lower grades (PP1, PP2, Grade 1-6) enter rubric points (1-4) directly
   // instead of raw marks (0-100). Their "total" is a sum of 1-4 points, so the average
-  // must be mapped on that same 1-4 scale — running it through the percentage-based
+  // must be mapped on that same 1-4 scale - running it through the percentage-based
   // grading scale (which expects 0-100 marks) misclassifies a near-max average like
   // 3.8 as BE2 (that scale's 0-10 band).
   const school = (schoolName || '').toLowerCase()
@@ -213,7 +213,7 @@ export function getLevelByAverageMark(
 }
 
 // Derive the overall performance level from total points and number of subjects.
-// DEPRECATED: use getLevelByAverageMark instead — this function derives levels from
+// DEPRECATED: use getLevelByAverageMark instead - this function derives levels from
 // rubric-point averages which can produce inconsistent results when mark totals differ.
 // Kept for backward compatibility only.
 export function getLevelByTotalPoints(
@@ -241,13 +241,13 @@ export function getLevelByTotalPoints(
 export function getGradeLevelByClass(marks: number | string | null | undefined, className?: string, schoolName?: string): { level: string; points: number } | null {
   if (marks === null || marks === undefined) return null
 
-  // Coerce to a number defensively — DB numeric columns can arrive as strings,
+  // Coerce to a number defensively - DB numeric columns can arrive as strings,
   // and string comparisons would break the min/max range matching.
   const score = typeof marks === 'string' ? parseFloat(marks) : marks
   if (typeof score !== 'number' || Number.isNaN(score)) return null
 
   // Round before matching. The scale bands are adjacent integers (e.g. ME1: 58-74,
-  // EE2: 75-89) with no band covering the gap between them — an unrounded average
+  // EE2: 75-89) with no band covering the gap between them - an unrounded average
   // like 74.33 (e.g. 669 marks / 9 subjects) matches neither band and silently
   // returns null, rendering as a blank "-" instead of a level. Most callers already
   // round before calling this function; rounding here too is a no-op for them and
@@ -261,7 +261,7 @@ export function getGradeLevelByClass(marks: number | string | null | undefined, 
 
 // Get a per-subject performance level from a raw score, aware of schools that enter
 // rubric points (1-4) directly instead of marks (0-100) for each subject.
-// Currently only Kimwanga RC's lower grades (PP1, PP2, Grade 1-6) use points entry —
+// Currently only Kimwanga RC's lower grades (PP1, PP2, Grade 1-6) use points entry -
 // deliberately kept separate from getGradeLevelByClass so we don't affect other
 // callers that intentionally pre-convert a points value to a percentage before
 // calling getGradeLevelByClass (e.g. class mean rows built before this helper existed).

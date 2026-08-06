@@ -37,7 +37,7 @@ export async function verifyAdminPassword(password: string, schoolId?: string): 
       .single()
     adminPassword = data?.admin_password ?? null
   } else {
-    // Fallback: check all schools — used when schoolId is not available
+    // Fallback: check all schools - used when schoolId is not available
     const { data } = await supabase
       .from("schools")
       .select("admin_password")

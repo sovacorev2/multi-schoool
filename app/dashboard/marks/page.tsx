@@ -207,7 +207,7 @@ export default function MarksPage() {
 
     // Check if PIN management is enabled for this school - this is the ONLY gate
     // that should enable subject restrictions. A stored teacher ID alone is NOT
-    // sufficient — the school must explicitly have feature_pin_management=true.
+    // sufficient - the school must explicitly have feature_pin_management=true.
     const pinManagementFeatureEnabled = schoolRes.data?.feature_pin_management === true;
 
     // Resolve the teacher id from any known login storage format.
@@ -250,7 +250,7 @@ export default function MarksPage() {
         }
       }
     } else {
-      // Non-PIN school or admin: full access — treat as class teacher with no restrictions
+      // Non-PIN school or admin: full access - treat as class teacher with no restrictions
       setIsClassTeacher(true);
       setAssignedSubjectIds(new Set());
     }
@@ -900,7 +900,7 @@ export default function MarksPage() {
                             let showCell = true;
 
                             // A per-subject deadline override (set by the admin for this
-                            // one teacher) takes precedence over the class's own deadline —
+                            // one teacher) takes precedence over the class's own deadline -
                             // an admin's explicit lock still always wins.
                             const overrideDeadline = subjectDeadlineOverrides[subject.id];
                             const subjectEditable = selectedSession?.is_locked

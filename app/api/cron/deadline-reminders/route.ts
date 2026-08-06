@@ -58,7 +58,7 @@ export async function GET(request: Request) {
       // Get unique teacher IDs
       const teacherIds = [...new Set(assignments.map(a => a.user_id))]
 
-      // Get teacher emails — teachers are stored in teacher_accounts, not a "users" table
+      // Get teacher emails - teachers are stored in teacher_accounts, not a "users" table
       const { data: teachers, error: teacherError } = await supabase
         .from('teacher_accounts')
         .select('id, email, first_name, last_name')

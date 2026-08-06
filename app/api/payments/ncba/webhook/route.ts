@@ -11,7 +11,7 @@ const SUBSCRIPTION_EXTENSION_DAYS = 120
 // Replicates NCBA's Java sample exactly (see "SecretKey Generation" in their
 // Push Notification guide): concatenate secretKey + fields + "1", SHA-256 it to a
 // HEX STRING, then Base64-encode the UTF-8 BYTES OF THAT HEX STRING (not the raw
-// hash bytes — this is unusual but matches their sample code precisely).
+// hash bytes - this is unusual but matches their sample code precisely).
 function computeExpectedHash(params: {
   transType: string
   transId: string
@@ -95,7 +95,7 @@ export async function POST(request: Request) {
   const supabase = await createClient()
 
   // Attribution: we set AccountNo = school.code when we initiate an STK Push, so
-  // BillRefNumber is expected to echo that back. UNCONFIRMED with NCBA — flagged
+  // BillRefNumber is expected to echo that back. UNCONFIRMED with NCBA - flagged
   // as the #1 thing to verify once you have real credentials/test payloads.
   const schoolCode = billRefNumber.trim()
   const { data: school } = await supabase
@@ -139,7 +139,7 @@ export async function POST(request: Request) {
 
     const updates: Record<string, unknown> = { subscription_expires_at: newExpiry.toISOString() }
     // A successful payment shouldn't silently override an explicit "force locked"
-    // super-admin decision — only auto-unlock if there's no override, or the
+    // super-admin decision - only auto-unlock if there's no override, or the
     // override already says unlocked.
     if (school.lock_override !== false) {
       updates.is_active = true

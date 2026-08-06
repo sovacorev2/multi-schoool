@@ -28,7 +28,7 @@ export async function GET(request: Request) {
     }
 
     // The admin-portal reads the school from the `school` (code) query param,
-    // not `schoolId` — without the code, launching the installed PWA lands on
+    // not `schoolId` - without the code, launching the installed PWA lands on
     // an unrecognized URL and shows "no school selected".
     const schoolQuery = schoolCode ? `?school=${schoolCode}` : ''
 

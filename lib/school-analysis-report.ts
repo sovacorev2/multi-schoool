@@ -1,6 +1,6 @@
 // HTML generator for the School Analysis print/PDF report.
 // Mirrors the branded, print-formatted-page pattern already used by
-// components/general-report.tsx (window.open + write HTML + window.print()) —
+// components/general-report.tsx (window.open + write HTML + window.print()) -
 // this is the same approach, applied to whole-school analysis instead of
 // per-learner report cards.
 
@@ -27,7 +27,7 @@ export interface SchoolAnalysisExtra {
   genderStats: { maleAvg: number; femaleAvg: number; maleCount: number; femaleCount: number }
   subjectRankings: { name: string; avg: number; classCount: number }[]
   // Keyed by CBC level ('Pre-School', 'Lower Primary', 'Upper Primary', 'Junior Secondary').
-  // Ranked by total rubric points, not average % — CBC weighs points more heavily, and the
+  // Ranked by total rubric points, not average % - CBC weighs points more heavily, and the
   // point scales differ by level (e.g. JSS subjects max at 8pts, lower grades at 4pts), so
   // rankings only make sense within a level, not pooled school-wide.
   topLearnersByCategory: Record<string, { name: string; className: string; totalPoints: number; average: number }[]>
@@ -79,7 +79,7 @@ function generateRecommendations(
     recs.push(`${weakest.category} has the lowest mean score (${weakest.categoryAvg}%) among all levels - consider allocating additional teaching resources or peer-mentoring support here. ${strongest.category} is the school's strongest level (${strongest.categoryAvg}%) and its teaching approaches may be worth sharing across other levels.`)
   }
 
-  // Split into a "strongest" and "weakest" group without overlap — with few
+  // Split into a "strongest" and "weakest" group without overlap - with few
   // subjects, slicing a fixed top-3/bottom-3 can select the same subjects twice.
   const halfCount = Math.min(3, Math.floor(subjectRankings.length / 2))
   if (halfCount > 0) {
@@ -201,7 +201,7 @@ export function generateSchoolAnalysisHTML(
     </tr>
   `).join('')
 
-  // Simple horizontal SVG bar chart — no charting library dependency, matches the
+  // Simple horizontal SVG bar chart - no charting library dependency, matches the
   // plain-SVG pattern already used elsewhere in this app's print reports.
   function barChart(items: { label: string; value: number; color: string }[], unit = '%'): string {
     if (items.length === 0) return '<p style="font-size:10px;color:#9ca3af;">No data</p>'

@@ -1,7 +1,7 @@
 // Supabase/PostgREST caps any query at 1000 rows by default unless you page
 // through results with .range(). Any query that can plausibly return more than
 // 1000 rows across a whole school (marks, learners) MUST use this instead of a
-// plain .select() — otherwise it silently truncates and looks like "no data"
+// plain .select() - otherwise it silently truncates and looks like "no data"
 // for whatever didn't fit in the first page.
 export async function fetchAllRows<T>(
   buildQuery: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,

@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 
 // Daily: lock any school whose subscription_expires_at has passed, and unlock any
-// school that's within its paid period — unless a super-admin has set an explicit
+// school that's within its paid period - unless a super-admin has set an explicit
 // lock_override (true = always unlocked, false = always locked), which always wins.
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization')

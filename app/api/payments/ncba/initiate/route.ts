@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     const result = await initiateStkPush({
       telephoneNo: school.payment_phone_number,
       amount: school.payment_amount,
-      accountNo: school.code, // echoed back on the webhook as BillRefNumber — see webhook route's attribution note
+      accountNo: school.code, // echoed back on the webhook as BillRefNumber - see webhook route's attribution note
     })
 
     await supabase.from('payment_transactions').insert({

@@ -42,7 +42,7 @@ export interface Deadline {
   exam_type?: string
 }
 
-// The full school record fetched at auth time (and re-fetched on save) — every
+// The full school record fetched at auth time (and re-fetched on save) - every
 // admin-portal page/section that needs school fields reads it from AdminSchoolContext
 // instead of re-querying, so Settings' edits are immediately visible everywhere.
 export const SCHOOL_SELECT_FIELDS =

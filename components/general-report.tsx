@@ -129,7 +129,7 @@ export function GeneralReport({
   const isLowerGradePointsEntry = isKimwangarc && lowerGradePatterns.test(currentClass?.name || '')
   const supabase = createClient()
 
-  // All sessions for this year+term — each becomes a selectable "exam column"
+  // All sessions for this year+term - each becomes a selectable "exam column"
   const availableExamSessions = sessions.filter(s =>
     s.year.toString() === selectedYear &&
     (!selectedTerm || s.term === selectedTerm)
@@ -358,7 +358,7 @@ export function GeneralReport({
                 .eq('year', chosenSession.year)
               const sibSessionIds = (sibSessions ?? []).map((s: any) => s.id)
               if (sibSessionIds.length > 0) {
-                // Paginated — marks across several sibling streams can exceed
+                // Paginated - marks across several sibling streams can exceed
                 // Supabase's 1000-row default page cap.
                 const sibMarks = await fetchAllRows<{ learner_id: string; score: number | null }>((from, to) =>
                   supabase.from('marks').select('learner_id, score').in('session_id', sibSessionIds).range(from, to)
@@ -377,7 +377,7 @@ export function GeneralReport({
 
             // Build totals for current class learners using same overallTotal
             const levelEntries: Array<{ learnerId: string; total: number }> = [
-              // Current class — use the already-computed overallTotal (consistent with classRank)
+              // Current class - use the already-computed overallTotal (consistent with classRank)
               ...learnersData
                 .filter(ld => ld.overallTotal !== null && ld.overallTotal > 0)
                 .map(ld => ({ learnerId: ld.learner.id, total: ld.overallTotal ?? 0 })),
@@ -401,7 +401,7 @@ export function GeneralReport({
       }
 
       if (!crossStreamDone) {
-        // Single stream, no siblings, or fetch failed — overall equals class rank
+        // Single stream, no siblings, or fetch failed - overall equals class rank
         learnersData.forEach(ld => {
           ld.crossStreamRank = ld.classRank
           ld.totalInLevel = totalWithMarksInClass
@@ -557,7 +557,7 @@ export function GeneralReport({
         </CardContent>
       </Card>
 
-      {/* Term dates prompt — collected before generating so the report doesn't
+      {/* Term dates prompt - collected before generating so the report doesn't
           ship with blank "___/___/____" placeholders */}
       <Dialog open={showDateDialog} onOpenChange={setShowDateDialog}>
         <DialogContent className="sm:max-w-md">
@@ -749,7 +749,7 @@ function generateReportHTML(
     const bestExamName = bestExamIdx >= 0 ? (chosenSessions[bestExamIdx]?.exam_types?.name || `Exam ${bestExamIdx + 1}`) : '-'
     const bestExamScore = bestExamIdx >= 0 && trendPoints[bestExamIdx] !== null ? (trendPoints[bestExamIdx] as number).toFixed(1) : '-'
 
-    // Subject rows — comfortable padding with points
+    // Subject rows - comfortable padding with points
     const subjectRows = subjectMarks.map(sm => {
       const avgGrade = getRubricLabel(sm.average, currentClass.name, school?.name || '')
       const subjectPoints = avgGrade ? avgGrade.points.toFixed(1) : '-'
@@ -769,7 +769,7 @@ function generateReportHTML(
       </tr>`
     }).join('')
 
-    // Overall grade — derived directly from overallAverage (0–100) so multi-session
+    // Overall grade - derived directly from overallAverage (0–100) so multi-session
     // totals (sum across all sessions) don't inflate past 100 and return null.
     const overallGrade = overallAverage !== null
       ? getGradeLevelByClass(overallAverage, _overallClassName, _overallSchoolName)
@@ -786,7 +786,7 @@ function generateReportHTML(
     ).join('')
     const overallBadgeColor = overallGrade ? rubricBadgeColor(overallGrade.level) : '#6b7280'
 
-    // Average points row — average points across all subjects per exam
+    // Average points row - average points across all subjects per exam
     const overallExamPoints = chosenSessions.map(s => {
       const sessionScores = subjectMarks.flatMap(sm => {
         const v = sm.marksByExam[s.id]
@@ -834,7 +834,7 @@ function generateReportHTML(
         </div>
       </div>
 
-      <!-- TOP TWO-COLUMN SECTION — fixed height -->
+      <!-- TOP TWO-COLUMN SECTION - fixed height -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;flex-shrink:0;">
 
         <!-- LEARNER DETAILS -->
@@ -888,7 +888,7 @@ function generateReportHTML(
         </div>
       </div>
 
-      <!-- ACADEMIC PERFORMANCE SUMMARY + TREND — natural height so table (incl. position row) is never squeezed -->
+      <!-- ACADEMIC PERFORMANCE SUMMARY + TREND - natural height so table (incl. position row) is never squeezed -->
       <div style="display:grid;grid-template-columns:1.8fr 1fr;gap:8px;margin-bottom:6px;flex-shrink:0;">
 
         <!-- ACADEMIC PERFORMANCE TABLE -->
@@ -961,7 +961,7 @@ function generateReportHTML(
         </div>
       </div>
 
-      <!-- STRENGTHS + PRIORITY AREAS — flex:0.8 reduced -->
+      <!-- STRENGTHS + PRIORITY AREAS - flex:0.8 reduced -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;flex:0.8;min-height:0;">
         <div style="border:1.5px solid #16a34a;border-radius:5px;overflow:hidden;display:flex;flex-direction:column;">
           <div style="background:#16a34a;color:#fff;font-size:10px;font-weight:700;padding:5px 10px;letter-spacing:0.5px;flex-shrink:0;">STRENGTH AREAS</div>
@@ -981,7 +981,7 @@ function generateReportHTML(
         </div>
       </div>
 
-      <!-- COMMENTS — flex:1 with 2-column layout -->
+      <!-- COMMENTS - flex:1 with 2-column layout -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;flex:1;min-height:0;">
         <div style="border:1.5px solid #1e3a5f;border-radius:5px;overflow:hidden;display:flex;flex-direction:column;">
           <div style="background:#1e3a5f;color:#fff;font-size:10px;font-weight:700;padding:5px 10px;letter-spacing:0.5px;flex-shrink:0;">CLASS TEACHER'S COMMENTS</div>
@@ -1010,7 +1010,7 @@ function generateReportHTML(
         <div>NEXT TERM BEGINS FROM: ${formatReportDate(nextTermBegins)}</div>
       </div>
 
-      <!-- FOOTER — pinned at bottom -->
+      <!-- FOOTER - pinned at bottom -->
       <div style="border-top:1.5px solid #1e3a5f;padding-top:4px;display:flex;justify-content:space-between;font-size:8px;color:#4b5563;flex-shrink:0;margin-top:auto;">
         <div><strong>Powered by ShuleTech</strong> - Smart Schools, Better Results</div>
         <div style="text-align:right;">${schoolName} &bull; ${gradeLabel} &bull; ${termDisplay}</div>

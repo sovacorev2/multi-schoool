@@ -125,7 +125,7 @@ export function AdminPasswordGate({ isOpen, onClose, onVerified, actionLabel = '
 }
 
 /**
- * Helper hook — call attemptPrint() to either proceed immediately
+ * Helper hook - call attemptPrint() to either proceed immediately
  * (within a fresh 10-min session) or open the password gate first.
  */
 export function useAdminPrintGate() {
@@ -141,7 +141,7 @@ export function useAdminPrintGate() {
 
   const attemptPrint = (action: (() => void) | (() => Promise<void>), label = 'Print Report') => {
     if (isSessionValid()) {
-      // Already verified recently — proceed immediately
+      // Already verified recently - proceed immediately
       action()
     } else {
       setActionLabel(label)

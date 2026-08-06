@@ -25,7 +25,7 @@ CREATE INDEX IF NOT EXISTS idx_teacher_deadline_overrides_session
 
 -- Matches this app's existing tables (sessions, marks, classes, etc.), which
 -- are read/written directly from the browser via the publishable/anon key
--- with no Supabase Auth session — RLS is intentionally left off here so this
+-- with no Supabase Auth session - RLS is intentionally left off here so this
 -- new table is reachable the same way. If your other tables DO have RLS
 -- policies enabled, add an equivalent permissive policy here instead:
 --   ALTER TABLE teacher_deadline_overrides ENABLE ROW LEVEL SECURITY;

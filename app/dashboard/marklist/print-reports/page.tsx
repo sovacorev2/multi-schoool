@@ -88,7 +88,7 @@ export default function PrintReportsPage() {
           .order('name')
         setSubjects(subjectsData || [])
 
-        // Fetch marks and learner data — handles both bulk (all class) and single student
+        // Fetch marks and learner data - handles both bulk (all class) and single student
         if (classId && sessionId) {
           if (isBulk) {
             // Bulk: fetch all learners in the class + all marks in parallel

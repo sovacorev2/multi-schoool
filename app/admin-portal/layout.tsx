@@ -44,7 +44,7 @@ function AdminPortalShell({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isRestoringSession, setIsRestoringSession] = useState(true)
 
-  // Lightweight class list for the "Access Classes" quick-menu only — each
+  // Lightweight class list for the "Access Classes" quick-menu only - each
   // section page fetches its own richer copy of classes for its own UI.
   const [quickClasses, setQuickClasses] = useState<{ id: string; name: string }[]>([])
   const [showAccessClassesMenu, setShowAccessClassesMenu] = useState(false)
@@ -84,7 +84,7 @@ function AdminPortalShell({ children }: { children: React.ReactNode }) {
 
   // Restore an already-authenticated session for this school (e.g. an admin who
   // just entered the password, peeked into a class via the bypass flow, and is now
-  // navigating back via "Back to Admin Portal" — they shouldn't have to re-enter it).
+  // navigating back via "Back to Admin Portal" - they shouldn't have to re-enter it).
   useEffect(() => {
     if (!currentSchool) return
     if (isAuthenticated) {
