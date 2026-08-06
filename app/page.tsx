@@ -94,6 +94,7 @@ function HomePageContent() {
   const [isFetchingData, setIsFetchingData] = useState(true)
   const [error, setError] = useState('')
   const [isUsingFallback, setIsUsingFallback] = useState(false)
+  const [lockedSchoolInfo, setLockedSchoolInfo] = useState<{ name: string; logo_url: string | null; primary_color: string | null; tagline: string | null } | null>(null)
   
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -125,21 +126,26 @@ function HomePageContent() {
       // Clear existing data first
       setClasses([])
       setExamTypes([])
-      
+      setLockedSchoolInfo(null)
+
       const supabase = createClient()
+      // Note: no longer filtering by is_active here — a locked school must still
+      // be found so we can show a "Payment Required" screen instead of a blank
+      // page. Access itself is gated below by checking school.is_active.
       const { data: school } = await supabase
         .from('schools')
         .select('id, name, short_name, code, tagline, email, phone, address, logo_url, primary_color, admin_password, is_active, feature_report_cards, feature_whatsapp_reports, feature_bulk_sms, feature_certificates, feature_pin_management, subscription_plan, subscription_expires_at, enable_pin_login, pin_login_enabled_at')
         .eq('code', schoolCode)
-        .eq('is_active', true)
         .single()
-      
-      if (school) {
+
+      if (school && school.is_active) {
         // Clear class context completely when switching schools
         logoutClass()
         setCurrentSchool(school)
+      } else if (school && !school.is_active) {
+        setLockedSchoolInfo({ name: school.name, logo_url: school.logo_url, primary_color: school.primary_color, tagline: school.tagline })
       }
-      // If school not found, stay on page and show error
+      // If school not found at all, stay on page and show error
     }
     loadSchoolFromCode()
   }, [searchParams, currentSchool, setCurrentSchool, clearSchool, logoutClass, router])
@@ -293,6 +299,47 @@ function HomePageContent() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (lockedSchoolInfo) {
+    return (
+      <div className="min-h-screen bg-background dark:bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md shadow-lg bg-card dark:bg-card border-border dark:border-border">
+          <CardHeader className="text-center space-y-4 pb-6">
+            <div className="flex justify-center mb-4">
+              {lockedSchoolInfo.logo_url ? (
+                <img
+                  src={lockedSchoolInfo.logo_url}
+                  alt={`${lockedSchoolInfo.name} logo`}
+                  className="w-20 h-20 object-contain opacity-60"
+                />
+              ) : (
+                <div
+                  className="w-20 h-20 rounded-full flex items-center justify-center text-white font-bold text-2xl opacity-60"
+                  style={{ backgroundColor: lockedSchoolInfo.primary_color || '#2563eb' }}
+                >
+                  {lockedSchoolInfo.name.substring(0, 2).toUpperCase()}
+                </div>
+              )}
+            </div>
+            <div>
+              <CardTitle className="text-2xl font-bold mb-2 text-foreground dark:text-foreground">{lockedSchoolInfo.name}</CardTitle>
+              <CardDescription className="text-base text-muted-foreground dark:text-muted-foreground">
+                Access Temporarily Unavailable
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="text-center space-y-3">
+            <p className="text-sm text-muted-foreground dark:text-muted-foreground">
+              This school&apos;s ShuleTech account needs to be renewed before it can be accessed again.
+            </p>
+            <p className="text-sm text-muted-foreground dark:text-muted-foreground">
+              Please contact your school administrator, or reach out to ShuleTech support to complete payment.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   // Don't render if no school selected

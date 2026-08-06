@@ -29,6 +29,20 @@ interface School {
   feature_pin_management?: boolean
   subscription_plan: string
   subscription_expires_at: string | null
+  is_active: boolean
+  payment_amount: number | null
+  payment_phone_number: string | null
+  lock_override: boolean | null
+}
+
+interface PaymentTransaction {
+  id: string
+  amount: number
+  phone_number: string | null
+  ncba_transaction_id: string | null
+  status: 'pending' | 'success' | 'failed'
+  initiated_at: string
+  completed_at: string | null
 }
 
 const SUPER_ADMIN_PASSWORD = 'shuletech2024'
@@ -44,7 +58,10 @@ export default function SuperAdminPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [expandedSchool, setExpandedSchool] = useState<string | null>(null)
   const [savingSchool, setSavingSchool] = useState<string | null>(null)
-  
+  const [paymentHistory, setPaymentHistory] = useState<Record<string, PaymentTransaction[]>>({})
+  const [sendingPromptFor, setSendingPromptFor] = useState<string | null>(null)
+  const [promptMessage, setPromptMessage] = useState<{ schoolId: string; type: 'success' | 'error'; text: string } | null>(null)
+
   // New school form
   const [showNewSchoolForm, setShowNewSchoolForm] = useState(false)
   const [newSchool, setNewSchool] = useState({
@@ -169,11 +186,74 @@ export default function SuperAdminPage() {
       .eq('id', schoolId)
     
     if (!error) {
-      setSchools(schools.map(s => 
+      setSchools(schools.map(s =>
         s.id === schoolId ? { ...s, subscription_expires_at: date || null } : s
       ))
     }
     setSavingSchool(null)
+  }
+
+  async function updatePaymentAmount(schoolId: string, amount: string) {
+    const numericAmount = amount === '' ? null : Number(amount)
+    setSavingSchool(schoolId)
+    const { error } = await supabase.from('schools').update({ payment_amount: numericAmount }).eq('id', schoolId)
+    if (!error) {
+      setSchools(schools.map(s => s.id === schoolId ? { ...s, payment_amount: numericAmount } : s))
+    }
+    setSavingSchool(null)
+  }
+
+  async function updatePaymentPhone(schoolId: string, phone: string) {
+    setSavingSchool(schoolId)
+    const { error } = await supabase.from('schools').update({ payment_phone_number: phone || null }).eq('id', schoolId)
+    if (!error) {
+      setSchools(schools.map(s => s.id === schoolId ? { ...s, payment_phone_number: phone || null } : s))
+    }
+    setSavingSchool(null)
+  }
+
+  // null = automatic (locked once subscription_expires_at passes), true = force
+  // unlocked, false = force locked. A super-admin override always wins over the
+  // automatic expiry-based cron job.
+  async function updateLockOverride(schoolId: string, override: boolean | null) {
+    setSavingSchool(schoolId)
+    const updates: { lock_override: boolean | null; is_active?: boolean } = { lock_override: override }
+    // Apply immediately rather than waiting for the next cron run.
+    if (override === true) updates.is_active = true
+    if (override === false) updates.is_active = false
+    const { error } = await supabase.from('schools').update(updates).eq('id', schoolId)
+    if (!error) {
+      setSchools(schools.map(s => s.id === schoolId ? { ...s, ...updates } : s))
+    }
+    setSavingSchool(null)
+  }
+
+  async function fetchPaymentHistory(schoolId: string) {
+    const { data } = await supabase
+      .from('payment_transactions')
+      .select('id, amount, phone_number, ncba_transaction_id, status, initiated_at, completed_at')
+      .eq('school_id', schoolId)
+      .order('initiated_at', { ascending: false })
+      .limit(20)
+    setPaymentHistory(prev => ({ ...prev, [schoolId]: data || [] }))
+  }
+
+  async function sendPaymentPrompt(schoolId: string) {
+    setSendingPromptFor(schoolId)
+    setPromptMessage(null)
+    try {
+      const res = await fetch('/api/payments/ncba/initiate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ schoolId }),
+      })
+      const data = await res.json()
+      setPromptMessage({ schoolId, type: data.success ? 'success' : 'error', text: data.success ? data.message : data.error })
+      if (data.success) fetchPaymentHistory(schoolId)
+    } catch (error) {
+      setPromptMessage({ schoolId, type: 'error', text: error instanceof Error ? error.message : 'Failed to send prompt' })
+    }
+    setSendingPromptFor(null)
   }
 
   async function createSchool(e: React.FormEvent) {
@@ -564,7 +644,11 @@ export default function SuperAdminPage() {
                 {/* School Header */}
                 <div 
                   className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-gray-50"
-                  onClick={() => setExpandedSchool(expandedSchool === school.id ? null : school.id)}
+                  onClick={() => {
+                    const opening = expandedSchool !== school.id
+                    setExpandedSchool(opening ? school.id : null)
+                    if (opening && !paymentHistory[school.id]) fetchPaymentHistory(school.id)
+                  }}
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-lg">
@@ -582,6 +666,9 @@ export default function SuperAdminPage() {
                             : 'bg-gray-100 text-gray-700'
                         }`}>
                           {school.subscription_plan.toUpperCase()}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${school.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                          {school.is_active ? 'UNLOCKED' : 'LOCKED'}
                         </span>
                         <span className="text-gray-400">|</span>
                         <span>{getFeatureCount(school)}/5 features</span>
@@ -832,6 +919,129 @@ export default function SuperAdminPage() {
                             className="mt-1"
                           />
                         </div>
+                      </div>
+                    </div>
+
+                    {/* Payments (NCBA STK Push) */}
+                    <div className="bg-white rounded-lg border border-gray-200 p-4 mt-4">
+                      <h4 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
+                        <Settings className="w-4 h-4" />
+                        Payments
+                      </h4>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <Label htmlFor={`amount-${school.id}`}>Term Fee Amount (KES)</Label>
+                          <Input
+                            id={`amount-${school.id}`}
+                            type="number"
+                            min="0"
+                            placeholder="e.g. 15000"
+                            defaultValue={school.payment_amount ?? ''}
+                            onBlur={(e) => updatePaymentAmount(school.id, e.target.value)}
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`phone-${school.id}`}>Payment Phone Number</Label>
+                          <Input
+                            id={`phone-${school.id}`}
+                            type="text"
+                            placeholder="2547XXXXXXXX"
+                            defaultValue={school.payment_phone_number ?? ''}
+                            onBlur={(e) => updatePaymentPhone(school.id, e.target.value)}
+                            className="mt-1"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Manual lock/unlock override */}
+                      <div className="mb-4">
+                        <Label>Access Control</Label>
+                        <div className="flex gap-2 mt-1">
+                          {([
+                            { value: null, label: 'Automatic', color: 'gray' },
+                            { value: true, label: 'Force Unlocked', color: 'emerald' },
+                            { value: false, label: 'Force Locked', color: 'red' },
+                          ] as const).map(opt => {
+                            const isActive = school.lock_override === opt.value
+                            return (
+                              <button
+                                key={opt.label}
+                                onClick={() => updateLockOverride(school.id, opt.value)}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                                  isActive
+                                    ? opt.color === 'emerald' ? 'bg-emerald-600 text-white border-emerald-600'
+                                    : opt.color === 'red' ? 'bg-red-600 text-white border-red-600'
+                                    : 'bg-gray-700 text-white border-gray-700'
+                                    : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
+                                }`}
+                              >
+                                {opt.label}
+                              </button>
+                            )
+                          })}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Automatic locks the school once its subscription expiry date passes. Force Unlocked/Locked always overrides that, regardless of payment status.
+                        </p>
+                      </div>
+
+                      {/* Send prompt */}
+                      <div className="flex items-center gap-3 mb-4">
+                        <Button
+                          size="sm"
+                          onClick={() => sendPaymentPrompt(school.id)}
+                          disabled={sendingPromptFor === school.id || !school.payment_amount || !school.payment_phone_number}
+                          className="bg-blue-600 hover:bg-blue-700"
+                        >
+                          <Send className="w-4 h-4 mr-1" />
+                          {sendingPromptFor === school.id ? 'Sending...' : 'Send Payment Prompt (STK Push)'}
+                        </Button>
+                        {promptMessage && promptMessage.schoolId === school.id && (
+                          <span className={`text-xs ${promptMessage.type === 'success' ? 'text-emerald-600' : 'text-red-600'}`}>
+                            {promptMessage.text}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Payment history */}
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Recent Transactions</p>
+                        {(paymentHistory[school.id] || []).length === 0 ? (
+                          <p className="text-xs text-gray-400">No payment attempts yet.</p>
+                        ) : (
+                          <div className="border rounded-lg overflow-hidden">
+                            <table className="w-full text-xs">
+                              <thead className="bg-gray-100">
+                                <tr>
+                                  <th className="p-2 text-left">Date</th>
+                                  <th className="p-2 text-left">Phone</th>
+                                  <th className="p-2 text-right">Amount</th>
+                                  <th className="p-2 text-left">Status</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {(paymentHistory[school.id] || []).map(tx => (
+                                  <tr key={tx.id} className="border-t">
+                                    <td className="p-2">{new Date(tx.initiated_at).toLocaleString()}</td>
+                                    <td className="p-2">{tx.phone_number || '-'}</td>
+                                    <td className="p-2 text-right">{tx.amount}</td>
+                                    <td className="p-2">
+                                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                                        tx.status === 'success' ? 'bg-emerald-100 text-emerald-700'
+                                        : tx.status === 'failed' ? 'bg-red-100 text-red-700'
+                                        : 'bg-amber-100 text-amber-700'
+                                      }`}>
+                                        {tx.status.toUpperCase()}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
                       </div>
                     </div>
 
