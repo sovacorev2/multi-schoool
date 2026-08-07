@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation'
 import { useClass } from '@/lib/class-context'
 import { useSchool } from '@/lib/school-context'
 import { checkTeacherAuth, checkAdminAuth, logoutTeacher, logoutAdmin } from '@/app/actions/auth'
-import { LogOut, Users, BookOpen, ClipboardList, FileText, ChevronDown, Shield, Clock, AlertTriangle } from 'lucide-react'
+import { LogOut, Users, BookOpen, ClipboardList, FileText, ChevronDown, Shield, Clock, AlertTriangle, TrendingUp } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 export default function DashboardLayout({
@@ -201,6 +201,7 @@ export default function DashboardLayout({
     { href: '/dashboard/subjects', label: 'Subjects', icon: BookOpen },
     { href: '/dashboard/marks', label: 'Marks', icon: ClipboardList },
     { href: '/dashboard/marklist', label: 'Marklist', icon: FileText },
+    { href: '/dashboard/my-subject', label: 'My Subject', icon: TrendingUp },
     // Admin tab - only visible to admins
     ...(isAdmin ? [{ href: '/dashboard/admin', label: 'Admin', icon: Shield }] : []),
   ]

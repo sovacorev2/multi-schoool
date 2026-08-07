@@ -362,10 +362,13 @@ export default function MarksPage() {
         return;
       }
       const supabase = createClient();
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("teacher_deadline_overrides")
         .select("subject_id, deadline_datetime")
         .eq("session_id", selectedSessionId);
+      if (error) {
+        console.error("[marks] Failed to load per-teacher deadline overrides:", error.message);
+      }
       const map: Record<string, string> = {};
       (data || []).forEach((o: any) => { map[o.subject_id] = o.deadline_datetime; });
       setSubjectDeadlineOverrides(map);
@@ -603,6 +606,13 @@ export default function MarksPage() {
 
   const selectedSession = sessions.find((s) => s.id === selectedSessionId);
   const editStatus = selectedSession ? isExamEditable(selectedSession) : { editable: true, reason: "" };
+  // A session locked by the deadline cron ("System - Deadline") is just the automatic
+  // consequence of the class's own deadline passing, so a per-subject override can still
+  // bypass it. An admin's deliberate lock (any other locked_by value, including a manual
+  // toggle with no reason set) always wins and blocks every subject, override or not.
+  const isAdminLocked = !!selectedSession?.is_locked && selectedSession?.locked_by !== "System - Deadline";
+  const hasActiveOverride = Object.values(subjectDeadlineOverrides).some((d) => new Date(d) >= new Date());
+  const anyEditable = !isAdminLocked && (editStatus.editable || hasActiveOverride);
 
   // Get session status badge
   const getSessionStatus = (session: SessionWithExamType) => {
@@ -638,7 +648,7 @@ export default function MarksPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {selectedSession && editStatus.editable && (
+          {selectedSession && anyEditable && (
             <AutosaveStatus status={saveStatus} />
           )}
         </div>
@@ -745,7 +755,7 @@ export default function MarksPage() {
       </Card>
 
       {/* Lock/Deadline Warning */}
-      {selectedSession && !editStatus.editable && (
+      {selectedSession && !anyEditable && (
         <Card className="border-destructive bg-destructive/5">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -761,6 +771,24 @@ export default function MarksPage() {
                   )}
                 </p>
                 <p className="text-xs text-muted-foreground mt-2">Contact the headteacher if you need an extension.</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* The class deadline/lock has closed the exam overall, but at least one subject
+          still has an active per-teacher override, so entry for that subject remains open. */}
+      {selectedSession && !editStatus.editable && anyEditable && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <Clock className="w-5 h-5 text-amber-600" />
+              <div>
+                <p className="font-medium text-amber-900">Marks entry closed for most subjects</p>
+                <p className="text-sm text-amber-800">
+                  The class deadline has passed, but a subject you teach has an extended deadline set by the admin. You can still enter marks for that subject below.
+                </p>
               </div>
             </div>
           </CardContent>
@@ -903,7 +931,7 @@ export default function MarksPage() {
                             // one teacher) takes precedence over the class's own deadline -
                             // an admin's explicit lock still always wins.
                             const overrideDeadline = subjectDeadlineOverrides[subject.id];
-                            const subjectEditable = selectedSession?.is_locked
+                            const subjectEditable = isAdminLocked
                               ? false
                               : overrideDeadline
                               ? new Date(overrideDeadline) >= new Date()
@@ -956,7 +984,7 @@ export default function MarksPage() {
       )}
 
       {/* Sticky bottom save bar - always reachable while scrolling through marks */}
-      {selectedSession && editStatus.editable && subjects.length > 0 && learners.length > 0 && (
+      {selectedSession && anyEditable && subjects.length > 0 && learners.length > 0 && (
         <div className="sticky bottom-0 z-10 -mx-4 border-t border-border bg-card/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-lg sm:border">
           <div className="flex items-center justify-between gap-4">
             <AutosaveStatus status={saveStatus} />

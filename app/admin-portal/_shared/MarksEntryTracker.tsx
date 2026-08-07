@@ -53,10 +53,20 @@ export function MarksEntryTracker({ schoolId, deadlines }: { schoolId: string; d
     return Array.from(seen.values()).sort((a, b) => b.year - a.year || a.term.localeCompare(b.term))
   }, [deadlines])
 
+  const terms = useMemo(() => {
+    return Array.from(new Set(sessionOptions.map(opt => opt.term))).sort()
+  }, [sessionOptions])
+
+  const [selectedTerm, setSelectedTerm] = useState('')
   const [selectedKey, setSelectedKey] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [rows, setRows] = useState<ClassRow[] | null>(null)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+
+  const filteredSessionOptions = useMemo(() => {
+    if (!selectedTerm) return sessionOptions
+    return sessionOptions.filter(opt => opt.term === selectedTerm)
+  }, [sessionOptions, selectedTerm])
 
   const load = async (key: string) => {
     setSelectedKey(key)
@@ -175,17 +185,34 @@ export function MarksEntryTracker({ schoolId, deadlines }: { schoolId: string; d
           </CardTitle>
           <CardDescription>Which classes and subjects have entered marks for an exam, and who's assigned</CardDescription>
         </div>
-        <select
-          value={selectedKey}
-          onChange={(e) => load(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">Select an exam...</option>
-          {sessionOptions.map(opt => {
-            const key = `${opt.term}|${opt.year}|${opt.examType}`
-            return <option key={key} value={key}>{opt.examType} - {opt.term} {opt.year}</option>
-          })}
-        </select>
+        <div className="flex flex-wrap gap-2">
+          <select
+            value={selectedTerm}
+            onChange={(e) => {
+              const term = e.target.value
+              setSelectedTerm(term)
+              // Selecting an exam type below still requires a matching term, so
+              // clear any previous selection that no longer fits the new filter.
+              setSelectedKey('')
+              setRows(null)
+            }}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">All terms</option>
+            {terms.map(term => <option key={term} value={term}>{term}</option>)}
+          </select>
+          <select
+            value={selectedKey}
+            onChange={(e) => load(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Select an exam...</option>
+            {filteredSessionOptions.map(opt => {
+              const key = `${opt.term}|${opt.year}|${opt.examType}`
+              return <option key={key} value={key}>{opt.examType} - {opt.term} {opt.year}</option>
+            })}
+          </select>
+        </div>
       </CardHeader>
       <CardContent>
         {!selectedKey && (

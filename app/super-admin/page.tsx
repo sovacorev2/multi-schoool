@@ -199,6 +199,8 @@ export default function SuperAdminPage() {
     const { error } = await supabase.from('schools').update({ payment_amount: numericAmount }).eq('id', schoolId)
     if (!error) {
       setSchools(schools.map(s => s.id === schoolId ? { ...s, payment_amount: numericAmount } : s))
+    } else {
+      alert(`Failed to save term fee amount: ${error.message}\n\nIf this mentions a missing column, scripts/005_add_ncba_payment_integration.sql still needs to be run in the Supabase SQL Editor.`)
     }
     setSavingSchool(null)
   }
@@ -208,6 +210,8 @@ export default function SuperAdminPage() {
     const { error } = await supabase.from('schools').update({ payment_phone_number: phone || null }).eq('id', schoolId)
     if (!error) {
       setSchools(schools.map(s => s.id === schoolId ? { ...s, payment_phone_number: phone || null } : s))
+    } else {
+      alert(`Failed to save payment phone number: ${error.message}\n\nIf this mentions a missing column, scripts/005_add_ncba_payment_integration.sql still needs to be run in the Supabase SQL Editor.`)
     }
     setSavingSchool(null)
   }
@@ -224,6 +228,8 @@ export default function SuperAdminPage() {
     const { error } = await supabase.from('schools').update(updates).eq('id', schoolId)
     if (!error) {
       setSchools(schools.map(s => s.id === schoolId ? { ...s, ...updates } : s))
+    } else {
+      alert(`Failed to update lock status: ${error.message}\n\nIf this mentions a missing column, scripts/005_add_ncba_payment_integration.sql still needs to be run in the Supabase SQL Editor.`)
     }
     setSavingSchool(null)
   }

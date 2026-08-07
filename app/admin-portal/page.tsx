@@ -73,7 +73,11 @@ export default function AdminOverviewPage() {
 
   const toggleSessionLock = async (sessionId: string, currentLocked: boolean) => {
     const supabase = createClient()
-    await supabase.from('sessions').update({ is_locked: !currentLocked }).eq('id', sessionId)
+    // Always stamp locked_by so this reads as a deliberate admin lock, not a stale
+    // "System - Deadline" value left over from an earlier auto-lock - per-teacher
+    // deadline overrides are only allowed to bypass the automatic deadline lock,
+    // never an admin's explicit one.
+    await supabase.from('sessions').update({ is_locked: !currentLocked, locked_by: !currentLocked ? 'Admin' : null }).eq('id', sessionId)
     loadDeadlines()
   }
 
