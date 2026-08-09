@@ -10,12 +10,14 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { LogOut, BookOpen, ArrowRight, AlertCircle } from 'lucide-react'
+import { MyTimetablePanel } from '@/components/my-timetable-panel'
 
 interface TeacherSession {
   teacherId: string
   name: string
   email: string
   schoolId: string
+  schoolName?: string
   pin: string
 }
 
@@ -285,6 +287,11 @@ export default function TeacherDashboard() {
               </CardContent>
             </Card>
           )}
+        </div>
+
+        {/* Timetable Section */}
+        <div className="mb-8">
+          <MyTimetablePanel schoolId={session.schoolId} schoolName={session.schoolName || ''} teacherId={session.teacherId} />
         </div>
 
         {/* Info Box */}

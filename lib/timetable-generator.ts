@@ -116,10 +116,37 @@ const slotKey = (day: number, period: number) => `${day}|${period}`
 const teacherSlotKey = (teacherId: string, day: number, period: number) => `${teacherId}|${day}|${period}`
 const teacherDayKey = (teacherId: string, day: number) => `${teacherId}|${day}`
 
+export type SubjectTimingPreference = 'morning' | 'afternoon' | 'neutral'
+
+// Grounded in two things: (1) chronobiology research showing sustained-focus
+// subjects (numeracy, language) are best served by learners' peak-alertness
+// morning hours, most pronounced for younger children; (2) Kenya's KICD
+// timetabling guidance, which calls for "balance in the distribution of
+// subjects for morning and afternoon hours" rather than a rigid rule - so
+// this is a soft scoring preference, not a hard constraint, and can be
+// overridden by the actual placement constraints (teacher availability etc).
+const MORNING_KEYWORDS = [
+  'math', 'hisabati', 'english', 'kiswahili', 'kusoma', 'reading', 'language',
+  'science', 'sayansi', 'literacy',
+]
+const AFTERNOON_KEYWORDS = [
+  'cre', 'ire', 'hre', 'religio', 'creative art', 'cas', 'physical', ' pe ', 'sport',
+  'music', 'muziki', 'agricultur', 'kilimo', 'environmental', 'mazingira',
+  'pastoral', 'life skill',
+]
+
+export function classifySubjectTiming(subjectName: string): SubjectTimingPreference {
+  const name = ` ${subjectName.trim().toLowerCase()} `
+  if (MORNING_KEYWORDS.some((k) => name.includes(k))) return 'morning'
+  if (AFTERNOON_KEYWORDS.some((k) => name.includes(k))) return 'afternoon'
+  return 'neutral'
+}
+
 function findBestSlot(
   subj: TimetableSubjectInput,
   classGrid: Map<string, string>,
   subjectDayCount: Map<string, number>,
+  subjectAtPeriodAcrossDays: Map<string, number>,
   teacherBusy: Set<string>,
   teacherDayCount: Map<string, number>,
   teacherMaxPerDay: Map<string, number | null>,
@@ -152,12 +179,44 @@ function findBestSlot(
     return before === subj.subjectId || after === subj.subjectId
   }
 
+  const timing = classifySubjectTiming(subj.subjectName)
+  const midpoint = periodsPerDay / 2
+
+  // Lower is better. Combines every soft preference into one score so a
+  // single ranking pass balances them, instead of one preference always
+  // trumping the others via a fixed sort order.
+  const scoreCandidate = (day: number, period: number) => {
+    let cost = 0
+
+    if (spreadEvenly) {
+      // Discourage cramming a subject's periods onto the same day.
+      cost += (subjectDayCount.get(`${subj.subjectId}|${day}`) || 0) * 10
+    }
+
+    if (timing === 'morning') {
+      cost += Math.max(0, period - midpoint) * 3
+    } else if (timing === 'afternoon') {
+      cost += Math.max(0, midpoint - period) * 3
+    }
+
+    // Discourage a rigid "this subject is always period N" pattern repeating
+    // across every day - the whole point is that today's lesson order
+    // shouldn't be a carbon copy of tomorrow's.
+    cost += (subjectAtPeriodAcrossDays.get(`${period}|${subj.subjectId}`) || 0) * 2
+
+    // Small random jitter breaks remaining ties randomly rather than always
+    // picking the same slot deterministically, so the result actually looks
+    // mixed instead of mechanically repeating a template.
+    cost += Math.random()
+
+    return cost
+  }
+
   // Strict constraints first, relaxing in fixed stages rather than giving up
   // immediately - a full week is small enough that this stays cheap.
   const stages = [
-    { respectConsecutive: avoidConsecutive, preferSpread: spreadEvenly },
-    { respectConsecutive: false, preferSpread: spreadEvenly },
-    { respectConsecutive: false, preferSpread: false },
+    { respectConsecutive: avoidConsecutive },
+    { respectConsecutive: false },
   ]
 
   for (const stage of stages) {
@@ -168,14 +227,7 @@ function findBestSlot(
     })
     if (candidates.length === 0) continue
 
-    if (stage.preferSpread) {
-      candidates.sort((a, b) => {
-        const countA = subjectDayCount.get(`${subj.subjectId}|${a.day}`) || 0
-        const countB = subjectDayCount.get(`${subj.subjectId}|${b.day}`) || 0
-        return countA - countB
-      })
-    }
-
+    candidates.sort((a, b) => scoreCandidate(a.day, a.period) - scoreCandidate(b.day, b.period))
     return candidates[0]
   }
 
@@ -199,8 +251,14 @@ export function generateTimetable(
   for (const cls of classes) {
     const classGrid = new Map<string, string>()
     const subjectDayCount = new Map<string, number>()
+    const subjectAtPeriodAcrossDays = new Map<string, number>()
 
-    const classSubjects = [...cls.subjects].sort((a, b) => b.periodsPerWeek - a.periodsPerWeek)
+    // Most-constrained-first (highest periods/week), with a random tiebreak
+    // among equally-constrained subjects so every class doesn't end up with
+    // an identical relative placement order.
+    const classSubjects = [...cls.subjects].sort(
+      (a, b) => b.periodsPerWeek - a.periodsPerWeek || Math.random() - 0.5
+    )
 
     for (const subj of classSubjects) {
       if (!subj.teacherId) {
@@ -219,6 +277,7 @@ export function generateTimetable(
           subj,
           classGrid,
           subjectDayCount,
+          subjectAtPeriodAcrossDays,
           teacherBusy,
           teacherDayCount,
           teacherMaxPerDay,
@@ -240,6 +299,8 @@ export function generateTimetable(
         }
         const sdk = `${subj.subjectId}|${day}`
         subjectDayCount.set(sdk, (subjectDayCount.get(sdk) || 0) + 1)
+        const pak = `${period}|${subj.subjectId}`
+        subjectAtPeriodAcrossDays.set(pak, (subjectAtPeriodAcrossDays.get(pak) || 0) + 1)
         placed++
       }
 
