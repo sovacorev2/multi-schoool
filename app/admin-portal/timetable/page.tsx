@@ -304,8 +304,15 @@ export default function TimetablePage() {
     setGenResult({ entryCount: result.entries.length, conflicts: result.conflicts, warnings: result.warnings })
     setIsGenerating(false)
 
-    // If the View tab is already pointed at this term/year, refresh it.
-    if (viewTerm === genTerm && viewYear === genYear) loadViewEntries()
+    // Point the View tab at what was just generated - otherwise it's still
+    // sitting on whatever term/class it last had selected (often the default,
+    // Term 1) and switching tabs shows "no timetable generated" even though
+    // one was just created for a different term. Also pick the first class so
+    // switching tabs shows the result immediately, not another empty picker.
+    setViewTerm(genTerm)
+    setViewYear(genYear)
+    setViewMode('class')
+    if (classes.length > 0) setViewClassId(classes[0].id)
   }
 
   // --- View ---
@@ -648,10 +655,17 @@ export default function TimetablePage() {
 
                   {genResult.warnings.length > 0 && (
                     <div>
-                      <p className="text-sm font-medium text-amber-700 flex items-center gap-1 mb-1"><AlertTriangle className="w-4 h-4" /> {genResult.warnings.length} warning(s)</p>
-                      <div className="space-y-1">
+                      <p className="text-sm font-medium text-amber-700 flex items-center gap-1 mb-1">
+                        <AlertTriangle className="w-4 h-4" /> {genResult.warnings.length} subject{genResult.warnings.length !== 1 ? 's' : ''} with no teacher assigned
+                      </p>
+                      <p className="text-xs text-gray-500 mb-2">
+                        These periods were still placed on the timetable, just with no teacher shown for them. Assign a teacher to each in the admin portal&apos;s Teachers section, then regenerate to fill them in.
+                      </p>
+                      <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
                         {genResult.warnings.map((w, i) => (
-                          <div key={i} className="text-xs bg-amber-50 border border-amber-200 rounded p-2">{w.message}</div>
+                          <div key={i} className="text-xs bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                            <span className="font-medium">{w.className}</span> - {w.subjectName}
+                          </div>
                         ))}
                       </div>
                     </div>
