@@ -12,6 +12,7 @@ import {
   Plus, Edit2, Save, X, Eye, EyeOff, LogOut, Users, Check,
   CalendarClock, FolderOpen,
 } from 'lucide-react'
+import { SUPER_ADMIN_PASSWORD } from './_shared/auth'
 
 interface School {
   id: string
@@ -51,8 +52,6 @@ interface PaymentTransaction {
   initiated_at: string
   completed_at: string | null
 }
-
-const SUPER_ADMIN_PASSWORD = 'shuletech2024'
 
 export default function SuperAdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -473,9 +472,19 @@ export default function SuperAdminPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <a href="/super-admin/resources">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-gray-600 hover:text-teal-600 hover:border-teal-600"
+                >
+                  <FolderOpen className="w-4 h-4 mr-2" />
+                  Resource Centre
+                </Button>
+              </a>
               <a href="/super-admin/sms-management">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   className="text-gray-600 hover:text-blue-600 hover:border-blue-600"
                 >
@@ -483,7 +492,7 @@ export default function SuperAdminPage() {
                   SMS Management
                 </Button>
               </a>
-              <Button 
+              <Button
                 variant="outline" 
                 size="sm"
                 onClick={() => setIsAuthenticated(false)}

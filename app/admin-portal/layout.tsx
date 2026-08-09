@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Shield, Eye, EyeOff, Settings, Clock, ArrowLeft,
-  GraduationCap, Users, Lock, LogOut, CalendarClock,
+  GraduationCap, Users, Lock, LogOut, CalendarClock, FolderOpen,
 } from 'lucide-react'
 import { AdminPWARegistration } from '@/components/admin-pwa-registration'
 import { SchoolLockedScreen } from '@/components/school-locked-screen'
@@ -289,9 +289,12 @@ function AdminPortalShell({ children }: { children: React.ReactNode }) {
     )
   }
 
-  const navItemsWithFeatures = school?.feature_timetabling
-    ? [...BASE_NAV_ITEMS.slice(0, 3), { href: '/admin-portal/timetable', label: 'Timetable', icon: CalendarClock }, ...BASE_NAV_ITEMS.slice(3)]
-    : BASE_NAV_ITEMS
+  const navItemsWithFeatures = [
+    ...BASE_NAV_ITEMS.slice(0, 3),
+    ...(school?.feature_timetabling ? [{ href: '/admin-portal/timetable', label: 'Timetable', icon: CalendarClock }] : []),
+    ...(school?.feature_exam_hub ? [{ href: '/admin-portal/resources', label: 'Resource Centre', icon: FolderOpen }] : []),
+    ...BASE_NAV_ITEMS.slice(3),
+  ]
 
   return (
     <div className="min-h-screen bg-gray-50">
