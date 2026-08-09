@@ -2,9 +2,11 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Mail } from 'lucide-react'
+import { Mail, Phone } from 'lucide-react'
 
-const SUPPORT_EMAIL = 'hello@shuletechsolutions.co.ke'
+const SUPPORT_EMAIL = 'admin@shuletechsolutions.co.ke'
+const SUPPORT_PHONE_DISPLAY = '0756288563'
+const SUPPORT_PHONE_TEL = '+254756288563'
 
 export function SchoolLockedScreen({
   school,
@@ -53,12 +55,20 @@ export function SchoolLockedScreen({
               <p className="text-sm text-muted-foreground dark:text-muted-foreground">
                 As the school admin, you can reach out to ShuleTech directly to sort out payment and get access restored.
               </p>
-              <Button asChild className="w-full">
-                <a href={mailtoHref}>
-                  <Mail className="w-4 h-4 mr-2" />
-                  Contact ShuleTech Support
-                </a>
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button asChild className="w-full">
+                  <a href={mailtoHref}>
+                    <Mail className="w-4 h-4 mr-2" />
+                    Email {SUPPORT_EMAIL}
+                  </a>
+                </Button>
+                <Button asChild variant="outline" className="w-full">
+                  <a href={`tel:${SUPPORT_PHONE_TEL}`}>
+                    <Phone className="w-4 h-4 mr-2" />
+                    Call {SUPPORT_PHONE_DISPLAY}
+                  </a>
+                </Button>
+              </div>
             </>
           ) : (
             <p className="text-sm text-muted-foreground dark:text-muted-foreground">
