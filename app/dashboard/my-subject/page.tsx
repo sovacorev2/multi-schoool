@@ -198,6 +198,7 @@ export default function MySubjectPage() {
             <td style="border:1px solid #d1d5db;padding:4px 6px;">${r.learner.name}</td>
             <td style="border:1px solid #d1d5db;padding:4px 6px;text-align:center;font-weight:700;">${r.score}</td>
             <td style="border:1px solid #d1d5db;padding:4px 6px;text-align:center;">${r.level?.level || "-"}</td>
+            <td style="border:1px solid #d1d5db;padding:4px 6px;text-align:center;">${r.level?.points ?? "-"}</td>
           </tr>`
         )
         .join("");
@@ -237,13 +238,13 @@ export default function MySubjectPage() {
   </div>
 
   <div class="section-title">Top 5</div>
-  <table><thead><tr><th>Rank</th><th>Learner</th><th>Score</th><th>Level</th></tr></thead><tbody>${rowsHTML(topFive)}</tbody></table>
+  <table><thead><tr><th>Rank</th><th>Learner</th><th>Score</th><th>Level</th><th>Points</th></tr></thead><tbody>${rowsHTML(topFive)}</tbody></table>
 
   <div class="section-title">Bottom 5</div>
-  <table><thead><tr><th>Rank</th><th>Learner</th><th>Score</th><th>Level</th></tr></thead><tbody>${rowsHTML(bottomFive)}</tbody></table>
+  <table><thead><tr><th>Rank</th><th>Learner</th><th>Score</th><th>Level</th><th>Points</th></tr></thead><tbody>${rowsHTML(bottomFive)}</tbody></table>
 
   <div class="section-title">Full Marklist</div>
-  <table><thead><tr><th>Rank</th><th>Learner</th><th>Score</th><th>Level</th></tr></thead><tbody>${rowsHTML(results)}</tbody></table>
+  <table><thead><tr><th>Rank</th><th>Learner</th><th>Score</th><th>Level</th><th>Points</th></tr></thead><tbody>${rowsHTML(results)}</tbody></table>
 </body>
 </html>`
 
@@ -377,6 +378,7 @@ export default function MySubjectPage() {
                           <TableHead>Learner</TableHead>
                           <TableHead className="text-center">Score</TableHead>
                           <TableHead className="text-center">Level</TableHead>
+                          <TableHead className="text-center">Points</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -386,6 +388,7 @@ export default function MySubjectPage() {
                             <TableCell className="font-medium">{r.learner.name}</TableCell>
                             <TableCell className="text-center font-semibold">{r.score}</TableCell>
                             <TableCell className="text-center">{r.level?.level || "-"}</TableCell>
+                            <TableCell className="text-center">{r.level?.points ?? "-"}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -407,6 +410,7 @@ export default function MySubjectPage() {
                           <TableHead>Learner</TableHead>
                           <TableHead className="text-center">Score</TableHead>
                           <TableHead className="text-center">Level</TableHead>
+                          <TableHead className="text-center">Points</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -416,6 +420,7 @@ export default function MySubjectPage() {
                             <TableCell className="font-medium">{r.learner.name}</TableCell>
                             <TableCell className="text-center font-semibold">{r.score}</TableCell>
                             <TableCell className="text-center">{r.level?.level || "-"}</TableCell>
+                            <TableCell className="text-center">{r.level?.points ?? "-"}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -444,6 +449,7 @@ export default function MySubjectPage() {
                           <TableHead>Learner</TableHead>
                           <TableHead className="text-center">Score</TableHead>
                           <TableHead className="text-center">Level</TableHead>
+                          <TableHead className="text-center">Points</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -453,6 +459,7 @@ export default function MySubjectPage() {
                             <TableCell className="font-medium">{r.learner.name}</TableCell>
                             <TableCell className="text-center">{r.score}</TableCell>
                             <TableCell className="text-center">{r.level?.level || "-"}</TableCell>
+                            <TableCell className="text-center">{r.level?.points ?? "-"}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>

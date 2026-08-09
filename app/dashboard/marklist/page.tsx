@@ -81,6 +81,8 @@ export default function MarklistPage() {
       rubricDistribution: { r4: number, r3: number, r2: number, r1: number }
       topSubject: string
       weakestSubject: string
+      topFive: { name: string; totalPoints: number; average: number }[]
+      bottomFive: { name: string; totalPoints: number; average: number }[]
     }[]
     categoryAvg: number
     totalLearners: number
@@ -90,7 +92,7 @@ export default function MarklistPage() {
     passRate: number
     totalLearnersWithMarks: number
     genderStats: { maleAvg: number; femaleAvg: number; maleCount: number; femaleCount: number }
-    subjectRankings: { name: string; avg: number; classCount: number }[]
+    subjectRankingsByCategory: Record<string, { name: string; avg: number; classCount: number }[]>
     topLearnersByCategory: Record<string, { name: string; className: string; totalPoints: number; average: number }[]>
     bottomLearnersByCategory: Record<string, { name: string; className: string; totalPoints: number; average: number }[]>
   } | null>(null)
@@ -359,7 +361,18 @@ export default function MarklistPage() {
           )
         })
         catClasses.forEach(c => classIdToCategory.set(c.id, category.name))
-        const classResults = []
+        const classResults: {
+          name: string
+          classId: string
+          totalLearners: number
+          classAvg: number
+          subjectCount: number
+          rubricDistribution: { r4: number; r3: number; r2: number; r1: number }
+          topSubject: string
+          weakestSubject: string
+          topFive: { name: string; totalPoints: number; average: number }[]
+          bottomFive: { name: string; totalPoints: number; average: number }[]
+        }[] = []
 
         for (const cls of catClasses) {
           // Get session from map instead of querying
@@ -375,6 +388,8 @@ export default function MarklistPage() {
               rubricDistribution: { r4: 0, r3: 0, r2: 0, r1: 0 },
               topSubject: 'N/A',
               weakestSubject: 'N/A',
+              topFive: [],
+              bottomFive: [],
             })
             continue
           }
@@ -419,6 +434,26 @@ export default function MarklistPage() {
 
           const sorted = [...subjectAvgs].sort((a, b) => b.avg - a.avg)
 
+          // Per-learner totals within this one class, for a per-class Top 5 / Bottom 5 -
+          // ranked by CBC points like every other ranking in this report, not raw %.
+          const learnerTotalsInClass = new Map<string, { total: number; count: number; points: number }>()
+          for (const m of clsMarks) {
+            if (m.score === null || m.score === undefined || !m.learner_id) continue
+            const entry = learnerTotalsInClass.get(m.learner_id) || { total: 0, count: 0, points: 0 }
+            entry.total += Number(m.score)
+            entry.count += 1
+            entry.points += getSubjectLevelPoints(m.score, cls.name, currentSchool?.name)?.points || 0
+            learnerTotalsInClass.set(m.learner_id, entry)
+          }
+          const learnerNameById = new Map<string, string>(clsLearners.map((l: any): [string, string] => [l.id, l.name]))
+          const classLearnerPerformance = Array.from(learnerTotalsInClass.entries())
+            .map(([learnerId, { total, count, points }]) => ({
+              name: learnerNameById.get(learnerId) || 'Unknown',
+              totalPoints: Math.round(points * 10) / 10,
+              average: count > 0 ? Math.round((total / count) * 10) / 10 : 0,
+            }))
+            .sort((a, b) => b.totalPoints - a.totalPoints)
+
           classResults.push({
             name: cls.name,
             classId: cls.id,
@@ -428,6 +463,8 @@ export default function MarklistPage() {
             rubricDistribution: { r4: totalR4, r3: totalR3, r2: totalR2, r1: totalR1 },
             topSubject: sorted[0]?.name || 'N/A',
             weakestSubject: sorted[sorted.length - 1]?.name || 'N/A',
+            topFive: classLearnerPerformance.slice(0, 5),
+            bottomFive: classLearnerPerformance.slice(-5).reverse(),
           })
         }
 
@@ -515,25 +552,38 @@ export default function MarklistPage() {
         ? (learnerPerformance.filter(l => l.average >= 50).length / learnerPerformance.length) * 100
         : 0
 
-      // School-wide subject rankings: aggregate same-named subjects across all classes
-      const subjectAgg = new Map<string, { sum: number; count: number; classIds: Set<string> }>()
+      // School-wide subject rankings: aggregate same-named subjects across all classes,
+      // but keep the ranking scoped within each CBC level (Pre-School/Lower Primary/
+      // Upper Primary/Junior Secondary) - a Grade 2 subject's mean isn't a fair
+      // comparison against a Grade 9 subject's mean, so pooling them school-wide
+      // produces a meaningless ranking.
+      const subjectAggByCategory = new Map<string, Map<string, { sum: number; count: number; classIds: Set<string> }>>()
       for (const subj of (allSubjects || [])) {
         const subjMarks = (allMarks || []).filter(m => m.subject_id === subj.id && m.score !== null)
         if (subjMarks.length === 0) continue
+        const category = classIdToCategory.get(subj.class_id) || 'Other'
         const key = subj.name.trim().toUpperCase()
+        if (!subjectAggByCategory.has(category)) subjectAggByCategory.set(category, new Map())
+        const subjectAgg = subjectAggByCategory.get(category)!
         const entry = subjectAgg.get(key) || { sum: 0, count: 0, classIds: new Set<string>() }
         entry.sum += subjMarks.reduce((a, m) => a + Number(m.score || 0), 0)
         entry.count += subjMarks.length
         entry.classIds.add(subj.class_id)
         subjectAgg.set(key, entry)
       }
-      const subjectRankings = Array.from(subjectAgg.entries())
-        .map(([name, { sum, count, classIds }]) => ({
-          name,
-          avg: count > 0 ? Math.round((sum / count) * 10) / 10 : 0,
-          classCount: classIds.size,
-        }))
-        .sort((a, b) => b.avg - a.avg)
+      const subjectRankingsByCategory: Record<string, { name: string; avg: number; classCount: number }[]> = {}
+      for (const category of CATEGORIES) {
+        const subjectAgg = subjectAggByCategory.get(category.name)
+        subjectRankingsByCategory[category.name] = subjectAgg
+          ? Array.from(subjectAgg.entries())
+              .map(([name, { sum, count, classIds }]) => ({
+                name,
+                avg: count > 0 ? Math.round((sum / count) * 10) / 10 : 0,
+                classCount: classIds.size,
+              }))
+              .sort((a, b) => b.avg - a.avg)
+          : []
+      }
 
       setSchoolAnalysisExtra({
         overallSchoolAvg: Math.round(overallSchoolAvg * 10) / 10,
@@ -545,7 +595,7 @@ export default function MarklistPage() {
           maleCount: maleLearners.length,
           femaleCount: femaleLearners.length,
         },
-        subjectRankings,
+        subjectRankingsByCategory,
         topLearnersByCategory,
         bottomLearnersByCategory,
       })

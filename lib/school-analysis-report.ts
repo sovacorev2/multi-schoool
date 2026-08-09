@@ -15,6 +15,8 @@ export interface SchoolAnalysisCategory {
     rubricDistribution: { r4: number; r3: number; r2: number; r1: number }
     topSubject: string
     weakestSubject: string
+    topFive: { name: string; totalPoints: number; average: number }[]
+    bottomFive: { name: string; totalPoints: number; average: number }[]
   }[]
   categoryAvg: number
   totalLearners: number
@@ -25,7 +27,11 @@ export interface SchoolAnalysisExtra {
   passRate: number
   totalLearnersWithMarks: number
   genderStats: { maleAvg: number; femaleAvg: number; maleCount: number; femaleCount: number }
-  subjectRankings: { name: string; avg: number; classCount: number }[]
+  // Keyed by CBC level - a subject's mean is only a fair comparison against
+  // other subjects at the same level (JSS subjects max at 8pts, lower grades at
+  // 4pts, and the classes/curriculum differ), so rankings are scoped per level
+  // instead of pooled school-wide.
+  subjectRankingsByCategory: Record<string, { name: string; avg: number; classCount: number }[]>
   // Keyed by CBC level ('Pre-School', 'Lower Primary', 'Upper Primary', 'Junior Secondary').
   // Ranked by total rubric points, not average % - CBC weighs points more heavily, and the
   // point scales differ by level (e.g. JSS subjects max at 8pts, lower grades at 4pts), so
@@ -53,7 +59,7 @@ function generateRecommendations(
   overallAvg: number,
   passRate: number,
   categories: SchoolAnalysisCategory[],
-  subjectRankings: { name: string; avg: number; classCount: number }[],
+  subjectRankingsByCategory: Record<string, { name: string; avg: number; classCount: number }[]>,
   genderStats: SchoolAnalysisExtra['genderStats']
 ): string[] {
   const recs: string[] = []
@@ -79,15 +85,20 @@ function generateRecommendations(
     recs.push(`${weakest.category} has the lowest mean score (${weakest.categoryAvg}%) among all levels - consider allocating additional teaching resources or peer-mentoring support here. ${strongest.category} is the school's strongest level (${strongest.categoryAvg}%) and its teaching approaches may be worth sharing across other levels.`)
   }
 
-  // Split into a "strongest" and "weakest" group without overlap - with few
-  // subjects, slicing a fixed top-3/bottom-3 can select the same subjects twice.
-  const halfCount = Math.min(3, Math.floor(subjectRankings.length / 2))
-  if (halfCount > 0) {
+  // Subject strengths/weaknesses only make sense compared within the same CBC
+  // level (a Grade 2 subject's mean isn't a fair comparison against a Grade 9
+  // subject's), so this runs once per level instead of pooling all subjects
+  // school-wide. Split into a "strongest" and "weakest" group without overlap -
+  // with few subjects, a fixed top-3/bottom-3 can select the same subject twice.
+  for (const category of categories) {
+    const subjectRankings = subjectRankingsByCategory[category.category] || []
+    const halfCount = Math.min(3, Math.floor(subjectRankings.length / 2))
+    if (halfCount === 0) continue
     const strongSubjects = subjectRankings.slice(0, halfCount)
     const weakSubjects = subjectRankings.slice(-halfCount).reverse()
     recs.push(
-      `School-wide, ${weakSubjects.map(s => s.name).join(', ')} ${weakSubjects.length > 1 ? 'are' : 'is'} the area${weakSubjects.length > 1 ? 's' : ''} needing the most attention (mean ${weakSubjects.map(s => s.avg + '%').join(', ')}). ` +
-      `${strongSubjects.map(s => s.name).join(', ')} ${strongSubjects.length > 1 ? 'are' : 'is'} performing strongest (mean ${strongSubjects.map(s => s.avg + '%').join(', ')}) and can serve as a model for teaching approaches in weaker subjects.`
+      `${category.category}: ${weakSubjects.map(s => s.name).join(', ')} ${weakSubjects.length > 1 ? 'are' : 'is'} the area${weakSubjects.length > 1 ? 's' : ''} needing the most attention (mean ${weakSubjects.map(s => s.avg + '%').join(', ')}). ` +
+      `${strongSubjects.map(s => s.name).join(', ')} ${strongSubjects.length > 1 ? 'are' : 'is'} performing strongest (mean ${strongSubjects.map(s => s.avg + '%').join(', ')}) and can serve as a model for teaching approaches in weaker subjects at this level.`
     )
   }
 
@@ -136,7 +147,7 @@ export function generateSchoolAnalysisHTML(
     extra.overallSchoolAvg,
     extra.passRate,
     categories,
-    extra.subjectRankings,
+    extra.subjectRankingsByCategory,
     extra.genderStats
   )
 
@@ -192,14 +203,16 @@ export function generateSchoolAnalysisHTML(
     `
   }).join('')
 
-  const subjectRankingRows = extra.subjectRankings.map((s, idx) => `
-    <tr>
-      <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;">${idx + 1}</td>
-      <td style="border:1px solid #d1d5db;padding:5px 7px;font-weight:600;">${s.name}</td>
-      <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;">${s.classCount}</td>
-      <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-weight:700;color:${s.avg >= 58 ? '#15803d' : s.avg >= 41 ? '#b45309' : '#dc2626'};">${s.avg}%</td>
-    </tr>
-  `).join('')
+  function subjectRankingRows(rankings: { name: string; avg: number; classCount: number }[]): string {
+    return rankings.map((s, idx) => `
+      <tr>
+        <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;">${idx + 1}</td>
+        <td style="border:1px solid #d1d5db;padding:5px 7px;font-weight:600;">${s.name}</td>
+        <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;">${s.classCount}</td>
+        <td style="border:1px solid #d1d5db;padding:5px 7px;text-align:center;font-weight:700;color:${s.avg >= 58 ? '#15803d' : s.avg >= 41 ? '#b45309' : '#dc2626'};">${s.avg}%</td>
+      </tr>
+    `).join('')
+  }
 
   // Simple horizontal SVG bar chart - no charting library dependency, matches the
   // plain-SVG pattern already used elsewhere in this app's print reports.
@@ -230,13 +243,40 @@ export function generateSchoolAnalysisHTML(
     categories.map(cat => ({ label: cat.category, value: cat.categoryAvg, color: categoryColors[cat.category] || '#1e3a5f' }))
   )
 
-  const subjectComparisonChart = barChart(
-    extra.subjectRankings.slice(0, 8).map(s => ({
-      label: s.name,
-      value: s.avg,
-      color: s.avg >= 58 ? '#15803d' : s.avg >= 41 ? '#b45309' : '#dc2626',
-    }))
-  )
+  // Subject ranking sections and bar charts, one per CBC level - keeps every
+  // comparison apples-to-apples instead of ranking a Grade 2 subject's mean
+  // against a Grade 9 subject's.
+  const subjectRankingSections = categories.map(cat => {
+    const rankings = extra.subjectRankingsByCategory[cat.category] || []
+    if (rankings.length === 0) return ''
+    const color = categoryColors[cat.category] || '#1e3a5f'
+    const chart = barChart(
+      rankings.slice(0, 8).map(s => ({
+        label: s.name,
+        value: s.avg,
+        color: s.avg >= 58 ? '#15803d' : s.avg >= 41 ? '#b45309' : '#dc2626',
+      }))
+    )
+    return `
+      <div class="avoid-break" style="margin-bottom:14px;">
+        <div style="background:${color};color:#fff;font-size:11px;font-weight:700;padding:6px 10px;border-radius:4px 4px 0 0;">${cat.category} - Subject Performance (Strongest &rarr; Weakest)</div>
+        <div style="border:1px solid #d1d5db;border-top:none;padding:8px;">
+          <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:10px;">
+            <thead>
+              <tr style="background:#e5e7eb;">
+                <th style="border:1px solid #d1d5db;padding:5px 7px;">Rank</th>
+                <th style="border:1px solid #d1d5db;padding:5px 7px;text-align:left;">Subject</th>
+                <th style="border:1px solid #d1d5db;padding:5px 7px;">Classes Offering</th>
+                <th style="border:1px solid #d1d5db;padding:5px 7px;">Mean</th>
+              </tr>
+            </thead>
+            <tbody>${subjectRankingRows(rankings)}</tbody>
+          </table>
+          ${chart}
+        </div>
+      </div>
+    `
+  }).join('')
 
   function learnerRows(list: { name: string; className: string; totalPoints: number; average: number }[], color: string): string {
     return list.map((l, idx) => `
@@ -269,6 +309,53 @@ export function generateSchoolAnalysisHTML(
             <div style="font-size:10px;font-weight:700;color:#dc2626;margin-bottom:4px;">NEEDS SUPPORT (BOTTOM 10)</div>
             <table style="font-size:10px;"><thead>${headerRow}</thead><tbody>${learnerRows(bottom, '#dc2626') || emptyRow}</tbody></table>
           </div>
+        </div>
+      </div>
+    `
+  }).join('')
+
+  function classLearnerRows(list: { name: string; totalPoints: number; average: number }[], color: string): string {
+    return list.map((l, idx) => `
+      <tr>
+        <td style="border:1px solid #d1d5db;padding:4px 6px;text-align:center;">${idx + 1}</td>
+        <td style="border:1px solid #d1d5db;padding:4px 6px;font-weight:600;">${l.name}</td>
+        <td style="border:1px solid #d1d5db;padding:4px 6px;text-align:center;font-weight:700;color:${color};">${l.totalPoints} pts</td>
+        <td style="border:1px solid #d1d5db;padding:4px 6px;text-align:center;color:#6b7280;">${l.average}%</td>
+      </tr>
+    `).join('')
+  }
+
+  // Per-class Top 5 / Bottom 5 - every single class, not just pooled by level -
+  // this is the detail senior teachers actually need to identify who to support
+  // and who to stretch, class by class, ahead of releasing exam results.
+  const perClassTopBottomSections = categories.map(cat => {
+    const emptyRow = `<tr><td colspan="4" style="border:1px solid #d1d5db;padding:6px;text-align:center;color:#9ca3af;">No data</td></tr>`
+    const headerRow = `<tr style="background:#e5e7eb;"><th style="border:1px solid #d1d5db;padding:4px 6px;">#</th><th style="border:1px solid #d1d5db;padding:4px 6px;text-align:left;">Learner</th><th style="border:1px solid #d1d5db;padding:4px 6px;">Points</th><th style="border:1px solid #d1d5db;padding:4px 6px;">Avg</th></tr>`
+    const color = categoryColors[cat.category] || '#1e3a5f'
+
+    const classBlocks = cat.classes.map(cls => `
+      <div class="avoid-break" style="margin-bottom:10px;">
+        <div style="font-size:10px;font-weight:700;color:${color};margin-bottom:3px;">${cls.name} (${cls.totalLearners} learners)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div>
+            <div style="font-size:9px;font-weight:700;color:#16a34a;margin-bottom:2px;">TOP 5</div>
+            <table style="font-size:10px;width:100%;"><thead>${headerRow}</thead><tbody>${classLearnerRows(cls.topFive, '#15803d') || emptyRow}</tbody></table>
+          </div>
+          <div>
+            <div style="font-size:9px;font-weight:700;color:#dc2626;margin-bottom:2px;">BOTTOM 5</div>
+            <table style="font-size:10px;width:100%;"><thead>${headerRow}</thead><tbody>${classLearnerRows(cls.bottomFive, '#dc2626') || emptyRow}</tbody></table>
+          </div>
+        </div>
+      </div>
+    `).join('')
+
+    if (!classBlocks) return ''
+
+    return `
+      <div style="margin-bottom:14px;">
+        <div style="background:${color};color:#fff;font-size:11px;font-weight:700;padding:6px 10px;border-radius:4px 4px 0 0;">${cat.category}</div>
+        <div style="border:1px solid #d1d5db;border-top:none;padding:8px;">
+          ${classBlocks}
         </div>
       </div>
     `
@@ -380,25 +467,20 @@ export function generateSchoolAnalysisHTML(
   </div>
   ${genderTotal === 0 ? '<p style="font-size:10px;color:#9ca3af;padding-bottom:8px;">No gender data available for this session\'s learners.</p>' : ''}
 
-  <!-- SUBJECT RANKINGS -->
-  <div class="section-title avoid-break">SCHOOL-WIDE SUBJECT PERFORMANCE (STRONGEST → WEAKEST)</div>
-  <table style="font-size:11px;">
-    <thead>
-      <tr style="background:#e5e7eb;">
-        <th style="border:1px solid #d1d5db;padding:5px 7px;">Rank</th>
-        <th style="border:1px solid #d1d5db;padding:5px 7px;text-align:left;">Subject</th>
-        <th style="border:1px solid #d1d5db;padding:5px 7px;">Classes Offering</th>
-        <th style="border:1px solid #d1d5db;padding:5px 7px;">Mean</th>
-      </tr>
-    </thead>
-    <tbody>${subjectRankingRows}</tbody>
-  </table>
-  <div style="padding:12px 0 4px;">${subjectComparisonChart}</div>
+  <!-- SUBJECT RANKINGS, PER LEVEL -->
+  <div class="section-title avoid-break">SUBJECT PERFORMANCE BY LEVEL (STRONGEST → WEAKEST, WITHIN EACH LEVEL)</div>
+  ${subjectRankingSections}
 
   <!-- TOP / BOTTOM PERFORMERS BY LEVEL -->
   <div class="section-title avoid-break" style="background:#7c3aed;">TOP &amp; BOTTOM PERFORMERS BY LEVEL (RANKED BY TOTAL POINTS)</div>
   <div style="padding-top:10px;">
     ${topBottomByCategorySections}
+  </div>
+
+  <!-- TOP / BOTTOM PERFORMERS BY CLASS -->
+  <div class="section-title avoid-break" style="background:#0f766e;">TOP &amp; BOTTOM PERFORMERS BY CLASS</div>
+  <div style="padding-top:10px;">
+    ${perClassTopBottomSections}
   </div>
 
   <!-- RECOMMENDATIONS -->
