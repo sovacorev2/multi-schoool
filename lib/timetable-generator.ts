@@ -61,6 +61,17 @@ export interface TimetableGenerationResult {
   warnings: TimetableWarning[]
 }
 
+function timeStringToMinutes(t: string): number {
+  const [h, m] = t.split(':').map(Number)
+  return (h || 0) * 60 + (m || 0)
+}
+
+function minutesToTimeString(mins: number): string {
+  const h = Math.floor(mins / 60) % 24
+  const m = mins % 60
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`
+}
+
 /** Teaching periods that fit in a day, after subtracting break time. */
 export function computePeriodsPerDay(
   schoolStartTime: string,
@@ -68,14 +79,37 @@ export function computePeriodsPerDay(
   periodLengthMinutes: number,
   breaks: { durationMinutes: number }[]
 ): number {
-  const toMinutes = (t: string) => {
-    const [h, m] = t.split(':').map(Number)
-    return (h || 0) * 60 + (m || 0)
-  }
-  const totalMinutes = toMinutes(schoolEndTime) - toMinutes(schoolStartTime)
+  const totalMinutes = timeStringToMinutes(schoolEndTime) - timeStringToMinutes(schoolStartTime)
   const totalBreakMinutes = breaks.reduce((sum, b) => sum + b.durationMinutes, 0)
   const teachingMinutes = Math.max(0, totalMinutes - totalBreakMinutes)
   return periodLengthMinutes > 0 ? Math.floor(teachingMinutes / periodLengthMinutes) : 0
+}
+
+export interface TimetablePeriodTime {
+  period: number
+  startTime: string
+  endTime: string
+}
+
+/** Clock start/end time for every teaching period, accounting for where breaks fall. */
+export function computePeriodTimes(
+  schoolStartTime: string,
+  periodLengthMinutes: number,
+  periodsPerDay: number,
+  breaks: { afterPeriodNumber: number; durationMinutes: number }[]
+): TimetablePeriodTime[] {
+  const breakAfterPeriod = new Map(breaks.map((b) => [b.afterPeriodNumber, b.durationMinutes]))
+  let cursor = timeStringToMinutes(schoolStartTime)
+  const result: TimetablePeriodTime[] = []
+  for (let period = 1; period <= periodsPerDay; period++) {
+    const start = cursor
+    const end = start + periodLengthMinutes
+    result.push({ period, startTime: minutesToTimeString(start), endTime: minutesToTimeString(end) })
+    cursor = end
+    const breakMinutes = breakAfterPeriod.get(period)
+    if (breakMinutes) cursor += breakMinutes
+  }
+  return result
 }
 
 const slotKey = (day: number, period: number) => `${day}|${period}`

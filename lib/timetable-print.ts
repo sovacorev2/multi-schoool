@@ -9,6 +9,16 @@ export interface TimetablePrintCell {
   subtitle: string | null
 }
 
+export interface TimetablePrintPeriodTime {
+  period: number
+  startTime: string
+  endTime: string
+}
+
+type Column =
+  | { type: 'period'; period: number; startTime: string; endTime: string }
+  | { type: 'break'; key: string; name: string; durationMinutes: number }
+
 export function generateTimetablePrintHTML(params: {
   title: string
   schoolName: string
@@ -16,42 +26,50 @@ export function generateTimetablePrintHTML(params: {
   daysPerWeek: number
   periodsPerDay: number
   breaks: { name: string; afterPeriodNumber: number; durationMinutes: number }[]
+  periodTimes: TimetablePrintPeriodTime[]
   cells: Record<string, TimetablePrintCell>
 }): string {
-  const { title, schoolName, termLabel, daysPerWeek, periodsPerDay, breaks, cells } = params
+  const { title, schoolName, termLabel, daysPerWeek, periodsPerDay, breaks, periodTimes, cells } = params
   const dayLabels = DAY_LABELS.slice(0, daysPerWeek)
-  const breaksByPeriod = new Map(breaks.map((b) => [b.afterPeriodNumber, b]))
+  const breaksByAfterPeriod = new Map(breaks.map((b) => [b.afterPeriodNumber, b]))
+  const timeByPeriod = new Map(periodTimes.map((p) => [p.period, p]))
 
-  let rowsHTML = ''
+  const columns: Column[] = []
   for (let period = 1; period <= periodsPerDay; period++) {
-    const dayCellsHTML = dayLabels
-      .map((_, dayIdx) => {
-        const day = dayIdx + 1
-        const cell = cells[`${day}|${period}`]
-        return `<td style="border:1px solid #d1d5db;padding:6px 8px;vertical-align:top;">${
-          cell
-            ? `<div style="font-weight:700;">${cell.subjectName}</div><div style="color:#6b7280;font-size:10px;">${cell.subtitle || ''}</div>`
-            : '<span style="color:#d1d5db;">-</span>'
-        }</td>`
-      })
-      .join('')
-
-    rowsHTML += `<tr>
-      <td style="border:1px solid #d1d5db;padding:6px 8px;text-align:center;background:#f9fafb;font-weight:600;">${period}</td>
-      ${dayCellsHTML}
-    </tr>`
-
-    const brk = breaksByPeriod.get(period)
-    if (brk) {
-      rowsHTML += `<tr>
-        <td colspan="${dayLabels.length + 1}" style="border:1px solid #d1d5db;padding:4px 8px;text-align:center;background:#fffbeb;color:#b45309;font-weight:600;font-size:11px;">
-          ${brk.name} (${brk.durationMinutes} min)
-        </td>
-      </tr>`
-    }
+    const t = timeByPeriod.get(period)
+    columns.push({ type: 'period', period, startTime: t?.startTime || '', endTime: t?.endTime || '' })
+    const brk = breaksByAfterPeriod.get(period)
+    if (brk) columns.push({ type: 'break', key: `break-${period}`, name: brk.name, durationMinutes: brk.durationMinutes })
   }
 
-  const headerCellsHTML = dayLabels.map((label) => `<th style="border:1px solid #d1d5db;padding:6px 8px;background:#e5e7eb;">${label}</th>`).join('')
+  const headerCellsHTML = columns
+    .map((col) =>
+      col.type === 'period'
+        ? `<th style="border:1px solid #d1d5db;padding:6px 8px;background:#e5e7eb;">Period ${col.period}<br/><span style="font-weight:400;color:#6b7280;font-size:10px;">${col.startTime} - ${col.endTime}</span></th>`
+        : `<th style="border:1px solid #d1d5db;padding:4px;background:#fef3c7;color:#b45309;font-size:10px;white-space:nowrap;">${col.name}<br/>(${col.durationMinutes}m)</th>`
+    )
+    .join('')
+
+  const rowsHTML = dayLabels
+    .map((label, dayIdx) => {
+      const day = dayIdx + 1
+      const rowCellsHTML = columns
+        .map((col) => {
+          if (col.type === 'break') return `<td style="border:1px solid #d1d5db;background:#fffbeb;"></td>`
+          const cell = cells[`${day}|${col.period}`]
+          return `<td style="border:1px solid #d1d5db;padding:6px 8px;vertical-align:top;">${
+            cell
+              ? `<div style="font-weight:700;">${cell.subjectName}</div><div style="color:#6b7280;font-size:10px;">${cell.subtitle || ''}</div>`
+              : '<span style="color:#d1d5db;">-</span>'
+          }</td>`
+        })
+        .join('')
+      return `<tr>
+        <td style="border:1px solid #d1d5db;padding:6px 8px;background:#f9fafb;font-weight:600;white-space:nowrap;">${label}</td>
+        ${rowCellsHTML}
+      </tr>`
+    })
+    .join('')
 
   return `<!DOCTYPE html>
 <html>
@@ -71,7 +89,7 @@ export function generateTimetablePrintHTML(params: {
   <h2>${schoolName}</h2>
   <div class="meta">${termLabel} &bull; Printed: ${new Date().toLocaleDateString()}</div>
   <table>
-    <thead><tr><th style="border:1px solid #d1d5db;padding:6px 8px;background:#e5e7eb;">Period</th>${headerCellsHTML}</tr></thead>
+    <thead><tr><th style="border:1px solid #d1d5db;padding:6px 8px;background:#e5e7eb;">Day</th>${headerCellsHTML}</tr></thead>
     <tbody>${rowsHTML}</tbody>
   </table>
 </body>

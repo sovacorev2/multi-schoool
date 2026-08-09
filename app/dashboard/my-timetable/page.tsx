@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/select'
 import { CalendarClock, Printer } from 'lucide-react'
 import { TimetableGrid, type TimetableGridCell, type TimetableGridBreak } from '@/components/timetable-grid'
-import { computePeriodsPerDay } from '@/lib/timetable-generator'
+import { computePeriodsPerDay, computePeriodTimes } from '@/lib/timetable-generator'
 import { generateTimetablePrintHTML, openTimetablePrintWindow } from '@/lib/timetable-print'
 
 const CURRENT_YEAR = new Date().getFullYear()
@@ -92,6 +92,9 @@ export default function MyTimetablePage() {
   const periodsPerDay = settings
     ? computePeriodsPerDay(settings.school_start_time, settings.school_end_time, settings.period_length_minutes, breaks.map((b) => ({ durationMinutes: b.duration_minutes })))
     : 0
+  const periodTimes = settings
+    ? computePeriodTimes(settings.school_start_time, settings.period_length_minutes, periodsPerDay, breaks.map((b) => ({ afterPeriodNumber: b.after_period_number, durationMinutes: b.duration_minutes })))
+    : []
 
   const gridBreaks: TimetableGridBreak[] = breaks.map((b) => ({ name: b.name, afterPeriodNumber: b.after_period_number, durationMinutes: b.duration_minutes }))
 
@@ -117,6 +120,7 @@ export default function MyTimetablePage() {
       daysPerWeek: settings.days_per_week,
       periodsPerDay,
       breaks: gridBreaks,
+      periodTimes,
       cells: gridCells,
     })
     openTimetablePrintWindow(html)
@@ -176,7 +180,7 @@ export default function MyTimetablePage() {
               No timetable has been generated for {term} {year} yet. Check back once your school admin generates it.
             </p>
           ) : (
-            <TimetableGrid daysPerWeek={settings?.days_per_week || 5} periodsPerDay={periodsPerDay} breaks={gridBreaks} cells={gridCells} />
+            <TimetableGrid daysPerWeek={settings?.days_per_week || 5} periodsPerDay={periodsPerDay} breaks={gridBreaks} periodTimes={periodTimes} cells={gridCells} />
           )}
         </CardContent>
       </Card>

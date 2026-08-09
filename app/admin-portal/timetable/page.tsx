@@ -21,7 +21,7 @@ import {
 } from 'lucide-react'
 import { TimetableGrid, type TimetableGridCell, type TimetableGridBreak } from '@/components/timetable-grid'
 import {
-  generateTimetable, computePeriodsPerDay,
+  generateTimetable, computePeriodsPerDay, computePeriodTimes,
   type TimetableClassInput, type TimetableConflict, type TimetableWarning,
 } from '@/lib/timetable-generator'
 import { generateTimetablePrintHTML, openTimetablePrintWindow } from '@/lib/timetable-print'
@@ -115,6 +115,12 @@ export default function TimetablePage() {
     settings.school_end_time,
     settings.period_length_minutes,
     breaks.map((b) => ({ durationMinutes: b.duration_minutes }))
+  )
+  const periodTimes = computePeriodTimes(
+    settings.school_start_time,
+    settings.period_length_minutes,
+    periodsPerDay,
+    breaks.map((b) => ({ afterPeriodNumber: b.after_period_number, durationMinutes: b.duration_minutes }))
   )
 
   const loadAll = useCallback(async () => {
@@ -372,6 +378,7 @@ export default function TimetablePage() {
       daysPerWeek: settings.days_per_week,
       periodsPerDay,
       breaks: gridBreaks,
+      periodTimes,
       cells: gridCells,
     })
     openTimetablePrintWindow(html)
@@ -730,6 +737,7 @@ export default function TimetablePage() {
                   daysPerWeek={settings.days_per_week}
                   periodsPerDay={periodsPerDay}
                   breaks={gridBreaks}
+                  periodTimes={periodTimes}
                   cells={gridCells}
                   onCellClick={viewMode === 'class' ? openCellEditor : undefined}
                 />
