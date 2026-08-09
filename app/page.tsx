@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { sortClassesByLevel } from '@/lib/class-sort-utils'
@@ -101,11 +101,19 @@ function HomePageContent() {
   const searchParams = useSearchParams()
   const { setCurrentClass, logout: logoutClass } = useClass()
   const { currentSchool, setCurrentSchool, clearSchool } = useSchool()
+  // Tracks the last school code actually re-verified against the database in
+  // this page load. A cached currentSchool's is_active field can't be
+  // trusted to detect staleness - it only reflects reality if the realtime
+  // subscription happened to be connected at the exact moment a lock took
+  // effect (lib/school-context.tsx). A closed-then-reopened tab, or a lock
+  // applied from a different device, leaves it stale at "active" forever.
+  // So every distinct code gets exactly one fresh check per mount instead.
+  const lastVerifiedCodeRef = useRef<string | null>(null)
 
   // Check for school code in URL - REQUIRED to access any school
   useEffect(() => {
     const schoolCode = searchParams.get('school')
-    
+
     // No school code in URL - check if we have a stored school
     if (!schoolCode) {
       if (currentSchool?.code) {
@@ -115,18 +123,19 @@ function HomePageContent() {
       // If no school at all, stay on page (will show error or prompt)
       return
     }
-    
-    // If URL has school code, check if it matches current school. Only trust
-    // the cache if that school was last known active - a lock that took
-    // effect after the cache was written (exactly what happened here: visit
-    // while active, get locked, revisit) must not be silently bypassed.
-    if (currentSchool && currentSchool.code === schoolCode && currentSchool.is_active !== false) {
-      // Already on correct school
+
+    // Already freshly verified this exact code this page load - skip. This
+    // guards against an infinite loop (setCurrentSchool below creates a new
+    // object reference every time, and currentSchool is a dependency here),
+    // not against re-verifying a genuinely different or newly-locked school.
+    if (lastVerifiedCodeRef.current === schoolCode) {
       return
     }
-    
-    // Load school from URL parameter (different school or no school set)
+
+    // Load school from URL parameter (different school, or same code not yet
+    // freshly verified this page load).
     async function loadSchoolFromCode() {
+      lastVerifiedCodeRef.current = schoolCode
       // Clear existing data first
       setClasses([])
       setExamTypes([])

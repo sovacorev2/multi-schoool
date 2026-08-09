@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -51,21 +51,30 @@ function AdminPortalShell({ children }: { children: React.ReactNode }) {
   const [quickClasses, setQuickClasses] = useState<{ id: string; name: string }[]>([])
   const [showAccessClassesMenu, setShowAccessClassesMenu] = useState(false)
 
+  // Tracks the last school code actually re-verified against the database
+  // this page load. A cached currentSchool's is_active can't be trusted to
+  // detect staleness by itself - it only reflects reality if the realtime
+  // subscription (lib/school-context.tsx) happened to be connected at the
+  // exact moment a lock took effect. A closed-then-reopened tab, or a lock
+  // applied from a different device, leaves it stale at "active" forever.
+  const lastVerifiedCodeRef = useRef<string | null>(null)
+
   // Load school from URL or context
   useEffect(() => {
     const schoolCode = searchParams.get('school')
+    if (!schoolCode) return
 
-    if (schoolCode) {
-      // Trust a cached school only if it was last known active - a lock that took
-      // effect after the cache was written must not be silently bypassed here.
-      if (currentSchool && currentSchool.code === schoolCode && currentSchool.is_active !== false) {
-        return
-      }
-      loadSchoolFromCode(schoolCode)
-    }
+    // Already freshly verified this exact code this page load - skip. This
+    // only guards against re-fetching in a loop (setCurrentSchool below
+    // creates a new object reference every time, and currentSchool is a
+    // dependency here), not against re-verifying a newly-locked school.
+    if (lastVerifiedCodeRef.current === schoolCode) return
+
+    loadSchoolFromCode(schoolCode)
   }, [searchParams, currentSchool, router])
 
   const loadSchoolFromCode = async (code: string) => {
+    lastVerifiedCodeRef.current = code
     setSchool(null)
     setIsAuthenticated(false)
     setIsRestoringSession(true)
