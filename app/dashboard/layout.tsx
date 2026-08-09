@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation'
 import { useClass } from '@/lib/class-context'
 import { useSchool } from '@/lib/school-context'
 import { checkTeacherAuth, checkAdminAuth, logoutTeacher, logoutAdmin } from '@/app/actions/auth'
-import { LogOut, Users, BookOpen, ClipboardList, FileText, ChevronDown, Shield, Clock, AlertTriangle, TrendingUp } from 'lucide-react'
+import { LogOut, Users, BookOpen, ClipboardList, FileText, ChevronDown, Shield, Clock, AlertTriangle, TrendingUp, CalendarClock } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { SchoolLockedScreen } from '@/components/school-locked-screen'
 
@@ -230,6 +230,7 @@ export default function DashboardLayout({
     { href: '/dashboard/marks', label: 'Marks', icon: ClipboardList },
     { href: '/dashboard/marklist', label: 'Marklist', icon: FileText },
     { href: '/dashboard/my-subject', label: 'My Subject', icon: TrendingUp },
+    { href: '/dashboard/my-timetable', label: 'My Timetable', icon: CalendarClock },
     // Admin tab - only visible to admins
     ...(isAdmin ? [{ href: '/dashboard/admin', label: 'Admin', icon: Shield }] : []),
   ]

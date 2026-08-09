@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Shield, Eye, EyeOff, Settings, Clock, ArrowLeft,
-  GraduationCap, Users, Lock, LogOut,
+  GraduationCap, Users, Lock, LogOut, CalendarClock,
 } from 'lucide-react'
 import { AdminPWARegistration } from '@/components/admin-pwa-registration'
 import { SchoolLockedScreen } from '@/components/school-locked-screen'
@@ -25,6 +25,7 @@ const navItems = [
   { href: '/admin-portal', label: 'Overview', icon: Clock, exact: true },
   { href: '/admin-portal/classes-exams', label: 'Classes & Exams', icon: GraduationCap },
   { href: '/admin-portal/teachers', label: 'Teachers', icon: Users },
+  { href: '/admin-portal/timetable', label: 'Timetable', icon: CalendarClock },
   { href: '/admin-portal/access', label: 'Access & Passwords', icon: Lock },
   { href: '/admin-portal/settings', label: 'Settings & Reports', icon: Settings },
 ]
