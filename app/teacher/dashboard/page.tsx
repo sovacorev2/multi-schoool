@@ -37,6 +37,7 @@ export default function TeacherDashboard() {
   const [assignedClasses, setAssignedClasses] = useState<AssignedClass[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [timetablingEnabled, setTimetablingEnabled] = useState(false)
 
   useEffect(() => {
     const loadSession = async () => {
@@ -54,15 +55,16 @@ export default function TeacherDashboard() {
         
         const supabase = createClient()
         
-        // Check if this school has PIN management enabled
+        // Check if this school has PIN management / timetabling enabled
         const { data: schoolData } = await supabase
           .from('schools')
-          .select('feature_pin_management')
+          .select('feature_pin_management, feature_timetabling')
           .eq('id', teacherSession.schoolId)
           .single()
-        
+
         const hasPinManagement = schoolData?.feature_pin_management === true
         console.log('[v0] School PIN management enabled:', hasPinManagement)
+        setTimetablingEnabled(schoolData?.feature_timetabling === true)
         
         if (hasPinManagement) {
           // PIN-enabled school: Fetch assigned classes/subjects from database
@@ -290,9 +292,11 @@ export default function TeacherDashboard() {
         </div>
 
         {/* Timetable Section */}
-        <div className="mb-8">
-          <MyTimetablePanel schoolId={session.schoolId} schoolName={session.schoolName || ''} teacherId={session.teacherId} />
-        </div>
+        {timetablingEnabled && (
+          <div className="mb-8">
+            <MyTimetablePanel schoolId={session.schoolId} schoolName={session.schoolName || ''} teacherId={session.teacherId} />
+          </div>
+        )}
 
         {/* Info Box */}
         <Card className="bg-card dark:bg-card border-border dark:border-border">

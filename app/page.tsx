@@ -147,7 +147,7 @@ function HomePageContent() {
       // page. Access itself is gated below by checking school.is_active.
       const { data: school } = await supabase
         .from('schools')
-        .select('id, name, short_name, code, tagline, email, phone, address, logo_url, primary_color, admin_password, is_active, feature_report_cards, feature_whatsapp_reports, feature_bulk_sms, feature_certificates, feature_pin_management, subscription_plan, subscription_expires_at, enable_pin_login, pin_login_enabled_at')
+        .select('id, name, short_name, code, tagline, email, phone, address, logo_url, primary_color, admin_password, is_active, feature_report_cards, feature_whatsapp_reports, feature_bulk_sms, feature_certificates, feature_pin_management, feature_timetabling, feature_exam_hub, subscription_plan, subscription_expires_at, enable_pin_login, pin_login_enabled_at')
         .eq('code', schoolCode)
         .single()
 

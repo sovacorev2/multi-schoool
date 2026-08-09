@@ -21,7 +21,9 @@ export interface School {
   feature_sms?: boolean
   twilio_phone_number?: string | null
   feature_certificates?: boolean
-  feature_bulk_sms?: boolean
+  feature_pin_management?: boolean
+  feature_timetabling?: boolean
+  feature_exam_hub?: boolean
   subscription_plan?: string
   subscription_expires_at?: string | null
   enable_pin_login?: boolean

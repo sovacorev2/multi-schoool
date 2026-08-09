@@ -16,6 +16,8 @@ export interface School {
   feature_bulk_sms?: boolean
   feature_certificates?: boolean
   feature_pin_management?: boolean
+  feature_timetabling?: boolean
+  feature_exam_hub?: boolean
   subscription_plan?: string | null
   subscription_expires_at?: string | null
   enable_pin_login?: boolean
@@ -46,4 +48,4 @@ export interface Deadline {
 // admin-portal page/section that needs school fields reads it from AdminSchoolContext
 // instead of re-querying, so Settings' edits are immediately visible everywhere.
 export const SCHOOL_SELECT_FIELDS =
-  'id, name, short_name, code, tagline, email, phone, address, logo_url, primary_color, admin_password, is_active, feature_report_cards, feature_whatsapp_reports, feature_bulk_sms, feature_certificates, feature_pin_management, subscription_plan, subscription_expires_at, enable_pin_login, pin_login_enabled_at'
+  'id, name, short_name, code, tagline, email, phone, address, logo_url, primary_color, admin_password, is_active, feature_report_cards, feature_whatsapp_reports, feature_bulk_sms, feature_certificates, feature_pin_management, feature_timetabling, feature_exam_hub, subscription_plan, subscription_expires_at, enable_pin_login, pin_login_enabled_at'

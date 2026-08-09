@@ -230,7 +230,7 @@ export default function DashboardLayout({
     { href: '/dashboard/marks', label: 'Marks', icon: ClipboardList },
     { href: '/dashboard/marklist', label: 'Marklist', icon: FileText },
     { href: '/dashboard/my-subject', label: 'My Subject', icon: TrendingUp },
-    { href: '/dashboard/my-timetable', label: 'My Timetable', icon: CalendarClock },
+    ...(currentSchool?.feature_timetabling ? [{ href: '/dashboard/my-timetable', label: 'My Timetable', icon: CalendarClock }] : []),
     // Admin tab - only visible to admins
     ...(isAdmin ? [{ href: '/dashboard/admin', label: 'Admin', icon: Shield }] : []),
   ]

@@ -21,11 +21,10 @@ import { AdminSchoolProvider, useAdminSchool } from './_shared/AdminSchoolContex
 import { SCHOOL_SELECT_FIELDS, type School } from './_shared/types'
 import { sessionAuthKey } from './_shared/utils'
 
-const navItems = [
+const BASE_NAV_ITEMS = [
   { href: '/admin-portal', label: 'Overview', icon: Clock, exact: true },
   { href: '/admin-portal/classes-exams', label: 'Classes & Exams', icon: GraduationCap },
   { href: '/admin-portal/teachers', label: 'Teachers', icon: Users },
-  { href: '/admin-portal/timetable', label: 'Timetable', icon: CalendarClock },
   { href: '/admin-portal/access', label: 'Access & Passwords', icon: Lock },
   { href: '/admin-portal/settings', label: 'Settings & Reports', icon: Settings },
 ]
@@ -290,6 +289,10 @@ function AdminPortalShell({ children }: { children: React.ReactNode }) {
     )
   }
 
+  const navItemsWithFeatures = school?.feature_timetabling
+    ? [...BASE_NAV_ITEMS.slice(0, 3), { href: '/admin-portal/timetable', label: 'Timetable', icon: CalendarClock }, ...BASE_NAV_ITEMS.slice(3)]
+    : BASE_NAV_ITEMS
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header
@@ -346,7 +349,7 @@ function AdminPortalShell({ children }: { children: React.ReactNode }) {
 
         {/* Section nav */}
         <nav className="max-w-7xl mx-auto flex items-center gap-1 mt-3 md:mt-4 pt-3 border-t border-white/20 overflow-x-auto">
-          {navItems.map((item) => {
+          {navItemsWithFeatures.map((item) => {
             const Icon = item.icon
             const isActive = item.exact ? pathname === item.href : pathname.startsWith(item.href)
             return (

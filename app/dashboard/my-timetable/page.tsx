@@ -23,6 +23,18 @@ export default function MyTimetablePage() {
 
   if (!currentSchool) return null
 
+  // Defense in depth - the nav link is already hidden when this isn't
+  // enabled, but the route itself is still reachable directly by URL.
+  if (!currentSchool.feature_timetabling) {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center text-muted-foreground">
+          Timetabling isn't enabled for this school yet.
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div>

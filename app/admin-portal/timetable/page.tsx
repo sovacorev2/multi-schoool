@@ -460,6 +460,18 @@ export default function TimetablePage() {
     )
   }
 
+  // Defense in depth - the nav link is already hidden when this isn't
+  // enabled, but the route itself is still reachable directly by URL.
+  if (!currentSchool?.feature_timetabling) {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center text-gray-500">
+          Timetabling isn't enabled for this school yet. Contact ShuleTech to have it switched on.
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div>

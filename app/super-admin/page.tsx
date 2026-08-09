@@ -6,10 +6,11 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { 
+import {
   Shield, Building2, Search, Settings, ToggleLeft, ToggleRight,
   FileText, MessageSquare, Award, Send, Calendar, ChevronDown, ChevronUp,
-  Plus, Edit2, Save, X, Eye, EyeOff, LogOut, Users, Check
+  Plus, Edit2, Save, X, Eye, EyeOff, LogOut, Users, Check,
+  CalendarClock, FolderOpen,
 } from 'lucide-react'
 
 interface School {
@@ -31,6 +32,8 @@ interface School {
   feature_bulk_sms: boolean
   feature_certificates: boolean
   feature_pin_management?: boolean
+  feature_timetabling?: boolean
+  feature_exam_hub?: boolean
   subscription_plan: string
   subscription_expires_at: string | null
   is_active: boolean
@@ -912,6 +915,72 @@ export default function SuperAdminPage() {
                           </div>
                         </div>
                       )}
+
+                      {/* Timetabling */}
+                      <div className={`p-4 rounded-lg border-2 transition-all ${
+                        school.feature_timetabling
+                          ? 'bg-indigo-50 border-indigo-200'
+                          : 'bg-white border-gray-200'
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                              school.feature_timetabling ? 'bg-indigo-100' : 'bg-gray-100'
+                            }`}>
+                              <CalendarClock className={`w-5 h-5 ${
+                                school.feature_timetabling ? 'text-indigo-600' : 'text-gray-400'
+                              }`} />
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900">Timetabling</p>
+                              <p className="text-xs text-gray-500">Timetable generator, class and teacher views</p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => toggleFeature(school.id, 'feature_timetabling', !!school.feature_timetabling)}
+                            className="focus:outline-none"
+                          >
+                            {school.feature_timetabling ? (
+                              <ToggleRight className="w-10 h-10 text-indigo-600" />
+                            ) : (
+                              <ToggleLeft className="w-10 h-10 text-gray-300" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Exam Hub / Resources */}
+                      <div className={`p-4 rounded-lg border-2 transition-all ${
+                        school.feature_exam_hub
+                          ? 'bg-teal-50 border-teal-200'
+                          : 'bg-white border-gray-200'
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                              school.feature_exam_hub ? 'bg-teal-100' : 'bg-gray-100'
+                            }`}>
+                              <FolderOpen className={`w-5 h-5 ${
+                                school.feature_exam_hub ? 'text-teal-600' : 'text-gray-400'
+                              }`} />
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900">Exam Hub / Resources</p>
+                              <p className="text-xs text-gray-500">Exams, marking schemes, schemes of work shared from ShuleTech</p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => toggleFeature(school.id, 'feature_exam_hub', !!school.feature_exam_hub)}
+                            className="focus:outline-none"
+                          >
+                            {school.feature_exam_hub ? (
+                              <ToggleRight className="w-10 h-10 text-teal-600" />
+                            ) : (
+                              <ToggleLeft className="w-10 h-10 text-gray-300" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
                     </div>
 
                     {/* School Details - everything else that used to require opening Supabase directly */}
