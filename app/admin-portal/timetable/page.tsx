@@ -278,6 +278,7 @@ export default function TimetablePage() {
       periodsPerDay,
       avoidConsecutiveSameSubject: settings.avoid_consecutive_same_subject,
       spreadEvenly: settings.spread_evenly,
+      breakAfterPeriods: breaks.map((b) => b.after_period_number),
     })
 
     const supabase = createClient()

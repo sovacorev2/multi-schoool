@@ -27,6 +27,9 @@ export interface TimetableSettingsInput {
   periodsPerDay: number
   avoidConsecutiveSameSubject: boolean
   spreadEvenly: boolean
+  /** Period numbers that have a break immediately after them - a double
+   * lesson can never be placed across one of these. */
+  breakAfterPeriods: number[]
 }
 
 export interface TimetableEntry {
@@ -142,6 +145,24 @@ export function classifySubjectTiming(subjectName: string): SubjectTimingPrefere
   return 'neutral'
 }
 
+function isMathSubject(subjectName: string): boolean {
+  const name = ` ${subjectName.trim().toLowerCase()} `
+  return name.includes('math') || name.includes('hisabati')
+}
+
+/**
+ * How many double lessons (2 consecutive periods, same day, same teacher) a
+ * subject should get this week, capped by how many periods it actually has
+ * to spend. Matches Kenya's KICD guidance, which specifically calls out
+ * double-period slots as a deliberate, recognized exception for STEM
+ * subjects - Mathematics gets two, every other multi-period subject gets one.
+ */
+function targetDoubleLessonCount(subj: TimetableSubjectInput): number {
+  if (subj.periodsPerWeek < 2) return 0
+  const target = isMathSubject(subj.subjectName) ? 2 : 1
+  return Math.min(target, Math.floor(subj.periodsPerWeek / 2))
+}
+
 function findBestSlot(
   subj: TimetableSubjectInput,
   classGrid: Map<string, string>,
@@ -234,12 +255,75 @@ function findBestSlot(
   return null
 }
 
+/** Finds an open (day, startPeriod) pair for a 2-consecutive-period double
+ * lesson: both periods open, no break between them, the teacher free for
+ * both, and no same-subject period immediately before/after the pair (so a
+ * double doesn't silently become a triple). */
+function findBestDoubleSlot(
+  subj: TimetableSubjectInput,
+  classGrid: Map<string, string>,
+  subjectDayCount: Map<string, number>,
+  subjectAtPeriodAcrossDays: Map<string, number>,
+  teacherBusy: Set<string>,
+  teacherDayCount: Map<string, number>,
+  teacherMaxPerDay: Map<string, number | null>,
+  daysPerWeek: number,
+  periodsPerDay: number,
+  breakAfterPeriods: Set<number>
+): { day: number; period: number } | null {
+  const openPairs: { day: number; period: number }[] = []
+  for (let day = 1; day <= daysPerWeek; day++) {
+    for (let period = 1; period < periodsPerDay; period++) {
+      if (breakAfterPeriods.has(period)) continue
+      if (classGrid.has(slotKey(day, period)) || classGrid.has(slotKey(day, period + 1))) continue
+      const before = classGrid.get(slotKey(day, period - 1))
+      const after = classGrid.get(slotKey(day, period + 2))
+      if (before === subj.subjectId || after === subj.subjectId) continue
+      openPairs.push({ day, period })
+    }
+  }
+
+  const isTeacherFreeForPair = (day: number, period: number) => {
+    if (!subj.teacherId) return true
+    if (
+      teacherBusy.has(teacherSlotKey(subj.teacherId, day, period)) ||
+      teacherBusy.has(teacherSlotKey(subj.teacherId, day, period + 1))
+    ) {
+      return false
+    }
+    const max = teacherMaxPerDay.get(subj.teacherId)
+    if (max != null) {
+      const current = teacherDayCount.get(teacherDayKey(subj.teacherId, day)) || 0
+      if (current + 2 > max) return false
+    }
+    return true
+  }
+
+  const timing = classifySubjectTiming(subj.subjectName)
+  const midpoint = periodsPerDay / 2
+  const scoreCandidate = (day: number, period: number) => {
+    let cost = 0
+    cost += (subjectDayCount.get(`${subj.subjectId}|${day}`) || 0) * 10
+    if (timing === 'morning') cost += Math.max(0, period - midpoint) * 3
+    else if (timing === 'afternoon') cost += Math.max(0, midpoint - period) * 3
+    cost += (subjectAtPeriodAcrossDays.get(`${period}|${subj.subjectId}`) || 0) * 2
+    cost += Math.random()
+    return cost
+  }
+
+  const candidates = openPairs.filter(({ day, period }) => isTeacherFreeForPair(day, period))
+  if (candidates.length === 0) return null
+  candidates.sort((a, b) => scoreCandidate(a.day, a.period) - scoreCandidate(b.day, b.period))
+  return candidates[0]
+}
+
 export function generateTimetable(
   classes: TimetableClassInput[],
   teacherMaxPerDay: Map<string, number | null>,
   settings: TimetableSettingsInput
 ): TimetableGenerationResult {
-  const { daysPerWeek, periodsPerDay, avoidConsecutiveSameSubject, spreadEvenly } = settings
+  const { daysPerWeek, periodsPerDay, avoidConsecutiveSameSubject, spreadEvenly, breakAfterPeriods } = settings
+  const breakAfterPeriodsSet = new Set(breakAfterPeriods)
   const entries: TimetableEntry[] = []
   const conflicts: TimetableConflict[] = []
   const warnings: TimetableWarning[] = []
@@ -272,7 +356,57 @@ export function generateTimetable(
       }
 
       let placed = 0
-      for (let i = 0; i < subj.periodsPerWeek; i++) {
+
+      // Place required double lessons first (2 consecutive periods, same
+      // day) before falling back to the normal single-period placement for
+      // whatever's left. If a double genuinely can't fit anywhere, that's
+      // not a hard failure - the periods still get placed as singles below,
+      // just noted so it's visible rather than silently skipped.
+      const doublesWanted = targetDoubleLessonCount(subj)
+      let doublesPlaced = 0
+      for (let d = 0; d < doublesWanted; d++) {
+        const pair = findBestDoubleSlot(
+          subj,
+          classGrid,
+          subjectDayCount,
+          subjectAtPeriodAcrossDays,
+          teacherBusy,
+          teacherDayCount,
+          teacherMaxPerDay,
+          daysPerWeek,
+          periodsPerDay,
+          breakAfterPeriodsSet
+        )
+        if (!pair) break
+
+        const { day, period } = pair
+        for (const p of [period, period + 1]) {
+          classGrid.set(slotKey(day, p), subj.subjectId)
+          entries.push({ classId: cls.classId, subjectId: subj.subjectId, teacherId: subj.teacherId, dayOfWeek: day, periodNumber: p })
+          if (subj.teacherId) teacherBusy.add(teacherSlotKey(subj.teacherId, day, p))
+          const pak = `${p}|${subj.subjectId}`
+          subjectAtPeriodAcrossDays.set(pak, (subjectAtPeriodAcrossDays.get(pak) || 0) + 1)
+          placed++
+        }
+        if (subj.teacherId) {
+          const dk = teacherDayKey(subj.teacherId, day)
+          teacherDayCount.set(dk, (teacherDayCount.get(dk) || 0) + 2)
+        }
+        const sdk = `${subj.subjectId}|${day}`
+        subjectDayCount.set(sdk, (subjectDayCount.get(sdk) || 0) + 2)
+        doublesPlaced++
+      }
+      if (doublesWanted > 0 && doublesPlaced < doublesWanted) {
+        warnings.push({
+          classId: cls.classId,
+          className: cls.className,
+          subjectId: subj.subjectId,
+          subjectName: subj.subjectName,
+          message: `Could only fit ${doublesPlaced} of ${doublesWanted} double lesson(s) for ${subj.subjectName} in ${cls.className} - the rest of its periods were placed as singles instead.`,
+        })
+      }
+
+      for (let i = placed; i < subj.periodsPerWeek; i++) {
         const slot = findBestSlot(
           subj,
           classGrid,

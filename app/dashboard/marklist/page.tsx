@@ -1401,14 +1401,17 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
       return
     }
     
-    // Scale font size down dynamically based on subject count to ensure everything fits on the page
+    // Fixed, comfortable sizing regardless of subject count - matches
+    // print-combined-marklist's approach. A class with many subjects prints
+    // wider (and, with the browser's own "fit to page" print scaling, a
+    // touch smaller on paper), rather than the app itself pre-shrinking text
+    // down to an unreadable 6-7px to force a single page width.
     const subjectCount = subjects.length
-    // With many subjects (>8) reduce font further; with >11 subjects go very compact
-    const baseFontSize = subjectCount > 11 ? 7 : subjectCount > 8 ? 8 : 9
-    const subHeaderFontSize = subjectCount > 8 ? 6 : 7
-    const cellPad = subjectCount > 8 ? '1px 2px' : '2px 3px'
-    const headerPad = subjectCount > 8 ? '2px' : '3px'
-    const nameFontSize = subjectCount > 11 ? 7 : subjectCount > 8 ? 8 : 9
+    const baseFontSize = 10
+    const subHeaderFontSize = 9
+    const cellPad = '2px 4px'
+    const headerPad = '3px 4px'
+    const nameFontSize = 10
 
     // Build subject headers (two rows: subject name spanning 2-3 columns based on whether marks shown, then LVL/PTS or MKS/LVL/PTS)
     const colSpan = isLowerGradePointsEntry ? 2 : 3

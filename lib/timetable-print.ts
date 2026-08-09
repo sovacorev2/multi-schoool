@@ -76,12 +76,20 @@ export function generateTimetablePrintHTML(params: {
 <head>
 <title>${title}</title>
 <style>
-  body { font-family: Arial, sans-serif; padding: 24px; color: #111827; }
-  h1 { font-size: 20px; margin-bottom: 4px; }
-  h2 { font-size: 14px; font-weight: 500; color: #4b5563; margin-top: 0; }
-  .meta { font-size: 12px; color: #4b5563; margin-bottom: 16px; }
-  table { border-collapse: collapse; width: 100%; font-size: 11px; }
-  @media print { body { padding: 0; } }
+  @page { size: A4 landscape; margin: 8mm; }
+  * { box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; padding: 12px; color: #111827; }
+  h1 { font-size: 18px; margin: 0 0 2px; }
+  h2 { font-size: 13px; font-weight: 500; color: #4b5563; margin: 0; }
+  .meta { font-size: 11px; color: #4b5563; margin-bottom: 10px; }
+  table { border-collapse: collapse; width: 100%; table-layout: fixed; font-size: 10px; }
+  th, td { word-wrap: break-word; overflow-wrap: break-word; }
+  td:first-child, th:first-child { width: 60px; }
+  @media print {
+    body { padding: 0; }
+    table { page-break-inside: auto; }
+    tr { page-break-inside: avoid; }
+  }
 </style>
 </head>
 <body>
