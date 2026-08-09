@@ -116,8 +116,11 @@ function HomePageContent() {
       return
     }
     
-    // If URL has school code, check if it matches current school
-    if (currentSchool && currentSchool.code === schoolCode) {
+    // If URL has school code, check if it matches current school. Only trust
+    // the cache if that school was last known active - a lock that took
+    // effect after the cache was written (exactly what happened here: visit
+    // while active, get locked, revisit) must not be silently bypassed.
+    if (currentSchool && currentSchool.code === schoolCode && currentSchool.is_active !== false) {
       // Already on correct school
       return
     }
