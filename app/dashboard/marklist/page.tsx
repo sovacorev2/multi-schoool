@@ -316,11 +316,11 @@ export default function MarklistPage() {
       const [subjectsRes2, allLearners, allMarks] = await Promise.all([
         supabase.from('subjects').select('id, name, class_id').in('class_id', classIds),
         fetchAllRows<{ id: string; name: string; class_id: string; gender: string | null }>((from, to) =>
-          supabase.from('learners').select('id, name, class_id, gender').in('class_id', classIds).range(from, to)
+          supabase.from('learners').select('id, name, class_id, gender').in('class_id', classIds).order('id').range(from, to)
         ),
         sessionIds.length > 0
           ? fetchAllRows<{ session_id: string; subject_id: string; score: number | null; learner_id: string }>((from, to) =>
-              supabase.from('marks').select('session_id, subject_id, score, learner_id').in('session_id', sessionIds).range(from, to)
+              supabase.from('marks').select('session_id, subject_id, score, learner_id').in('session_id', sessionIds).order('id').range(from, to)
             )
           : Promise.resolve([]),
       ])
@@ -659,7 +659,7 @@ export default function MarklistPage() {
       // can exceed Supabase's 1000-row default page cap.
       const allMarks = sessionIds.length > 0
         ? await fetchAllRows<{ learner_id: string; subject_id: string; score: number | null; session_id: string }>((from, to) =>
-            supabase.from('marks').select('learner_id, subject_id, score, session_id').in('session_id', sessionIds).range(from, to)
+            supabase.from('marks').select('learner_id, subject_id, score, session_id').in('session_id', sessionIds).order('id').range(from, to)
           )
         : []
 

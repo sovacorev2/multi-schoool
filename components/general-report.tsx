@@ -361,7 +361,7 @@ export function GeneralReport({
                 // Paginated - marks across several sibling streams can exceed
                 // Supabase's 1000-row default page cap.
                 const sibMarks = await fetchAllRows<{ learner_id: string; score: number | null }>((from, to) =>
-                  supabase.from('marks').select('learner_id, score').in('session_id', sibSessionIds).range(from, to)
+                  supabase.from('marks').select('learner_id, score').in('session_id', sibSessionIds).order('id').range(from, to)
                 )
                 siblingMarksAll.push(...sibMarks)
               }

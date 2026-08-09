@@ -102,13 +102,13 @@ export function MarksEntryTracker({ schoolId, deadlines }: { schoolId: string; d
     const [subjectsRes, learners, assignmentsRes, teachersRes, marks] = await Promise.all([
       supabase.from('subjects').select('id, name, class_id').in('class_id', classIds),
       fetchAllRows<{ id: string; class_id: string }>((from, to) =>
-        supabase.from('learners').select('id, class_id').in('class_id', classIds).range(from, to)
+        supabase.from('learners').select('id, class_id').in('class_id', classIds).order('id').range(from, to)
       ),
       supabase.from('teacher_assignments').select('user_id, class_id, subject_id').eq('school_id', schoolId).eq('is_active', true).not('subject_id', 'is', null),
       supabase.from('teacher_accounts').select('id, first_name, last_name').eq('school_id', schoolId),
       sessionIds.length > 0
         ? fetchAllRows<{ session_id: string; subject_id: string; learner_id: string; score: number | null }>((from, to) =>
-            supabase.from('marks').select('session_id, subject_id, learner_id, score').in('session_id', sessionIds).range(from, to)
+            supabase.from('marks').select('session_id, subject_id, learner_id, score').in('session_id', sessionIds).order('id').range(from, to)
           )
         : Promise.resolve([]),
     ])
