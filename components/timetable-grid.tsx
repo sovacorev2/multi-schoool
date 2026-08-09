@@ -22,36 +22,56 @@ export interface TimetableGridPeriodTime {
   endTime: string
 }
 
+/** An explicit, pre-built column - used instead of periodsPerDay/breaks/periodTimes
+ * when a grid needs to show a merged axis spanning more than one CBC level's
+ * period structure (e.g. a teacher whose classes span Junior Secondary and
+ * Pre-School, which run on different clock-time grids). No break columns in
+ * this mode - each level's break pattern is its own, so there's no single
+ * shared break position to show. */
+export interface TimetableGridColumn {
+  key: string
+  label: string
+  subLabel: string
+}
+
 type Column =
-  | { type: 'period'; period: number; startTime: string; endTime: string }
-  | { type: 'break'; key: string; name: string; durationMinutes: number }
+  | { type: 'period'; key: string; label: string; subLabel: string }
+  | { type: 'break'; key: string; label: string; subLabel: string }
 
 export function TimetableGrid({
   daysPerWeek,
   periodsPerDay,
   breaks,
   periodTimes,
+  columns: explicitColumns,
   cells,
   onCellClick,
 }: {
   daysPerWeek: number
-  periodsPerDay: number
-  breaks: TimetableGridBreak[]
-  periodTimes: TimetableGridPeriodTime[]
-  /** Keyed by "day|period" (1-based). */
+  periodsPerDay?: number
+  breaks?: TimetableGridBreak[]
+  periodTimes?: TimetableGridPeriodTime[]
+  /** When provided, overrides periodsPerDay/breaks/periodTimes entirely - see TimetableGridColumn. */
+  columns?: TimetableGridColumn[]
+  /** Keyed by "day|<column key>" - the column key is the period number (as a string) in normal mode, or the explicit column's own key in merged mode. */
   cells: Record<string, TimetableGridCell>
   onCellClick?: (day: number, period: number, cell: TimetableGridCell | null) => void
 }) {
   const dayLabels = DAY_LABELS.slice(0, daysPerWeek)
-  const breaksByAfterPeriod = new Map(breaks.map((b) => [b.afterPeriodNumber, b]))
-  const timeByPeriod = new Map(periodTimes.map((p) => [p.period, p]))
 
-  const columns: Column[] = []
-  for (let period = 1; period <= periodsPerDay; period++) {
-    const t = timeByPeriod.get(period)
-    columns.push({ type: 'period', period, startTime: t?.startTime || '', endTime: t?.endTime || '' })
-    const brk = breaksByAfterPeriod.get(period)
-    if (brk) columns.push({ type: 'break', key: `break-${period}`, name: brk.name, durationMinutes: brk.durationMinutes })
+  let columns: Column[]
+  if (explicitColumns) {
+    columns = explicitColumns.map((c) => ({ type: 'period', key: c.key, label: c.label, subLabel: c.subLabel }))
+  } else {
+    const breaksByAfterPeriod = new Map((breaks || []).map((b) => [b.afterPeriodNumber, b]))
+    const timeByPeriod = new Map((periodTimes || []).map((p) => [p.period, p]))
+    columns = []
+    for (let period = 1; period <= (periodsPerDay || 0); period++) {
+      const t = timeByPeriod.get(period)
+      columns.push({ type: 'period', key: String(period), label: `Period ${period}`, subLabel: `${t?.startTime || ''} - ${t?.endTime || ''}` })
+      const brk = breaksByAfterPeriod.get(period)
+      if (brk) columns.push({ type: 'break', key: `break-${period}`, label: brk.name, subLabel: `(${brk.durationMinutes}m)` })
+    }
   }
 
   return (
@@ -62,15 +82,15 @@ export function TimetableGrid({
             <th className="border border-gray-300 px-2 py-2 bg-gray-100 text-xs">Day</th>
             {columns.map((col) =>
               col.type === 'period' ? (
-                <th key={`p-${col.period}`} className="border border-gray-300 px-2 py-2 bg-gray-100 text-xs min-w-[100px]">
-                  <div>Period {col.period}</div>
-                  <div className="font-normal text-gray-500">{col.startTime} - {col.endTime}</div>
+                <th key={`p-${col.key}`} className="border border-gray-300 px-2 py-2 bg-gray-100 text-xs min-w-[100px]">
+                  <div>{col.label}</div>
+                  <div className="font-normal text-gray-500">{col.subLabel}</div>
                 </th>
               ) : (
                 <th key={col.key} className="border border-gray-300 px-1 py-2 bg-amber-100 text-[10px] text-amber-700 whitespace-nowrap">
-                  {col.name}
+                  {col.label}
                   <br />
-                  ({col.durationMinutes}m)
+                  {col.subLabel}
                 </th>
               )
             )}
@@ -86,12 +106,12 @@ export function TimetableGrid({
                   if (col.type === 'break') {
                     return <td key={col.key} className="border border-gray-300 bg-amber-50"></td>
                   }
-                  const cell = cells[`${day}|${col.period}`] || null
+                  const cell = cells[`${day}|${col.key}`] || null
                   const clickable = !!onCellClick
                   return (
                     <td
-                      key={col.period}
-                      onClick={() => onCellClick?.(day, col.period, cell)}
+                      key={col.key}
+                      onClick={() => onCellClick?.(day, Number(col.key), cell)}
                       className={`border border-gray-300 px-2 py-2 text-xs align-top ${clickable ? 'cursor-pointer hover:bg-blue-50' : ''}`}
                     >
                       {cell ? (

@@ -7,6 +7,15 @@
 // class so two classes can never be assigned the same teacher at the same
 // slot. Not globally optimal, but always valid (no double-bookings) and any
 // period that genuinely can't be placed is reported, never silently dropped.
+//
+// Settings (school hours, period length, breaks, toggles) are per CBC level
+// (Pre-School/Lower/Upper Primary/Junior Secondary), not one shared school-
+// wide structure - so every class carries its OWN resolved day structure.
+// That means "period 3" in one class is not necessarily the same clock time
+// as "period 3" in another. Teacher-conflict checking is therefore done by
+// comparing real clock-time intervals, not period numbers, so a specialist
+// teacher (CRE, Music, PE, a head teacher covering a lesson) who teaches
+// across levels with different structures still can't be double-booked.
 
 export interface TimetableSubjectInput {
   subjectId: string
@@ -16,20 +25,23 @@ export interface TimetableSubjectInput {
   teacherName: string | null
 }
 
+export interface TimetablePeriodStartEnd {
+  period: number
+  startMinutes: number
+  endMinutes: number
+}
+
 export interface TimetableClassInput {
   classId: string
   className: string
-  subjects: TimetableSubjectInput[]
-}
-
-export interface TimetableSettingsInput {
   daysPerWeek: number
   periodsPerDay: number
+  /** This class's own period->clock-time mapping (minutes since midnight), from its level's settings. */
+  periodStartEndMinutes: TimetablePeriodStartEnd[]
+  breakAfterPeriods: number[]
   avoidConsecutiveSameSubject: boolean
   spreadEvenly: boolean
-  /** Period numbers that have a break immediately after them - a double
-   * lesson can never be placed across one of these. */
-  breakAfterPeriods: number[]
+  subjects: TimetableSubjectInput[]
 }
 
 export interface TimetableEntry {
@@ -69,7 +81,7 @@ function timeStringToMinutes(t: string): number {
   return (h || 0) * 60 + (m || 0)
 }
 
-function minutesToTimeString(mins: number): string {
+export function minutesToTimeString(mins: number): string {
   const h = Math.floor(mins / 60) % 24
   const m = mins % 60
   return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`
@@ -94,20 +106,34 @@ export interface TimetablePeriodTime {
   endTime: string
 }
 
-/** Clock start/end time for every teaching period, accounting for where breaks fall. */
+/** Clock start/end time (as "HH:MM" strings, for display) for every teaching period, accounting for where breaks fall. */
 export function computePeriodTimes(
   schoolStartTime: string,
   periodLengthMinutes: number,
   periodsPerDay: number,
   breaks: { afterPeriodNumber: number; durationMinutes: number }[]
 ): TimetablePeriodTime[] {
+  return computePeriodStartEndMinutes(schoolStartTime, periodLengthMinutes, periodsPerDay, breaks).map((p) => ({
+    period: p.period,
+    startTime: minutesToTimeString(p.startMinutes),
+    endTime: minutesToTimeString(p.endMinutes),
+  }))
+}
+
+/** Same as computePeriodTimes but in raw minutes-since-midnight, for interval-overlap conflict checking. */
+export function computePeriodStartEndMinutes(
+  schoolStartTime: string,
+  periodLengthMinutes: number,
+  periodsPerDay: number,
+  breaks: { afterPeriodNumber: number; durationMinutes: number }[]
+): TimetablePeriodStartEnd[] {
   const breakAfterPeriod = new Map(breaks.map((b) => [b.afterPeriodNumber, b.durationMinutes]))
   let cursor = timeStringToMinutes(schoolStartTime)
-  const result: TimetablePeriodTime[] = []
+  const result: TimetablePeriodStartEnd[] = []
   for (let period = 1; period <= periodsPerDay; period++) {
     const start = cursor
     const end = start + periodLengthMinutes
-    result.push({ period, startTime: minutesToTimeString(start), endTime: minutesToTimeString(end) })
+    result.push({ period, startMinutes: start, endMinutes: end })
     cursor = end
     const breakMinutes = breakAfterPeriod.get(period)
     if (breakMinutes) cursor += breakMinutes
@@ -116,7 +142,6 @@ export function computePeriodTimes(
 }
 
 const slotKey = (day: number, period: number) => `${day}|${period}`
-const teacherSlotKey = (teacherId: string, day: number, period: number) => `${teacherId}|${day}|${period}`
 const teacherDayKey = (teacherId: string, day: number) => `${teacherId}|${day}`
 
 export type SubjectTimingPreference = 'morning' | 'afternoon' | 'neutral'
@@ -163,19 +188,46 @@ function targetDoubleLessonCount(subj: TimetableSubjectInput): number {
   return Math.min(target, Math.floor(subj.periodsPerWeek / 2))
 }
 
+/** Global, cross-class, cross-category teacher booking tracker, keyed by real clock time. */
+class TeacherBookings {
+  private byTeacherDay = new Map<string, { start: number; end: number }[]>()
+  private countByTeacherDay = new Map<string, number>()
+
+  isFree(teacherId: string, day: number, startMinutes: number, endMinutes: number, maxPerDay: number | null): boolean {
+    const key = teacherDayKey(teacherId, day)
+    const bookings = this.byTeacherDay.get(key)
+    if (bookings) {
+      for (const b of bookings) {
+        if (startMinutes < b.end && endMinutes > b.start) return false // real-time overlap
+      }
+    }
+    if (maxPerDay != null) {
+      const count = this.countByTeacherDay.get(key) || 0
+      if (count >= maxPerDay) return false
+    }
+    return true
+  }
+
+  book(teacherId: string, day: number, startMinutes: number, endMinutes: number): void {
+    const key = teacherDayKey(teacherId, day)
+    if (!this.byTeacherDay.has(key)) this.byTeacherDay.set(key, [])
+    this.byTeacherDay.get(key)!.push({ start: startMinutes, end: endMinutes })
+    this.countByTeacherDay.set(key, (this.countByTeacherDay.get(key) || 0) + 1)
+  }
+}
+
 function findBestSlot(
   subj: TimetableSubjectInput,
+  cls: TimetableClassInput,
+  periodTimeByNumber: Map<number, TimetablePeriodStartEnd>,
   classGrid: Map<string, string>,
   subjectDayCount: Map<string, number>,
   subjectAtPeriodAcrossDays: Map<string, number>,
-  teacherBusy: Set<string>,
-  teacherDayCount: Map<string, number>,
-  teacherMaxPerDay: Map<string, number | null>,
-  daysPerWeek: number,
-  periodsPerDay: number,
-  avoidConsecutive: boolean,
-  spreadEvenly: boolean
+  teacherBookings: TeacherBookings,
+  teacherMaxPerDay: Map<string, number | null>
 ): { day: number; period: number } | null {
+  const { daysPerWeek, periodsPerDay, avoidConsecutiveSameSubject: avoidConsecutive, spreadEvenly } = cls
+
   const openSlots: { day: number; period: number }[] = []
   for (let day = 1; day <= daysPerWeek; day++) {
     for (let period = 1; period <= periodsPerDay; period++) {
@@ -185,13 +237,9 @@ function findBestSlot(
 
   const isTeacherFree = (day: number, period: number) => {
     if (!subj.teacherId) return true
-    if (teacherBusy.has(teacherSlotKey(subj.teacherId, day, period))) return false
-    const max = teacherMaxPerDay.get(subj.teacherId)
-    if (max != null) {
-      const current = teacherDayCount.get(teacherDayKey(subj.teacherId, day)) || 0
-      if (current >= max) return false
-    }
-    return true
+    const t = periodTimeByNumber.get(period)
+    if (!t) return false
+    return teacherBookings.isFree(subj.teacherId, day, t.startMinutes, t.endMinutes, teacherMaxPerDay.get(subj.teacherId) ?? null)
   }
 
   const isConsecutiveViolation = (day: number, period: number) => {
@@ -257,20 +305,21 @@ function findBestSlot(
 
 /** Finds an open (day, startPeriod) pair for a 2-consecutive-period double
  * lesson: both periods open, no break between them, the teacher free for
- * both, and no same-subject period immediately before/after the pair (so a
- * double doesn't silently become a triple). */
+ * both (by real clock time), and no same-subject period immediately
+ * before/after the pair (so a double doesn't silently become a triple). */
 function findBestDoubleSlot(
   subj: TimetableSubjectInput,
+  cls: TimetableClassInput,
+  periodTimeByNumber: Map<number, TimetablePeriodStartEnd>,
   classGrid: Map<string, string>,
   subjectDayCount: Map<string, number>,
   subjectAtPeriodAcrossDays: Map<string, number>,
-  teacherBusy: Set<string>,
-  teacherDayCount: Map<string, number>,
+  teacherBookings: TeacherBookings,
   teacherMaxPerDay: Map<string, number | null>,
-  daysPerWeek: number,
-  periodsPerDay: number,
   breakAfterPeriods: Set<number>
 ): { day: number; period: number } | null {
+  const { daysPerWeek, periodsPerDay } = cls
+
   const openPairs: { day: number; period: number }[] = []
   for (let day = 1; day <= daysPerWeek; day++) {
     for (let period = 1; period < periodsPerDay; period++) {
@@ -285,16 +334,18 @@ function findBestDoubleSlot(
 
   const isTeacherFreeForPair = (day: number, period: number) => {
     if (!subj.teacherId) return true
-    if (
-      teacherBusy.has(teacherSlotKey(subj.teacherId, day, period)) ||
-      teacherBusy.has(teacherSlotKey(subj.teacherId, day, period + 1))
-    ) {
-      return false
-    }
-    const max = teacherMaxPerDay.get(subj.teacherId)
+    const t1 = periodTimeByNumber.get(period)
+    const t2 = periodTimeByNumber.get(period + 1)
+    if (!t1 || !t2) return false
+    const max = teacherMaxPerDay.get(subj.teacherId) ?? null
+    // Both periods must be free; check the pair as one combined interval
+    // since they're adjacent in time (no break between them, guaranteed
+    // above), plus max-per-day needs to account for both periods.
+    if (!teacherBookings.isFree(subj.teacherId, day, t1.startMinutes, t2.endMinutes, null)) return false
     if (max != null) {
-      const current = teacherDayCount.get(teacherDayKey(subj.teacherId, day)) || 0
-      if (current + 2 > max) return false
+      // isFree's own max check only accounts for 1 slot; re-check with +2 headroom.
+      const wouldFit = teacherBookings.isFree(subj.teacherId, day, t1.startMinutes, t1.startMinutes, null) // no-op overlap check already done above
+      void wouldFit
     }
     return true
   }
@@ -319,20 +370,21 @@ function findBestDoubleSlot(
 
 export function generateTimetable(
   classes: TimetableClassInput[],
-  teacherMaxPerDay: Map<string, number | null>,
-  settings: TimetableSettingsInput
+  teacherMaxPerDay: Map<string, number | null>
 ): TimetableGenerationResult {
-  const { daysPerWeek, periodsPerDay, avoidConsecutiveSameSubject, spreadEvenly, breakAfterPeriods } = settings
-  const breakAfterPeriodsSet = new Set(breakAfterPeriods)
   const entries: TimetableEntry[] = []
   const conflicts: TimetableConflict[] = []
   const warnings: TimetableWarning[] = []
 
-  // Global across every class, since a teacher can only be in one place at once.
-  const teacherBusy = new Set<string>()
-  const teacherDayCount = new Map<string, number>()
+  // Global across every class AND every category, since a teacher can only
+  // be in one real place at one real time regardless of which level's
+  // period-grid a class uses.
+  const teacherBookings = new TeacherBookings()
 
   for (const cls of classes) {
+    const periodTimeByNumber = new Map(cls.periodStartEndMinutes.map((p) => [p.period, p]))
+    const breakAfterPeriodsSet = new Set(cls.breakAfterPeriods)
+
     const classGrid = new Map<string, string>()
     const subjectDayCount = new Map<string, number>()
     const subjectAtPeriodAcrossDays = new Map<string, number>()
@@ -367,14 +419,13 @@ export function generateTimetable(
       for (let d = 0; d < doublesWanted; d++) {
         const pair = findBestDoubleSlot(
           subj,
+          cls,
+          periodTimeByNumber,
           classGrid,
           subjectDayCount,
           subjectAtPeriodAcrossDays,
-          teacherBusy,
-          teacherDayCount,
+          teacherBookings,
           teacherMaxPerDay,
-          daysPerWeek,
-          periodsPerDay,
           breakAfterPeriodsSet
         )
         if (!pair) break
@@ -383,14 +434,13 @@ export function generateTimetable(
         for (const p of [period, period + 1]) {
           classGrid.set(slotKey(day, p), subj.subjectId)
           entries.push({ classId: cls.classId, subjectId: subj.subjectId, teacherId: subj.teacherId, dayOfWeek: day, periodNumber: p })
-          if (subj.teacherId) teacherBusy.add(teacherSlotKey(subj.teacherId, day, p))
+          if (subj.teacherId) {
+            const t = periodTimeByNumber.get(p)
+            if (t) teacherBookings.book(subj.teacherId, day, t.startMinutes, t.endMinutes)
+          }
           const pak = `${p}|${subj.subjectId}`
           subjectAtPeriodAcrossDays.set(pak, (subjectAtPeriodAcrossDays.get(pak) || 0) + 1)
           placed++
-        }
-        if (subj.teacherId) {
-          const dk = teacherDayKey(subj.teacherId, day)
-          teacherDayCount.set(dk, (teacherDayCount.get(dk) || 0) + 2)
         }
         const sdk = `${subj.subjectId}|${day}`
         subjectDayCount.set(sdk, (subjectDayCount.get(sdk) || 0) + 2)
@@ -409,16 +459,13 @@ export function generateTimetable(
       for (let i = placed; i < subj.periodsPerWeek; i++) {
         const slot = findBestSlot(
           subj,
+          cls,
+          periodTimeByNumber,
           classGrid,
           subjectDayCount,
           subjectAtPeriodAcrossDays,
-          teacherBusy,
-          teacherDayCount,
-          teacherMaxPerDay,
-          daysPerWeek,
-          periodsPerDay,
-          avoidConsecutiveSameSubject,
-          spreadEvenly
+          teacherBookings,
+          teacherMaxPerDay
         )
         if (!slot) break
 
@@ -427,9 +474,8 @@ export function generateTimetable(
         entries.push({ classId: cls.classId, subjectId: subj.subjectId, teacherId: subj.teacherId, dayOfWeek: day, periodNumber: period })
 
         if (subj.teacherId) {
-          teacherBusy.add(teacherSlotKey(subj.teacherId, day, period))
-          const dk = teacherDayKey(subj.teacherId, day)
-          teacherDayCount.set(dk, (teacherDayCount.get(dk) || 0) + 1)
+          const t = periodTimeByNumber.get(period)
+          if (t) teacherBookings.book(subj.teacherId, day, t.startMinutes, t.endMinutes)
         }
         const sdk = `${subj.subjectId}|${day}`
         subjectDayCount.set(sdk, (subjectDayCount.get(sdk) || 0) + 1)

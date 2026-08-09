@@ -15,38 +15,54 @@ export interface TimetablePrintPeriodTime {
   endTime: string
 }
 
+/** Same explicit-column escape hatch as components/timetable-grid.tsx - used
+ * for a merged cross-category axis (e.g. a teacher printing their schedule
+ * across levels that run different daily structures). No break columns in
+ * this mode, since break patterns aren't shared across levels. */
+export interface TimetablePrintColumn {
+  key: string
+  label: string
+  subLabel: string
+}
+
 type Column =
-  | { type: 'period'; period: number; startTime: string; endTime: string }
-  | { type: 'break'; key: string; name: string; durationMinutes: number }
+  | { type: 'period'; key: string; label: string; subLabel: string }
+  | { type: 'break'; key: string; label: string; subLabel: string }
 
 export function generateTimetablePrintHTML(params: {
   title: string
   schoolName: string
   termLabel: string
   daysPerWeek: number
-  periodsPerDay: number
-  breaks: { name: string; afterPeriodNumber: number; durationMinutes: number }[]
-  periodTimes: TimetablePrintPeriodTime[]
+  periodsPerDay?: number
+  breaks?: { name: string; afterPeriodNumber: number; durationMinutes: number }[]
+  periodTimes?: TimetablePrintPeriodTime[]
+  columns?: TimetablePrintColumn[]
   cells: Record<string, TimetablePrintCell>
 }): string {
-  const { title, schoolName, termLabel, daysPerWeek, periodsPerDay, breaks, periodTimes, cells } = params
+  const { title, schoolName, termLabel, daysPerWeek, periodsPerDay, breaks, periodTimes, columns: explicitColumns, cells } = params
   const dayLabels = DAY_LABELS.slice(0, daysPerWeek)
-  const breaksByAfterPeriod = new Map(breaks.map((b) => [b.afterPeriodNumber, b]))
-  const timeByPeriod = new Map(periodTimes.map((p) => [p.period, p]))
 
-  const columns: Column[] = []
-  for (let period = 1; period <= periodsPerDay; period++) {
-    const t = timeByPeriod.get(period)
-    columns.push({ type: 'period', period, startTime: t?.startTime || '', endTime: t?.endTime || '' })
-    const brk = breaksByAfterPeriod.get(period)
-    if (brk) columns.push({ type: 'break', key: `break-${period}`, name: brk.name, durationMinutes: brk.durationMinutes })
+  let columns: Column[]
+  if (explicitColumns) {
+    columns = explicitColumns.map((c) => ({ type: 'period', key: c.key, label: c.label, subLabel: c.subLabel }))
+  } else {
+    const breaksByAfterPeriod = new Map((breaks || []).map((b) => [b.afterPeriodNumber, b]))
+    const timeByPeriod = new Map((periodTimes || []).map((p) => [p.period, p]))
+    columns = []
+    for (let period = 1; period <= (periodsPerDay || 0); period++) {
+      const t = timeByPeriod.get(period)
+      columns.push({ type: 'period', key: String(period), label: `Period ${period}`, subLabel: `${t?.startTime || ''} - ${t?.endTime || ''}` })
+      const brk = breaksByAfterPeriod.get(period)
+      if (brk) columns.push({ type: 'break', key: `break-${period}`, label: brk.name, subLabel: `(${brk.durationMinutes}m)` })
+    }
   }
 
   const headerCellsHTML = columns
     .map((col) =>
       col.type === 'period'
-        ? `<th style="border:1px solid #d1d5db;padding:6px 8px;background:#e5e7eb;">Period ${col.period}<br/><span style="font-weight:400;color:#6b7280;font-size:10px;">${col.startTime} - ${col.endTime}</span></th>`
-        : `<th style="border:1px solid #d1d5db;padding:4px;background:#fef3c7;color:#b45309;font-size:10px;white-space:nowrap;">${col.name}<br/>(${col.durationMinutes}m)</th>`
+        ? `<th style="border:1px solid #d1d5db;padding:6px 8px;background:#e5e7eb;">${col.label}<br/><span style="font-weight:400;color:#6b7280;font-size:10px;">${col.subLabel}</span></th>`
+        : `<th style="border:1px solid #d1d5db;padding:4px;background:#fef3c7;color:#b45309;font-size:10px;white-space:nowrap;">${col.label}<br/>${col.subLabel}</th>`
     )
     .join('')
 
@@ -56,7 +72,7 @@ export function generateTimetablePrintHTML(params: {
       const rowCellsHTML = columns
         .map((col) => {
           if (col.type === 'break') return `<td style="border:1px solid #d1d5db;background:#fffbeb;"></td>`
-          const cell = cells[`${day}|${col.period}`]
+          const cell = cells[`${day}|${col.key}`]
           return `<td style="border:1px solid #d1d5db;padding:6px 8px;vertical-align:top;">${
             cell
               ? `<div style="font-weight:700;">${cell.subjectName}</div><div style="color:#6b7280;font-size:10px;">${cell.subtitle || ''}</div>`

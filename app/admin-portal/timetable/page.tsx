@@ -17,14 +17,16 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
 import {
-  Settings as SettingsIcon, Play, Trash2, Plus, Printer, AlertTriangle, CheckCircle2, CalendarClock,
+  Settings as SettingsIcon, Play, Trash2, Plus, Printer, AlertTriangle, CheckCircle2, CalendarClock, Copy,
 } from 'lucide-react'
-import { TimetableGrid, type TimetableGridCell, type TimetableGridBreak } from '@/components/timetable-grid'
+import { TimetableGrid, type TimetableGridCell } from '@/components/timetable-grid'
 import {
-  generateTimetable, computePeriodsPerDay, computePeriodTimes,
+  generateTimetable,
   type TimetableClassInput, type TimetableConflict, type TimetableWarning,
 } from '@/lib/timetable-generator'
+import { resolveCategoryGrid, buildMergedColumns, mergedColumnKeyFor, type ResolvedCategoryGrid } from '@/lib/timetable-merged-view'
 import { generateTimetablePrintHTML, openTimetablePrintWindow } from '@/lib/timetable-print'
+import { CBC_CATEGORIES, getCategoryForClass } from '@/lib/cbc-categories'
 import { sortClasses, TERMS } from '../_shared/utils'
 import type { Class } from '@/lib/types'
 
@@ -51,6 +53,7 @@ interface AssignmentRow {
 
 interface BreakRow {
   id: string
+  category: string
   name: string
   after_period_number: number
   duration_minutes: number
@@ -65,9 +68,39 @@ interface EntryRow {
   period_number: number
 }
 
+interface SettingsShape {
+  school_start_time: string
+  school_end_time: string
+  period_length_minutes: number
+  days_per_week: number
+  avoid_consecutive_same_subject: boolean
+  spread_evenly: boolean
+}
+
 const CURRENT_YEAR = new Date().getFullYear()
 const YEARS = Array.from({ length: 3 }, (_, i) => (CURRENT_YEAR - 1 + i).toString())
 const PERIOD_LENGTH_OPTIONS = [30, 35, 40, 45, 60, 80, 90]
+
+// A preschooler's day looks nothing like a JSS learner's - shorter, earlier-
+// ending, shorter periods. Sensible starting points per level, not rules;
+// every field here is editable per school in the Settings tab.
+const DEFAULT_SETTINGS_BY_CATEGORY: Record<string, SettingsShape> = {
+  'Pre-School': { school_start_time: '08:00', school_end_time: '13:00', period_length_minutes: 30, days_per_week: 5, avoid_consecutive_same_subject: true, spread_evenly: true },
+  'Lower Primary': { school_start_time: '08:00', school_end_time: '15:00', period_length_minutes: 35, days_per_week: 5, avoid_consecutive_same_subject: true, spread_evenly: true },
+  'Upper Primary': { school_start_time: '08:00', school_end_time: '16:00', period_length_minutes: 40, days_per_week: 5, avoid_consecutive_same_subject: true, spread_evenly: true },
+  'Junior Secondary': { school_start_time: '08:00', school_end_time: '16:30', period_length_minutes: 40, days_per_week: 5, avoid_consecutive_same_subject: true, spread_evenly: true },
+}
+const FALLBACK_DEFAULT_SETTINGS: SettingsShape = { school_start_time: '08:00', school_end_time: '16:00', period_length_minutes: 40, days_per_week: 5, avoid_consecutive_same_subject: true, spread_evenly: true }
+
+function getDefaultSettingsForCategory(category: string): SettingsShape {
+  return DEFAULT_SETTINGS_BY_CATEGORY[category] || FALLBACK_DEFAULT_SETTINGS
+}
+
+function effectiveCategory(cls: { name: string }): string {
+  return getCategoryForClass(cls.name) || 'General'
+}
+
+const CATEGORY_ORDER = [...CBC_CATEGORIES.map((c) => c.name), 'General']
 
 export default function TimetablePage() {
   const { currentSchool } = useSchool()
@@ -77,16 +110,12 @@ export default function TimetablePage() {
   const [subjects, setSubjects] = useState<SubjectRow[]>([])
   const [teachers, setTeachers] = useState<TeacherRow[]>([])
   const [assignments, setAssignments] = useState<AssignmentRow[]>([])
-  const [breaks, setBreaks] = useState<BreakRow[]>([])
 
-  const [settings, setSettings] = useState({
-    school_start_time: '08:00',
-    school_end_time: '16:00',
-    period_length_minutes: 40,
-    days_per_week: 5,
-    avoid_consecutive_same_subject: true,
-    spread_evenly: true,
-  })
+  const [settingsByCategory, setSettingsByCategory] = useState<Record<string, SettingsShape>>({})
+  const [breaksByCategory, setBreaksByCategory] = useState<Record<string, BreakRow[]>>({})
+  const [configuredCategories, setConfiguredCategories] = useState<Set<string>>(new Set())
+  const [settingsCategoryTab, setSettingsCategoryTab] = useState('')
+  const [copyFromCategory, setCopyFromCategory] = useState('')
 
   const [newBreakName, setNewBreakName] = useState('')
   const [newBreakAfterPeriod, setNewBreakAfterPeriod] = useState('')
@@ -95,7 +124,7 @@ export default function TimetablePage() {
   const [genTerm, setGenTerm] = useState(TERMS[0])
   const [genYear, setGenYear] = useState(CURRENT_YEAR.toString())
   const [isGenerating, setIsGenerating] = useState(false)
-  const [genResult, setGenResult] = useState<{ entryCount: number; conflicts: TimetableConflict[]; warnings: TimetableWarning[] } | null>(null)
+  const [genResult, setGenResult] = useState<{ entryCount: number; conflicts: TimetableConflict[]; warnings: TimetableWarning[]; levelWarnings: string[] } | null>(null)
 
   const [viewMode, setViewMode] = useState<'class' | 'teacher'>('class')
   const [viewTerm, setViewTerm] = useState(TERMS[0])
@@ -110,18 +139,10 @@ export default function TimetablePage() {
   const [editTeacherId, setEditTeacherId] = useState('')
   const [isSavingEdit, setIsSavingEdit] = useState(false)
 
-  const periodsPerDay = computePeriodsPerDay(
-    settings.school_start_time,
-    settings.school_end_time,
-    settings.period_length_minutes,
-    breaks.map((b) => ({ durationMinutes: b.duration_minutes }))
-  )
-  const periodTimes = computePeriodTimes(
-    settings.school_start_time,
-    settings.period_length_minutes,
-    periodsPerDay,
-    breaks.map((b) => ({ afterPeriodNumber: b.after_period_number, durationMinutes: b.duration_minutes }))
-  )
+  const presentCategories = useMemo(() => {
+    const set = new Set(classes.map(effectiveCategory))
+    return CATEGORY_ORDER.filter((c) => set.has(c))
+  }, [classes])
 
   const loadAll = useCallback(async () => {
     if (!currentSchool) return
@@ -130,24 +151,45 @@ export default function TimetablePage() {
 
     const [classesRes, settingsRes, breaksRes] = await Promise.all([
       supabase.from('classes').select('*').eq('school_id', currentSchool.id).order('display_order'),
-      supabase.from('timetable_settings').select('*').eq('school_id', currentSchool.id).maybeSingle(),
+      supabase.from('timetable_settings').select('*').eq('school_id', currentSchool.id),
       supabase.from('timetable_breaks').select('*').eq('school_id', currentSchool.id).order('after_period_number'),
     ])
 
     const loadedClasses = sortClasses((classesRes.data || []) as Class[])
     setClasses(loadedClasses)
-    setBreaks((breaksRes.data || []) as BreakRow[])
 
-    if (settingsRes.data) {
-      setSettings({
-        school_start_time: settingsRes.data.school_start_time,
-        school_end_time: settingsRes.data.school_end_time,
-        period_length_minutes: settingsRes.data.period_length_minutes,
-        days_per_week: settingsRes.data.days_per_week,
-        avoid_consecutive_same_subject: settingsRes.data.avoid_consecutive_same_subject,
-        spread_evenly: settingsRes.data.spread_evenly,
-      })
+    const loadedCategories = CATEGORY_ORDER.filter((c) => loadedClasses.some((cls) => effectiveCategory(cls) === c))
+    const settingsRows = (settingsRes.data || []) as (SettingsShape & { category: string | null })[]
+    const breaksRows = (breaksRes.data || []) as BreakRow[]
+
+    const nextSettings: Record<string, SettingsShape> = {}
+    const nextConfigured = new Set<string>()
+    for (const cat of loadedCategories) {
+      const row = settingsRows.find((r) => r.category === cat)
+      if (row) {
+        nextSettings[cat] = {
+          school_start_time: row.school_start_time,
+          school_end_time: row.school_end_time,
+          period_length_minutes: row.period_length_minutes,
+          days_per_week: row.days_per_week,
+          avoid_consecutive_same_subject: row.avoid_consecutive_same_subject,
+          spread_evenly: row.spread_evenly,
+        }
+        nextConfigured.add(cat)
+      } else {
+        nextSettings[cat] = getDefaultSettingsForCategory(cat)
+      }
     }
+    setSettingsByCategory(nextSettings)
+    setConfiguredCategories(nextConfigured)
+
+    const nextBreaks: Record<string, BreakRow[]> = {}
+    for (const cat of loadedCategories) {
+      nextBreaks[cat] = breaksRows.filter((b) => b.category === cat)
+    }
+    setBreaksByCategory(nextBreaks)
+
+    setSettingsCategoryTab((prev) => (prev && loadedCategories.includes(prev) ? prev : loadedCategories[0] || ''))
 
     const classIds = loadedClasses.map((c) => c.id)
     const [subjectsRes, teachersRes, assignmentsRes] = await Promise.all([
@@ -168,25 +210,28 @@ export default function TimetablePage() {
     loadAll()
   }, [loadAll])
 
-  // --- Settings ---
-  const saveSettings = async (patch: Partial<typeof settings>) => {
-    if (!currentSchool) return
-    const next = { ...settings, ...patch }
-    setSettings(next)
+  // --- Settings (per CBC level) ---
+  const saveSettings = async (category: string, patch: Partial<SettingsShape>) => {
+    if (!currentSchool || !category) return
+    const current = settingsByCategory[category] || getDefaultSettingsForCategory(category)
+    const next = { ...current, ...patch }
+    setSettingsByCategory((prev) => ({ ...prev, [category]: next }))
+    setConfiguredCategories((prev) => new Set(prev).add(category))
     const supabase = createClient()
     const { error } = await supabase
       .from('timetable_settings')
-      .upsert({ school_id: currentSchool.id, ...next }, { onConflict: 'school_id' })
+      .upsert({ school_id: currentSchool.id, category, ...next }, { onConflict: 'school_id,category' })
     if (error) alert(`Failed to save settings: ${error.message}`)
   }
 
-  const addBreak = async () => {
-    if (!currentSchool || !newBreakName.trim() || !newBreakAfterPeriod) return
+  const addBreak = async (category: string) => {
+    if (!currentSchool || !category || !newBreakName.trim() || !newBreakAfterPeriod) return
     const supabase = createClient()
     const { data, error } = await supabase
       .from('timetable_breaks')
       .insert({
         school_id: currentSchool.id,
+        category,
         name: newBreakName.trim(),
         after_period_number: Number(newBreakAfterPeriod),
         duration_minutes: Number(newBreakDuration) || 30,
@@ -197,20 +242,48 @@ export default function TimetablePage() {
       alert(`Failed to add break: ${error.message}`)
       return
     }
-    setBreaks((prev) => [...prev, data as BreakRow].sort((a, b) => a.after_period_number - b.after_period_number))
+    setBreaksByCategory((prev) => ({
+      ...prev,
+      [category]: [...(prev[category] || []), data as BreakRow].sort((a, b) => a.after_period_number - b.after_period_number),
+    }))
     setNewBreakName('')
     setNewBreakAfterPeriod('')
     setNewBreakDuration('30')
   }
 
-  const deleteBreak = async (id: string) => {
+  const deleteBreak = async (category: string, id: string) => {
     const supabase = createClient()
     const { error } = await supabase.from('timetable_breaks').delete().eq('id', id)
     if (error) {
       alert(`Failed to delete break: ${error.message}`)
       return
     }
-    setBreaks((prev) => prev.filter((b) => b.id !== id))
+    setBreaksByCategory((prev) => ({ ...prev, [category]: (prev[category] || []).filter((b) => b.id !== id) }))
+  }
+
+  const copySettingsFromCategory = async (targetCategory: string, sourceCategory: string) => {
+    if (!currentSchool || !sourceCategory || sourceCategory === targetCategory) return
+    const sourceSettings = settingsByCategory[sourceCategory] || getDefaultSettingsForCategory(sourceCategory)
+    await saveSettings(targetCategory, sourceSettings)
+
+    const supabase = createClient()
+    const existingIds = (breaksByCategory[targetCategory] || []).map((b) => b.id)
+    if (existingIds.length > 0) await supabase.from('timetable_breaks').delete().in('id', existingIds)
+
+    const sourceBreaks = breaksByCategory[sourceCategory] || []
+    if (sourceBreaks.length > 0) {
+      const rows = sourceBreaks.map((b) => ({
+        school_id: currentSchool.id,
+        category: targetCategory,
+        name: b.name,
+        after_period_number: b.after_period_number,
+        duration_minutes: b.duration_minutes,
+      }))
+      const { data } = await supabase.from('timetable_breaks').insert(rows).select('*')
+      setBreaksByCategory((prev) => ({ ...prev, [targetCategory]: (data || []) as BreakRow[] }))
+    } else {
+      setBreaksByCategory((prev) => ({ ...prev, [targetCategory]: [] }))
+    }
   }
 
   const updateSubjectPeriods = async (subjectId: string, value: string) => {
@@ -254,32 +327,43 @@ export default function TimetablePage() {
     setIsGenerating(true)
     setGenResult(null)
 
-    const classInputs: TimetableClassInput[] = classes.map((cls) => ({
-      classId: cls.id,
-      className: cls.name,
-      subjects: subjects
-        .filter((s) => s.class_id === cls.id)
-        .map((s) => {
-          const teacherId = resolveTeacherForSubject(cls.id, s.id)
-          return {
-            subjectId: s.id,
-            subjectName: s.name,
-            periodsPerWeek: s.periods_per_week,
-            teacherId,
-            teacherName: teacherName(teacherId),
-          }
-        }),
-    }))
+    const levelWarnings: string[] = []
+    const classInputs: TimetableClassInput[] = classes.map((cls) => {
+      const category = effectiveCategory(cls)
+      if (!configuredCategories.has(category) && !levelWarnings.includes(category)) {
+        levelWarnings.push(category)
+      }
+      const catSettings = settingsByCategory[category] || getDefaultSettingsForCategory(category)
+      const catBreaks = breaksByCategory[category] || []
+      const grid = resolveCategoryGrid(category, catSettings, catBreaks)
+
+      return {
+        classId: cls.id,
+        className: cls.name,
+        daysPerWeek: grid.daysPerWeek,
+        periodsPerDay: grid.periodsPerDay,
+        periodStartEndMinutes: grid.periodStartEndMinutes,
+        breakAfterPeriods: catBreaks.map((b) => b.after_period_number),
+        avoidConsecutiveSameSubject: catSettings.avoid_consecutive_same_subject,
+        spreadEvenly: catSettings.spread_evenly,
+        subjects: subjects
+          .filter((s) => s.class_id === cls.id)
+          .map((s) => {
+            const teacherId = resolveTeacherForSubject(cls.id, s.id)
+            return {
+              subjectId: s.id,
+              subjectName: s.name,
+              periodsPerWeek: s.periods_per_week,
+              teacherId,
+              teacherName: teacherName(teacherId),
+            }
+          }),
+      }
+    })
 
     const teacherMaxPerDay = new Map(teachers.map((t) => [t.id, t.max_periods_per_day]))
 
-    const result = generateTimetable(classInputs, teacherMaxPerDay, {
-      daysPerWeek: settings.days_per_week,
-      periodsPerDay,
-      avoidConsecutiveSameSubject: settings.avoid_consecutive_same_subject,
-      spreadEvenly: settings.spread_evenly,
-      breakAfterPeriods: breaks.map((b) => b.after_period_number),
-    })
+    const result = generateTimetable(classInputs, teacherMaxPerDay)
 
     const supabase = createClient()
     await supabase
@@ -308,7 +392,7 @@ export default function TimetablePage() {
       }
     }
 
-    setGenResult({ entryCount: result.entries.length, conflicts: result.conflicts, warnings: result.warnings })
+    setGenResult({ entryCount: result.entries.length, conflicts: result.conflicts, warnings: result.warnings, levelWarnings })
     setIsGenerating(false)
 
     // Point the View tab at what was just generated - otherwise it's still
@@ -348,11 +432,53 @@ export default function TimetablePage() {
 
   const subjectName = (id: string) => subjects.find((s) => s.id === id)?.name || 'Unknown'
   const className = (id: string) => classes.find((c) => c.id === id)?.name || 'Unknown'
+  const categoryForClassId = (id: string) => {
+    const cls = classes.find((c) => c.id === id)
+    return cls ? effectiveCategory(cls) : presentCategories[0] || 'General'
+  }
+
+  // Most teachers only teach within one CBC level - their view renders
+  // exactly like it always has. A teacher whose classes span more than one
+  // level needs a merged, real-clock-time axis since period numbers alone
+  // don't line up across levels with different day structures.
+  const viewCategories = useMemo(() => {
+    if (viewMode === 'class') {
+      return [viewClassId ? categoryForClassId(viewClassId) : presentCategories[0] || 'General']
+    }
+    const cats = new Set<string>()
+    for (const e of viewEntries) cats.add(categoryForClassId(e.class_id))
+    return cats.size > 0 ? [...cats] : [presentCategories[0] || 'General']
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode, viewClassId, viewEntries, classes, presentCategories])
+
+  const isMergedView = viewMode === 'teacher' && viewCategories.length > 1
+
+  const viewGrids = useMemo(() => {
+    const map = new Map<string, ResolvedCategoryGrid>()
+    for (const cat of viewCategories) {
+      const catSettings = settingsByCategory[cat] || getDefaultSettingsForCategory(cat)
+      const catBreaks = breaksByCategory[cat] || []
+      map.set(cat, resolveCategoryGrid(cat, catSettings, catBreaks))
+    }
+    return map
+  }, [viewCategories, settingsByCategory, breaksByCategory])
+
+  const primaryGrid = viewGrids.get(viewCategories[0])
+  const mergedColumns = useMemo(() => (isMergedView ? buildMergedColumns([...viewGrids.values()]) : null), [isMergedView, viewGrids])
 
   const gridCells: Record<string, TimetableGridCell> = useMemo(() => {
     const cells: Record<string, TimetableGridCell> = {}
     for (const e of viewEntries) {
-      cells[`${e.day_of_week}|${e.period_number}`] = {
+      let columnKey: string
+      if (isMergedView) {
+        const grid = viewGrids.get(categoryForClassId(e.class_id))
+        const key = grid ? mergedColumnKeyFor(grid, e.period_number) : null
+        if (!key) continue
+        columnKey = key
+      } else {
+        columnKey = String(e.period_number)
+      }
+      cells[`${e.day_of_week}|${columnKey}`] = {
         subjectId: e.subject_id,
         subjectName: subjectName(e.subject_id),
         teacherId: e.teacher_id,
@@ -361,9 +487,13 @@ export default function TimetablePage() {
     }
     return cells
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewEntries, viewMode, subjects, classes, teachers])
+  }, [viewEntries, viewMode, isMergedView, viewGrids, subjects, classes, teachers])
 
-  const gridBreaks: TimetableGridBreak[] = breaks.map((b) => ({
+  const gridDaysPerWeek = isMergedView
+    ? Math.max(5, ...[...viewGrids.values()].map((g) => g.daysPerWeek))
+    : (primaryGrid?.daysPerWeek || 5)
+
+  const primaryGridBreaks = (breaksByCategory[viewCategories[0]] || []).map((b) => ({
     name: b.name,
     afterPeriodNumber: b.after_period_number,
     durationMinutes: b.duration_minutes,
@@ -372,16 +502,25 @@ export default function TimetablePage() {
   const handlePrint = () => {
     if (!currentSchool) return
     const title = viewMode === 'class' ? `${className(viewClassId)} - Timetable` : `${teacherName(viewTeacherId) || 'Teacher'} - Timetable`
-    const html = generateTimetablePrintHTML({
-      title,
-      schoolName: currentSchool.name,
-      termLabel: `${viewTerm} ${viewYear}`,
-      daysPerWeek: settings.days_per_week,
-      periodsPerDay,
-      breaks: gridBreaks,
-      periodTimes,
-      cells: gridCells,
-    })
+    const html = isMergedView && mergedColumns
+      ? generateTimetablePrintHTML({
+          title,
+          schoolName: currentSchool.name,
+          termLabel: `${viewTerm} ${viewYear}`,
+          daysPerWeek: gridDaysPerWeek,
+          columns: mergedColumns.map((c) => ({ key: c.key, label: c.label, subLabel: `- ${c.subLabel}` })),
+          cells: gridCells,
+        })
+      : generateTimetablePrintHTML({
+          title,
+          schoolName: currentSchool.name,
+          termLabel: `${viewTerm} ${viewYear}`,
+          daysPerWeek: gridDaysPerWeek,
+          periodsPerDay: primaryGrid?.periodsPerDay || 0,
+          breaks: primaryGridBreaks,
+          periodTimes: primaryGrid?.periodTimes || [],
+          cells: gridCells,
+        })
     openTimetablePrintWindow(html)
   }
 
@@ -491,89 +630,138 @@ export default function TimetablePage() {
 
         {/* SETTINGS */}
         <TabsContent value="settings" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><SettingsIcon className="w-4 h-4" /> School Hours &amp; Days</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Label>School Start Time</Label>
-                <Input type="time" value={settings.school_start_time} onChange={(e) => saveSettings({ school_start_time: e.target.value })} className="mt-1" />
-              </div>
-              <div>
-                <Label>School End Time</Label>
-                <Input type="time" value={settings.school_end_time} onChange={(e) => saveSettings({ school_end_time: e.target.value })} className="mt-1" />
-              </div>
-              <div>
-                <Label>Period Length</Label>
-                <Select value={settings.period_length_minutes.toString()} onValueChange={(v) => saveSettings({ period_length_minutes: Number(v) })}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {PERIOD_LENGTH_OPTIONS.map((m) => <SelectItem key={m} value={m.toString()}>{m} minutes</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>School Days</Label>
-                <Select value={settings.days_per_week.toString()} onValueChange={(v) => saveSettings({ days_per_week: Number(v) })}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="5">Monday - Friday (5 days)</SelectItem>
-                    <SelectItem value="6">Monday - Saturday (6 days)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="sm:col-span-2 text-xs text-gray-500">
-                {periodsPerDay} teaching periods fit per day with the current settings and breaks.
-              </div>
-            </CardContent>
-          </Card>
+          {presentCategories.length === 0 ? (
+            <Card><CardContent className="p-8 text-center text-gray-500">No classes found for this school yet.</CardContent></Card>
+          ) : (
+            <Tabs value={settingsCategoryTab} onValueChange={setSettingsCategoryTab} className="space-y-4">
+              <TabsList className="flex flex-wrap h-auto gap-1">
+                {presentCategories.map((cat) => (
+                  <TabsTrigger key={cat} value={cat}>
+                    {cat}{!configuredCategories.has(cat) && <span className="ml-1 text-amber-500" title="Using default settings - not yet saved">*</span>}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Breaks</CardTitle>
-              <CardDescription>Add every break in the school day (morning break, lunch, etc.)</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {breaks.map((b) => (
-                <div key={b.id} className="flex items-center justify-between p-2 border rounded-lg text-sm">
-                  <span>{b.name} - after period {b.after_period_number}, {b.duration_minutes} min</span>
-                  <Button size="sm" variant="ghost" onClick={() => deleteBreak(b.id)}><Trash2 className="w-4 h-4 text-red-600" /></Button>
-                </div>
-              ))}
-              <div className="flex flex-wrap gap-2 items-end pt-2 border-t">
-                <div>
-                  <Label className="text-xs">Name</Label>
-                  <Input value={newBreakName} onChange={(e) => setNewBreakName(e.target.value)} placeholder="Lunch" className="h-9 w-32" />
-                </div>
-                <div>
-                  <Label className="text-xs">After Period</Label>
-                  <Input type="number" min="1" value={newBreakAfterPeriod} onChange={(e) => setNewBreakAfterPeriod(e.target.value)} className="h-9 w-24" />
-                </div>
-                <div>
-                  <Label className="text-xs">Duration (min)</Label>
-                  <Input type="number" min="1" value={newBreakDuration} onChange={(e) => setNewBreakDuration(e.target.value)} className="h-9 w-24" />
-                </div>
-                <Button size="sm" onClick={addBreak}><Plus className="w-4 h-4 mr-1" /> Add Break</Button>
-              </div>
-            </CardContent>
-          </Card>
+              {presentCategories.map((cat) => {
+                const catSettings = settingsByCategory[cat] || getDefaultSettingsForCategory(cat)
+                const catBreaks = breaksByCategory[cat] || []
+                const grid = resolveCategoryGrid(cat, catSettings, catBreaks)
+                const otherCategories = presentCategories.filter((c) => c !== cat)
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Generation Options</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={settings.avoid_consecutive_same_subject} onChange={(e) => saveSettings({ avoid_consecutive_same_subject: e.target.checked })} />
-                Avoid consecutive same-subject periods (recommended)
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={settings.spread_evenly} onChange={(e) => saveSettings({ spread_evenly: e.target.checked })} />
-                Spread periods evenly across the week (recommended)
-              </label>
-            </CardContent>
-          </Card>
+                return (
+                  <TabsContent key={cat} value={cat} className="space-y-4">
+                    {!configuredCategories.has(cat) && (
+                      <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+                        {cat} hasn&apos;t been configured yet - showing sensible defaults for this level. Adjust and they&apos;ll be saved automatically.
+                      </p>
+                    )}
+
+                    {otherCategories.length > 0 && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-gray-500">Copy settings from</span>
+                        <Select value={copyFromCategory} onValueChange={setCopyFromCategory}>
+                          <SelectTrigger className="w-44 h-8"><SelectValue placeholder="Choose a level" /></SelectTrigger>
+                          <SelectContent>{otherCategories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                        </Select>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={!copyFromCategory}
+                          onClick={() => copySettingsFromCategory(cat, copyFromCategory)}
+                        >
+                          <Copy className="w-3.5 h-3.5 mr-1" /> Copy
+                        </Button>
+                      </div>
+                    )}
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><SettingsIcon className="w-4 h-4" /> {cat} - Hours &amp; Days</CardTitle>
+                      </CardHeader>
+                      <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <Label>Start Time</Label>
+                          <Input type="time" value={catSettings.school_start_time} onChange={(e) => saveSettings(cat, { school_start_time: e.target.value })} className="mt-1" />
+                        </div>
+                        <div>
+                          <Label>End Time</Label>
+                          <Input type="time" value={catSettings.school_end_time} onChange={(e) => saveSettings(cat, { school_end_time: e.target.value })} className="mt-1" />
+                        </div>
+                        <div>
+                          <Label>Period Length</Label>
+                          <Select value={catSettings.period_length_minutes.toString()} onValueChange={(v) => saveSettings(cat, { period_length_minutes: Number(v) })}>
+                            <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {PERIOD_LENGTH_OPTIONS.map((m) => <SelectItem key={m} value={m.toString()}>{m} minutes</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label>Days</Label>
+                          <Select value={catSettings.days_per_week.toString()} onValueChange={(v) => saveSettings(cat, { days_per_week: Number(v) })}>
+                            <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="5">Monday - Friday (5 days)</SelectItem>
+                              <SelectItem value="6">Monday - Saturday (6 days)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="sm:col-span-2 text-xs text-gray-500">
+                          {grid.periodsPerDay} teaching periods fit per day for {cat} with the current settings and breaks.
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>{cat} - Breaks</CardTitle>
+                        <CardDescription>Add every break in this level&apos;s day (morning break, lunch, etc.)</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {catBreaks.map((b) => (
+                          <div key={b.id} className="flex items-center justify-between p-2 border rounded-lg text-sm">
+                            <span>{b.name} - after period {b.after_period_number}, {b.duration_minutes} min</span>
+                            <Button size="sm" variant="ghost" onClick={() => deleteBreak(cat, b.id)}><Trash2 className="w-4 h-4 text-red-600" /></Button>
+                          </div>
+                        ))}
+                        <div className="flex flex-wrap gap-2 items-end pt-2 border-t">
+                          <div>
+                            <Label className="text-xs">Name</Label>
+                            <Input value={newBreakName} onChange={(e) => setNewBreakName(e.target.value)} placeholder="Lunch" className="h-9 w-32" />
+                          </div>
+                          <div>
+                            <Label className="text-xs">After Period</Label>
+                            <Input type="number" min="1" value={newBreakAfterPeriod} onChange={(e) => setNewBreakAfterPeriod(e.target.value)} className="h-9 w-24" />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Duration (min)</Label>
+                            <Input type="number" min="1" value={newBreakDuration} onChange={(e) => setNewBreakDuration(e.target.value)} className="h-9 w-24" />
+                          </div>
+                          <Button size="sm" onClick={() => addBreak(cat)}><Plus className="w-4 h-4 mr-1" /> Add Break</Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>{cat} - Generation Options</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <label className="flex items-center gap-2 text-sm">
+                          <input type="checkbox" checked={catSettings.avoid_consecutive_same_subject} onChange={(e) => saveSettings(cat, { avoid_consecutive_same_subject: e.target.checked })} />
+                          Avoid consecutive same-subject periods (recommended)
+                        </label>
+                        <label className="flex items-center gap-2 text-sm">
+                          <input type="checkbox" checked={catSettings.spread_evenly} onChange={(e) => saveSettings(cat, { spread_evenly: e.target.checked })} />
+                          Spread periods evenly across the week (recommended)
+                        </label>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                )
+              })}
+            </Tabs>
+          )}
 
           <Card>
             <CardHeader>
@@ -660,6 +848,12 @@ export default function TimetablePage() {
                     <CheckCircle2 className="w-4 h-4" /> Placed {genResult.entryCount} periods across {classes.length} classes.
                   </div>
 
+                  {genResult.levelWarnings.length > 0 && (
+                    <div className="text-xs bg-amber-50 border border-amber-200 rounded p-2 text-amber-700">
+                      {genResult.levelWarnings.join(', ')} {genResult.levelWarnings.length === 1 ? 'was' : 'were'} generated using default hours/days since {genResult.levelWarnings.length === 1 ? 'it hasn\'t' : 'they haven\'t'} been configured yet - visit the Settings tab to fine-tune {genResult.levelWarnings.length === 1 ? 'it' : 'them'} and regenerate.
+                    </div>
+                  )}
+
                   {genResult.conflicts.length > 0 && (
                     <div>
                       <p className="text-sm font-medium text-red-700 flex items-center gap-1 mb-1"><AlertTriangle className="w-4 h-4" /> {genResult.conflicts.length} conflict(s) - needs manual placement</p>
@@ -735,6 +929,12 @@ export default function TimetablePage() {
                 </Button>
               </div>
 
+              {isMergedView && (
+                <p className="text-xs text-indigo-600 bg-indigo-50 border border-indigo-200 rounded px-3 py-2">
+                  This teacher has classes in more than one level ({viewCategories.join(', ')}), which run on different daily schedules - showing a merged view by real time instead of period number.
+                </p>
+              )}
+
               {isLoadingView ? (
                 <div className="flex items-center justify-center py-12">
                   <div className="animate-spin w-6 h-6 border-4 border-blue-600 border-t-transparent rounded-full"></div>
@@ -745,12 +945,18 @@ export default function TimetablePage() {
                     ? 'Pick a class or teacher above to see their timetable.'
                     : 'No timetable generated yet for this term. Generate one from the Generate tab.'}
                 </p>
+              ) : isMergedView && mergedColumns ? (
+                <TimetableGrid
+                  daysPerWeek={gridDaysPerWeek}
+                  columns={mergedColumns.map((c) => ({ key: c.key, label: c.label, subLabel: `- ${c.subLabel}` }))}
+                  cells={gridCells}
+                />
               ) : (
                 <TimetableGrid
-                  daysPerWeek={settings.days_per_week}
-                  periodsPerDay={periodsPerDay}
-                  breaks={gridBreaks}
-                  periodTimes={periodTimes}
+                  daysPerWeek={gridDaysPerWeek}
+                  periodsPerDay={primaryGrid?.periodsPerDay || 0}
+                  breaks={primaryGridBreaks}
+                  periodTimes={primaryGrid?.periodTimes || []}
                   cells={gridCells}
                   onCellClick={viewMode === 'class' ? openCellEditor : undefined}
                 />
