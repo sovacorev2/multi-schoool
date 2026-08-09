@@ -1,0 +1,11 @@
+-- Fixes "new row violates row-level security policy for table
+-- teacher_deadline_overrides" when an admin tries to set a per-teacher
+-- deadline override.
+--
+-- scripts/004_add_teacher_deadline_overrides.sql intentionally left RLS off
+-- (matching every other app table, which is read/written directly from the
+-- browser via the publishable/anon key with no Supabase Auth session), but
+-- Supabase enables RLS by default on tables created through the dashboard's
+-- table editor, which silently blocks every insert once no policy exists to
+-- allow it. This disables it to match the rest of the schema.
+ALTER TABLE teacher_deadline_overrides DISABLE ROW LEVEL SECURITY;

@@ -186,6 +186,11 @@ export default function AdminOverviewPage() {
         </Card>
       </div>
 
+      {/* Front and center: which classes/subjects have entered marks. This is the
+          clearest single signal of admin-portal progress, so it belongs above the
+          deadlines table, not buried under it. */}
+      {currentSchool && <MarksEntryTracker schoolId={currentSchool.id} deadlines={deadlines} />}
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -408,8 +413,6 @@ export default function AdminOverviewPage() {
           )}
         </CardContent>
       </Card>
-
-      {currentSchool && <MarksEntryTracker schoolId={currentSchool.id} deadlines={deadlines} />}
 
       {perTeacherSession && (
         <TeacherDeadlineDialog

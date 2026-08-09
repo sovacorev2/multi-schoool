@@ -7,6 +7,7 @@ import { useSchool } from "@/lib/school-context";
 import { getStoredTeacherId, getTeacherSubjectsInClass } from "@/lib/teacher-permissions";
 import { getSubjectLevelPoints } from "@/lib/grading-utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -22,7 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { BookOpen, TrendingUp, TrendingDown, Users } from "lucide-react";
+import { BookOpen, TrendingUp, TrendingDown, Users, Printer } from "lucide-react";
 
 interface SubjectRow {
   id: string;
@@ -181,6 +182,75 @@ export default function MySubjectPage() {
 
   const selectedSubject = availableSubjects.find((s) => s.id === selectedSubjectId);
   const selectedSession = sessions.find((s) => s.id === selectedSessionId);
+
+  // Same window.open + write HTML + window.print() pattern used by every other
+  // printable report in this app (general-report.tsx, school-analysis-report.ts) -
+  // a plain window.print() here would also print the dashboard nav/header chrome.
+  const handlePrint = () => {
+    const win = window.open("", "_blank");
+    if (!win || !selectedSubject || !selectedSession) return
+
+    const rowsHTML = (rows: typeof results) =>
+      rows
+        .map(
+          (r) => `<tr>
+            <td style="border:1px solid #d1d5db;padding:4px 6px;text-align:center;">${r.rank}</td>
+            <td style="border:1px solid #d1d5db;padding:4px 6px;">${r.learner.name}</td>
+            <td style="border:1px solid #d1d5db;padding:4px 6px;text-align:center;font-weight:700;">${r.score}</td>
+            <td style="border:1px solid #d1d5db;padding:4px 6px;text-align:center;">${r.level?.level || "-"}</td>
+          </tr>`
+        )
+        .join("");
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+<title>${selectedSubject.name} - ${currentClass?.name} - ${selectedSession.exam_types?.name} ${selectedSession.term} ${selectedSession.year}</title>
+<style>
+  body { font-family: Arial, sans-serif; padding: 24px; color: #111827; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  h2 { font-size: 14px; font-weight: 500; color: #4b5563; margin-top: 0; }
+  .meta { font-size: 12px; color: #4b5563; margin-bottom: 16px; }
+  table { border-collapse: collapse; width: 100%; margin-bottom: 20px; font-size: 12px; }
+  th { border: 1px solid #d1d5db; padding: 4px 6px; background: #e5e7eb; text-align: left; }
+  .stats { display: flex; gap: 12px; margin-bottom: 20px; }
+  .stat { border: 1px solid #d1d5db; border-radius: 6px; padding: 8px 12px; text-align: center; flex: 1; }
+  .stat .label { font-size: 10px; color: #6b7280; }
+  .stat .value { font-size: 18px; font-weight: 700; }
+  .section-title { font-weight: 700; margin: 16px 0 6px; }
+  @media print { body { padding: 0; } }
+</style>
+</head>
+<body>
+  <h1>${selectedSubject.name} - Subject Performance</h1>
+  <h2>${currentSchool?.name || ""}</h2>
+  <div class="meta">
+    Class: ${currentClass?.name} &bull; Exam: ${selectedSession.exam_types?.name} - ${selectedSession.term} ${selectedSession.year} &bull; Printed: ${new Date().toLocaleDateString()}
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="label">Entered</div><div class="value">${stats.count}</div></div>
+    <div class="stat"><div class="label">Mean</div><div class="value">${stats.mean.toFixed(1)}</div></div>
+    <div class="stat"><div class="label">Highest</div><div class="value">${stats.highest}</div></div>
+    <div class="stat"><div class="label">Lowest</div><div class="value">${stats.lowest}</div></div>
+    <div class="stat"><div class="label">Pass Rate</div><div class="value">${stats.passRate.toFixed(0)}%</div></div>
+  </div>
+
+  <div class="section-title">Top 5</div>
+  <table><thead><tr><th>Rank</th><th>Learner</th><th>Score</th><th>Level</th></tr></thead><tbody>${rowsHTML(topFive)}</tbody></table>
+
+  <div class="section-title">Bottom 5</div>
+  <table><thead><tr><th>Rank</th><th>Learner</th><th>Score</th><th>Level</th></tr></thead><tbody>${rowsHTML(bottomFive)}</tbody></table>
+
+  <div class="section-title">Full Marklist</div>
+  <table><thead><tr><th>Rank</th><th>Learner</th><th>Score</th><th>Level</th></tr></thead><tbody>${rowsHTML(results)}</tbody></table>
+</body>
+</html>`
+
+    win.document.write(html)
+    win.document.close()
+    win.onload = () => setTimeout(() => win.print(), 300)
+  };
 
   if (isLoading) {
     return (
@@ -356,10 +426,14 @@ export default function MySubjectPage() {
 
               {/* Full marklist for this subject */}
               <Card>
-                <CardHeader className="pb-3">
+                <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
                   <CardTitle className="text-base font-medium flex items-center gap-2">
                     <Users className="w-4 h-4" /> Full Marklist - {selectedSubject?.name}
                   </CardTitle>
+                  <Button size="sm" variant="outline" onClick={handlePrint}>
+                    <Printer className="w-4 h-4 mr-1" />
+                    Print / Download
+                  </Button>
                 </CardHeader>
                 <CardContent>
                   <div className="overflow-x-auto">

@@ -16,6 +16,7 @@ import {
   GraduationCap, Users, Lock, LogOut,
 } from 'lucide-react'
 import { AdminPWARegistration } from '@/components/admin-pwa-registration'
+import { SchoolLockedScreen } from '@/components/school-locked-screen'
 import { AdminSchoolProvider, useAdminSchool } from './_shared/AdminSchoolContext'
 import { SCHOOL_SELECT_FIELDS, type School } from './_shared/types'
 import { sessionAuthKey } from './_shared/utils'
@@ -54,7 +55,9 @@ function AdminPortalShell({ children }: { children: React.ReactNode }) {
     const schoolCode = searchParams.get('school')
 
     if (schoolCode) {
-      if (currentSchool && currentSchool.code === schoolCode) {
+      // Trust a cached school only if it was last known active - a lock that took
+      // effect after the cache was written must not be silently bypassed here.
+      if (currentSchool && currentSchool.code === schoolCode && currentSchool.is_active !== false) {
         return
       }
       loadSchoolFromCode(schoolCode)
@@ -68,11 +71,12 @@ function AdminPortalShell({ children }: { children: React.ReactNode }) {
     setPassword('')
 
     const supabase = createClient()
+    // No is_active filter here - a locked school must still be found so its admin
+    // sees the "locked, contact ShuleTech" screen instead of a dead-end spinner.
     const { data } = await supabase
       .from('schools')
       .select(SCHOOL_SELECT_FIELDS)
       .eq('code', code)
-      .eq('is_active', true)
       .single()
 
     if (data) {
@@ -191,6 +195,13 @@ function AdminPortalShell({ children }: { children: React.ReactNode }) {
         <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full"></div>
       </div>
     )
+  }
+
+  // A lock (manual or expiry-driven) always wins, even over an already-authenticated
+  // admin session - otherwise a school locked mid-session would keep full access
+  // until the browser tab closed.
+  if (currentSchool.is_active === false) {
+    return <SchoolLockedScreen school={currentSchool} variant="admin" />
   }
 
   // Password screen

@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { LogIn, AlertCircle } from 'lucide-react'
 import type { Class, ExamType } from '@/lib/types'
+import { SchoolLockedScreen } from '@/components/school-locked-screen'
 
 const CURRENT_YEAR = new Date().getFullYear()
 const TERMS = ['Term 1', 'Term 2', 'Term 3']
@@ -302,44 +303,7 @@ function HomePageContent() {
   }
 
   if (lockedSchoolInfo) {
-    return (
-      <div className="min-h-screen bg-background dark:bg-background flex items-center justify-center p-4">
-        <Card className="w-full max-w-md shadow-lg bg-card dark:bg-card border-border dark:border-border">
-          <CardHeader className="text-center space-y-4 pb-6">
-            <div className="flex justify-center mb-4">
-              {lockedSchoolInfo.logo_url ? (
-                <img
-                  src={lockedSchoolInfo.logo_url}
-                  alt={`${lockedSchoolInfo.name} logo`}
-                  className="w-20 h-20 object-contain opacity-60"
-                />
-              ) : (
-                <div
-                  className="w-20 h-20 rounded-full flex items-center justify-center text-white font-bold text-2xl opacity-60"
-                  style={{ backgroundColor: lockedSchoolInfo.primary_color || '#2563eb' }}
-                >
-                  {lockedSchoolInfo.name.substring(0, 2).toUpperCase()}
-                </div>
-              )}
-            </div>
-            <div>
-              <CardTitle className="text-2xl font-bold mb-2 text-foreground dark:text-foreground">{lockedSchoolInfo.name}</CardTitle>
-              <CardDescription className="text-base text-muted-foreground dark:text-muted-foreground">
-                Access Temporarily Unavailable
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent className="text-center space-y-3">
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground">
-              This school&apos;s ShuleTech account needs to be renewed before it can be accessed again.
-            </p>
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground">
-              Please contact your school administrator, or reach out to ShuleTech support to complete payment.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    )
+    return <SchoolLockedScreen school={lockedSchoolInfo} variant="public" />
   }
 
   // Don't render if no school selected

@@ -9,6 +9,7 @@ import { useSchool } from '@/lib/school-context'
 import { checkTeacherAuth, checkAdminAuth, logoutTeacher, logoutAdmin } from '@/app/actions/auth'
 import { LogOut, Users, BookOpen, ClipboardList, FileText, ChevronDown, Shield, Clock, AlertTriangle, TrendingUp } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { SchoolLockedScreen } from '@/components/school-locked-screen'
 
 export default function DashboardLayout({
   children,
@@ -27,10 +28,31 @@ export default function DashboardLayout({
     deadline: Date;
     timeRemaining: string;
   } | null>(null)
+  const [schoolLockCheck, setSchoolLockCheck] = useState<{ isLocked: boolean; name: string; logo_url: string | null; primary_color: string | null } | null>(null)
   const router = useRouter()
   const pathname = usePathname()
   const { currentClass, currentSession, setCurrentClass, setCurrentSession, setIsAdminBypass } = useClass()
   const { currentSchool, clearSchool } = useSchool()
+
+  // A cached currentSchool can be stale (locked after it was last fetched), so
+  // re-verify is_active fresh on every visit instead of trusting localStorage -
+  // this is the actual marks-entry gate, so a stale "unlocked" reading here would
+  // let a locked school keep working exactly where it matters most.
+  useEffect(() => {
+    if (!currentSchool?.id) return
+    let cancelled = false
+    const supabase = createClient()
+    supabase
+      .from('schools')
+      .select('is_active, name, logo_url, primary_color')
+      .eq('id', currentSchool.id)
+      .single()
+      .then(({ data }: { data: { is_active: boolean; name: string; logo_url: string | null; primary_color: string | null } | null }) => {
+        if (cancelled || !data) return
+        setSchoolLockCheck({ isLocked: data.is_active === false, name: data.name, logo_url: data.logo_url, primary_color: data.primary_color })
+      })
+    return () => { cancelled = true }
+  }, [currentSchool?.id])
 
   const handleLogout = async () => {
     try {
@@ -184,6 +206,12 @@ export default function DashboardLayout({
         <div className="animate-pulse text-muted-foreground">Verifying access...</div>
       </div>
     )
+  }
+
+  // A lock always wins, even mid-session - this is the actual marks-entry surface,
+  // so it's the one place this absolutely cannot be bypassed by a stale cache.
+  if (schoolLockCheck?.isLocked) {
+    return <SchoolLockedScreen school={schoolLockCheck} variant="public" />
   }
 
   // If admin is accessing but no class is set, show class selection for admin

@@ -16,10 +16,14 @@ interface School {
   id: string
   name: string
   code: string
+  short_name: string | null
+  tagline: string | null
   logo_url: string | null
+  primary_color: string | null
   address: string | null
   phone: string | null
   email: string | null
+  admin_password: string | null
   created_at: string
   feature_report_cards: boolean
   feature_whatsapp_reports: boolean
@@ -61,6 +65,7 @@ export default function SuperAdminPage() {
   const [paymentHistory, setPaymentHistory] = useState<Record<string, PaymentTransaction[]>>({})
   const [sendingPromptFor, setSendingPromptFor] = useState<string | null>(null)
   const [promptMessage, setPromptMessage] = useState<{ schoolId: string; type: 'success' | 'error'; text: string } | null>(null)
+  const [showAdminPassword, setShowAdminPassword] = useState(false)
 
   // New school form
   const [showNewSchoolForm, setShowNewSchoolForm] = useState(false)
@@ -212,6 +217,20 @@ export default function SuperAdminPage() {
       setSchools(schools.map(s => s.id === schoolId ? { ...s, payment_phone_number: phone || null } : s))
     } else {
       alert(`Failed to save payment phone number: ${error.message}\n\nIf this mentions a missing column, scripts/005_add_ncba_payment_integration.sql still needs to be run in the Supabase SQL Editor.`)
+    }
+    setSavingSchool(null)
+  }
+
+  // Generic field-level save for the "School Details" card (short_name, tagline,
+  // logo_url, primary_color, address, phone, email, admin_password) so every
+  // school-identity field can be managed from here instead of the Supabase dashboard.
+  async function updateSchoolDetail(schoolId: string, field: keyof School, value: string) {
+    setSavingSchool(schoolId)
+    const { error } = await supabase.from('schools').update({ [field]: value || null }).eq('id', schoolId)
+    if (!error) {
+      setSchools(schools.map(s => s.id === schoolId ? { ...s, [field]: value || null } : s))
+    } else {
+      alert(`Failed to save: ${error.message}`)
     }
     setSavingSchool(null)
   }
@@ -893,6 +912,113 @@ export default function SuperAdminPage() {
                           </div>
                         </div>
                       )}
+                    </div>
+
+                    {/* School Details - everything else that used to require opening Supabase directly */}
+                    <div className="bg-white rounded-lg border border-gray-200 p-4">
+                      <h4 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
+                        <Building2 className="w-4 h-4" />
+                        School Details
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <Label htmlFor={`shortname-${school.id}`}>Short Name</Label>
+                          <Input
+                            id={`shortname-${school.id}`}
+                            type="text"
+                            defaultValue={school.short_name ?? ''}
+                            onBlur={(e) => updateSchoolDetail(school.id, 'short_name', e.target.value)}
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`tagline-${school.id}`}>Tagline</Label>
+                          <Input
+                            id={`tagline-${school.id}`}
+                            type="text"
+                            defaultValue={school.tagline ?? ''}
+                            onBlur={(e) => updateSchoolDetail(school.id, 'tagline', e.target.value)}
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`logo-${school.id}`}>Logo URL</Label>
+                          <Input
+                            id={`logo-${school.id}`}
+                            type="text"
+                            placeholder="https://..."
+                            defaultValue={school.logo_url ?? ''}
+                            onBlur={(e) => updateSchoolDetail(school.id, 'logo_url', e.target.value)}
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`color-${school.id}`}>Primary Color</Label>
+                          <div className="flex items-center gap-2 mt-1">
+                            <input
+                              type="color"
+                              value={school.primary_color || '#2563eb'}
+                              onChange={(e) => updateSchoolDetail(school.id, 'primary_color', e.target.value)}
+                              className="w-10 h-9 rounded border border-gray-300 cursor-pointer"
+                            />
+                            <Input
+                              id={`color-${school.id}`}
+                              type="text"
+                              defaultValue={school.primary_color ?? ''}
+                              onBlur={(e) => updateSchoolDetail(school.id, 'primary_color', e.target.value)}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor={`address-${school.id}`}>Address</Label>
+                          <Input
+                            id={`address-${school.id}`}
+                            type="text"
+                            defaultValue={school.address ?? ''}
+                            onBlur={(e) => updateSchoolDetail(school.id, 'address', e.target.value)}
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`schoolphone-${school.id}`}>Phone</Label>
+                          <Input
+                            id={`schoolphone-${school.id}`}
+                            type="text"
+                            defaultValue={school.phone ?? ''}
+                            onBlur={(e) => updateSchoolDetail(school.id, 'phone', e.target.value)}
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`schoolemail-${school.id}`}>Email</Label>
+                          <Input
+                            id={`schoolemail-${school.id}`}
+                            type="email"
+                            defaultValue={school.email ?? ''}
+                            onBlur={(e) => updateSchoolDetail(school.id, 'email', e.target.value)}
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`adminpw-${school.id}`}>Admin Portal Password</Label>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Input
+                              id={`adminpw-${school.id}`}
+                              type={showAdminPassword ? 'text' : 'password'}
+                              defaultValue={school.admin_password ?? ''}
+                              onBlur={(e) => updateSchoolDetail(school.id, 'admin_password', e.target.value)}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowAdminPassword(!showAdminPassword)}
+                              className="p-2 text-gray-500 hover:text-gray-700 shrink-0"
+                            >
+                              {showAdminPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">What this school's admin uses to log in to their admin portal. Change it here to reset it for them.</p>
+                        </div>
+                      </div>
                     </div>
 
                     {/* Subscription Settings */}
