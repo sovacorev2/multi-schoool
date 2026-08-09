@@ -26,6 +26,8 @@ const CLASS_LEVELS = ['PP1', 'PP2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 
 const needsClass = (type: string) => type !== 'other'
 const needsSubject = (type: string) => type === 'marking_scheme' || type === 'scheme_of_work'
 
+const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024
+
 interface ResourceRow {
   id: string
   resource_type: string
@@ -36,6 +38,7 @@ interface ResourceRow {
   term: string | null
   file_name: string
   file_size_bytes: number
+  storage_path: string | null
   created_at: string
 }
 
@@ -62,7 +65,7 @@ export default function SuperAdminResourcesPage() {
     // several MB per row; the list only needs lightweight metadata.
     const { data } = await supabase
       .from('resources')
-      .select('id, resource_type, title, description, class_level, subject, term, file_name, file_size_bytes, created_at')
+      .select('id, resource_type, title, description, class_level, subject, term, file_name, file_size_bytes, storage_path, created_at')
       .order('created_at', { ascending: false })
     setResources((data || []) as ResourceRow[])
     setIsLoading(false)
@@ -85,26 +88,44 @@ export default function SuperAdminResourcesPage() {
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!file || !form.title.trim()) return
-    if (file.size > 15 * 1024 * 1024) {
-      setUploadError('File is too large (max 15MB)')
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      setUploadError('File is too large (max 25MB)')
       return
     }
     setIsUploading(true)
     setUploadError('')
     setUploadSuccess(false)
+    const supabase = createClient()
+    // Straight from the browser to Supabase Storage - not through our own
+    // serverless function, which has a hard ~4.5MB request-body ceiling that
+    // real exam PDFs regularly exceed.
+    const ext = file.name.includes('.') ? file.name.slice(file.name.lastIndexOf('.')) : ''
+    const storagePath = `${form.resource_type}/${crypto.randomUUID()}${ext}`
     try {
-      const body = new FormData()
-      body.append('file', file)
-      body.append('resource_type', form.resource_type)
-      body.append('title', form.title.trim())
-      body.append('description', form.description.trim())
-      body.append('class_level', form.class_level)
-      body.append('subject', form.subject)
-      body.append('term', form.term)
+      const { error: uploadErr } = await supabase.storage
+        .from('resources')
+        .upload(storagePath, file, { contentType: file.type || 'application/octet-stream', upsert: false })
+      if (uploadErr) throw uploadErr
 
-      const res = await fetch('/api/super-admin/upload-resource', { method: 'POST', body })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Upload failed')
+      const { data: urlData } = supabase.storage.from('resources').getPublicUrl(storagePath)
+
+      const { error: insertErr } = await supabase.from('resources').insert({
+        resource_type: form.resource_type,
+        title: form.title.trim(),
+        description: form.description.trim() || null,
+        class_level: form.class_level || null,
+        subject: form.subject || null,
+        term: form.term || null,
+        file_data_url: urlData.publicUrl,
+        storage_path: storagePath,
+        file_name: file.name,
+        file_size_bytes: file.size,
+        uploaded_by: 'Super Admin',
+      })
+      if (insertErr) {
+        await supabase.storage.from('resources').remove([storagePath])
+        throw insertErr
+      }
 
       setUploadSuccess(true)
       setForm((prev) => ({ resource_type: prev.resource_type, title: '', description: '', class_level: '', subject: '', term: '' }))
@@ -129,22 +150,27 @@ export default function SuperAdminResourcesPage() {
       alert(`Failed to load file: ${error?.message || 'not found'}`)
       return
     }
-    const a = document.createElement('a')
-    a.href = data.file_data_url
-    a.download = resource.file_name
-    a.click()
+    // Cross-origin URLs (Supabase Storage's public URL) ignore the anchor
+    // "download" attribute in most browsers - opening in a new tab works
+    // reliably for both that and legacy base64 data: URLs.
+    window.open(data.file_data_url, '_blank', 'noopener,noreferrer')
   }
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this resource? This removes it from every school immediately and cannot be undone.')) return
     setDeletingId(id)
     const supabase = createClient()
+    const target = resources.find((r) => r.id === id)
     const { error } = await supabase.from('resources').delete().eq('id', id)
-    setDeletingId(null)
     if (error) {
+      setDeletingId(null)
       alert(`Failed to delete: ${error.message}`)
       return
     }
+    if (target?.storage_path) {
+      await supabase.storage.from('resources').remove([target.storage_path])
+    }
+    setDeletingId(null)
     setResources((prev) => prev.filter((r) => r.id !== id))
   }
 
@@ -248,7 +274,7 @@ export default function SuperAdminResourcesPage() {
               <div>
                 <Label>File</Label>
                 <input id="resource-file-input" type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} className="mt-1 block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100" required />
-                <p className="text-xs text-gray-500 mt-1">PDF, Word, or image. Max 15MB.</p>
+                <p className="text-xs text-gray-500 mt-1">PDF, Word, or image. Max 25MB.</p>
               </div>
               {uploadError && <p className="text-sm text-red-600">{uploadError}</p>}
               {uploadSuccess && <p className="text-sm text-emerald-600">Uploaded successfully.</p>}

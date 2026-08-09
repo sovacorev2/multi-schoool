@@ -66,10 +66,10 @@ export default function AdminPortalResourcesPage() {
       alert(`Failed to load file: ${error?.message || 'not found'}`)
       return
     }
-    const a = document.createElement('a')
-    a.href = data.file_data_url
-    a.download = resource.file_name
-    a.click()
+    // Cross-origin URLs (Supabase Storage's public URL) ignore the anchor
+    // "download" attribute in most browsers - opening in a new tab works
+    // reliably for both that and legacy base64 data: URLs.
+    window.open(data.file_data_url, '_blank', 'noopener,noreferrer')
   }
 
   const toggleGroup = (key: string) => {
