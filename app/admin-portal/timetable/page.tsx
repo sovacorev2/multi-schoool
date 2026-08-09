@@ -322,6 +322,14 @@ export default function TimetablePage() {
     return t ? `${t.first_name} ${t.last_name}` : null
   }
 
+  // The longest break of the day is treated as lunch - schools name breaks
+  // freely, so duration is the only reliable signal. Math is hard-excluded
+  // from any period after it by the generator.
+  const findLunchAfterPeriod = (catBreaks: BreakRow[]): number | null => {
+    if (catBreaks.length === 0) return null
+    return catBreaks.reduce((longest, b) => (b.duration_minutes > longest.duration_minutes ? b : longest)).after_period_number
+  }
+
   const handleGenerate = async () => {
     if (!currentSchool) return
     setIsGenerating(true)
@@ -344,6 +352,7 @@ export default function TimetablePage() {
         periodsPerDay: grid.periodsPerDay,
         periodStartEndMinutes: grid.periodStartEndMinutes,
         breakAfterPeriods: catBreaks.map((b) => b.after_period_number),
+        lunchAfterPeriod: findLunchAfterPeriod(catBreaks),
         avoidConsecutiveSameSubject: catSettings.avoid_consecutive_same_subject,
         spreadEvenly: catSettings.spread_evenly,
         subjects: subjects

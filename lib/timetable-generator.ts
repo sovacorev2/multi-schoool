@@ -39,6 +39,8 @@ export interface TimetableClassInput {
   /** This class's own period->clock-time mapping (minutes since midnight), from its level's settings. */
   periodStartEndMinutes: TimetablePeriodStartEnd[]
   breakAfterPeriods: number[]
+  /** The period number the longest break of the day falls after (i.e. lunch), or null if there's no break to treat as lunch. Math is hard-excluded from any period after this one. */
+  lunchAfterPeriod: number | null
   avoidConsecutiveSameSubject: boolean
   spreadEvenly: boolean
   subjects: TimetableSubjectInput[]
@@ -175,6 +177,18 @@ function isMathSubject(subjectName: string): boolean {
   return name.includes('math') || name.includes('hisabati')
 }
 
+/** English and Kiswahili must never land in adjacent periods (hard rule, not
+ * a soft preference) - back-to-back language lessons is exactly the pattern
+ * schools want to avoid. Null for every other subject, so the adjacency
+ * check below only ever fires between this specific pair. */
+type LanguagePair = 'english' | 'kiswahili'
+function languagePairId(subjectName: string): LanguagePair | null {
+  const name = ` ${subjectName.trim().toLowerCase()} `
+  if (name.includes('english')) return 'english'
+  if (name.includes('kiswahili')) return 'kiswahili'
+  return null
+}
+
 /**
  * How many double lessons (2 consecutive periods, same day, same teacher) a
  * subject should get this week, capped by how many periods it actually has
@@ -224,9 +238,10 @@ function findBestSlot(
   subjectDayCount: Map<string, number>,
   subjectAtPeriodAcrossDays: Map<string, number>,
   teacherBookings: TeacherBookings,
-  teacherMaxPerDay: Map<string, number | null>
+  teacherMaxPerDay: Map<string, number | null>,
+  subjectById: Map<string, TimetableSubjectInput>
 ): { day: number; period: number } | null {
-  const { daysPerWeek, periodsPerDay, avoidConsecutiveSameSubject: avoidConsecutive, spreadEvenly } = cls
+  const { daysPerWeek, periodsPerDay, avoidConsecutiveSameSubject: avoidConsecutive, spreadEvenly, lunchAfterPeriod } = cls
 
   const openSlots: { day: number; period: number }[] = []
   for (let day = 1; day <= daysPerWeek; day++) {
@@ -241,6 +256,26 @@ function findBestSlot(
     if (!t) return false
     return teacherBookings.isFree(subj.teacherId, day, t.startMinutes, t.endMinutes, teacherMaxPerDay.get(subj.teacherId) ?? null)
   }
+
+  // Hard, never-relaxed rules - unlike the consecutive-same-subject check
+  // below, these don't get a second, looser pass if placement gets tight.
+  const isMath = isMathSubject(subj.subjectName)
+  const violatesLunchRule = (period: number) => isMath && lunchAfterPeriod != null && period > lunchAfterPeriod
+
+  const myLanguage = languagePairId(subj.subjectName)
+  const violatesLanguageAdjacency = (day: number, period: number) => {
+    if (!myLanguage) return false
+    const otherLanguage: LanguagePair = myLanguage === 'english' ? 'kiswahili' : 'english'
+    for (const neighborId of [classGrid.get(slotKey(day, period - 1)), classGrid.get(slotKey(day, period + 1))]) {
+      const neighbor = neighborId ? subjectById.get(neighborId) : undefined
+      if (neighbor && languagePairId(neighbor.subjectName) === otherLanguage) return true
+    }
+    return false
+  }
+
+  const hardFilteredSlots = openSlots.filter(
+    ({ day, period }) => isTeacherFree(day, period) && !violatesLunchRule(period) && !violatesLanguageAdjacency(day, period)
+  )
 
   const isConsecutiveViolation = (day: number, period: number) => {
     const before = classGrid.get(slotKey(day, period - 1))
@@ -289,8 +324,7 @@ function findBestSlot(
   ]
 
   for (const stage of stages) {
-    const candidates = openSlots.filter(({ day, period }) => {
-      if (!isTeacherFree(day, period)) return false
+    const candidates = hardFilteredSlots.filter(({ day, period }) => {
       if (stage.respectConsecutive && isConsecutiveViolation(day, period)) return false
       return true
     })
@@ -316,18 +350,33 @@ function findBestDoubleSlot(
   subjectAtPeriodAcrossDays: Map<string, number>,
   teacherBookings: TeacherBookings,
   teacherMaxPerDay: Map<string, number | null>,
-  breakAfterPeriods: Set<number>
+  breakAfterPeriods: Set<number>,
+  subjectById: Map<string, TimetableSubjectInput>
 ): { day: number; period: number } | null {
-  const { daysPerWeek, periodsPerDay } = cls
+  const { daysPerWeek, periodsPerDay, lunchAfterPeriod } = cls
+
+  const isMath = isMathSubject(subj.subjectName)
+  const myLanguage = languagePairId(subj.subjectName)
+  const otherLanguage: LanguagePair | null = myLanguage ? (myLanguage === 'english' ? 'kiswahili' : 'english') : null
 
   const openPairs: { day: number; period: number }[] = []
   for (let day = 1; day <= daysPerWeek; day++) {
     for (let period = 1; period < periodsPerDay; period++) {
       if (breakAfterPeriods.has(period)) continue
       if (classGrid.has(slotKey(day, period)) || classGrid.has(slotKey(day, period + 1))) continue
-      const before = classGrid.get(slotKey(day, period - 1))
-      const after = classGrid.get(slotKey(day, period + 2))
-      if (before === subj.subjectId || after === subj.subjectId) continue
+      if (isMath && lunchAfterPeriod != null && (period > lunchAfterPeriod || period + 1 > lunchAfterPeriod)) continue
+
+      const beforeId = classGrid.get(slotKey(day, period - 1))
+      const afterId = classGrid.get(slotKey(day, period + 2))
+      if (beforeId === subj.subjectId || afterId === subj.subjectId) continue
+
+      if (otherLanguage) {
+        const before = beforeId ? subjectById.get(beforeId) : undefined
+        const after = afterId ? subjectById.get(afterId) : undefined
+        if (before && languagePairId(before.subjectName) === otherLanguage) continue
+        if (after && languagePairId(after.subjectName) === otherLanguage) continue
+      }
+
       openPairs.push({ day, period })
     }
   }
@@ -388,6 +437,7 @@ export function generateTimetable(
     const classGrid = new Map<string, string>()
     const subjectDayCount = new Map<string, number>()
     const subjectAtPeriodAcrossDays = new Map<string, number>()
+    const subjectById = new Map(cls.subjects.map((s) => [s.subjectId, s]))
 
     // Most-constrained-first (highest periods/week), with a random tiebreak
     // among equally-constrained subjects so every class doesn't end up with
@@ -426,7 +476,8 @@ export function generateTimetable(
           subjectAtPeriodAcrossDays,
           teacherBookings,
           teacherMaxPerDay,
-          breakAfterPeriodsSet
+          breakAfterPeriodsSet,
+          subjectById
         )
         if (!pair) break
 
@@ -465,7 +516,8 @@ export function generateTimetable(
           subjectDayCount,
           subjectAtPeriodAcrossDays,
           teacherBookings,
-          teacherMaxPerDay
+          teacherMaxPerDay,
+          subjectById
         )
         if (!slot) break
 
