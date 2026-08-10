@@ -40,7 +40,7 @@ export function SchoolLockedScreen({
             )}
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold mb-2 text-foreground dark:text-foreground">{school.name}</CardTitle>
+            <CardTitle className="text-2xl font-bold mb-2 text-foreground dark:text-foreground break-words">{school.name}</CardTitle>
             <CardDescription className="text-base text-muted-foreground dark:text-muted-foreground">
               Access Temporarily Unavailable
             </CardDescription>
@@ -58,17 +58,18 @@ export function SchoolLockedScreen({
               <div className="flex flex-col sm:flex-row gap-2">
                 <Button asChild className="w-full">
                   <a href={mailtoHref}>
-                    <Mail className="w-4 h-4 mr-2" />
-                    Email {SUPPORT_EMAIL}
+                    <Mail className="w-4 h-4 mr-2 shrink-0" />
+                    Email ShuleTech
                   </a>
                 </Button>
                 <Button asChild variant="outline" className="w-full">
                   <a href={`tel:${SUPPORT_PHONE_TEL}`}>
-                    <Phone className="w-4 h-4 mr-2" />
+                    <Phone className="w-4 h-4 mr-2 shrink-0" />
                     Call {SUPPORT_PHONE_DISPLAY}
                   </a>
                 </Button>
               </div>
+              <p className="text-xs text-muted-foreground dark:text-muted-foreground break-all">{SUPPORT_EMAIL}</p>
             </>
           ) : (
             <p className="text-sm text-muted-foreground dark:text-muted-foreground">
