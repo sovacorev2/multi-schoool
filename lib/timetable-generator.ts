@@ -41,6 +41,8 @@ export interface TimetableClassInput {
   breakAfterPeriods: number[]
   /** The period number the longest break of the day falls after (i.e. lunch), or null if there's no break to treat as lunch. Math is hard-excluded from any period after this one. */
   lunchAfterPeriod: number | null
+  /** Double lessons are a JSS convention, not universal - off by default for other levels, and always overridable per level in Settings. */
+  enableDoubleLessons: boolean
   avoidConsecutiveSameSubject: boolean
   spreadEvenly: boolean
   subjects: TimetableSubjectInput[]
@@ -464,7 +466,7 @@ export function generateTimetable(
       // whatever's left. If a double genuinely can't fit anywhere, that's
       // not a hard failure - the periods still get placed as singles below,
       // just noted so it's visible rather than silently skipped.
-      const doublesWanted = targetDoubleLessonCount(subj)
+      const doublesWanted = cls.enableDoubleLessons ? targetDoubleLessonCount(subj) : 0
       let doublesPlaced = 0
       for (let d = 0; d < doublesWanted; d++) {
         const pair = findBestDoubleSlot(

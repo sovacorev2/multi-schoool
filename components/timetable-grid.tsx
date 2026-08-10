@@ -46,6 +46,7 @@ export function TimetableGrid({
   columns: explicitColumns,
   cells,
   onCellClick,
+  highlightedKey,
 }: {
   daysPerWeek: number
   periodsPerDay?: number
@@ -56,6 +57,8 @@ export function TimetableGrid({
   /** Keyed by "day|<column key>" - the column key is the period number (as a string) in normal mode, or the explicit column's own key in merged mode. */
   cells: Record<string, TimetableGridCell>
   onCellClick?: (day: number, period: number, cell: TimetableGridCell | null) => void
+  /** "day|<column key>" of a cell to highlight - used for swap mode's first selected cell. */
+  highlightedKey?: string
 }) {
   const dayLabels = DAY_LABELS.slice(0, daysPerWeek)
 
@@ -106,13 +109,15 @@ export function TimetableGrid({
                   if (col.type === 'break') {
                     return <td key={col.key} className="border border-gray-300 bg-amber-50"></td>
                   }
-                  const cell = cells[`${day}|${col.key}`] || null
+                  const cellKey = `${day}|${col.key}`
+                  const cell = cells[cellKey] || null
                   const clickable = !!onCellClick
+                  const isHighlighted = highlightedKey === cellKey
                   return (
                     <td
                       key={col.key}
                       onClick={() => onCellClick?.(day, Number(col.key), cell)}
-                      className={`border border-gray-300 px-2 py-2 text-xs align-top ${clickable ? 'cursor-pointer hover:bg-blue-50' : ''}`}
+                      className={`border border-gray-300 px-2 py-2 text-xs align-top ${clickable ? 'cursor-pointer hover:bg-blue-50' : ''} ${isHighlighted ? 'ring-2 ring-inset ring-blue-500 bg-blue-50' : ''}`}
                     >
                       {cell ? (
                         <div>

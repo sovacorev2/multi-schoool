@@ -17,7 +17,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
 import {
-  Settings as SettingsIcon, Play, Trash2, Plus, Printer, AlertTriangle, CheckCircle2, CalendarClock, Copy,
+  Settings as SettingsIcon, Play, Trash2, Plus, Printer, AlertTriangle, CheckCircle2, CalendarClock, Copy, ArrowLeftRight, Sparkles,
 } from 'lucide-react'
 import { TimetableGrid, type TimetableGridCell } from '@/components/timetable-grid'
 import {
@@ -27,6 +27,7 @@ import {
 import { resolveCategoryGrid, buildMergedColumns, mergedColumnKeyFor, type ResolvedCategoryGrid } from '@/lib/timetable-merged-view'
 import { generateTimetablePrintHTML, openTimetablePrintWindow } from '@/lib/timetable-print'
 import { CBC_CATEGORIES, getCategoryForClass } from '@/lib/cbc-categories'
+import { fetchAllRows } from '@/lib/fetch-all-rows'
 import { sortClasses, TERMS } from '../_shared/utils'
 import type { Class } from '@/lib/types'
 
@@ -75,6 +76,7 @@ interface SettingsShape {
   days_per_week: number
   avoid_consecutive_same_subject: boolean
   spread_evenly: boolean
+  enable_double_lessons: boolean
 }
 
 const CURRENT_YEAR = new Date().getFullYear()
@@ -85,12 +87,12 @@ const PERIOD_LENGTH_OPTIONS = [30, 35, 40, 45, 60, 80, 90]
 // ending, shorter periods. Sensible starting points per level, not rules;
 // every field here is editable per school in the Settings tab.
 const DEFAULT_SETTINGS_BY_CATEGORY: Record<string, SettingsShape> = {
-  'Pre-School': { school_start_time: '08:00', school_end_time: '13:00', period_length_minutes: 30, days_per_week: 5, avoid_consecutive_same_subject: true, spread_evenly: true },
-  'Lower Primary': { school_start_time: '08:00', school_end_time: '15:00', period_length_minutes: 35, days_per_week: 5, avoid_consecutive_same_subject: true, spread_evenly: true },
-  'Upper Primary': { school_start_time: '08:00', school_end_time: '16:00', period_length_minutes: 40, days_per_week: 5, avoid_consecutive_same_subject: true, spread_evenly: true },
-  'Junior Secondary': { school_start_time: '08:00', school_end_time: '16:30', period_length_minutes: 40, days_per_week: 5, avoid_consecutive_same_subject: true, spread_evenly: true },
+  'Pre-School': { school_start_time: '08:00', school_end_time: '13:00', period_length_minutes: 30, days_per_week: 5, avoid_consecutive_same_subject: true, spread_evenly: true, enable_double_lessons: false },
+  'Lower Primary': { school_start_time: '08:00', school_end_time: '15:00', period_length_minutes: 35, days_per_week: 5, avoid_consecutive_same_subject: true, spread_evenly: true, enable_double_lessons: false },
+  'Upper Primary': { school_start_time: '08:00', school_end_time: '16:00', period_length_minutes: 40, days_per_week: 5, avoid_consecutive_same_subject: true, spread_evenly: true, enable_double_lessons: false },
+  'Junior Secondary': { school_start_time: '08:00', school_end_time: '16:30', period_length_minutes: 40, days_per_week: 5, avoid_consecutive_same_subject: true, spread_evenly: true, enable_double_lessons: true },
 }
-const FALLBACK_DEFAULT_SETTINGS: SettingsShape = { school_start_time: '08:00', school_end_time: '16:00', period_length_minutes: 40, days_per_week: 5, avoid_consecutive_same_subject: true, spread_evenly: true }
+const FALLBACK_DEFAULT_SETTINGS: SettingsShape = { school_start_time: '08:00', school_end_time: '16:00', period_length_minutes: 40, days_per_week: 5, avoid_consecutive_same_subject: true, spread_evenly: true, enable_double_lessons: false }
 
 function getDefaultSettingsForCategory(category: string): SettingsShape {
   return DEFAULT_SETTINGS_BY_CATEGORY[category] || FALLBACK_DEFAULT_SETTINGS
@@ -101,6 +103,13 @@ function effectiveCategory(cls: { name: string }): string {
 }
 
 const CATEGORY_ORDER = [...CBC_CATEGORIES.map((c) => c.name), 'General']
+
+// Lower levels have one generalist class teacher who covers every subject;
+// Upper Primary/JSS/General are subject-specialist levels where "class
+// teacher" is a pastoral/admin role, not a claim they teach every subject -
+// a whole-class (subject_id IS NULL) assignment only implies subject
+// coverage for the levels where that's actually how teaching works.
+const CATEGORIES_WITH_CLASS_TEACHER_FALLBACK = new Set(['Pre-School', 'Lower Primary'])
 
 export default function TimetablePage() {
   const { currentSchool } = useSchool()
@@ -133,11 +142,21 @@ export default function TimetablePage() {
   const [viewTeacherId, setViewTeacherId] = useState('')
   const [viewEntries, setViewEntries] = useState<EntryRow[]>([])
   const [isLoadingView, setIsLoadingView] = useState(false)
+  // Every entry in the school for the current term/year, regardless of which
+  // class/teacher the grid is currently showing - powers cross-class teacher
+  // availability checks and suggestions without a query per dialog open.
+  const [allTermEntries, setAllTermEntries] = useState<EntryRow[]>([])
 
   const [editingCell, setEditingCell] = useState<{ day: number; period: number; entry: EntryRow | null } | null>(null)
   const [editSubjectId, setEditSubjectId] = useState('')
   const [editTeacherId, setEditTeacherId] = useState('')
   const [isSavingEdit, setIsSavingEdit] = useState(false)
+  const [showCustomSubjectInput, setShowCustomSubjectInput] = useState(false)
+  const [customSubjectName, setCustomSubjectName] = useState('')
+  const [isAddingCustomSubject, setIsAddingCustomSubject] = useState(false)
+
+  const [swapMode, setSwapMode] = useState(false)
+  const [swapSelection, setSwapSelection] = useState<{ day: number; period: number; entry: EntryRow | null } | null>(null)
 
   const presentCategories = useMemo(() => {
     const set = new Set(classes.map(effectiveCategory))
@@ -174,6 +193,7 @@ export default function TimetablePage() {
           days_per_week: row.days_per_week,
           avoid_consecutive_same_subject: row.avoid_consecutive_same_subject,
           spread_evenly: row.spread_evenly,
+          enable_double_lessons: row.enable_double_lessons,
         }
         nextConfigured.add(cat)
       } else {
@@ -309,9 +329,10 @@ export default function TimetablePage() {
   }
 
   // --- Generation ---
-  const resolveTeacherForSubject = (classId: string, subjectId: string): string | null => {
+  const resolveTeacherForSubject = (classId: string, subjectId: string, category: string): string | null => {
     const specific = assignments.find((a) => a.class_id === classId && a.subject_id === subjectId)
     if (specific) return specific.user_id
+    if (!CATEGORIES_WITH_CLASS_TEACHER_FALLBACK.has(category)) return null
     const wholeClass = assignments.find((a) => a.class_id === classId && !a.subject_id)
     return wholeClass ? wholeClass.user_id : null
   }
@@ -329,6 +350,51 @@ export default function TimetablePage() {
     if (catBreaks.length === 0) return null
     return catBreaks.reduce((longest, b) => (b.duration_minutes > longest.duration_minutes ? b : longest)).after_period_number
   }
+
+  // Flags any teacher assigned more periods/week than an estimated week can
+  // physically hold - a real teacher can only be in one place at a time, so
+  // this always means some of it can't be placed, however generation runs.
+  // Caught here, before generating, instead of showing up as opaque
+  // "no more open slots" conflicts afterward.
+  interface TeacherLoadWarning {
+    teacherId: string
+    teacherName: string
+    demandedPeriods: number
+    approxCapacity: number
+    breakdown: { className: string; subjectName: string; periodsPerWeek: number }[]
+  }
+  const teacherLoadWarnings: TeacherLoadWarning[] = useMemo(() => {
+    const byTeacher = new Map<string, { demanded: number; categories: Set<string>; breakdown: TeacherLoadWarning['breakdown'] }>()
+
+    for (const cls of classes) {
+      const category = effectiveCategory(cls)
+      for (const s of subjects.filter((sub) => sub.class_id === cls.id)) {
+        const teacherId = resolveTeacherForSubject(cls.id, s.id, category)
+        if (!teacherId) continue
+        if (!byTeacher.has(teacherId)) byTeacher.set(teacherId, { demanded: 0, categories: new Set(), breakdown: [] })
+        const entry = byTeacher.get(teacherId)!
+        entry.demanded += s.periods_per_week
+        entry.categories.add(category)
+        entry.breakdown.push({ className: cls.name, subjectName: s.name, periodsPerWeek: s.periods_per_week })
+      }
+    }
+
+    const results: TeacherLoadWarning[] = []
+    for (const [teacherId, info] of byTeacher) {
+      let approxCapacity = 0
+      for (const cat of info.categories) {
+        const catSettings = settingsByCategory[cat] || getDefaultSettingsForCategory(cat)
+        const catBreaks = breaksByCategory[cat] || []
+        const grid = resolveCategoryGrid(cat, catSettings, catBreaks)
+        approxCapacity += grid.daysPerWeek * grid.periodsPerDay
+      }
+      if (info.demanded > approxCapacity) {
+        results.push({ teacherId, teacherName: teacherName(teacherId) || 'Unknown', demandedPeriods: info.demanded, approxCapacity, breakdown: info.breakdown })
+      }
+    }
+    return results.sort((a, b) => (b.demandedPeriods - b.approxCapacity) - (a.demandedPeriods - a.approxCapacity))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [classes, subjects, assignments, settingsByCategory, breaksByCategory, teachers])
 
   const handleGenerate = async () => {
     if (!currentSchool) return
@@ -353,12 +419,13 @@ export default function TimetablePage() {
         periodStartEndMinutes: grid.periodStartEndMinutes,
         breakAfterPeriods: catBreaks.map((b) => b.after_period_number),
         lunchAfterPeriod: findLunchAfterPeriod(catBreaks),
+        enableDoubleLessons: catSettings.enable_double_lessons,
         avoidConsecutiveSameSubject: catSettings.avoid_consecutive_same_subject,
         spreadEvenly: catSettings.spread_evenly,
         subjects: subjects
           .filter((s) => s.class_id === cls.id)
           .map((s) => {
-            const teacherId = resolveTeacherForSubject(cls.id, s.id)
+            const teacherId = resolveTeacherForSubject(cls.id, s.id, category)
             return {
               subjectId: s.id,
               subjectName: s.name,
@@ -439,6 +506,34 @@ export default function TimetablePage() {
     loadViewEntries()
   }, [loadViewEntries])
 
+  useEffect(() => {
+    setSwapSelection(null)
+  }, [viewClassId, viewMode])
+
+  // Full-school entries for the current term/year, independent of which
+  // class/teacher the grid is showing - a large school's term can exceed
+  // 1000 rows, so this goes through fetchAllRows with a stable .order('id')
+  // rather than a plain .select() (see lib/fetch-all-rows.ts).
+  const loadAllTermEntries = useCallback(async () => {
+    if (!currentSchool) return
+    const supabase = createClient()
+    const rows = await fetchAllRows<EntryRow>((from, to) =>
+      supabase
+        .from('timetable_entries')
+        .select('*')
+        .eq('school_id', currentSchool.id)
+        .eq('term', viewTerm)
+        .eq('year', Number(viewYear))
+        .order('id')
+        .range(from, to)
+    )
+    setAllTermEntries(rows)
+  }, [currentSchool?.id, viewTerm, viewYear])
+
+  useEffect(() => {
+    loadAllTermEntries()
+  }, [loadAllTermEntries])
+
   const subjectName = (id: string) => subjects.find((s) => s.id === id)?.name || 'Unknown'
   const className = (id: string) => classes.find((c) => c.id === id)?.name || 'Unknown'
   const categoryForClassId = (id: string) => {
@@ -474,6 +569,46 @@ export default function TimetablePage() {
 
   const primaryGrid = viewGrids.get(viewCategories[0])
   const mergedColumns = useMemo(() => (isMergedView ? buildMergedColumns([...viewGrids.values()]) : null), [isMergedView, viewGrids])
+
+  // Every present category's grid, not just the ones currently in view -
+  // teacher availability/suggestions need to resolve real clock time for ANY
+  // of a teacher's bookings across the whole school, not just this view.
+  const allCategoryGrids = useMemo(() => {
+    const map = new Map<string, ResolvedCategoryGrid>()
+    for (const cat of presentCategories) {
+      const catSettings = settingsByCategory[cat] || getDefaultSettingsForCategory(cat)
+      const catBreaks = breaksByCategory[cat] || []
+      map.set(cat, resolveCategoryGrid(cat, catSettings, catBreaks))
+    }
+    return map
+  }, [presentCategories, settingsByCategory, breaksByCategory])
+
+  const entryTimeRange = (entry: EntryRow): { startMinutes: number; endMinutes: number } | null => {
+    const grid = allCategoryGrids.get(categoryForClassId(entry.class_id))
+    const p = grid?.periodStartEndMinutes.find((x) => x.period === entry.period_number)
+    return p ? { startMinutes: p.startMinutes, endMinutes: p.endMinutes } : null
+  }
+
+  /** Real-time overlap check against every one of a teacher's other bookings
+   * this term, regardless of which class/category they're in - returns what
+   * they're doing at that moment if busy, or null if free. */
+  const findTeacherConflictAt = (
+    teacherId: string,
+    day: number,
+    targetStartMinutes: number,
+    targetEndMinutes: number,
+    excludeEntryId?: string
+  ): { entryId: string; className: string; subjectName: string } | null => {
+    for (const e of allTermEntries) {
+      if (e.teacher_id !== teacherId || e.day_of_week !== day) continue
+      if (excludeEntryId && e.id === excludeEntryId) continue
+      const range = entryTimeRange(e)
+      if (range && targetStartMinutes < range.endMinutes && targetEndMinutes > range.startMinutes) {
+        return { entryId: e.id, className: className(e.class_id), subjectName: subjectName(e.subject_id) }
+      }
+    }
+    return null
+  }
 
   const gridCells: Record<string, TimetableGridCell> = useMemo(() => {
     const cells: Record<string, TimetableGridCell> = {}
@@ -534,12 +669,143 @@ export default function TimetablePage() {
   }
 
   // --- Manual edit (class view only - a teacher's schedule is a read-only rollup of their classes) ---
+  const editingGrid = viewClassId ? allCategoryGrids.get(categoryForClassId(viewClassId)) : undefined
+
   const openCellEditor = (day: number, period: number) => {
-    if (viewMode !== 'class' || !viewClassId) return
     const entry = viewEntries.find((e) => e.day_of_week === day && e.period_number === period) || null
     setEditingCell({ day, period, entry })
     setEditSubjectId(entry?.subject_id || '')
     setEditTeacherId(entry?.teacher_id || '')
+    setShowCustomSubjectInput(false)
+    setCustomSubjectName('')
+  }
+
+  const handleCellClick = (day: number, period: number) => {
+    if (viewMode !== 'class' || !viewClassId) return
+    if (swapMode) {
+      const entry = viewEntries.find((e) => e.day_of_week === day && e.period_number === period) || null
+      if (!swapSelection) {
+        setSwapSelection({ day, period, entry })
+        return
+      }
+      if (swapSelection.day === day && swapSelection.period === period) {
+        setSwapSelection(null)
+        return
+      }
+      performSwap(swapSelection, { day, period, entry })
+      return
+    }
+    openCellEditor(day, period)
+  }
+
+  const performSwap = async (
+    a: { day: number; period: number; entry: EntryRow | null },
+    b: { day: number; period: number; entry: EntryRow | null }
+  ) => {
+    if (!currentSchool || !viewClassId) return
+    const label = (side: { day: number; period: number; entry: EntryRow | null }) =>
+      side.entry ? `${subjectName(side.entry.subject_id)} (Day ${side.day} P${side.period})` : `Empty (Day ${side.day} P${side.period})`
+    const proceed = confirm(`Swap ${label(a)} with ${label(b)}?`)
+    if (!proceed) {
+      setSwapSelection(null)
+      return
+    }
+
+    const supabase = createClient()
+    if (a.entry) await supabase.from('timetable_entries').delete().eq('id', a.entry.id)
+    if (b.entry) await supabase.from('timetable_entries').delete().eq('id', b.entry.id)
+
+    const inserts = []
+    if (b.entry) {
+      inserts.push({
+        school_id: currentSchool.id, class_id: viewClassId, subject_id: b.entry.subject_id, teacher_id: b.entry.teacher_id,
+        day_of_week: a.day, period_number: a.period, term: viewTerm, year: Number(viewYear),
+      })
+    }
+    if (a.entry) {
+      inserts.push({
+        school_id: currentSchool.id, class_id: viewClassId, subject_id: a.entry.subject_id, teacher_id: a.entry.teacher_id,
+        day_of_week: b.day, period_number: b.period, term: viewTerm, year: Number(viewYear),
+      })
+    }
+    if (inserts.length > 0) {
+      const { error } = await supabase.from('timetable_entries').insert(inserts)
+      if (error) alert(`Failed to swap: ${error.message}`)
+    }
+
+    setSwapSelection(null)
+    loadViewEntries()
+    loadAllTermEntries()
+  }
+
+  // Shown once a teacher is picked in the dialog - real busy/free status
+  // against every one of their other bookings this term, not just a
+  // same-period-number check, so it stays correct across CBC levels.
+  const editTeacherAvailability = useMemo(() => {
+    if (!editingCell || !editTeacherId || !editingGrid) return null
+    const targetTime = editingGrid.periodStartEndMinutes.find((p) => p.period === editingCell.period)
+    if (!targetTime) return null
+    const conflict = findTeacherConflictAt(editTeacherId, editingCell.day, targetTime.startMinutes, targetTime.endMinutes, editingCell.entry?.id)
+    const freePeriods: number[] = []
+    for (const p of editingGrid.periodStartEndMinutes) {
+      if (p.period === editingCell.period) continue
+      if (!findTeacherConflictAt(editTeacherId, editingCell.day, p.startMinutes, p.endMinutes, editingCell.entry?.id)) freePeriods.push(p.period)
+    }
+    return { conflict, freePeriods }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingCell, editTeacherId, editingGrid, allTermEntries])
+
+  // Only for an empty cell: which subjects still need periods this week, and
+  // whether their resolved teacher is actually free at this exact slot -
+  // ranked so the most-needed, actually-placeable option shows first.
+  const cellSuggestions = useMemo(() => {
+    if (!editingCell || editingCell.entry || !viewClassId || !editingGrid) return []
+    const targetTime = editingGrid.periodStartEndMinutes.find((p) => p.period === editingCell.period)
+    if (!targetTime) return []
+    const category = categoryForClassId(viewClassId)
+    const results: { subjectId: string; subjectName: string; teacherId: string | null; teacherName: string | null; remaining: number; teacherFree: boolean }[] = []
+    for (const s of subjects.filter((sub) => sub.class_id === viewClassId)) {
+      const placed = viewEntries.filter((e) => e.subject_id === s.id).length
+      const remaining = s.periods_per_week - placed
+      if (remaining <= 0) continue
+      const teacherId = resolveTeacherForSubject(viewClassId, s.id, category)
+      const teacherFree = teacherId ? !findTeacherConflictAt(teacherId, editingCell.day, targetTime.startMinutes, targetTime.endMinutes) : true
+      results.push({ subjectId: s.id, subjectName: s.name, teacherId, teacherName: teacherName(teacherId), remaining, teacherFree })
+    }
+    results.sort((x, y) => (Number(y.teacherFree) - Number(x.teacherFree)) || (y.remaining - x.remaining))
+    return results.slice(0, 6)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingCell, viewClassId, editingGrid, subjects, viewEntries, assignments, allTermEntries])
+
+  const addCustomSubject = async () => {
+    if (!customSubjectName.trim() || !viewClassId) return
+    setIsAddingCustomSubject(true)
+    const name = customSubjectName.trim().toUpperCase()
+    const existing = subjects.find((s) => s.class_id === viewClassId && s.name.toUpperCase() === name)
+    if (existing) {
+      setEditSubjectId(existing.id)
+      setEditTeacherId('')
+      setShowCustomSubjectInput(false)
+      setCustomSubjectName('')
+      setIsAddingCustomSubject(false)
+      return
+    }
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('subjects')
+      .insert({ class_id: viewClassId, name, is_custom: true, periods_per_week: 0 })
+      .select('id, class_id, name, periods_per_week')
+      .single()
+    setIsAddingCustomSubject(false)
+    if (error) {
+      alert(`Failed to add subject: ${error.message}`)
+      return
+    }
+    setSubjects((prev) => [...prev, data as SubjectRow])
+    setEditSubjectId(data.id)
+    setEditTeacherId('')
+    setShowCustomSubjectInput(false)
+    setCustomSubjectName('')
   }
 
   const saveCellEdit = async () => {
@@ -553,26 +819,20 @@ export default function TimetablePage() {
 
     if (editSubjectId) {
       const teacherId = editTeacherId || null
-      if (teacherId) {
-        const { data: clash } = await supabase
-          .from('timetable_entries')
-          .select('id, class_id')
-          .eq('school_id', currentSchool.id)
-          .eq('term', viewTerm)
-          .eq('year', Number(viewYear))
-          .eq('teacher_id', teacherId)
-          .eq('day_of_week', editingCell.day)
-          .eq('period_number', editingCell.period)
-          .maybeSingle()
-        if (clash && clash.class_id !== viewClassId) {
+      if (teacherId && editingGrid) {
+        const targetTime = editingGrid.periodStartEndMinutes.find((p) => p.period === editingCell.period)
+        const clash = targetTime
+          ? findTeacherConflictAt(teacherId, editingCell.day, targetTime.startMinutes, targetTime.endMinutes, editingCell.entry?.id)
+          : null
+        if (clash) {
           const proceed = confirm(
-            `${teacherName(teacherId)} is already teaching ${className(clash.class_id)} at this time. Moving them here will unassign them from that slot. Continue?`
+            `${teacherName(teacherId)} is already teaching ${clash.className} (${clash.subjectName}) at this time. Moving them here will unassign them from that slot. Continue?`
           )
           if (!proceed) {
             setIsSavingEdit(false)
             return
           }
-          await supabase.from('timetable_entries').delete().eq('id', clash.id)
+          await supabase.from('timetable_entries').delete().eq('id', clash.entryId)
         }
       }
 
@@ -596,6 +856,7 @@ export default function TimetablePage() {
     setEditingCell(null)
     setIsSavingEdit(false)
     loadViewEntries()
+    loadAllTermEntries()
   }
 
   const editingClassSubjects = subjects.filter((s) => s.class_id === viewClassId)
@@ -764,6 +1025,10 @@ export default function TimetablePage() {
                           <input type="checkbox" checked={catSettings.spread_evenly} onChange={(e) => saveSettings(cat, { spread_evenly: e.target.checked })} />
                           Spread periods evenly across the week (recommended)
                         </label>
+                        <label className="flex items-center gap-2 text-sm">
+                          <input type="checkbox" checked={catSettings.enable_double_lessons} onChange={(e) => saveSettings(cat, { enable_double_lessons: e.target.checked })} />
+                          Enable double lessons (2 consecutive periods) - a JSS/STEM convention, off by default outside Junior Secondary
+                        </label>
                       </CardContent>
                     </Card>
                   </TabsContent>
@@ -829,6 +1094,28 @@ export default function TimetablePage() {
 
         {/* GENERATE */}
         <TabsContent value="generate" className="space-y-4">
+          {teacherLoadWarnings.length > 0 && (
+            <Card className="border-amber-300 bg-amber-50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-amber-800 text-base">
+                  <AlertTriangle className="w-4 h-4" /> {teacherLoadWarnings.length} teacher{teacherLoadWarnings.length !== 1 ? 's' : ''} may be over-assigned
+                </CardTitle>
+                <CardDescription className="text-amber-700">
+                  Each of these is assigned more periods/week than an estimated week can hold (days &times; periods/day for the level(s) they teach in). Generation will still run, but expect conflicts for them until their assignments are adjusted.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {teacherLoadWarnings.map((w) => (
+                  <div key={w.teacherId} className="text-xs bg-white border border-amber-200 rounded p-2">
+                    <p className="font-medium text-amber-800">{w.teacherName}: {w.demandedPeriods} periods/week assigned, ~{w.approxCapacity} available</p>
+                    <ul className="mt-1 space-y-0.5 text-gray-600">
+                      {w.breakdown.map((b, i) => <li key={i}>{b.className} - {b.subjectName}: {b.periodsPerWeek}/wk</li>)}
+                    </ul>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
           <Card>
             <CardHeader>
               <CardTitle>Generate Timetable</CardTitle>
@@ -936,11 +1223,27 @@ export default function TimetablePage() {
                 <Button size="sm" variant="outline" onClick={handlePrint} disabled={Object.keys(gridCells).length === 0}>
                   <Printer className="w-4 h-4 mr-1" /> Print
                 </Button>
+
+                {viewMode === 'class' && viewClassId && (
+                  <Button
+                    size="sm"
+                    variant={swapMode ? 'default' : 'outline'}
+                    onClick={() => { setSwapMode((m) => !m); setSwapSelection(null) }}
+                  >
+                    <ArrowLeftRight className="w-4 h-4 mr-1" /> {swapMode ? 'Exit Swap Mode' : 'Swap Mode'}
+                  </Button>
+                )}
               </div>
 
               {isMergedView && (
                 <p className="text-xs text-indigo-600 bg-indigo-50 border border-indigo-200 rounded px-3 py-2">
                   This teacher has classes in more than one level ({viewCategories.join(', ')}), which run on different daily schedules - showing a merged view by real time instead of period number.
+                </p>
+              )}
+
+              {swapMode && (
+                <p className="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded px-3 py-2">
+                  {swapSelection ? 'Now click the cell to swap it with.' : 'Click a cell, then click a second cell to exchange them.'}
                 </p>
               )}
 
@@ -967,16 +1270,17 @@ export default function TimetablePage() {
                   breaks={primaryGridBreaks}
                   periodTimes={primaryGrid?.periodTimes || []}
                   cells={gridCells}
-                  onCellClick={viewMode === 'class' ? openCellEditor : undefined}
+                  onCellClick={viewMode === 'class' ? handleCellClick : undefined}
+                  highlightedKey={swapSelection ? `${swapSelection.day}|${swapSelection.period}` : undefined}
                 />
               )}
-              {viewMode === 'class' && viewClassId && <p className="text-xs text-gray-400">Click any cell to manually adjust it.</p>}
+              {viewMode === 'class' && viewClassId && !swapMode && <p className="text-xs text-gray-400">Click any cell to manually adjust it.</p>}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
 
-      <Dialog open={!!editingCell} onOpenChange={(open) => { if (!open) setEditingCell(null) }}>
+      <Dialog open={!!editingCell} onOpenChange={(open) => { if (!open) { setEditingCell(null); setShowCustomSubjectInput(false); setCustomSubjectName('') } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Period</DialogTitle>
@@ -985,16 +1289,59 @@ export default function TimetablePage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
+            {cellSuggestions.length > 0 && (
+              <div>
+                <Label className="text-xs text-gray-500 flex items-center gap-1"><Sparkles className="w-3.5 h-3.5" /> Suggestions</Label>
+                <div className="flex flex-wrap gap-1.5 mt-1">
+                  {cellSuggestions.map((s) => (
+                    <button
+                      key={s.subjectId}
+                      type="button"
+                      onClick={() => { setEditSubjectId(s.subjectId); setEditTeacherId(s.teacherId || ''); setShowCustomSubjectInput(false) }}
+                      className={`text-xs px-2 py-1 rounded-full border ${s.teacherFree ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'border-gray-300 bg-gray-50 text-gray-500 hover:bg-gray-100'}`}
+                    >
+                      {s.subjectName}{s.teacherName ? ` - ${s.teacherName}` : ''} ({s.remaining} left){s.teacherId && !s.teacherFree ? ' - busy' : ''}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div>
               <Label>Subject</Label>
-              <Select value={editSubjectId || 'none'} onValueChange={(v) => { setEditSubjectId(v === 'none' ? '' : v); setEditTeacherId('') }}>
+              <Select
+                value={showCustomSubjectInput ? '__custom__' : editSubjectId || 'none'}
+                onValueChange={(v) => {
+                  if (v === '__custom__') { setShowCustomSubjectInput(true); return }
+                  setEditSubjectId(v === 'none' ? '' : v)
+                  setEditTeacherId('')
+                  setShowCustomSubjectInput(false)
+                }}
+              >
                 <SelectTrigger className="mt-1"><SelectValue placeholder="No subject (leave empty)" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">No subject (leave empty)</SelectItem>
                   {editingClassSubjects.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                  <SelectItem value="__custom__">+ Custom subject...</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            {showCustomSubjectInput && (
+              <div className="space-y-2 p-2 border rounded bg-gray-50">
+                <div className="flex gap-1.5">
+                  <Button type="button" size="sm" variant="outline" onClick={() => setCustomSubjectName('PE')}>PE</Button>
+                  <Button type="button" size="sm" variant="outline" onClick={() => setCustomSubjectName('Life Skills')}>Life Skills</Button>
+                </div>
+                <div className="flex gap-2">
+                  <Input value={customSubjectName} onChange={(e) => setCustomSubjectName(e.target.value)} placeholder="Subject name" className="h-8" />
+                  <Button type="button" size="sm" onClick={addCustomSubject} disabled={!customSubjectName.trim() || isAddingCustomSubject}>
+                    {isAddingCustomSubject ? 'Adding...' : 'Add'}
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {editSubjectId && (
               <div>
                 <Label>Teacher</Label>
@@ -1005,6 +1352,14 @@ export default function TimetablePage() {
                     {teachers.map((t) => <SelectItem key={t.id} value={t.id}>{t.first_name} {t.last_name}</SelectItem>)}
                   </SelectContent>
                 </Select>
+                {editTeacherId && editTeacherAvailability && (
+                  <p className={`text-xs rounded px-2 py-1.5 mt-1.5 ${editTeacherAvailability.conflict ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
+                    {editTeacherAvailability.conflict
+                      ? `Busy at this time - teaching ${editTeacherAvailability.conflict.className} (${editTeacherAvailability.conflict.subjectName}).`
+                      : 'Free at this time.'}
+                    {editTeacherAvailability.freePeriods.length > 0 && ` Free periods today: ${editTeacherAvailability.freePeriods.join(', ')}.`}
+                  </p>
+                )}
               </div>
             )}
           </div>
