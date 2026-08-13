@@ -122,7 +122,16 @@ export async function initiateStkPush(params: {
   }
 }
 
-export async function queryStkPushStatus(transactionId: string): Promise<{ status: 'SUCCESS' | 'FAILED' | 'UNKNOWN'; description: string }> {
+// First real use of this (2026-08-13): several real STK pushes were accepted
+// by NCBA (confirmed via initiateStkPush's own "Received successfully"
+// response) but never triggered a confirmation webhook call, even minutes
+// later - so the Push Notification webhook and STK Push results appear to be
+// two separate NCBA mechanisms, and this query endpoint is the reliable path
+// for STK-initiated payments specifically. Response field casing is
+// unconfirmed (initiate's response uses PascalCase like "StatusCode" - this
+// endpoint might not), so both are checked defensively rather than assuming
+// one.
+export async function queryStkPushStatus(transactionId: string): Promise<{ status: 'SUCCESS' | 'FAILED' | 'UNKNOWN'; description: string; raw: unknown }> {
   const accessToken = await getAccessToken()
   const res = await fetch(`${BASE_URL}/payments/api/v1/stk-push/query`, {
     method: 'POST',
@@ -134,6 +143,15 @@ export async function queryStkPushStatus(transactionId: string): Promise<{ statu
   })
 
   const data = await res.json()
-  const status = data.status === 'SUCCESS' ? 'SUCCESS' : data.status === 'FAILED' ? 'FAILED' : 'UNKNOWN'
-  return { status, description: data.description || '' }
+  // Only trust an explicit textual status - a numeric code here (StatusCode,
+  // ResultCode) more likely describes whether the query call itself
+  // succeeded, not the underlying payment, and misreading that as "payment
+  // succeeded" would be far worse than staying UNKNOWN and polling again.
+  const rawStatus = String(data.status ?? data.Status ?? '').toUpperCase()
+  const status: 'SUCCESS' | 'FAILED' | 'UNKNOWN' =
+    rawStatus.includes('SUCCESS') || rawStatus.includes('COMPLETE') ? 'SUCCESS' :
+    rawStatus.includes('FAIL') || rawStatus.includes('CANCEL') || rawStatus.includes('TIMEOUT') || rawStatus.includes('REJECT') ? 'FAILED' :
+    'UNKNOWN'
+  const description = data.description || data.Description || data.StatusDescription || data.ResultDesc || ''
+  return { status, description, raw: data }
 }

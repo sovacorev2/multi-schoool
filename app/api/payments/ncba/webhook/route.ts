@@ -1,12 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createHash } from 'crypto'
 import { createClient } from '@/lib/supabase/server'
+import { applySuccessfulPayment } from '@/lib/ncba-payment-processing'
 
 export const dynamic = 'force-dynamic'
-
-// How long a successful payment extends access for. Adjust once you know the
-// actual term length you're billing for.
-const SUBSCRIPTION_EXTENSION_DAYS = 120
 
 // How far back to look for the pending payment this confirmation belongs to -
 // wide enough to cover a school admin who takes a while to approve the STK
@@ -163,12 +160,6 @@ export async function POST(request: Request) {
     return fail('Could not attribute payment to a school')
   }
 
-  const { data: school } = await supabase
-    .from('schools')
-    .select('id, subscription_expires_at, lock_override')
-    .eq('id', matched.school_id)
-    .single()
-
   const { error: recordError } = await supabase
     .from('payment_transactions')
     .update({
@@ -180,21 +171,8 @@ export async function POST(request: Request) {
     .eq('id', matched.id)
   if (recordError) console.error('[ncba-webhook] Failed to record transaction', transId, recordError)
 
-  if (isSuccess && school) {
-    const now = new Date()
-    const currentExpiry = school.subscription_expires_at ? new Date(school.subscription_expires_at) : now
-    const extendFrom = currentExpiry > now ? currentExpiry : now
-    const newExpiry = new Date(extendFrom.getTime() + SUBSCRIPTION_EXTENSION_DAYS * 24 * 60 * 60 * 1000)
-
-    const updates: Record<string, unknown> = { subscription_expires_at: newExpiry.toISOString() }
-    // A successful payment shouldn't silently override an explicit "force locked"
-    // super-admin decision - only auto-unlock if there's no override, or the
-    // override already says unlocked.
-    if (school.lock_override !== false) {
-      updates.is_active = true
-    }
-
-    await supabase.from('schools').update(updates).eq('id', school.id)
+  if (isSuccess) {
+    await applySuccessfulPayment(supabase, matched.school_id)
   }
 
   return ok()

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,6 +16,13 @@ const SUPPORT_PHONE_TEL = '+254756288563'
 // lets them just try again instead of being stuck with a one-shot send.
 const RESEND_COOLDOWN_SECONDS = 20
 
+// NCBA's confirmation webhook has repeatedly not fired for real STK-initiated
+// payments (confirmed live), so this actively polls /api/payments/ncba/status
+// instead of only waiting passively - roughly covers how long an STK prompt
+// stays valid before it expires unapproved.
+const POLL_INTERVAL_MS = 4000
+const POLL_MAX_ATTEMPTS = 20
+
 export function SchoolLockedScreen({
   school,
   variant = 'public',
@@ -24,9 +31,11 @@ export function SchoolLockedScreen({
   variant?: 'public' | 'admin'
 }) {
   const [phoneNumber, setPhoneNumber] = useState('')
-  const [payState, setPayState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const [payState, setPayState] = useState<'idle' | 'sending' | 'sent' | 'confirmed' | 'error'>('idle')
   const [payMessage, setPayMessage] = useState('')
   const [cooldown, setCooldown] = useState(0)
+  const cancelledRef = useRef(false)
+  useEffect(() => () => { cancelledRef.current = true }, [])
 
   const mailtoHref = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
     `Reactivate ${school.name}${school.code ? ` (${school.code})` : ''}`
@@ -47,6 +56,34 @@ export function SchoolLockedScreen({
     }, 1000)
   }
 
+  const pollTransactionStatus = async (transactionId: string) => {
+    for (let attempt = 0; attempt < POLL_MAX_ATTEMPTS; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS))
+      if (cancelledRef.current) return
+      try {
+        const res = await fetch('/api/payments/ncba/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ transactionId }),
+        })
+        const data = await res.json()
+        if (cancelledRef.current) return
+        if (data.status === 'SUCCESS') {
+          setPayState('confirmed')
+          setPayMessage('Payment confirmed - unlocking now.')
+          return
+        }
+        if (data.status === 'FAILED') {
+          setPayState('error')
+          setPayMessage(data.description || 'Payment was not completed - you can try again.')
+          return
+        }
+      } catch {
+        // Transient network error - keep polling.
+      }
+    }
+  }
+
   const handlePayNow = async () => {
     if (!school.id || !phoneNumber.trim()) return
     setPayState('sending')
@@ -60,7 +97,8 @@ export function SchoolLockedScreen({
       const data = await res.json()
       if (data.success) {
         setPayState('sent')
-        setPayMessage(`Prompt sent to ${phoneNumber.trim()} - approve it on your phone. This page will unlock automatically once payment is confirmed.`)
+        setPayMessage(`Prompt sent to ${phoneNumber.trim()} - approve it on your phone. Checking for confirmation...`)
+        if (data.transactionId) pollTransactionStatus(data.transactionId)
       } else {
         setPayState('error')
         setPayMessage(data.error || 'Failed to send payment prompt.')
@@ -138,7 +176,8 @@ export function SchoolLockedScreen({
                   </Button>
                   {payMessage && (
                     <p className={`text-xs rounded px-2 py-1.5 flex items-start gap-1.5 ${payState === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
-                      {payState === 'sent' && <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />}
+                      {payState === 'sent' && <Loader2 className="w-3.5 h-3.5 mt-0.5 shrink-0 animate-spin" />}
+                      {payState === 'confirmed' && <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />}
                       <span>{payMessage}</span>
                     </p>
                   )}
