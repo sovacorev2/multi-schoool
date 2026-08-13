@@ -8,6 +8,11 @@ export const dynamic = 'force-dynamic'
 // actual term length you're billing for.
 const SUBSCRIPTION_EXTENSION_DAYS = 120
 
+// How far back to look for the pending payment this confirmation belongs to -
+// wide enough to cover a school admin who takes a while to approve the STK
+// prompt on their phone.
+const ATTRIBUTION_WINDOW_MINUTES = 60
+
 // Replicates NCBA's Java sample exactly (see "SecretKey Generation" in their
 // Push Notification guide): concatenate secretKey + fields + "1", SHA-256 it to a
 // HEX STRING, then Base64-encode the UTF-8 BYTES OF THAT HEX STRING (not the raw
@@ -38,6 +43,15 @@ function computeExpectedHash(params: {
   return Buffer.from(sha256hex, 'utf8').toString('base64')
 }
 
+// Kenyan numbers arrive in different shapes (0712345678, 254712345678,
+// +254712345678) - compare on the last 9 digits so any of those match each
+// other. If the incoming value isn't phone-shaped at all (e.g. some opaque
+// token), this just won't match anything, which is fine - amount + recency
+// still narrows it down.
+function normalizePhone(raw: string): string {
+  return raw.replace(/\D/g, '').slice(-9)
+}
+
 function fail(resultDesc: string) {
   return NextResponse.json({ ResultCode: '1', ResultDesc: resultDesc })
 }
@@ -48,13 +62,15 @@ function ok() {
 
 export async function POST(request: Request) {
   // Confirmed against one real NCBA test notification (2026-08-13, TransID
-  // UHDKF2URGE): field names/shapes below (TransType, TransID, BillRefNumber,
-  // BusinessShortCode, Hash, etc.) and the missing-Status-means-success
-  // inference are now grounded in a real payload, not just the integration
-  // guide. Still unconfirmed: whether BillRefNumber reliably echoes back
-  // exactly what we send as AccountNo on a real STK-initiated payment (that
-  // test wasn't initiated through our own /api/payments/ncba/initiate) -
-  // worth a real end-to-end STK test once a school has payment_amount set.
+  // UHDKF2URGE): field names/shapes below and the missing-Status-means-
+  // success inference are grounded in a real payload, not just the
+  // integration guide. Also confirmed live (a failed real STK attempt):
+  // NCBA rejects any AccountNo that isn't our one fixed registered account
+  // number (159997 at the time of writing) - so unlike a typical Safaricom
+  // Daraja setup, AccountNo/BillRefNumber can't carry a per-school reference.
+  // Attribution instead matches this confirmation to the pending
+  // payment_transactions row our own /api/payments/ncba/initiate created,
+  // by amount + phone number (see below) - not by BillRefNumber.
   let body: any
   try {
     body = await request.json()
@@ -97,31 +113,16 @@ export async function POST(request: Request) {
 
   const supabase = await createClient()
 
-  // Attribution: we set AccountNo = school.code when we initiate an STK Push, so
-  // BillRefNumber is expected to echo that back. UNCONFIRMED with NCBA - flagged
-  // as the #1 thing to verify once you have real credentials/test payloads.
-  const schoolCode = billRefNumber.trim()
-  const { data: school } = await supabase
-    .from('schools')
-    .select('id, subscription_expires_at, lock_override')
-    .ilike('code', schoolCode)
-    .single()
-
-  if (!school) {
-    console.error('[ncba-webhook] No school found for BillRefNumber/AccountNo', schoolCode)
-    // Still record the transaction (unattributed) so nothing silently disappears.
-    const { error: unattributedError } = await supabase.from('payment_transactions').upsert({
-      school_id: null,
-      amount: Number(transAmount) || 0,
-      phone_number: mobile,
-      ncba_transaction_id: transId,
-      status: 'failed',
-      raw_payload: body,
-      completed_at: new Date().toISOString(),
-    }, { onConflict: 'ncba_transaction_id' })
-    if (unattributedError) console.error('[ncba-webhook] Failed to record unattributed transaction', transId, unattributedError)
-    return fail('Could not attribute payment to a school')
-  }
+  // NCBA (or a flaky connection) can redeliver the same confirmation more
+  // than once - if we've already recorded this exact TransID, it's already
+  // been processed (subscription already extended), so just acknowledge it
+  // rather than matching/extending again.
+  const { data: alreadyProcessed } = await supabase
+    .from('payment_transactions')
+    .select('id')
+    .eq('ncba_transaction_id', transId)
+    .maybeSingle()
+  if (alreadyProcessed) return ok()
 
   // NCBA's real test notification had no Status field at all - this endpoint
   // is a C2B-style confirmation callback (TransType/TransID/BillRefNumber
@@ -131,19 +132,55 @@ export async function POST(request: Request) {
   // NCBA ever sends one for some other transaction type) still overrides it.
   const statusField = String(body.Status ?? '').toUpperCase()
   const isSuccess = statusField === '' || statusField === 'SUCCESS'
+  const transAmountNum = Number(transAmount) || 0
+  const normalizedIncomingMobile = normalizePhone(mobile)
 
-  const { error: recordError } = await supabase.from('payment_transactions').upsert({
-    school_id: school.id,
-    amount: Number(transAmount) || 0,
-    phone_number: mobile,
-    ncba_transaction_id: transId,
-    status: isSuccess ? 'success' : 'failed',
-    raw_payload: body,
-    completed_at: new Date().toISOString(),
-  }, { onConflict: 'ncba_transaction_id' })
+  const windowStart = new Date(Date.now() - ATTRIBUTION_WINDOW_MINUTES * 60 * 1000).toISOString()
+  const { data: pendingCandidates } = await supabase
+    .from('payment_transactions')
+    .select('id, school_id, phone_number')
+    .eq('status', 'pending')
+    .eq('amount', transAmountNum)
+    .gte('initiated_at', windowStart)
+    .order('initiated_at', { ascending: false })
+
+  const matched =
+    (pendingCandidates || []).find((t) => normalizedIncomingMobile && normalizePhone(t.phone_number || '') === normalizedIncomingMobile) ||
+    (pendingCandidates && pendingCandidates.length > 0 ? pendingCandidates[0] : null)
+
+  if (!matched || !matched.school_id) {
+    console.error('[ncba-webhook] Could not match confirmation to a pending payment', { transId, amount: transAmountNum, mobile })
+    const { error: unattributedError } = await supabase.from('payment_transactions').insert({
+      school_id: null,
+      amount: transAmountNum,
+      phone_number: mobile,
+      ncba_transaction_id: transId,
+      status: isSuccess ? 'success' : 'failed',
+      raw_payload: body,
+      completed_at: new Date().toISOString(),
+    })
+    if (unattributedError) console.error('[ncba-webhook] Failed to record unattributed transaction', transId, unattributedError)
+    return fail('Could not attribute payment to a school')
+  }
+
+  const { data: school } = await supabase
+    .from('schools')
+    .select('id, subscription_expires_at, lock_override')
+    .eq('id', matched.school_id)
+    .single()
+
+  const { error: recordError } = await supabase
+    .from('payment_transactions')
+    .update({
+      ncba_transaction_id: transId,
+      status: isSuccess ? 'success' : 'failed',
+      raw_payload: body,
+      completed_at: new Date().toISOString(),
+    })
+    .eq('id', matched.id)
   if (recordError) console.error('[ncba-webhook] Failed to record transaction', transId, recordError)
 
-  if (isSuccess) {
+  if (isSuccess && school) {
     const now = new Date()
     const currentExpiry = school.subscription_expires_at ? new Date(school.subscription_expires_at) : now
     const extendFrom = currentExpiry > now ? currentExpiry : now

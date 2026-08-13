@@ -5,6 +5,17 @@
 //   NCBA_API_USERNAME       - Basic Auth username for token generation
 //   NCBA_API_PASSWORD       - Basic Auth password for token generation
 //   NCBA_PAYBILL_NO         - the PayBillNo used for every STK Push (e.g. 880100)
+//   NCBA_ACCOUNT_NO         - the fixed account number registered against our
+//                             paybill with NCBA (e.g. 159997). Confirmed via a
+//                             live failed transaction: NCBA rejects AccountNo
+//                             values that aren't this exact registered number
+//                             ("wrong format"), so unlike a typical Safaricom
+//                             Daraja integration, this can't be a free-text
+//                             per-school reference - it's the same for every
+//                             school. Per-school attribution now happens in
+//                             the webhook by matching the pending
+//                             payment_transactions row instead (see
+//                             app/api/payments/ncba/webhook/route.ts).
 // Until NCBA has issued real credentials, isNcbaConfigured() returns false and
 // every call site should show/return a clear "not configured yet" state instead
 // of a confusing failure.
@@ -19,7 +30,7 @@ interface CachedToken {
 let cachedToken: CachedToken | null = null
 
 export function isNcbaConfigured(): boolean {
-  return !!(process.env.NCBA_API_USERNAME && process.env.NCBA_API_PASSWORD && process.env.NCBA_PAYBILL_NO)
+  return !!(process.env.NCBA_API_USERNAME && process.env.NCBA_API_PASSWORD && process.env.NCBA_PAYBILL_NO && process.env.NCBA_ACCOUNT_NO)
 }
 
 async function getAccessToken(): Promise<string> {
@@ -64,10 +75,11 @@ export interface StkPushInitiateResult {
 export async function initiateStkPush(params: {
   telephoneNo: string
   amount: number
-  accountNo: string // used to attribute the payment back to a school
 }): Promise<StkPushInitiateResult> {
   const paybillNo = process.env.NCBA_PAYBILL_NO
+  const accountNo = process.env.NCBA_ACCOUNT_NO
   if (!paybillNo) throw new Error('NCBA_PAYBILL_NO not configured')
+  if (!accountNo) throw new Error('NCBA_ACCOUNT_NO not configured')
 
   const accessToken = await getAccessToken()
   const res = await fetch(`${BASE_URL}/payments/api/v1/stk-push/initiate`, {
@@ -80,7 +92,7 @@ export async function initiateStkPush(params: {
       TelephoneNo: params.telephoneNo,
       Amount: String(params.amount),
       PayBillNo: paybillNo,
-      AccountNo: params.accountNo,
+      AccountNo: accountNo,
       Network: 'Safaricom',
       TransactionType: 'CustomerPayBillOnline',
     }),

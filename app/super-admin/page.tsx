@@ -65,8 +65,6 @@ export default function SuperAdminPage() {
   const [expandedSchool, setExpandedSchool] = useState<string | null>(null)
   const [savingSchool, setSavingSchool] = useState<string | null>(null)
   const [paymentHistory, setPaymentHistory] = useState<Record<string, PaymentTransaction[]>>({})
-  const [sendingPromptFor, setSendingPromptFor] = useState<string | null>(null)
-  const [promptMessage, setPromptMessage] = useState<{ schoolId: string; type: 'success' | 'error'; text: string } | null>(null)
   const [showAdminPassword, setShowAdminPassword] = useState(false)
 
   // New school form
@@ -212,17 +210,6 @@ export default function SuperAdminPage() {
     setSavingSchool(null)
   }
 
-  async function updatePaymentPhone(schoolId: string, phone: string) {
-    setSavingSchool(schoolId)
-    const { error } = await supabase.from('schools').update({ payment_phone_number: phone || null }).eq('id', schoolId)
-    if (!error) {
-      setSchools(schools.map(s => s.id === schoolId ? { ...s, payment_phone_number: phone || null } : s))
-    } else {
-      alert(`Failed to save payment phone number: ${error.message}\n\nIf this mentions a missing column, scripts/005_add_ncba_payment_integration.sql still needs to be run in the Supabase SQL Editor.`)
-    }
-    setSavingSchool(null)
-  }
-
   // Generic field-level save for the "School Details" card (short_name, tagline,
   // logo_url, primary_color, address, phone, email, admin_password) so every
   // school-identity field can be managed from here instead of the Supabase dashboard.
@@ -263,24 +250,6 @@ export default function SuperAdminPage() {
       .order('initiated_at', { ascending: false })
       .limit(20)
     setPaymentHistory(prev => ({ ...prev, [schoolId]: data || [] }))
-  }
-
-  async function sendPaymentPrompt(schoolId: string) {
-    setSendingPromptFor(schoolId)
-    setPromptMessage(null)
-    try {
-      const res = await fetch('/api/payments/ncba/initiate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ schoolId }),
-      })
-      const data = await res.json()
-      setPromptMessage({ schoolId, type: data.success ? 'success' : 'error', text: data.success ? data.message : data.error })
-      if (data.success) fetchPaymentHistory(schoolId)
-    } catch (error) {
-      setPromptMessage({ schoolId, type: 'error', text: error instanceof Error ? error.message : 'Failed to send prompt' })
-    }
-    setSendingPromptFor(null)
   }
 
   async function createSchool(e: React.FormEvent) {
@@ -1139,30 +1108,20 @@ export default function SuperAdminPage() {
                         Payments
                       </h4>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                        <div>
-                          <Label htmlFor={`amount-${school.id}`}>Term Fee Amount (KES)</Label>
-                          <Input
-                            id={`amount-${school.id}`}
-                            type="number"
-                            min="0"
-                            placeholder="e.g. 15000"
-                            defaultValue={school.payment_amount ?? ''}
-                            onBlur={(e) => updatePaymentAmount(school.id, e.target.value)}
-                            className="mt-1"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor={`phone-${school.id}`}>Payment Phone Number</Label>
-                          <Input
-                            id={`phone-${school.id}`}
-                            type="text"
-                            placeholder="2547XXXXXXXX"
-                            defaultValue={school.payment_phone_number ?? ''}
-                            onBlur={(e) => updatePaymentPhone(school.id, e.target.value)}
-                            className="mt-1"
-                          />
-                        </div>
+                      <div className="mb-4">
+                        <Label htmlFor={`amount-${school.id}`}>Term Fee Amount (KES)</Label>
+                        <Input
+                          id={`amount-${school.id}`}
+                          type="number"
+                          min="0"
+                          placeholder="e.g. 15000"
+                          defaultValue={school.payment_amount ?? ''}
+                          onBlur={(e) => updatePaymentAmount(school.id, e.target.value)}
+                          className="mt-1 max-w-xs"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Shown on the school&apos;s locked screen - the admin enters their own M-Pesa number and pays from there.
+                        </p>
                       </div>
 
                       {/* Manual lock/unlock override */}
@@ -1195,24 +1154,6 @@ export default function SuperAdminPage() {
                         <p className="text-xs text-gray-500 mt-1">
                           Automatic locks the school once its subscription expiry date passes. Force Unlocked/Locked always overrides that, regardless of payment status.
                         </p>
-                      </div>
-
-                      {/* Send prompt */}
-                      <div className="flex items-center gap-3 mb-4">
-                        <Button
-                          size="sm"
-                          onClick={() => sendPaymentPrompt(school.id)}
-                          disabled={sendingPromptFor === school.id || !school.payment_amount || !school.payment_phone_number}
-                          className="bg-blue-600 hover:bg-blue-700"
-                        >
-                          <Send className="w-4 h-4 mr-1" />
-                          {sendingPromptFor === school.id ? 'Sending...' : 'Send Payment Prompt (STK Push)'}
-                        </Button>
-                        {promptMessage && promptMessage.schoolId === school.id && (
-                          <span className={`text-xs ${promptMessage.type === 'success' ? 'text-emerald-600' : 'text-red-600'}`}>
-                            {promptMessage.text}
-                          </span>
-                        )}
                       </div>
 
                       {/* Payment history */}

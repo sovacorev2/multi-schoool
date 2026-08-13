@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 export async function POST(request: Request) {
   if (!isNcbaConfigured()) {
     return NextResponse.json(
-      { success: false, error: 'NCBA payments are not configured yet (missing NCBA_API_USERNAME / NCBA_API_PASSWORD / NCBA_PAYBILL_NO).' },
+      { success: false, error: 'NCBA payments are not configured yet (missing NCBA_API_USERNAME / NCBA_API_PASSWORD / NCBA_PAYBILL_NO / NCBA_ACCOUNT_NO).' },
       { status: 503 }
     )
   }
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: school } = await supabase
     .from('schools')
-    .select('id, code, name, payment_amount, payment_phone_number')
+    .select('id, name, payment_amount, payment_phone_number')
     .eq('id', schoolId)
     .single()
 
@@ -40,12 +40,13 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await initiateStkPush({
-      telephoneNo,
-      amount: school.payment_amount,
-      accountNo: school.code, // echoed back on the webhook as BillRefNumber - see webhook route's attribution note
-    })
+    const result = await initiateStkPush({ telephoneNo, amount: school.payment_amount })
 
+    // Left as 'pending' with school_id already attached - the webhook can't
+    // identify which school a confirmation belongs to via AccountNo (NCBA
+    // requires that to always be our one fixed registered account number,
+    // not a per-school reference), so it attributes by finding this exact
+    // pending row instead (matched on amount + phone, see webhook route).
     await supabase.from('payment_transactions').insert({
       school_id: school.id,
       amount: school.payment_amount,
