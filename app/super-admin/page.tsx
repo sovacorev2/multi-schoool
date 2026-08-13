@@ -183,17 +183,27 @@ export default function SuperAdminPage() {
     setSavingSchool(null)
   }
 
+  // The actual lock/unlock only otherwise happens once a day, when
+  // /api/cron/lock-expired-schools re-evaluates every school against the
+  // current date - editing the date here used to only take visible effect
+  // up to 24h later, at the next cron run. Now it applies the same
+  // automatic-mode logic immediately, so the date and the lock state never
+  // visibly disagree. An explicit Force Locked/Unlocked override still
+  // always wins - editing the date under an override doesn't touch is_active,
+  // exactly like the cron job itself already respects it.
   async function updateSubscriptionExpiry(schoolId: string, date: string) {
     setSavingSchool(schoolId)
-    const { error } = await supabase
-      .from('schools')
-      .update({ subscription_expires_at: date || null })
-      .eq('id', schoolId)
-    
+    const school = schools.find(s => s.id === schoolId)
+    const updates: { subscription_expires_at: string | null; is_active?: boolean } = { subscription_expires_at: date || null }
+
+    if (school && school.lock_override == null) {
+      const expiresAt = date ? new Date(date) : null
+      updates.is_active = !expiresAt || expiresAt.getTime() >= Date.now()
+    }
+
+    const { error } = await supabase.from('schools').update(updates).eq('id', schoolId)
     if (!error) {
-      setSchools(schools.map(s =>
-        s.id === schoolId ? { ...s, subscription_expires_at: date || null } : s
-      ))
+      setSchools(schools.map(s => s.id === schoolId ? { ...s, ...updates } : s))
     }
     setSavingSchool(null)
   }
