@@ -143,15 +143,28 @@ export async function queryStkPushStatus(transactionId: string): Promise<{ statu
   })
 
   const data = await res.json()
-  // Only trust an explicit textual status - a numeric code here (StatusCode,
-  // ResultCode) more likely describes whether the query call itself
-  // succeeded, not the underlying payment, and misreading that as "payment
-  // succeeded" would be far worse than staying UNKNOWN and polling again.
   const rawStatus = String(data.status ?? data.Status ?? '').toUpperCase()
-  const status: 'SUCCESS' | 'FAILED' | 'UNKNOWN' =
-    rawStatus.includes('SUCCESS') || rawStatus.includes('COMPLETE') ? 'SUCCESS' :
-    rawStatus.includes('FAIL') || rawStatus.includes('CANCEL') || rawStatus.includes('TIMEOUT') || rawStatus.includes('REJECT') ? 'FAILED' :
-    'UNKNOWN'
   const description = data.description || data.Description || data.StatusDescription || data.ResultDesc || ''
+  const descLower = String(description).toLowerCase()
+
+  // Confirmed live: NCBA can return status:"FAILED" with a description that
+  // actually means the opposite - "The transaction is still under
+  // processing" - if the query lands before the customer has approved (or
+  // declined) the prompt yet. The description is the more trustworthy signal
+  // here; treat any processing/pending-sounding one as still-unresolved
+  // regardless of what the status field claims, so a real success a few
+  // seconds later isn't already given up on as a permanent failure.
+  const stillProcessing = descLower.includes('processing') || descLower.includes('pending') || descLower.includes('await')
+
+  // Only trust an explicit textual status otherwise - a numeric code here
+  // (StatusCode, ResultCode) more likely describes whether the query call
+  // itself succeeded, not the underlying payment, and misreading that as
+  // "payment succeeded" would be far worse than staying UNKNOWN and polling
+  // again.
+  const status: 'SUCCESS' | 'FAILED' | 'UNKNOWN' = stillProcessing
+    ? 'UNKNOWN'
+    : rawStatus.includes('SUCCESS') || rawStatus.includes('COMPLETE') ? 'SUCCESS' :
+      rawStatus.includes('FAIL') || rawStatus.includes('CANCEL') || rawStatus.includes('TIMEOUT') || rawStatus.includes('REJECT') ? 'FAILED' :
+      'UNKNOWN'
   return { status, description, raw: data }
 }
