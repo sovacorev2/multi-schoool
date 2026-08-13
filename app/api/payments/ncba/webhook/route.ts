@@ -47,11 +47,14 @@ function ok() {
 }
 
 export async function POST(request: Request) {
-  // TODO once NCBA credentials + a real test notification are available: confirm
-  // this whole route against an ACTUAL payload from NCBA. The field mapping below
-  // (which JSON field is "CreditAccount" vs "BillRefNumber" for the hash, and
-  // which field NCBA actually uses to identify a specific school) is my best
-  // reading of the integration guide, not something I've been able to test live.
+  // Confirmed against one real NCBA test notification (2026-08-13, TransID
+  // UHDKF2URGE): field names/shapes below (TransType, TransID, BillRefNumber,
+  // BusinessShortCode, Hash, etc.) and the missing-Status-means-success
+  // inference are now grounded in a real payload, not just the integration
+  // guide. Still unconfirmed: whether BillRefNumber reliably echoes back
+  // exactly what we send as AccountNo on a real STK-initiated payment (that
+  // test wasn't initiated through our own /api/payments/ncba/initiate) -
+  // worth a real end-to-end STK test once a school has payment_amount set.
   let body: any
   try {
     body = await request.json()
@@ -107,21 +110,29 @@ export async function POST(request: Request) {
   if (!school) {
     console.error('[ncba-webhook] No school found for BillRefNumber/AccountNo', schoolCode)
     // Still record the transaction (unattributed) so nothing silently disappears.
-    await supabase.from('payment_transactions').upsert({
-      school_id: null as any,
+    const { error: unattributedError } = await supabase.from('payment_transactions').upsert({
+      school_id: null,
       amount: Number(transAmount) || 0,
       phone_number: mobile,
       ncba_transaction_id: transId,
       status: 'failed',
       raw_payload: body,
       completed_at: new Date().toISOString(),
-    }, { onConflict: 'ncba_transaction_id' }).select().maybeSingle()
+    }, { onConflict: 'ncba_transaction_id' })
+    if (unattributedError) console.error('[ncba-webhook] Failed to record unattributed transaction', transId, unattributedError)
     return fail('Could not attribute payment to a school')
   }
 
-  const isSuccess = String(body.Status ?? '').toUpperCase() === 'SUCCESS'
+  // NCBA's real test notification had no Status field at all - this endpoint
+  // is a C2B-style confirmation callback (TransType/TransID/BillRefNumber
+  // shape), and confirmation callbacks in that pattern only ever fire for
+  // completed payments (a failed attempt never reaches a confirmation URL).
+  // So a missing Status means success; an explicit non-success value (if
+  // NCBA ever sends one for some other transaction type) still overrides it.
+  const statusField = String(body.Status ?? '').toUpperCase()
+  const isSuccess = statusField === '' || statusField === 'SUCCESS'
 
-  await supabase.from('payment_transactions').upsert({
+  const { error: recordError } = await supabase.from('payment_transactions').upsert({
     school_id: school.id,
     amount: Number(transAmount) || 0,
     phone_number: mobile,
@@ -130,6 +141,7 @@ export async function POST(request: Request) {
     raw_payload: body,
     completed_at: new Date().toISOString(),
   }, { onConflict: 'ncba_transaction_id' })
+  if (recordError) console.error('[ncba-webhook] Failed to record transaction', transId, recordError)
 
   if (isSuccess) {
     const now = new Date()

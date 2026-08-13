@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     )
   }
 
-  const { schoolId } = await request.json().catch(() => ({}))
+  const { schoolId, phoneNumber } = await request.json().catch(() => ({}))
   if (!schoolId) {
     return NextResponse.json({ success: false, error: 'Missing schoolId' }, { status: 400 })
   }
@@ -27,16 +27,21 @@ export async function POST(request: Request) {
   if (!school) {
     return NextResponse.json({ success: false, error: 'School not found' }, { status: 404 })
   }
-  if (!school.payment_amount || !school.payment_phone_number) {
-    return NextResponse.json(
-      { success: false, error: 'This school has no payment amount / phone number configured yet.' },
-      { status: 400 }
-    )
+  // A school admin paying from the locked screen types the phone they want
+  // to pay from right there (they don't always pay from the same phone) -
+  // that takes priority over whatever's pre-stored, which only super-admin's
+  // own "Send Payment Prompt" button relies on.
+  const telephoneNo = (phoneNumber && String(phoneNumber).trim()) || school.payment_phone_number
+  if (!school.payment_amount) {
+    return NextResponse.json({ success: false, error: 'This school has no subscription amount configured yet.' }, { status: 400 })
+  }
+  if (!telephoneNo) {
+    return NextResponse.json({ success: false, error: 'No phone number to send the payment prompt to.' }, { status: 400 })
   }
 
   try {
     const result = await initiateStkPush({
-      telephoneNo: school.payment_phone_number,
+      telephoneNo,
       amount: school.payment_amount,
       accountNo: school.code, // echoed back on the webhook as BillRefNumber - see webhook route's attribution note
     })
@@ -44,7 +49,7 @@ export async function POST(request: Request) {
     await supabase.from('payment_transactions').insert({
       school_id: school.id,
       amount: school.payment_amount,
-      phone_number: school.payment_phone_number,
+      phone_number: telephoneNo,
       ncba_transaction_id: result.transactionId,
       reference_id: result.referenceId,
       status: result.success ? 'pending' : 'failed',
@@ -57,7 +62,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: `Payment prompt sent to ${school.payment_phone_number}`,
+      message: `Payment prompt sent to ${telephoneNo}`,
       transactionId: result.transactionId,
     })
   } catch (error) {

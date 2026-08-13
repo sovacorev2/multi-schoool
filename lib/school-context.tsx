@@ -26,6 +26,7 @@ export interface School {
   feature_exam_hub?: boolean
   subscription_plan?: string
   subscription_expires_at?: string | null
+  payment_amount?: number | null
   enable_pin_login?: boolean
   pin_login_enabled_at?: string | null
 }
