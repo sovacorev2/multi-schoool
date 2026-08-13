@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { initiateStkPush, isNcbaConfigured } from '@/lib/ncba-client'
+import { initiateStkPush, isNcbaConfigured, normalizeKenyanPhone } from '@/lib/ncba-client'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,8 +30,11 @@ export async function POST(request: Request) {
   // A school admin paying from the locked screen types the phone they want
   // to pay from right there (they don't always pay from the same phone) -
   // that takes priority over whatever's pre-stored, which only super-admin's
-  // own "Send Payment Prompt" button relies on.
-  const telephoneNo = (phoneNumber && String(phoneNumber).trim()) || school.payment_phone_number
+  // own "Send Payment Prompt" button relies on. Normalized to the 254...
+  // format NCBA requires before it's sent or stored, so what's recorded
+  // matches what was actually sent.
+  const rawTelephoneNo = (phoneNumber && String(phoneNumber).trim()) || school.payment_phone_number
+  const telephoneNo = rawTelephoneNo ? normalizeKenyanPhone(rawTelephoneNo) : ''
   if (!school.payment_amount) {
     return NextResponse.json({ success: false, error: 'This school has no subscription amount configured yet.' }, { status: 400 })
   }

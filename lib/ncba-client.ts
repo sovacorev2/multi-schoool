@@ -63,6 +63,19 @@ async function getAccessToken(): Promise<string> {
   return cachedToken.accessToken
 }
 
+// NCBA rejects any TelephoneNo that doesn't include the 254 prefix
+// ("Invalid Telephone number, It should include the 254 prefix" - confirmed
+// live). A school admin typing their own number on the locked screen will
+// naturally type it as 07.../01... most of the time, so normalize instead of
+// making that a user-facing error.
+export function normalizeKenyanPhone(raw: string): string {
+  const digits = raw.replace(/\D/g, '')
+  if (digits.startsWith('254') && digits.length === 12) return digits
+  if ((digits.startsWith('07') || digits.startsWith('01')) && digits.length === 10) return `254${digits.slice(1)}`
+  if ((digits.startsWith('7') || digits.startsWith('1')) && digits.length === 9) return `254${digits}`
+  return digits
+}
+
 export interface StkPushInitiateResult {
   success: boolean
   transactionId: string | null
@@ -89,7 +102,7 @@ export async function initiateStkPush(params: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      TelephoneNo: params.telephoneNo,
+      TelephoneNo: normalizeKenyanPhone(params.telephoneNo),
       Amount: String(params.amount),
       PayBillNo: paybillNo,
       AccountNo: accountNo,
