@@ -120,6 +120,98 @@ export function generateTimetablePrintHTML(params: {
 </html>`
 }
 
+export interface BlockTimetableCell {
+  subjectName: string
+  teacherInitials: string
+}
+
+export interface BlockTimetableRow {
+  className: string
+  /** Keyed by column key, same as TimetablePrintColumn.key. */
+  cells: Record<string, BlockTimetableCell>
+}
+
+/** A single whole-school "master timetable" for one day - classes as rows,
+ * periods as columns, each cell showing the subject and the teacher's
+ * initials (full names don't fit at this density) - with a legend mapping
+ * initials back to full names. */
+export function generateBlockTimetablePrintHTML(params: {
+  title: string
+  schoolName: string
+  termLabel: string
+  dayLabel: string
+  columns: TimetablePrintColumn[]
+  rows: BlockTimetableRow[]
+  legend: { initials: string; name: string }[]
+}): string {
+  const { title, schoolName, termLabel, dayLabel, columns, rows, legend } = params
+
+  const headerCellsHTML = columns
+    .map((col) => `<th style="border:1px solid #d1d5db;padding:4px 6px;background:#e5e7eb;">${col.label}<br/><span style="font-weight:400;color:#6b7280;font-size:9px;">${col.subLabel}</span></th>`)
+    .join('')
+
+  const rowsHTML = rows
+    .map((row) => {
+      const rowCellsHTML = columns
+        .map((col) => {
+          const cell = row.cells[col.key]
+          return `<td style="border:1px solid #d1d5db;padding:3px 5px;vertical-align:top;">${
+            cell
+              ? `<div style="font-weight:700;">${cell.subjectName}</div><div style="color:#1d4ed8;font-size:10px;font-weight:600;">${cell.teacherInitials}</div>`
+              : '<span style="color:#d1d5db;">-</span>'
+          }</td>`
+        })
+        .join('')
+      return `<tr>
+        <td style="border:1px solid #d1d5db;padding:3px 6px;background:#f9fafb;font-weight:600;white-space:nowrap;">${row.className}</td>
+        ${rowCellsHTML}
+      </tr>`
+    })
+    .join('')
+
+  const legendHTML = legend
+    .map((l) => `<span style="display:inline-block;margin:2px 10px 2px 0;"><b style="color:#1d4ed8;">${l.initials}</b> = ${l.name}</span>`)
+    .join('')
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+<title>${title}</title>
+<style>
+  @page { size: A3 landscape; margin: 8mm; }
+  * { box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; padding: 12px; color: #111827; }
+  h1 { font-size: 18px; margin: 0 0 2px; }
+  h2 { font-size: 13px; font-weight: 500; color: #4b5563; margin: 0; }
+  .meta { font-size: 11px; color: #4b5563; margin-bottom: 10px; }
+  table { border-collapse: collapse; width: 100%; table-layout: fixed; font-size: 9px; }
+  th, td { word-wrap: break-word; overflow-wrap: break-word; }
+  td:first-child, th:first-child { width: 90px; }
+  .legend { margin-top: 14px; padding-top: 10px; border-top: 1px solid #d1d5db; font-size: 10px; color: #374151; }
+  .legend-title { font-weight: 700; margin-bottom: 4px; }
+  @media print {
+    body { padding: 0; }
+    table { page-break-inside: auto; }
+    tr { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+  <h1>${title}</h1>
+  <h2>${schoolName} - ${dayLabel}</h2>
+  <div class="meta">${termLabel} &bull; Printed: ${new Date().toLocaleDateString()}</div>
+  <table>
+    <thead><tr><th style="border:1px solid #d1d5db;padding:4px 6px;background:#e5e7eb;">Class</th>${headerCellsHTML}</tr></thead>
+    <tbody>${rowsHTML}</tbody>
+  </table>
+  <div class="legend">
+    <div class="legend-title">Teacher Initials</div>
+    ${legendHTML}
+  </div>
+</body>
+</html>`
+}
+
 export function openTimetablePrintWindow(html: string): void {
   const win = window.open('', '_blank')
   if (!win) return

@@ -24,8 +24,8 @@ import {
   generateTimetable,
   type TimetableClassInput, type TimetableConflict, type TimetableWarning,
 } from '@/lib/timetable-generator'
-import { resolveCategoryGrid, buildMergedColumns, mergedColumnKeyFor, type ResolvedCategoryGrid } from '@/lib/timetable-merged-view'
-import { generateTimetablePrintHTML, openTimetablePrintWindow } from '@/lib/timetable-print'
+import { resolveCategoryGrid, buildMergedColumns, mergedColumnKeyFor, computeTeacherInitials, type ResolvedCategoryGrid } from '@/lib/timetable-merged-view'
+import { generateTimetablePrintHTML, generateBlockTimetablePrintHTML, openTimetablePrintWindow, type BlockTimetableRow } from '@/lib/timetable-print'
 import { CBC_CATEGORIES, getCategoryForClass } from '@/lib/cbc-categories'
 import { fetchAllRows } from '@/lib/fetch-all-rows'
 import { sortClasses, TERMS } from '../_shared/utils'
@@ -103,6 +103,7 @@ function effectiveCategory(cls: { name: string }): string {
 }
 
 const CATEGORY_ORDER = [...CBC_CATEGORIES.map((c) => c.name), 'General']
+const DAY_LABELS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
 // Lower levels have one generalist class teacher who covers every subject;
 // Upper Primary/JSS/General are subject-specialist levels where "class
@@ -157,6 +158,8 @@ export default function TimetablePage() {
 
   const [swapMode, setSwapMode] = useState(false)
   const [swapSelection, setSwapSelection] = useState<{ day: number; period: number; entry: EntryRow | null } | null>(null)
+
+  const [blockDay, setBlockDay] = useState(1)
 
   const presentCategories = useMemo(() => {
     const set = new Set(classes.map(effectiveCategory))
@@ -610,6 +613,62 @@ export default function TimetablePage() {
     return null
   }
 
+  // --- Block Timetable (whole-school master timetable, one day at a time) ---
+  const teacherInitials = useMemo(() => computeTeacherInitials(teachers), [teachers])
+
+  const blockGrids = useMemo(
+    () => presentCategories.map((c) => allCategoryGrids.get(c)).filter((g): g is ResolvedCategoryGrid => !!g),
+    [presentCategories, allCategoryGrids]
+  )
+  const blockColumns = useMemo(() => buildMergedColumns(blockGrids), [blockGrids])
+  const blockDaysAvailable = Math.max(1, ...blockGrids.map((g) => g.daysPerWeek))
+
+  const blockRows: BlockTimetableRow[] = useMemo(() => {
+    return classes.map((cls) => {
+      const category = effectiveCategory(cls)
+      const grid = allCategoryGrids.get(category)
+      const cells: BlockTimetableRow['cells'] = {}
+      if (grid) {
+        for (const e of allTermEntries) {
+          if (e.class_id !== cls.id || e.day_of_week !== blockDay) continue
+          const key = mergedColumnKeyFor(grid, e.period_number)
+          if (!key) continue
+          cells[key] = {
+            subjectName: subjectName(e.subject_id),
+            teacherInitials: e.teacher_id ? (teacherInitials.get(e.teacher_id) || '?') : '',
+          }
+        }
+      }
+      return { className: cls.name, cells }
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [classes, allCategoryGrids, allTermEntries, blockDay, teacherInitials])
+
+  const blockLegend = useMemo(() => {
+    const usedTeacherIds = new Set<string>()
+    for (const e of allTermEntries) {
+      if (e.day_of_week === blockDay && e.teacher_id) usedTeacherIds.add(e.teacher_id)
+    }
+    return teachers
+      .filter((t) => usedTeacherIds.has(t.id))
+      .map((t) => ({ initials: teacherInitials.get(t.id) || '?', name: `${t.first_name} ${t.last_name}` }))
+      .sort((a, b) => a.initials.localeCompare(b.initials))
+  }, [teachers, teacherInitials, allTermEntries, blockDay])
+
+  const handleBlockPrint = () => {
+    if (!currentSchool) return
+    const html = generateBlockTimetablePrintHTML({
+      title: 'Block Timetable',
+      schoolName: currentSchool.name,
+      termLabel: `${viewTerm} ${viewYear}`,
+      dayLabel: DAY_LABELS[blockDay - 1] || `Day ${blockDay}`,
+      columns: blockColumns.map((c) => ({ key: c.key, label: c.label, subLabel: `- ${c.subLabel}` })),
+      rows: blockRows,
+      legend: blockLegend,
+    })
+    openTimetablePrintWindow(html)
+  }
+
   const gridCells: Record<string, TimetableGridCell> = useMemo(() => {
     const cells: Record<string, TimetableGridCell> = {}
     for (const e of viewEntries) {
@@ -896,6 +955,7 @@ export default function TimetablePage() {
           <TabsTrigger value="settings">Settings</TabsTrigger>
           <TabsTrigger value="generate">Generate</TabsTrigger>
           <TabsTrigger value="view">View &amp; Edit</TabsTrigger>
+          <TabsTrigger value="block">Block Timetable</TabsTrigger>
         </TabsList>
 
         {/* SETTINGS */}
@@ -1275,6 +1335,96 @@ export default function TimetablePage() {
                 />
               )}
               {viewMode === 'class' && viewClassId && !swapMode && <p className="text-xs text-gray-400">Click any cell to manually adjust it.</p>}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* BLOCK TIMETABLE */}
+        <TabsContent value="block" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Block Timetable</CardTitle>
+              <CardDescription>The whole school on one page - every class, one day at a time, with teacher initials in each cell.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap gap-3 items-end">
+                <Select value={String(blockDay)} onValueChange={(v) => setBlockDay(Number(v))}>
+                  <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {DAY_LABELS.slice(0, blockDaysAvailable).map((label, i) => (
+                      <SelectItem key={i} value={String(i + 1)}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={viewTerm} onValueChange={setViewTerm}>
+                  <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+                  <SelectContent>{TERMS.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                </Select>
+                <Select value={viewYear} onValueChange={setViewYear}>
+                  <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                  <SelectContent>{YEARS.map((y) => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
+                </Select>
+                <Button size="sm" variant="outline" onClick={handleBlockPrint} disabled={blockRows.length === 0 || blockColumns.length === 0}>
+                  <Printer className="w-4 h-4 mr-1" /> Print
+                </Button>
+              </div>
+
+              {classes.length === 0 ? (
+                <p className="text-sm text-gray-500 py-8 text-center">No classes found for this school yet.</p>
+              ) : blockColumns.length === 0 ? (
+                <p className="text-sm text-gray-500 py-8 text-center">No timetable generated yet for {viewTerm} {viewYear}. Generate one from the Generate tab.</p>
+              ) : (
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="border-collapse text-xs w-full">
+                      <thead>
+                        <tr>
+                          <th className="border border-gray-300 px-2 py-1.5 bg-gray-100 text-left sticky left-0">Class</th>
+                          {blockColumns.map((col) => (
+                            <th key={col.key} className="border border-gray-300 px-1.5 py-1.5 bg-gray-100 min-w-[70px]">
+                              <div>{col.label}</div>
+                              <div className="font-normal text-gray-500">{col.subLabel}</div>
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {blockRows.map((row) => (
+                          <tr key={row.className}>
+                            <td className="border border-gray-300 px-2 py-1 font-medium bg-gray-50 sticky left-0 whitespace-nowrap">{row.className}</td>
+                            {blockColumns.map((col) => {
+                              const cell = row.cells[col.key]
+                              return (
+                                <td key={col.key} className="border border-gray-300 px-1.5 py-1 align-top">
+                                  {cell ? (
+                                    <div>
+                                      <div className="font-medium text-gray-900 truncate">{cell.subjectName}</div>
+                                      <div className="text-blue-700 font-semibold">{cell.teacherInitials}</div>
+                                    </div>
+                                  ) : (
+                                    <span className="text-gray-300">-</span>
+                                  )}
+                                </td>
+                              )
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {blockLegend.length > 0 && (
+                    <div className="pt-3 border-t">
+                      <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Teacher Initials</p>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-700">
+                        {blockLegend.map((l) => (
+                          <span key={l.initials}><span className="font-semibold text-blue-700">{l.initials}</span> = {l.name}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

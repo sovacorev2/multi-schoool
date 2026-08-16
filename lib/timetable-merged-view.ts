@@ -93,3 +93,25 @@ export function mergedColumnKeyFor(grid: ResolvedCategoryGrid, periodNumber: num
   if (!p) return null
   return `${p.startMinutes}-${p.endMinutes}`
 }
+
+export interface TeacherForInitials {
+  id: string
+  first_name: string
+  last_name: string
+}
+
+/** Short, stable, collision-resistant initials for a whole-school block
+ * timetable, where full teacher names don't fit in every cell. A collision
+ * (two teachers sharing initials) gets a numeric suffix (JD, JD2, JD3...)
+ * rather than silently colliding in the legend. */
+export function computeTeacherInitials(teachers: TeacherForInitials[]): Map<string, string> {
+  const counts = new Map<string, number>()
+  const result = new Map<string, string>()
+  for (const t of teachers) {
+    const base = `${(t.first_name.trim()[0] || '').toUpperCase()}${(t.last_name.trim()[0] || '').toUpperCase()}` || '??'
+    const seen = counts.get(base) || 0
+    result.set(t.id, seen === 0 ? base : `${base}${seen + 1}`)
+    counts.set(base, seen + 1)
+  }
+  return result
+}
