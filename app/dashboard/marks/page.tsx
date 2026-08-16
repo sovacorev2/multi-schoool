@@ -606,13 +606,15 @@ export default function MarksPage() {
 
   const selectedSession = sessions.find((s) => s.id === selectedSessionId);
   const editStatus = selectedSession ? isExamEditable(selectedSession) : { editable: true, reason: "" };
-  // A session locked by the deadline cron ("System - Deadline") is just the automatic
-  // consequence of the class's own deadline passing, so a per-subject override can still
-  // bypass it. An admin's deliberate lock (any other locked_by value, including a manual
-  // toggle with no reason set) always wins and blocks every subject, override or not.
-  const isAdminLocked = !!selectedSession?.is_locked && selectedSession?.locked_by !== "System - Deadline";
+  // Granting a per-subject override is a deliberate, subject-specific admin
+  // decision - it must bypass ANY lock on the session (an automatic deadline
+  // lock, a manual "Lock Exam" click, whatever locked_by says), not just the
+  // automatic one. This used to only bypass a lock whose locked_by was
+  // exactly "System - Deadline", so the far more common case of an admin
+  // manually locking the exam (locked_by = "Admin") silently defeated every
+  // override that had been granted - the extension appeared to do nothing.
   const hasActiveOverride = Object.values(subjectDeadlineOverrides).some((d) => new Date(d) >= new Date());
-  const anyEditable = !isAdminLocked && (editStatus.editable || hasActiveOverride);
+  const anyEditable = editStatus.editable || hasActiveOverride;
 
   // Get session status badge
   const getSessionStatus = (session: SessionWithExamType) => {
@@ -928,12 +930,10 @@ export default function MarksPage() {
                             let showCell = true;
 
                             // A per-subject deadline override (set by the admin for this
-                            // one teacher) takes precedence over the class's own deadline -
-                            // an admin's explicit lock still always wins.
+                            // one teacher) takes precedence over the class's own deadline
+                            // AND over any lock on the session - see anyEditable above.
                             const overrideDeadline = subjectDeadlineOverrides[subject.id];
-                            const subjectEditable = isAdminLocked
-                              ? false
-                              : overrideDeadline
+                            const subjectEditable = overrideDeadline
                               ? new Date(overrideDeadline) >= new Date()
                               : editStatus.editable;
 
