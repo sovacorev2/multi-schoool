@@ -15,11 +15,17 @@ export const CBC_CATEGORIES: CbcCategory[] = [
   { name: 'Junior Secondary', classNames: ['Grade 7', 'Grade 8', 'Grade 9'] },
 ]
 
-/** Same match rule as marklist/page.tsx: exact name, or "<base name> <stream>". */
+/** Same match rule as marklist/page.tsx: exact name, or "<base name> <stream>".
+ * Case-insensitive - schools type their own class names in free text (a real
+ * class was created as "PlayGroup", not "Playgroup"), so an exact-case match
+ * would silently drop it out of every CBC-level-based feature. */
 export function getCategoryForClass(className: string): string | null {
-  const trimmed = className.trim()
+  const trimmed = className.trim().toLowerCase()
   for (const category of CBC_CATEGORIES) {
-    if (category.classNames.some((catName) => trimmed === catName || trimmed.startsWith(catName + ' '))) {
+    if (category.classNames.some((catName) => {
+      const normalized = catName.toLowerCase()
+      return trimmed === normalized || trimmed.startsWith(normalized + ' ')
+    })) {
       return category.name
     }
   }

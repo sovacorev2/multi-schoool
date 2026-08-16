@@ -355,10 +355,15 @@ export default function MarklistPage() {
 
       for (const category of CATEGORIES) {
         const catClasses = allClasses.filter(c => {
-          const className = c.name.trim()
-          return category.classNames.some(catName =>
-            className === catName || className.startsWith(catName + ' ')
-          )
+          // Case-insensitive - class names are free text set per school (a
+          // real class was created as "PlayGroup", not "Playgroup"), so an
+          // exact-case match would silently drop it out of this category
+          // entirely instead of just missing a rubric-scale detail.
+          const className = c.name.trim().toLowerCase()
+          return category.classNames.some(catName => {
+            const normalized = catName.toLowerCase()
+            return className === normalized || className.startsWith(normalized + ' ')
+          })
         })
         catClasses.forEach(c => classIdToCategory.set(c.id, category.name))
         const classResults: {
@@ -400,7 +405,7 @@ export default function MarklistPage() {
           const clsSubjects = subjectsByClassId.get(cls.id) || []
           const clsLearners = learnersByClassId.get(cls.id) || []
           const clsMarks = marksBySessionId.get(sessionId) || []
-          const isPreschoolClass = PRESCHOOL.includes(cls.name)
+          const isPreschoolClass = PRESCHOOL.some(name => name.toLowerCase() === cls.name.trim().toLowerCase())
 
           // Calculate averages per subject
           const subjectAvgs: { name: string; avg: number }[] = []

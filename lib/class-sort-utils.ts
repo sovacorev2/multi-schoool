@@ -12,19 +12,21 @@ export function sortClassesByLevel(classes: any[]): any[] {
 
   // Add Grade 1-9 in order (grades start at 3)
   for (let i = 1; i <= 9; i++) {
-    classOrder[`Grade ${i}`] = 2 + i
-    classOrder[`Grade${i}`] = 2 + i
+    classOrder[`GRADE ${i}`] = 2 + i
+    classOrder[`GRADE${i}`] = 2 + i
     classOrder[`GRD${i}`] = 2 + i
-    classOrder[`Form ${i}`] = 2 + i
+    classOrder[`FORM ${i}`] = 2 + i
   }
 
   return [...classes].sort((a, b) => {
     const aName = a.name || ''
     const bName = b.name || ''
-    
-    // Try exact match first
-    let aOrder = classOrder[aName]
-    let bOrder = classOrder[bName]
+
+    // Case-insensitive - class names are free text set per school (a real
+    // class was created as "PlayGroup", not "PLAYGROUP"), so an exact-case
+    // match would silently miss it and fall back to alphabetical order.
+    let aOrder = classOrder[aName.toUpperCase()]
+    let bOrder = classOrder[bName.toUpperCase()]
 
     // If not exact, try extracting Grade/Form number
     if (aOrder === undefined) {

@@ -277,10 +277,13 @@ export default function AdminPage() {
     return labels[action] || { label: action, variant: "secondary" as const };
   };
 
-  // Password management - only for Playgroup to Grade 3
+  // Password management - only for Playgroup to Grade 3. Case-insensitive -
+  // class names are free text set per school (a real class was created as
+  // "PlayGroup", not "Playgroup"), so an exact-case match would silently put
+  // it in the wrong password bucket.
   const LOWER_CLASSES = ["Playgroup", "PP1", "PP2", "Grade 1", "Grade 2", "Grade 3"];
-  const lowerClassPasswords = classPasswords.filter(c => 
-    LOWER_CLASSES.some(grade => c.name.includes(grade))
+  const lowerClassPasswords = classPasswords.filter(c =>
+    LOWER_CLASSES.some(grade => c.name.toLowerCase().includes(grade.toLowerCase()))
   );
 
   const handleResetPassword = async () => {
