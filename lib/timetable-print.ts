@@ -131,41 +131,59 @@ export interface BlockTimetableRow {
   cells: Record<string, BlockTimetableCell>
 }
 
-/** A single whole-school "master timetable" for one day - classes as rows,
- * periods as columns, each cell showing the subject and the teacher's
- * initials (full names don't fit at this density) - with a legend mapping
- * initials back to full names. */
+export interface BlockTimetableDay {
+  dayLabel: string
+  rows: BlockTimetableRow[]
+}
+
+/** A whole-school "master timetable" - classes as rows, periods as columns,
+ * one section per day (a single day, or the full week), each cell showing
+ * the subject and the teacher's initials (full names don't fit at this
+ * density) - with one shared legend mapping initials back to full names.
+ * Multiple days are never squeezed onto one page - each starts a fresh
+ * printed page, however many pages that ends up taking. */
 export function generateBlockTimetablePrintHTML(params: {
   title: string
   schoolName: string
   termLabel: string
-  dayLabel: string
   columns: TimetablePrintColumn[]
-  rows: BlockTimetableRow[]
+  days: BlockTimetableDay[]
   legend: { initials: string; name: string }[]
 }): string {
-  const { title, schoolName, termLabel, dayLabel, columns, rows, legend } = params
+  const { title, schoolName, termLabel, columns, days, legend } = params
 
   const headerCellsHTML = columns
     .map((col) => `<th style="border:1px solid #d1d5db;padding:4px 6px;background:#e5e7eb;">${col.label}<br/><span style="font-weight:400;color:#6b7280;font-size:9px;">${col.subLabel}</span></th>`)
     .join('')
 
-  const rowsHTML = rows
-    .map((row) => {
-      const rowCellsHTML = columns
-        .map((col) => {
-          const cell = row.cells[col.key]
-          return `<td style="border:1px solid #d1d5db;padding:3px 5px;vertical-align:top;">${
-            cell
-              ? `<div style="font-weight:700;">${cell.subjectName}</div><div style="color:#1d4ed8;font-size:10px;font-weight:600;">${cell.teacherInitials}</div>`
-              : '<span style="color:#d1d5db;">-</span>'
-          }</td>`
+  const daySectionsHTML = days
+    .map((day, dayIdx) => {
+      const rowsHTML = day.rows
+        .map((row) => {
+          const rowCellsHTML = columns
+            .map((col) => {
+              const cell = row.cells[col.key]
+              return `<td style="border:1px solid #d1d5db;padding:3px 5px;vertical-align:top;">${
+                cell
+                  ? `<div style="font-weight:700;">${cell.subjectName}</div><div style="color:#1d4ed8;font-size:10px;font-weight:600;">${cell.teacherInitials}</div>`
+                  : '<span style="color:#d1d5db;">-</span>'
+              }</td>`
+            })
+            .join('')
+          return `<tr>
+            <td style="border:1px solid #d1d5db;padding:3px 6px;background:#f9fafb;font-weight:600;white-space:nowrap;">${row.className}</td>
+            ${rowCellsHTML}
+          </tr>`
         })
         .join('')
-      return `<tr>
-        <td style="border:1px solid #d1d5db;padding:3px 6px;background:#f9fafb;font-weight:600;white-space:nowrap;">${row.className}</td>
-        ${rowCellsHTML}
-      </tr>`
+
+      return `<div${dayIdx > 0 ? ' style="page-break-before: always; margin-top: 16px;"' : ''}>
+        <h2>${schoolName} - ${day.dayLabel}</h2>
+        <table>
+          <thead><tr><th style="border:1px solid #d1d5db;padding:4px 6px;background:#e5e7eb;">Class</th>${headerCellsHTML}</tr></thead>
+          <tbody>${rowsHTML}</tbody>
+        </table>
+      </div>`
     })
     .join('')
 
@@ -198,12 +216,8 @@ export function generateBlockTimetablePrintHTML(params: {
 </head>
 <body>
   <h1>${title}</h1>
-  <h2>${schoolName} - ${dayLabel}</h2>
   <div class="meta">${termLabel} &bull; Printed: ${new Date().toLocaleDateString()}</div>
-  <table>
-    <thead><tr><th style="border:1px solid #d1d5db;padding:4px 6px;background:#e5e7eb;">Class</th>${headerCellsHTML}</tr></thead>
-    <tbody>${rowsHTML}</tbody>
-  </table>
+  ${daySectionsHTML}
   <div class="legend">
     <div class="legend-title">Teacher Initials</div>
     ${legendHTML}
