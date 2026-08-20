@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import React from "react"
-import { formatGradeWithPoints, getPerformanceLevelWithPoints, getGradeLevelByClass, getSubjectLevelPoints, getLevelByTotalPoints, getLevelByAverageMark, getLevelByTotal, getGradingScale } from '@/lib/grading-utils'
+import { formatGradeWithPoints, getPerformanceLevelWithPoints, getGradeLevelByClass, getSubjectLevelPoints, getLevelByTotalPoints, getLevelByAverageMark, getLevelByTotal, getGradingScale, isBandedPositionSchool, getPositionFromLevel, getPositionCount } from '@/lib/grading-utils'
 import { generateSchoolAnalysisHTML } from '@/lib/school-analysis-report'
 import { getSubjectDisplay, normalizeSubjectName, areSubjectsEqual } from '@/lib/subject-utils'
 import { sortClassesByLevel } from '@/lib/class-sort-utils'
@@ -979,6 +979,22 @@ export default function MarklistPage() {
         prevPoints = lPoints
       })
 
+      // St Belvia: position comes from each learner's overall CBC level, not
+      // fine-grained total marks - every learner in the same level shares
+      // the same position. `average` here is already a 0-100 average mark.
+      // Every other school's rank set just above is left untouched.
+      if (isBandedPositionSchool(currentSchool?.name)) {
+        const positionCount = getPositionCount(baseClassName)
+        allLearners.forEach((learner) => {
+          const level = getGradeLevelByClass((learner as any).average, baseClassName, currentSchool?.name)?.level
+          const banded = getPositionFromLevel(level)
+          if (banded !== null) {
+            (learner as any).rank = banded
+            ;(learner as any).total_in_grade = positionCount
+          }
+        })
+      }
+
       const subjectsArray = Array.from(allSubjectsMap.values()).sort((a, b) => a.name.localeCompare(b.name))
 
       setCombinedMarklistData({
@@ -1290,9 +1306,27 @@ export default function MarklistPage() {
               result.total_in_grade = arr.length
             }
             result.overall_rank = result.rank
-            
+
             return result
           })
+
+    // St Belvia: position comes from each learner's overall CBC level, not
+    // fine-grained total marks - every learner in the same level shares the
+    // same position (all EE1 in JSS are position 1, all BE are position 4 in
+    // primary, etc.), so this replaces the sequential rank set just above
+    // rather than adding to it. Every other school is unaffected.
+    if (isBandedPositionSchool(currentSchool?.name)) {
+      const positionCount = getPositionCount(currentClass?.name)
+      for (const result of results) {
+        const level = getGradeLevelByClass(result.average, currentClass?.name, currentSchool?.name)?.level
+        const banded = getPositionFromLevel(level)
+        if (banded !== null) {
+          result.rank = banded
+          result.overall_rank = banded
+          result.total_in_grade = positionCount
+        }
+      }
+    }
 
     setResults(results)
   }, [selectedSession?.id, marks.length, subjects.length, learners.length])
@@ -2201,7 +2235,23 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                       }))
                     }
                   }
-                  
+
+                  // St Belvia: position comes from each learner's overall CBC
+                  // level, not fine-grained total marks - every learner in the
+                  // same level shares the same position. Reuses each result's
+                  // own already-computed `average` (from the results memo
+                  // above) rather than recomputing totals for this grade-wide
+                  // ranking. Every other school's overall_rank/total_in_grade
+                  // set just above is left untouched.
+                  if (isBandedPositionSchool(currentSchool?.name)) {
+                    const positionCount = getPositionCount(currentClass?.name)
+                    finalResults = finalResults.map(r => {
+                      const level = getGradeLevelByClass(r.average, currentClass?.name, currentSchool?.name)?.level
+                      const banded = getPositionFromLevel(level)
+                      return banded !== null ? { ...r, overall_rank: banded, total_in_grade: positionCount } : r
+                    })
+                  }
+
                   // STEP 2: Fetch term history for trend graph
                   const termHistory: Record<string, any[]> = {}
                   

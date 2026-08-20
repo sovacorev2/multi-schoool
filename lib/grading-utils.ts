@@ -41,6 +41,17 @@ export const GRADING_SCALE_KOLANYA_GIRLS_PRIMARY: GradeLevel[] = [
 // Kolanya Girls custom grading scale (legacy - kept for compatibility)
 export const GRADING_SCALE_KOLANYA_GIRLS: GradeLevel[] = GRADING_SCALE_KOLANYA_GIRLS_JSS
 
+// St Belvia custom grading scale for non-JSS classes - 4 broad levels only
+// (EE/ME/AE/BE, no 1/2 sub-levels), same shape as GRADING_SCALE_KOLANYA_GIRLS_PRIMARY.
+// JSS classes at St Belvia use the standard GRADING_SCALE_EXTENDED (8 levels) -
+// see getGradingScale() below.
+export const GRADING_SCALE_STBELVIA_PRIMARY: GradeLevel[] = [
+  { level: 'EE', minMark: 75, maxMark: 100, points: 4 },
+  { level: 'ME', minMark: 50, maxMark: 74, points: 3 },
+  { level: 'AE', minMark: 25, maxMark: 49, points: 2 },
+  { level: 'BE', minMark: 0, maxMark: 24, points: 1 },
+]
+
 // Simple grading scale for lower classes (PP1, PP2, Grade 1-6) - 8 levels with 0.5 increments
 export const GRADING_SCALE_SIMPLE: GradeLevel[] = [
   { level: 'EE1', minMark: 90, maxMark: 100, points: 4.0 },
@@ -93,16 +104,53 @@ export function getGradingScale(className?: string, schoolName?: string): GradeL
   if (schoolName && schoolName.toLowerCase().includes('kolanya')) {
     // If it's Kolanya Girls, determine if it's primary or secondary
     if (!className) return GRADING_SCALE_KOLANYA_GIRLS_JSS
-    
+
     const isUpper = isUpperClass(className)
     return isUpper ? GRADING_SCALE_KOLANYA_GIRLS_JSS : GRADING_SCALE_KOLANYA_GIRLS_PRIMARY
   }
-  
+
+  // St Belvia: JSS keeps the standard 8-level scale, non-JSS classes use a
+  // coarser 4-level EE/ME/AE/BE scale (no sub-levels) - see banded-position
+  // ranking below, which relies on this scale to determine each learner's level.
+  if (schoolName && schoolName.toLowerCase().includes('belvia')) {
+    if (!className) return GRADING_SCALE_EXTENDED
+    return isUpperClass(className) ? GRADING_SCALE_EXTENDED : GRADING_SCALE_STBELVIA_PRIMARY
+  }
+
   // Kimaeti and other schools use the default extended/simple scales
   // (Kimaeti uses same scale as Amagoro)
   if (!className) return GRADING_SCALE_EXTENDED
   const isUpper = isUpperClass(className)
   return isUpper ? GRADING_SCALE_EXTENDED : GRADING_SCALE_SIMPLE
+}
+
+// --- St Belvia banded (level-based) positions -----------------------------
+// St Belvia wants report-card "position" derived from a learner's overall CBC
+// level rather than fine-grained total marks: every learner in the same level
+// shares the same position, and the number of possible positions equals the
+// number of levels in the scale (8 for JSS's EE1..BE2, 4 for the EE/ME/AE/BE
+// scale used elsewhere). School-specific - every other school keeps its
+// existing individual-rank behavior untouched.
+
+const LEVEL_TO_POSITION: Record<string, number> = {
+  EE1: 1, EE2: 2, ME1: 3, ME2: 4, AE1: 5, AE2: 6, BE1: 7, BE2: 8,
+  EE: 1, ME: 2, AE: 3, BE: 4,
+}
+
+export function isBandedPositionSchool(schoolName?: string | null): boolean {
+  return !!schoolName && schoolName.toLowerCase().includes('belvia')
+}
+
+export function getPositionFromLevel(level: string | null | undefined): number | null {
+  if (!level) return null
+  return LEVEL_TO_POSITION[level] ?? null
+}
+
+/** How many distinct positions exist for this class's level scale - 8 for
+ * JSS's EE1..BE2, 4 for the EE/ME/AE/BE scale used elsewhere. Used as the
+ * "out of N" denominator instead of the class/grade size for banded schools. */
+export function getPositionCount(className?: string): number {
+  return isUpperClass(className || '') ? 8 : 4
 }
 
 // St Mary's Nambale primary absolute total marks scale (Grades 4–8, 6 subjects × 100 = 600 max)
