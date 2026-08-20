@@ -131,36 +131,38 @@ export interface BlockTimetableRow {
   cells: Record<string, BlockTimetableCell>
 }
 
-export interface BlockTimetableDay {
-  dayLabel: string
+export interface BlockTimetableSection {
+  /** e.g. "Junior Secondary - Monday" - each level has its own period grid, so its own columns too. */
+  sectionLabel: string
+  columns: TimetablePrintColumn[]
   rows: BlockTimetableRow[]
 }
 
 /** A whole-school "master timetable" - classes as rows, periods as columns,
- * one section per day (a single day, or the full week), each cell showing
- * the subject and the teacher's initials (full names don't fit at this
- * density) - with one shared legend mapping initials back to full names.
- * Multiple days are never squeezed onto one page - each starts a fresh
- * printed page, however many pages that ends up taking. */
+ * one section per CBC level per day (a level runs its own day structure, so
+ * levels are never merged into one grid), each cell showing the subject and
+ * the teacher's initials (full names don't fit at this density) - with one
+ * shared legend mapping initials back to full names. Sections are never
+ * squeezed onto one page - each starts a fresh printed page, however many
+ * pages that ends up taking. */
 export function generateBlockTimetablePrintHTML(params: {
   title: string
   schoolName: string
   termLabel: string
-  columns: TimetablePrintColumn[]
-  days: BlockTimetableDay[]
+  sections: BlockTimetableSection[]
   legend: { initials: string; name: string }[]
 }): string {
-  const { title, schoolName, termLabel, columns, days, legend } = params
+  const { title, schoolName, termLabel, sections, legend } = params
 
-  const headerCellsHTML = columns
-    .map((col) => `<th style="border:1px solid #d1d5db;padding:4px 6px;background:#e5e7eb;">${col.label}<br/><span style="font-weight:400;color:#6b7280;font-size:9px;">${col.subLabel}</span></th>`)
-    .join('')
+  const sectionsHTML = sections
+    .map((section, sectionIdx) => {
+      const headerCellsHTML = section.columns
+        .map((col) => `<th style="border:1px solid #d1d5db;padding:4px 6px;background:#e5e7eb;">${col.label}<br/><span style="font-weight:400;color:#6b7280;font-size:9px;">${col.subLabel}</span></th>`)
+        .join('')
 
-  const daySectionsHTML = days
-    .map((day, dayIdx) => {
-      const rowsHTML = day.rows
+      const rowsHTML = section.rows
         .map((row) => {
-          const rowCellsHTML = columns
+          const rowCellsHTML = section.columns
             .map((col) => {
               const cell = row.cells[col.key]
               return `<td style="border:1px solid #d1d5db;padding:3px 5px;vertical-align:top;">${
@@ -177,8 +179,8 @@ export function generateBlockTimetablePrintHTML(params: {
         })
         .join('')
 
-      return `<div${dayIdx > 0 ? ' style="page-break-before: always; margin-top: 16px;"' : ''}>
-        <h2>${schoolName} - ${day.dayLabel}</h2>
+      return `<div${sectionIdx > 0 ? ' style="page-break-before: always; margin-top: 16px;"' : ''}>
+        <h2>${schoolName} - ${section.sectionLabel}</h2>
         <table>
           <thead><tr><th style="border:1px solid #d1d5db;padding:4px 6px;background:#e5e7eb;">Class</th>${headerCellsHTML}</tr></thead>
           <tbody>${rowsHTML}</tbody>
@@ -217,7 +219,7 @@ export function generateBlockTimetablePrintHTML(params: {
 <body>
   <h1>${title}</h1>
   <div class="meta">${termLabel} &bull; Printed: ${new Date().toLocaleDateString()}</div>
-  ${daySectionsHTML}
+  ${sectionsHTML}
   <div class="legend">
     <div class="legend-title">Teacher Initials</div>
     ${legendHTML}

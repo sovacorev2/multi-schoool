@@ -613,49 +613,63 @@ export default function TimetablePage() {
     return null
   }
 
-  // --- Block Timetable (whole-school master timetable, one day at a time) ---
+  // --- Block Timetable (whole-school master timetable) ---
+  // A separate block timetable per CBC level (Pre-School/Lower Primary/Upper
+  // Primary/Junior Secondary/General), not one grid merging every level -
+  // each level runs its own day structure, so "period 3" already means a
+  // different real time in different levels; keeping each level's own plain
+  // period-number columns (like a normal, single-category timetable) is both
+  // simpler and far less sparse than forcing everything onto one merged
+  // real-time axis.
   const teacherInitials = useMemo(() => computeTeacherInitials(teachers), [teachers])
 
-  const blockGrids = useMemo(
-    () => presentCategories.map((c) => allCategoryGrids.get(c)).filter((g): g is ResolvedCategoryGrid => !!g),
-    [presentCategories, allCategoryGrids]
-  )
-  const blockColumns = useMemo(() => buildMergedColumns(blockGrids), [blockGrids])
-  const blockDaysAvailable = Math.max(1, ...blockGrids.map((g) => g.daysPerWeek))
-
-  const computeBlockRowsForDay = useCallback((day: number): BlockTimetableRow[] => {
-    return classes.map((cls) => {
-      const category = effectiveCategory(cls)
-      const grid = allCategoryGrids.get(category)
-      const cells: BlockTimetableRow['cells'] = {}
-      if (grid) {
-        for (const e of allTermEntries) {
-          if (e.class_id !== cls.id || e.day_of_week !== day) continue
-          const key = mergedColumnKeyFor(grid, e.period_number)
-          if (!key) continue
-          cells[key] = {
-            subjectName: subjectName(e.subject_id),
-            teacherInitials: e.teacher_id ? (teacherInitials.get(e.teacher_id) || '?') : '',
-          }
-        }
-      }
-      return { className: cls.name, cells }
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [classes, allCategoryGrids, allTermEntries, teacherInitials])
+  const blockDaysAvailable = Math.max(1, ...presentCategories.map((c) => allCategoryGrids.get(c)?.daysPerWeek || 0))
 
   const blockDayList = useMemo(
     () => (blockDay === 'all' ? Array.from({ length: blockDaysAvailable }, (_, i) => i + 1) : [blockDay]),
     [blockDay, blockDaysAvailable]
   )
 
-  // One section per selected day - just the one day normally, every day when
-  // "All Days" is picked. Doesn't need to fit on one screen/page; it just
-  // stacks and, when printed, each day starts its own page.
-  const blockSections = useMemo(
-    () => blockDayList.map((day) => ({ day, dayLabel: DAY_LABELS[day - 1] || `Day ${day}`, rows: computeBlockRowsForDay(day) })),
-    [blockDayList, computeBlockRowsForDay]
-  )
+  interface BlockCategorySection {
+    category: string
+    columns: { key: string; label: string; subLabel: string }[]
+    days: { day: number; dayLabel: string; rows: BlockTimetableRow[] }[]
+  }
+
+  // One section per level, each with its own columns (that level's own real
+  // periods) and one sub-section per selected day - just the one day
+  // normally, every day when "All Days" is picked. Doesn't need to fit on
+  // one screen/page; it just stacks and, when printed, each level+day
+  // combination starts its own page.
+  const blockCategorySections: BlockCategorySection[] = useMemo(() => {
+    return presentCategories
+      .map((category) => {
+        const grid = allCategoryGrids.get(category)
+        if (!grid) return null
+        const columns = grid.periodTimes.map((p) => ({ key: String(p.period), label: `Period ${p.period}`, subLabel: `${p.startTime} - ${p.endTime}` }))
+        const categoryClasses = classes.filter((cls) => effectiveCategory(cls) === category)
+        const days = blockDayList
+          .filter((day) => day <= grid.daysPerWeek)
+          .map((day) => ({
+            day,
+            dayLabel: DAY_LABELS[day - 1] || `Day ${day}`,
+            rows: categoryClasses.map((cls) => {
+              const cells: BlockTimetableRow['cells'] = {}
+              for (const e of allTermEntries) {
+                if (e.class_id !== cls.id || e.day_of_week !== day) continue
+                cells[String(e.period_number)] = {
+                  subjectName: subjectName(e.subject_id),
+                  teacherInitials: e.teacher_id ? (teacherInitials.get(e.teacher_id) || '?') : '',
+                }
+              }
+              return { className: cls.name, cells }
+            }),
+          }))
+        return { category, columns, days }
+      })
+      .filter((s): s is BlockCategorySection => !!s)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [presentCategories, allCategoryGrids, classes, allTermEntries, blockDayList, teacherInitials])
 
   const blockLegend = useMemo(() => {
     const usedTeacherIds = new Set<string>()
@@ -670,12 +684,18 @@ export default function TimetablePage() {
 
   const handleBlockPrint = () => {
     if (!currentSchool) return
+    const sections = blockCategorySections.flatMap((section) =>
+      section.days.map((d) => ({
+        sectionLabel: `${section.category} - ${d.dayLabel}`,
+        columns: section.columns,
+        rows: d.rows,
+      }))
+    )
     const html = generateBlockTimetablePrintHTML({
       title: 'Block Timetable',
       schoolName: currentSchool.name,
       termLabel: `${viewTerm} ${viewYear}`,
-      columns: blockColumns.map((c) => ({ key: c.key, label: c.label, subLabel: `- ${c.subLabel}` })),
-      days: blockSections.map((s) => ({ dayLabel: s.dayLabel, rows: s.rows })),
+      sections,
       legend: blockLegend,
     })
     openTimetablePrintWindow(html)
@@ -1377,59 +1397,74 @@ export default function TimetablePage() {
                   <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
                   <SelectContent>{YEARS.map((y) => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
                 </Select>
-                <Button size="sm" variant="outline" onClick={handleBlockPrint} disabled={blockSections.length === 0 || blockColumns.length === 0}>
+                <Button size="sm" variant="outline" onClick={handleBlockPrint} disabled={blockCategorySections.length === 0}>
                   <Printer className="w-4 h-4 mr-1" /> Print
                 </Button>
               </div>
 
               {classes.length === 0 ? (
                 <p className="text-sm text-gray-500 py-8 text-center">No classes found for this school yet.</p>
-              ) : blockColumns.length === 0 ? (
+              ) : blockCategorySections.length === 0 ? (
                 <p className="text-sm text-gray-500 py-8 text-center">No timetable generated yet for {viewTerm} {viewYear}. Generate one from the Generate tab.</p>
               ) : (
                 <>
-                  {blockSections.map((section) => (
-                    <div key={section.day} className="space-y-2">
-                      {blockDay === 'all' && <h3 className="font-semibold text-gray-800 text-sm pt-2">{section.dayLabel}</h3>}
-                      <div className="overflow-x-auto">
-                        <table className="border-collapse text-xs w-full">
-                          <thead>
-                            <tr>
-                              <th className="border border-gray-300 px-2 py-1.5 bg-gray-100 text-left sticky left-0">Class</th>
-                              {blockColumns.map((col) => (
-                                <th key={col.key} className="border border-gray-300 px-1.5 py-1.5 bg-gray-100 min-w-[70px]">
-                                  <div>{col.label}</div>
-                                  <div className="font-normal text-gray-500">{col.subLabel}</div>
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {section.rows.map((row) => (
-                              <tr key={row.className}>
-                                <td className="border border-gray-300 px-2 py-1 font-medium bg-gray-50 sticky left-0 whitespace-nowrap">{row.className}</td>
-                                {blockColumns.map((col) => {
-                                  const cell = row.cells[col.key]
-                                  return (
-                                    <td key={col.key} className="border border-gray-300 px-1.5 py-1 align-top">
-                                      {cell ? (
-                                        <div>
-                                          <div className="font-medium text-gray-900 truncate">{cell.subjectName}</div>
-                                          <div className="text-blue-700 font-semibold">{cell.teacherInitials}</div>
-                                        </div>
-                                      ) : (
-                                        <span className="text-gray-300">-</span>
-                                      )}
-                                    </td>
-                                  )
-                                })}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  ))}
+                  <Tabs defaultValue={blockCategorySections[0].category} className="space-y-4">
+                    <TabsList className="flex flex-wrap h-auto gap-1">
+                      {blockCategorySections.map((section) => (
+                        <TabsTrigger key={section.category} value={section.category}>{section.category}</TabsTrigger>
+                      ))}
+                    </TabsList>
+                    {blockCategorySections.map((section) => (
+                      <TabsContent key={section.category} value={section.category} className="space-y-4">
+                        {section.days.length === 0 ? (
+                          <p className="text-sm text-gray-500 py-4 text-center">Nothing generated for {section.category} yet for this term.</p>
+                        ) : (
+                          section.days.map((d) => (
+                            <div key={d.day} className="space-y-2">
+                              {blockDay === 'all' && <h3 className="font-semibold text-gray-800 text-sm pt-2">{d.dayLabel}</h3>}
+                              <div className="overflow-x-auto">
+                                <table className="border-collapse text-xs w-full">
+                                  <thead>
+                                    <tr>
+                                      <th className="border border-gray-300 px-2 py-1.5 bg-gray-100 text-left sticky left-0">Class</th>
+                                      {section.columns.map((col) => (
+                                        <th key={col.key} className="border border-gray-300 px-1.5 py-1.5 bg-gray-100 min-w-[70px]">
+                                          <div>{col.label}</div>
+                                          <div className="font-normal text-gray-500">{col.subLabel}</div>
+                                        </th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {d.rows.map((row) => (
+                                      <tr key={row.className}>
+                                        <td className="border border-gray-300 px-2 py-1 font-medium bg-gray-50 sticky left-0 whitespace-nowrap">{row.className}</td>
+                                        {section.columns.map((col) => {
+                                          const cell = row.cells[col.key]
+                                          return (
+                                            <td key={col.key} className="border border-gray-300 px-1.5 py-1 align-top">
+                                              {cell ? (
+                                                <div>
+                                                  <div className="font-medium text-gray-900 truncate">{cell.subjectName}</div>
+                                                  <div className="text-blue-700 font-semibold">{cell.teacherInitials}</div>
+                                                </div>
+                                              ) : (
+                                                <span className="text-gray-300">-</span>
+                                              )}
+                                            </td>
+                                          )
+                                        })}
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </TabsContent>
+                    ))}
+                  </Tabs>
 
                   {blockLegend.length > 0 && (
                     <div className="pt-3 border-t">
