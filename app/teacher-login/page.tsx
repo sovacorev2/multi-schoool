@@ -14,7 +14,7 @@ export default function TeacherLoginPage() {
   const [password, setPassword] = useState('')
   const [pin, setPin] = useState('')
   const [schoolId, setSchoolId] = useState('')
-  const [schools, setSchools] = useState<Array<{ id: string; name: string; feature_pin_management: boolean }>>([])
+  const [schools, setSchools] = useState<Array<{ id: string; name: string; code: string; feature_pin_management: boolean }>>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [showPin, setShowPin] = useState(false)
@@ -24,7 +24,7 @@ export default function TeacherLoginPage() {
     const fetchSchools = async () => {
       const { data } = await supabase
         .from('schools')
-        .select('id, name, feature_pin_management')
+        .select('id, name, code, feature_pin_management')
         .eq('is_active', true)
         .order('name')
 
@@ -111,6 +111,7 @@ export default function TeacherLoginPage() {
           name: `${teacher.first_name} ${teacher.last_name}`,
           email: teacher.email,
           schoolId: schoolId,
+          schoolCode: selectedSchool?.code,
           pin: pin,
           assignments: teacher.teacher_assignments || [],
           loginTime: new Date().toISOString(),
@@ -152,6 +153,7 @@ export default function TeacherLoginPage() {
           name: data.teacher.name,
           email: data.teacher.email,
           schoolId: schoolId,
+          schoolCode: selectedSchool?.code,
           assignments: data.assignments || [],
           loginTime: new Date().toISOString(),
           isPinEnabled: false, // Explicitly mark as non-PIN login

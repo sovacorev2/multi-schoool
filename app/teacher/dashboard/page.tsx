@@ -24,6 +24,7 @@ interface TeacherSession {
   email: string
   schoolId: string
   schoolName?: string
+  schoolCode?: string
   pin: string
 }
 
@@ -129,13 +130,18 @@ export default function TeacherDashboard() {
 
   const handleLogout = () => {
     console.log('[v0] Teacher logging out')
+    const schoolCode = session?.schoolCode
     localStorage.removeItem('teacher_session')
     localStorage.removeItem('teacher_pin')
     localStorage.removeItem('success_academy_admin_bypass')
     localStorage.removeItem('teacher_authenticated')
     localStorage.removeItem('teacher_id')
     localStorage.removeItem('class_id')
-    router.push('/teacher-login-selection')
+    // Back to this specific school's own main portal, not the generic
+    // cross-school picker (which lists every school's login options,
+    // including unrelated test schools) - falls back to the picker only if
+    // an older session (from before schoolCode was stored) doesn't have it.
+    router.push(schoolCode ? `/?school=${schoolCode}` : '/teacher-login-selection')
   }
 
   const dismissWhatsNew = () => {

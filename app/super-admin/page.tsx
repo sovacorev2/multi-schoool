@@ -10,7 +10,7 @@ import {
   Shield, Building2, Search, Settings, ToggleLeft, ToggleRight,
   FileText, MessageSquare, Award, Send, Calendar, ChevronDown, ChevronUp,
   Plus, Edit2, Save, X, Eye, EyeOff, LogOut, Users, Check,
-  CalendarClock, FolderOpen,
+  CalendarClock, FolderOpen, ExternalLink,
 } from 'lucide-react'
 import { SUPER_ADMIN_PASSWORD } from './_shared/auth'
 
@@ -1074,6 +1074,15 @@ export default function SuperAdminPage() {
                             </button>
                           </div>
                           <p className="text-xs text-gray-500 mt-1">What this school's admin uses to log in to their admin portal. Change it here to reset it for them.</p>
+                          <a
+                            href={`/admin-portal?school=${school.code}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 hover:underline mt-2"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            Open {school.name}'s Admin Portal
+                          </a>
                         </div>
                       </div>
                     </div>

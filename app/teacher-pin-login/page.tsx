@@ -140,6 +140,7 @@ export default function TeacherPINLogin() {
         email: teacher.email,
         schoolId: schoolId,
         schoolName: schoolName,
+        schoolCode: schoolCode,
         pin: pin,
         assignments: enrichedAssignments,
         loginTime: new Date().toISOString(),
