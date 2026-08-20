@@ -9,8 +9,14 @@ import { useClass } from '@/lib/class-context'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { LogOut, BookOpen, ArrowRight, AlertCircle } from 'lucide-react'
+import { LogOut, BookOpen, ArrowRight, AlertCircle, Sparkles, X } from 'lucide-react'
 import { MyTimetablePanel } from '@/components/my-timetable-panel'
+
+// Bump this whenever there's something new worth telling teachers about -
+// changing it makes the banner reappear even for teachers who dismissed an
+// earlier version, since the dismissal is stored per-version.
+const WHATS_NEW_VERSION = '2026-08-13-deadlines-timetable'
+const whatsNewDismissedKey = () => `teacher_whats_new_dismissed_${WHATS_NEW_VERSION}`
 
 interface TeacherSession {
   teacherId: string
@@ -38,6 +44,7 @@ export default function TeacherDashboard() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [timetablingEnabled, setTimetablingEnabled] = useState(false)
+  const [showWhatsNew, setShowWhatsNew] = useState(false)
 
   useEffect(() => {
     const loadSession = async () => {
@@ -65,7 +72,11 @@ export default function TeacherDashboard() {
         const hasPinManagement = schoolData?.feature_pin_management === true
         console.log('[v0] School PIN management enabled:', hasPinManagement)
         setTimetablingEnabled(schoolData?.feature_timetabling === true)
-        
+
+        if (typeof window !== 'undefined' && localStorage.getItem(whatsNewDismissedKey()) !== 'true') {
+          setShowWhatsNew(true)
+        }
+
         if (hasPinManagement) {
           // PIN-enabled school: Fetch assigned classes/subjects from database
           console.log('[v0] Fetching assigned classes for teacher:', teacherSession.teacherId)
@@ -125,6 +136,11 @@ export default function TeacherDashboard() {
     localStorage.removeItem('teacher_id')
     localStorage.removeItem('class_id')
     router.push('/teacher-login-selection')
+  }
+
+  const dismissWhatsNew = () => {
+    setShowWhatsNew(false)
+    if (typeof window !== 'undefined') localStorage.setItem(whatsNewDismissedKey(), 'true')
   }
 
   const handleAccessClass = async (classId: string, className: string, schoolId: string) => {
@@ -213,6 +229,27 @@ export default function TeacherDashboard() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-12">
+        {/* What's New */}
+        {showWhatsNew && (
+          <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-600 rounded-lg flex items-start gap-3">
+            <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-blue-900 dark:text-blue-200 font-medium mb-1">What&apos;s New</p>
+              <ul className="text-blue-800 dark:text-blue-300 text-sm space-y-1 list-disc list-inside">
+                <li>Extended deadlines now work correctly - if the admin has granted you more time on a subject, you can enter marks for it right up to your own deadline, even after the class exam has otherwise closed.</li>
+                {timetablingEnabled && <li>Your timetable is now available below - see your weekly schedule and print it.</li>}
+              </ul>
+            </div>
+            <button
+              onClick={dismissWhatsNew}
+              className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 flex-shrink-0"
+              aria-label="Dismiss"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {/* Error Display */}
         {error && (
           <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-600 rounded-lg flex items-start gap-3">
