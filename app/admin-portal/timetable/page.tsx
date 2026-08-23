@@ -55,6 +55,7 @@ interface AssignmentRow {
 interface BreakRow {
   id: string
   category: string
+  class_id: string | null
   name: string
   after_period_number: number
   duration_minutes: number
@@ -126,6 +127,13 @@ export default function TimetablePage() {
   const [configuredCategories, setConfiguredCategories] = useState<Set<string>>(new Set())
   const [settingsCategoryTab, setSettingsCategoryTab] = useState('')
   const [copyFromCategory, setCopyFromCategory] = useState('')
+  // Per-class overrides - candidate classes (Grade 6, Grade 9) often need
+  // their own hours/period length (commonly 1-hour periods) distinct from
+  // the rest of their CBC level. Keyed by class_id; a class with no entry
+  // here just uses its category's shared settings, exactly as before.
+  const [classOverrideSettings, setClassOverrideSettings] = useState<Record<string, SettingsShape>>({})
+  const [breaksByClassOverride, setBreaksByClassOverride] = useState<Record<string, BreakRow[]>>({})
+  const [expandedOverrideClassId, setExpandedOverrideClassId] = useState<string | null>(null)
 
   const [newBreakName, setNewBreakName] = useState('')
   const [newBreakAfterPeriod, setNewBreakAfterPeriod] = useState('')
@@ -181,13 +189,13 @@ export default function TimetablePage() {
     setClasses(loadedClasses)
 
     const loadedCategories = CATEGORY_ORDER.filter((c) => loadedClasses.some((cls) => effectiveCategory(cls) === c))
-    const settingsRows = (settingsRes.data || []) as (SettingsShape & { category: string | null })[]
+    const settingsRows = (settingsRes.data || []) as (SettingsShape & { category: string | null; class_id: string | null })[]
     const breaksRows = (breaksRes.data || []) as BreakRow[]
 
     const nextSettings: Record<string, SettingsShape> = {}
     const nextConfigured = new Set<string>()
     for (const cat of loadedCategories) {
-      const row = settingsRows.find((r) => r.category === cat)
+      const row = settingsRows.find((r) => r.category === cat && !r.class_id)
       if (row) {
         nextSettings[cat] = {
           school_start_time: row.school_start_time,
@@ -208,9 +216,34 @@ export default function TimetablePage() {
 
     const nextBreaks: Record<string, BreakRow[]> = {}
     for (const cat of loadedCategories) {
-      nextBreaks[cat] = breaksRows.filter((b) => b.category === cat)
+      nextBreaks[cat] = breaksRows.filter((b) => b.category === cat && !b.class_id)
     }
     setBreaksByCategory(nextBreaks)
+
+    // Per-class overrides (class_id set) - a class with one of these uses it
+    // instead of its category's row, everywhere settings get resolved.
+    const nextClassOverrideSettings: Record<string, SettingsShape> = {}
+    for (const row of settingsRows) {
+      if (!row.class_id) continue
+      nextClassOverrideSettings[row.class_id] = {
+        school_start_time: row.school_start_time,
+        school_end_time: row.school_end_time,
+        period_length_minutes: row.period_length_minutes,
+        days_per_week: row.days_per_week,
+        avoid_consecutive_same_subject: row.avoid_consecutive_same_subject,
+        spread_evenly: row.spread_evenly,
+        enable_double_lessons: row.enable_double_lessons,
+      }
+    }
+    setClassOverrideSettings(nextClassOverrideSettings)
+
+    const nextBreaksByClassOverride: Record<string, BreakRow[]> = {}
+    for (const row of breaksRows) {
+      if (!row.class_id) continue
+      if (!nextBreaksByClassOverride[row.class_id]) nextBreaksByClassOverride[row.class_id] = []
+      nextBreaksByClassOverride[row.class_id].push(row)
+    }
+    setBreaksByClassOverride(nextBreaksByClassOverride)
 
     setSettingsCategoryTab((prev) => (prev && loadedCategories.includes(prev) ? prev : loadedCategories[0] || ''))
 
@@ -307,6 +340,126 @@ export default function TimetablePage() {
     } else {
       setBreaksByCategory((prev) => ({ ...prev, [targetCategory]: [] }))
     }
+  }
+
+  // --- Per-class overrides ---
+  // The one place "what settings actually apply to this class" gets decided
+  // - an override always wins over the category's shared row, for that one
+  // class only. Used wherever a specific class's real schedule matters.
+  const resolveSettingsAndBreaksForClass = (cls: Class): { settings: SettingsShape; breaks: BreakRow[]; category: string; hasOverride: boolean } => {
+    const category = effectiveCategory(cls)
+    const override = classOverrideSettings[cls.id]
+    if (override) {
+      return { settings: override, breaks: breaksByClassOverride[cls.id] || [], category, hasOverride: true }
+    }
+    return { settings: settingsByCategory[category] || getDefaultSettingsForCategory(category), breaks: breaksByCategory[category] || [], category, hasOverride: false }
+  }
+
+  const enableClassOverride = async (cls: Class, category: string) => {
+    if (!currentSchool) return
+    // Seed from the category's current settings/breaks (same copy-then-edit
+    // pattern as "Copy settings from another level") rather than resetting
+    // to generic defaults - a school customizing one class almost always
+    // wants to start from what the rest of the level already has.
+    const baseSettings = settingsByCategory[category] || getDefaultSettingsForCategory(category)
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('timetable_settings')
+      .upsert({ school_id: currentSchool.id, category, class_id: cls.id, ...baseSettings }, { onConflict: 'school_id,class_id' })
+    if (error) {
+      alert(`Failed to enable a custom schedule: ${error.message}`)
+      return
+    }
+    setClassOverrideSettings((prev) => ({ ...prev, [cls.id]: baseSettings }))
+
+    const baseBreaks = breaksByCategory[category] || []
+    if (baseBreaks.length > 0) {
+      const rows = baseBreaks.map((b) => ({
+        school_id: currentSchool.id,
+        category,
+        class_id: cls.id,
+        name: b.name,
+        after_period_number: b.after_period_number,
+        duration_minutes: b.duration_minutes,
+      }))
+      const { data } = await supabase.from('timetable_breaks').insert(rows).select('*')
+      setBreaksByClassOverride((prev) => ({ ...prev, [cls.id]: (data || []) as BreakRow[] }))
+    } else {
+      setBreaksByClassOverride((prev) => ({ ...prev, [cls.id]: [] }))
+    }
+  }
+
+  const disableClassOverride = async (cls: Class) => {
+    const supabase = createClient()
+    const { error } = await supabase.from('timetable_settings').delete().eq('class_id', cls.id)
+    if (error) {
+      alert(`Failed to remove the custom schedule: ${error.message}`)
+      return
+    }
+    await supabase.from('timetable_breaks').delete().eq('class_id', cls.id)
+    setClassOverrideSettings((prev) => {
+      const next = { ...prev }
+      delete next[cls.id]
+      return next
+    })
+    setBreaksByClassOverride((prev) => {
+      const next = { ...prev }
+      delete next[cls.id]
+      return next
+    })
+  }
+
+  const saveClassOverrideSettings = async (classId: string, patch: Partial<SettingsShape>) => {
+    if (!currentSchool) return
+    const current = classOverrideSettings[classId]
+    if (!current) return
+    const next = { ...current, ...patch }
+    setClassOverrideSettings((prev) => ({ ...prev, [classId]: next }))
+    const cls = classes.find((c) => c.id === classId)
+    const category = cls ? effectiveCategory(cls) : null
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('timetable_settings')
+      .upsert({ school_id: currentSchool.id, class_id: classId, category, ...next }, { onConflict: 'school_id,class_id' })
+    if (error) alert(`Failed to save: ${error.message}`)
+  }
+
+  const addClassOverrideBreak = async (classId: string, category: string) => {
+    if (!currentSchool || !newBreakName.trim() || !newBreakAfterPeriod) return
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('timetable_breaks')
+      .insert({
+        school_id: currentSchool.id,
+        category,
+        class_id: classId,
+        name: newBreakName.trim(),
+        after_period_number: Number(newBreakAfterPeriod),
+        duration_minutes: Number(newBreakDuration) || 30,
+      })
+      .select('*')
+      .single()
+    if (error) {
+      alert(`Failed to add break: ${error.message}`)
+      return
+    }
+    setBreaksByClassOverride((prev) => ({
+      ...prev,
+      [classId]: [...(prev[classId] || []), data as BreakRow].sort((a, b) => a.after_period_number - b.after_period_number),
+    }))
+    setNewBreakName('')
+    setNewBreakAfterPeriod('')
+    setNewBreakDuration('30')
+  }
+
+  const deleteClassOverrideBreak = async (classId: string, id: string) => {
+    const supabase = createClient()
+    const { error } = await supabase.from('timetable_breaks').delete().eq('id', id)
+    if (error) {
+      alert(`Failed to delete break: ${error.message}`)
+      return
+    }
+    setBreaksByClassOverride((prev) => ({ ...prev, [classId]: (prev[classId] || []).filter((b) => b.id !== id) }))
   }
 
   const updateSubjectPeriods = async (subjectId: string, value: string) => {
@@ -406,12 +559,10 @@ export default function TimetablePage() {
 
     const levelWarnings: string[] = []
     const classInputs: TimetableClassInput[] = classes.map((cls) => {
-      const category = effectiveCategory(cls)
-      if (!configuredCategories.has(category) && !levelWarnings.includes(category)) {
+      const { settings: catSettings, breaks: catBreaks, category, hasOverride } = resolveSettingsAndBreaksForClass(cls)
+      if (!hasOverride && !configuredCategories.has(category) && !levelWarnings.includes(category)) {
         levelWarnings.push(category)
       }
-      const catSettings = settingsByCategory[category] || getDefaultSettingsForCategory(category)
-      const catBreaks = breaksByCategory[category] || []
       const grid = resolveCategoryGrid(category, catSettings, catBreaks)
 
       return {
@@ -544,50 +695,76 @@ export default function TimetablePage() {
     return cls ? effectiveCategory(cls) : presentCategories[0] || 'General'
   }
 
-  // Most teachers only teach within one CBC level - their view renders
-  // exactly like it always has. A teacher whose classes span more than one
-  // level needs a merged, real-clock-time axis since period numbers alone
-  // don't line up across levels with different day structures.
-  const viewCategories = useMemo(() => {
-    if (viewMode === 'class') {
-      return [viewClassId ? categoryForClassId(viewClassId) : presentCategories[0] || 'General']
+  // Every class's own real grid, not just the ones currently in view -
+  // teacher availability/suggestions need to resolve real clock time for ANY
+  // of a teacher's bookings across the whole school, not just this view.
+  // Keyed by class, not category, so a class with its own override (a
+  // candidate class on 1-hour periods, say) resolves to its own real
+  // schedule instead of silently falling back to its category's.
+  const allClassGrids = useMemo(() => {
+    const map = new Map<string, ResolvedCategoryGrid>()
+    for (const cls of classes) {
+      const { settings, breaks, category } = resolveSettingsAndBreaksForClass(cls)
+      map.set(cls.id, resolveCategoryGrid(category, settings, breaks))
     }
-    const cats = new Set<string>()
-    for (const e of viewEntries) cats.add(categoryForClassId(e.class_id))
-    return cats.size > 0 ? [...cats] : [presentCategories[0] || 'General']
+    return map
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode, viewClassId, viewEntries, classes, presentCategories])
+  }, [classes, settingsByCategory, breaksByCategory, classOverrideSettings, breaksByClassOverride])
 
-  const isMergedView = viewMode === 'teacher' && viewCategories.length > 1
+  // A class's own grid if it has one (its category's otherwise, via
+  // allClassGrids) - not just which CATEGORY a class belongs to, since two
+  // classes in the same category can now have genuinely different real
+  // schedules if one has an override.
+  const gridSourceKeyForClassId = (id: string): string =>
+    classOverrideSettings[id] ? `class:${id}` : `category:${categoryForClassId(id)}`
+
+  // Most teachers only teach classes on one real schedule shape - their view
+  // renders exactly like it always has. A teacher whose classes span more
+  // than one shape (different CBC levels, or one of the classes has its own
+  // override) needs a merged, real-clock-time axis since period numbers
+  // alone don't line up across different day structures.
+  const viewClassIds = useMemo(() => {
+    if (viewMode === 'class') {
+      return viewClassId ? [viewClassId] : []
+    }
+    const ids = new Set<string>()
+    for (const e of viewEntries) ids.add(e.class_id)
+    return [...ids]
+  }, [viewMode, viewClassId, viewEntries])
+
+  const isMergedView = useMemo(() => {
+    if (viewMode !== 'teacher') return false
+    return new Set(viewClassIds.map(gridSourceKeyForClassId)).size > 1
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode, viewClassIds, classOverrideSettings, classes, presentCategories])
 
   const viewGrids = useMemo(() => {
     const map = new Map<string, ResolvedCategoryGrid>()
-    for (const cat of viewCategories) {
-      const catSettings = settingsByCategory[cat] || getDefaultSettingsForCategory(cat)
-      const catBreaks = breaksByCategory[cat] || []
-      map.set(cat, resolveCategoryGrid(cat, catSettings, catBreaks))
+    for (const id of viewClassIds) {
+      const grid = allClassGrids.get(id)
+      if (grid) map.set(id, grid)
     }
     return map
-  }, [viewCategories, settingsByCategory, breaksByCategory])
+  }, [viewClassIds, allClassGrids])
 
-  const primaryGrid = viewGrids.get(viewCategories[0])
+  // Labels for the "this teacher spans more than one schedule" banner - the
+  // level name normally, or "<class name> (custom schedule)" for an
+  // overridden class, so it's clear WHY the axis had to be merged.
+  const viewMergedLabels = useMemo(() => {
+    if (!isMergedView) return []
+    const labels = new Set<string>()
+    for (const id of viewClassIds) {
+      labels.add(classOverrideSettings[id] ? `${className(id)} (custom schedule)` : categoryForClassId(id))
+    }
+    return [...labels]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMergedView, viewClassIds, classOverrideSettings, classes])
+
+  const primaryGrid = viewMode === 'class' ? allClassGrids.get(viewClassId) : viewGrids.get(viewClassIds[0])
   const mergedColumns = useMemo(() => (isMergedView ? buildMergedColumns([...viewGrids.values()]) : null), [isMergedView, viewGrids])
 
-  // Every present category's grid, not just the ones currently in view -
-  // teacher availability/suggestions need to resolve real clock time for ANY
-  // of a teacher's bookings across the whole school, not just this view.
-  const allCategoryGrids = useMemo(() => {
-    const map = new Map<string, ResolvedCategoryGrid>()
-    for (const cat of presentCategories) {
-      const catSettings = settingsByCategory[cat] || getDefaultSettingsForCategory(cat)
-      const catBreaks = breaksByCategory[cat] || []
-      map.set(cat, resolveCategoryGrid(cat, catSettings, catBreaks))
-    }
-    return map
-  }, [presentCategories, settingsByCategory, breaksByCategory])
-
   const entryTimeRange = (entry: EntryRow): { startMinutes: number; endMinutes: number } | null => {
-    const grid = allCategoryGrids.get(categoryForClassId(entry.class_id))
+    const grid = allClassGrids.get(entry.class_id)
     const p = grid?.periodStartEndMinutes.find((x) => x.period === entry.period_number)
     return p ? { startMinutes: p.startMinutes, endMinutes: p.endMinutes } : null
   }
@@ -620,56 +797,81 @@ export default function TimetablePage() {
   // different real time in different levels; keeping each level's own plain
   // period-number columns (like a normal, single-category timetable) is both
   // simpler and far less sparse than forcing everything onto one merged
-  // real-time axis.
+  // real-time axis. A class with its own override (a candidate class on
+  // 1-hour periods, say) can't share its category-mates' columns either, so
+  // it gets pulled out into its own separate section, same idea.
   const teacherInitials = useMemo(() => computeTeacherInitials(teachers), [teachers])
 
-  const blockDaysAvailable = Math.max(1, ...presentCategories.map((c) => allCategoryGrids.get(c)?.daysPerWeek || 0))
+  const blockDaysAvailable = Math.max(1, ...classes.map((cls) => allClassGrids.get(cls.id)?.daysPerWeek || 0))
 
   const blockDayList = useMemo(
     () => (blockDay === 'all' ? Array.from({ length: blockDaysAvailable }, (_, i) => i + 1) : [blockDay]),
     [blockDay, blockDaysAvailable]
   )
 
-  interface BlockCategorySection {
-    category: string
+  interface BlockSection {
+    key: string
+    label: string
     columns: { key: string; label: string; subLabel: string }[]
     days: { day: number; dayLabel: string; rows: BlockTimetableRow[] }[]
   }
 
-  // One section per level, each with its own columns (that level's own real
-  // periods) and one sub-section per selected day - just the one day
-  // normally, every day when "All Days" is picked. Doesn't need to fit on
-  // one screen/page; it just stacks and, when printed, each level+day
-  // combination starts its own page.
-  const blockCategorySections: BlockCategorySection[] = useMemo(() => {
-    return presentCategories
-      .map((category) => {
-        const grid = allCategoryGrids.get(category)
-        if (!grid) return null
-        const columns = grid.periodTimes.map((p) => ({ key: String(p.period), label: `Period ${p.period}`, subLabel: `${p.startTime} - ${p.endTime}` }))
-        const categoryClasses = classes.filter((cls) => effectiveCategory(cls) === category)
-        const days = blockDayList
-          .filter((day) => day <= grid.daysPerWeek)
-          .map((day) => ({
-            day,
-            dayLabel: DAY_LABELS[day - 1] || `Day ${day}`,
-            rows: categoryClasses.map((cls) => {
-              const cells: BlockTimetableRow['cells'] = {}
-              for (const e of allTermEntries) {
-                if (e.class_id !== cls.id || e.day_of_week !== day) continue
-                cells[String(e.period_number)] = {
-                  subjectName: subjectName(e.subject_id),
-                  teacherInitials: e.teacher_id ? (teacherInitials.get(e.teacher_id) || '?') : '',
-                }
-              }
-              return { className: cls.name, cells }
-            }),
-          }))
-        return { category, columns, days }
+  const buildBlockRow = (cls: Class, day: number): BlockTimetableRow => {
+    const cells: BlockTimetableRow['cells'] = {}
+    for (const e of allTermEntries) {
+      if (e.class_id !== cls.id || e.day_of_week !== day) continue
+      cells[String(e.period_number)] = {
+        subjectName: subjectName(e.subject_id),
+        teacherInitials: e.teacher_id ? (teacherInitials.get(e.teacher_id) || '?') : '',
+      }
+    }
+    return { className: cls.name, cells }
+  }
+
+  const buildBlockDays = (grid: ResolvedCategoryGrid, rowsForDay: (day: number) => BlockTimetableRow[]) =>
+    blockDayList
+      .filter((day) => day <= grid.daysPerWeek)
+      .map((day) => ({ day, dayLabel: DAY_LABELS[day - 1] || `Day ${day}`, rows: rowsForDay(day) }))
+
+  // One section per level (its classes without an override, sharing that
+  // level's columns, same as before), plus one further section per
+  // individual class that has its own override (its own columns, one row) -
+  // one sub-section per selected day within each. Doesn't need to fit on one
+  // screen/page; it just stacks and, when printed, each section+day starts
+  // its own page.
+  const blockSections: BlockSection[] = useMemo(() => {
+    const sections: BlockSection[] = []
+
+    for (const category of presentCategories) {
+      const categoryClasses = classes.filter((cls) => effectiveCategory(cls) === category && !classOverrideSettings[cls.id])
+      if (categoryClasses.length === 0) continue
+      const grid = allClassGrids.get(categoryClasses[0].id)
+      if (!grid) continue
+      const columns = grid.periodTimes.map((p) => ({ key: String(p.period), label: `Period ${p.period}`, subLabel: `${p.startTime} - ${p.endTime}` }))
+      sections.push({
+        key: category,
+        label: category,
+        columns,
+        days: buildBlockDays(grid, (day) => categoryClasses.map((cls) => buildBlockRow(cls, day))),
       })
-      .filter((s): s is BlockCategorySection => !!s)
+    }
+
+    for (const cls of classes) {
+      if (!classOverrideSettings[cls.id]) continue
+      const grid = allClassGrids.get(cls.id)
+      if (!grid) continue
+      const columns = grid.periodTimes.map((p) => ({ key: String(p.period), label: `Period ${p.period}`, subLabel: `${p.startTime} - ${p.endTime}` }))
+      sections.push({
+        key: `class:${cls.id}`,
+        label: `${cls.name} (custom schedule)`,
+        columns,
+        days: buildBlockDays(grid, (day) => [buildBlockRow(cls, day)]),
+      })
+    }
+
+    return sections
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [presentCategories, allCategoryGrids, classes, allTermEntries, blockDayList, teacherInitials])
+  }, [presentCategories, classes, classOverrideSettings, allClassGrids, allTermEntries, blockDayList, teacherInitials])
 
   const blockLegend = useMemo(() => {
     const usedTeacherIds = new Set<string>()
@@ -684,9 +886,9 @@ export default function TimetablePage() {
 
   const handleBlockPrint = () => {
     if (!currentSchool) return
-    const sections = blockCategorySections.flatMap((section) =>
+    const sections = blockSections.flatMap((section) =>
       section.days.map((d) => ({
-        sectionLabel: `${section.category} - ${d.dayLabel}`,
+        sectionLabel: `${section.label} - ${d.dayLabel}`,
         columns: section.columns,
         rows: d.rows,
       }))
@@ -706,7 +908,7 @@ export default function TimetablePage() {
     for (const e of viewEntries) {
       let columnKey: string
       if (isMergedView) {
-        const grid = viewGrids.get(categoryForClassId(e.class_id))
+        const grid = viewGrids.get(e.class_id)
         const key = grid ? mergedColumnKeyFor(grid, e.period_number) : null
         if (!key) continue
         columnKey = key
@@ -728,7 +930,7 @@ export default function TimetablePage() {
     ? Math.max(5, ...[...viewGrids.values()].map((g) => g.daysPerWeek))
     : (primaryGrid?.daysPerWeek || 5)
 
-  const primaryGridBreaks = (breaksByCategory[viewCategories[0]] || []).map((b) => ({
+  const primaryGridBreaks = (primaryGrid?.breaks || []).map((b) => ({
     name: b.name,
     afterPeriodNumber: b.after_period_number,
     durationMinutes: b.duration_minutes,
@@ -760,7 +962,7 @@ export default function TimetablePage() {
   }
 
   // --- Manual edit (class view only - a teacher's schedule is a read-only rollup of their classes) ---
-  const editingGrid = viewClassId ? allCategoryGrids.get(categoryForClassId(viewClassId)) : undefined
+  const editingGrid = viewClassId ? allClassGrids.get(viewClassId) : undefined
 
   const openCellEditor = (day: number, period: number) => {
     const entry = viewEntries.find((e) => e.day_of_week === day && e.period_number === period) || null
@@ -1123,6 +1325,118 @@ export default function TimetablePage() {
                         </label>
                       </CardContent>
                     </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>{cat} - Per-Class Overrides</CardTitle>
+                        <CardDescription>
+                          Give one specific class its own schedule instead of sharing {cat}&apos;s settings - useful for candidate classes (e.g. Grade 6, Grade 9) that often run longer periods.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {classes.filter((cls) => effectiveCategory(cls) === cat).map((cls) => {
+                          const override = classOverrideSettings[cls.id]
+                          const overrideBreaks = breaksByClassOverride[cls.id] || []
+                          const isExpanded = expandedOverrideClassId === cls.id
+                          const overrideGrid = override ? resolveCategoryGrid(cat, override, overrideBreaks) : null
+
+                          return (
+                            <div key={cls.id} className="border rounded-lg p-3 space-y-3">
+                              <div className="flex items-center justify-between gap-2">
+                                <label className="flex items-center gap-2 text-sm font-medium">
+                                  <input
+                                    type="checkbox"
+                                    checked={!!override}
+                                    onChange={(e) => e.target.checked ? enableClassOverride(cls, cat) : disableClassOverride(cls)}
+                                  />
+                                  {cls.name}
+                                  {override && <span className="text-xs font-normal text-gray-500">custom schedule{overrideGrid ? ` - ${overrideGrid.periodsPerDay} periods/day` : ''}</span>}
+                                </label>
+                                {override && (
+                                  <Button size="sm" variant="outline" onClick={() => setExpandedOverrideClassId(isExpanded ? null : cls.id)}>
+                                    {isExpanded ? 'Hide' : 'Edit'}
+                                  </Button>
+                                )}
+                              </div>
+
+                              {override && isExpanded && (
+                                <div className="space-y-4 pt-2 border-t">
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                      <Label>Start Time</Label>
+                                      <Input type="time" value={override.school_start_time} onChange={(e) => saveClassOverrideSettings(cls.id, { school_start_time: e.target.value })} className="mt-1" />
+                                    </div>
+                                    <div>
+                                      <Label>End Time</Label>
+                                      <Input type="time" value={override.school_end_time} onChange={(e) => saveClassOverrideSettings(cls.id, { school_end_time: e.target.value })} className="mt-1" />
+                                    </div>
+                                    <div>
+                                      <Label>Period Length</Label>
+                                      <Select value={override.period_length_minutes.toString()} onValueChange={(v) => saveClassOverrideSettings(cls.id, { period_length_minutes: Number(v) })}>
+                                        <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                          {PERIOD_LENGTH_OPTIONS.map((m) => <SelectItem key={m} value={m.toString()}>{m} minutes</SelectItem>)}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <div>
+                                      <Label>Days</Label>
+                                      <Select value={override.days_per_week.toString()} onValueChange={(v) => saveClassOverrideSettings(cls.id, { days_per_week: Number(v) })}>
+                                        <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="5">Monday - Friday (5 days)</SelectItem>
+                                          <SelectItem value="6">Monday - Saturday (6 days)</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  </div>
+
+                                  <div className="space-y-2">
+                                    <Label className="text-xs text-gray-500">Breaks</Label>
+                                    {overrideBreaks.map((b) => (
+                                      <div key={b.id} className="flex items-center justify-between p-2 border rounded-lg text-sm">
+                                        <span>{b.name} - after period {b.after_period_number}, {b.duration_minutes} min</span>
+                                        <Button size="sm" variant="ghost" onClick={() => deleteClassOverrideBreak(cls.id, b.id)}><Trash2 className="w-4 h-4 text-red-600" /></Button>
+                                      </div>
+                                    ))}
+                                    <div className="flex flex-wrap gap-2 items-end pt-2 border-t">
+                                      <div>
+                                        <Label className="text-xs">Name</Label>
+                                        <Input value={newBreakName} onChange={(e) => setNewBreakName(e.target.value)} placeholder="Lunch" className="h-9 w-32" />
+                                      </div>
+                                      <div>
+                                        <Label className="text-xs">After Period</Label>
+                                        <Input type="number" min="1" value={newBreakAfterPeriod} onChange={(e) => setNewBreakAfterPeriod(e.target.value)} className="h-9 w-24" />
+                                      </div>
+                                      <div>
+                                        <Label className="text-xs">Duration (min)</Label>
+                                        <Input type="number" min="1" value={newBreakDuration} onChange={(e) => setNewBreakDuration(e.target.value)} className="h-9 w-24" />
+                                      </div>
+                                      <Button size="sm" onClick={() => addClassOverrideBreak(cls.id, cat)}><Plus className="w-4 h-4 mr-1" /> Add Break</Button>
+                                    </div>
+                                  </div>
+
+                                  <div className="space-y-2 pt-2 border-t">
+                                    <label className="flex items-center gap-2 text-sm">
+                                      <input type="checkbox" checked={override.avoid_consecutive_same_subject} onChange={(e) => saveClassOverrideSettings(cls.id, { avoid_consecutive_same_subject: e.target.checked })} />
+                                      Avoid consecutive same-subject periods (recommended)
+                                    </label>
+                                    <label className="flex items-center gap-2 text-sm">
+                                      <input type="checkbox" checked={override.spread_evenly} onChange={(e) => saveClassOverrideSettings(cls.id, { spread_evenly: e.target.checked })} />
+                                      Spread periods evenly across the week (recommended)
+                                    </label>
+                                    <label className="flex items-center gap-2 text-sm">
+                                      <input type="checkbox" checked={override.enable_double_lessons} onChange={(e) => saveClassOverrideSettings(cls.id, { enable_double_lessons: e.target.checked })} />
+                                      Enable double lessons (2 consecutive periods)
+                                    </label>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </CardContent>
+                    </Card>
                   </TabsContent>
                 )
               })}
@@ -1329,7 +1643,7 @@ export default function TimetablePage() {
 
               {isMergedView && (
                 <p className="text-xs text-indigo-600 bg-indigo-50 border border-indigo-200 rounded px-3 py-2">
-                  This teacher has classes in more than one level ({viewCategories.join(', ')}), which run on different daily schedules - showing a merged view by real time instead of period number.
+                  This teacher has classes on more than one schedule ({viewMergedLabels.join(', ')}), which run at different real times - showing a merged view by real time instead of period number.
                 </p>
               )}
 
@@ -1397,27 +1711,27 @@ export default function TimetablePage() {
                   <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
                   <SelectContent>{YEARS.map((y) => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
                 </Select>
-                <Button size="sm" variant="outline" onClick={handleBlockPrint} disabled={blockCategorySections.length === 0}>
+                <Button size="sm" variant="outline" onClick={handleBlockPrint} disabled={blockSections.length === 0}>
                   <Printer className="w-4 h-4 mr-1" /> Print
                 </Button>
               </div>
 
               {classes.length === 0 ? (
                 <p className="text-sm text-gray-500 py-8 text-center">No classes found for this school yet.</p>
-              ) : blockCategorySections.length === 0 ? (
+              ) : blockSections.length === 0 ? (
                 <p className="text-sm text-gray-500 py-8 text-center">No timetable generated yet for {viewTerm} {viewYear}. Generate one from the Generate tab.</p>
               ) : (
                 <>
-                  <Tabs defaultValue={blockCategorySections[0].category} className="space-y-4">
+                  <Tabs defaultValue={blockSections[0].key} className="space-y-4">
                     <TabsList className="flex flex-wrap h-auto gap-1">
-                      {blockCategorySections.map((section) => (
-                        <TabsTrigger key={section.category} value={section.category}>{section.category}</TabsTrigger>
+                      {blockSections.map((section) => (
+                        <TabsTrigger key={section.key} value={section.key}>{section.label}</TabsTrigger>
                       ))}
                     </TabsList>
-                    {blockCategorySections.map((section) => (
-                      <TabsContent key={section.category} value={section.category} className="space-y-4">
+                    {blockSections.map((section) => (
+                      <TabsContent key={section.key} value={section.key} className="space-y-4">
                         {section.days.length === 0 ? (
-                          <p className="text-sm text-gray-500 py-4 text-center">Nothing generated for {section.category} yet for this term.</p>
+                          <p className="text-sm text-gray-500 py-4 text-center">Nothing generated for {section.label} yet for this term.</p>
                         ) : (
                           section.days.map((d) => (
                             <div key={d.day} className="space-y-2">
