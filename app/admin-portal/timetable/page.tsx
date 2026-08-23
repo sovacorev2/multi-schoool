@@ -274,9 +274,21 @@ export default function TimetablePage() {
     setSettingsByCategory((prev) => ({ ...prev, [category]: next }))
     setConfiguredCategories((prev) => new Set(prev).add(category))
     const supabase = createClient()
-    const { error } = await supabase
+    // Manual select-then-insert-or-update rather than .upsert(onConflict:) -
+    // the category/class uniqueness rules are partial indexes (one scoped to
+    // class_id IS NULL, one to class_id IS NOT NULL), and PostgREST's
+    // generated ON CONFLICT clause carries no WHERE predicate, so it can
+    // never match a partial index as its arbiter.
+    const { data: existing } = await supabase
       .from('timetable_settings')
-      .upsert({ school_id: currentSchool.id, category, ...next }, { onConflict: 'school_id,category' })
+      .select('id')
+      .eq('school_id', currentSchool.id)
+      .eq('category', category)
+      .is('class_id', null)
+      .maybeSingle()
+    const { error } = existing
+      ? await supabase.from('timetable_settings').update(next).eq('id', existing.id)
+      : await supabase.from('timetable_settings').insert({ school_id: currentSchool.id, category, class_id: null, ...next })
     if (error) alert(`Failed to save settings: ${error.message}`)
   }
 
@@ -363,9 +375,15 @@ export default function TimetablePage() {
     // wants to start from what the rest of the level already has.
     const baseSettings = settingsByCategory[category] || getDefaultSettingsForCategory(category)
     const supabase = createClient()
-    const { error } = await supabase
+    const { data: existingRow } = await supabase
       .from('timetable_settings')
-      .upsert({ school_id: currentSchool.id, category, class_id: cls.id, ...baseSettings }, { onConflict: 'school_id,class_id' })
+      .select('id')
+      .eq('school_id', currentSchool.id)
+      .eq('class_id', cls.id)
+      .maybeSingle()
+    const { error } = existingRow
+      ? await supabase.from('timetable_settings').update({ category, ...baseSettings }).eq('id', existingRow.id)
+      : await supabase.from('timetable_settings').insert({ school_id: currentSchool.id, category, class_id: cls.id, ...baseSettings })
     if (error) {
       alert(`Failed to enable a custom schedule: ${error.message}`)
       return
@@ -418,9 +436,15 @@ export default function TimetablePage() {
     const cls = classes.find((c) => c.id === classId)
     const category = cls ? effectiveCategory(cls) : null
     const supabase = createClient()
-    const { error } = await supabase
+    const { data: existingRow } = await supabase
       .from('timetable_settings')
-      .upsert({ school_id: currentSchool.id, class_id: classId, category, ...next }, { onConflict: 'school_id,class_id' })
+      .select('id')
+      .eq('school_id', currentSchool.id)
+      .eq('class_id', classId)
+      .maybeSingle()
+    const { error } = existingRow
+      ? await supabase.from('timetable_settings').update({ category, ...next }).eq('id', existingRow.id)
+      : await supabase.from('timetable_settings').insert({ school_id: currentSchool.id, class_id: classId, category, ...next })
     if (error) alert(`Failed to save: ${error.message}`)
   }
 
