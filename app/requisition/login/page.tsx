@@ -23,10 +23,13 @@ export default function RequisitionLoginPage() {
     setError(null)
     setIsLoading(true)
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
 
     if (error) {
-      setError('Invalid email or password.')
+      // Only mask the specific "wrong credentials" case - anything else
+      // (rate limiting, network issues, etc.) shows the real message so a
+      // login problem isn't indistinguishable from a typo'd password.
+      setError(error.message.toLowerCase().includes('invalid login credentials') ? 'Invalid email or password.' : error.message)
       setIsLoading(false)
       return
     }
