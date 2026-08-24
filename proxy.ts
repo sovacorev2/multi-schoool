@@ -48,9 +48,11 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // The bare /requisition path plus everything under it, except its webhook
-  // API routes, which authenticate via a shared secret header instead of a
-  // user session. /requisition alone needs its own entry since the regex
-  // below only matches when there's a trailing /segment.
-  matcher: ['/requisition', '/requisition/((?!api/webhooks).*)'],
+  // The bare /requisition path plus every page under it, except its own
+  // API routes - those check auth.getUser() themselves and return a plain
+  // 401 JSON response when unauthenticated, which is more appropriate for
+  // an API caller than an HTML redirect. /requisition alone needs its own
+  // entry since the regex below only matches when there's a trailing
+  // /segment.
+  matcher: ['/requisition', '/requisition/((?!api/).*)'],
 }

@@ -104,6 +104,15 @@ export default function NewRequisitionPage() {
       if (rows.length > 0) await supabase.from('requisition_items').insert(rows)
     }
 
+    // Best-effort - the requisition itself is already saved, so a failed
+    // notification shouldn't block navigation or show as an error to the
+    // requester.
+    fetch('/requisition/api/notify-submitted', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requisitionId: requisition.id }),
+    }).catch(() => {})
+
     router.push(`/requisition/requisitions/${requisition.id}`)
   }
 

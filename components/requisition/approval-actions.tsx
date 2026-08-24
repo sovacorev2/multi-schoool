@@ -34,6 +34,14 @@ export function ApprovalActions({ requisitionId }: { requisitionId: string }) {
       return
     }
 
+    // Best-effort - the decision itself is already saved, so a failed
+    // notification shouldn't block the page from updating.
+    fetch('/requisition/api/notify-decided', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requisitionId }),
+    }).catch(() => {})
+
     router.refresh()
   }
 
