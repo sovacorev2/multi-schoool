@@ -36,7 +36,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Requester not found' }, { status: 200 })
   }
 
-  await Promise.all(approvers.map((approver) => sendRequisitionSubmitted(approver, requisition, requester)))
+  try {
+    await Promise.all(approvers.map((approver) => sendRequisitionSubmitted(approver, requisition, requester)))
+  } catch (error) {
+    console.error('[requisition] Failed to send submitted notification:', error)
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Send failed' }, { status: 500 })
+  }
 
   return NextResponse.json({ ok: true })
 }

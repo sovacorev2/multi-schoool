@@ -1,11 +1,22 @@
-import { Resend } from 'resend'
+import nodemailer from 'nodemailer'
 import type { RequisitionProfile, Requisition } from './types'
 
-// Reuses the same verified sender domain and RESEND_API_KEY already
-// configured for deadline-reminder and teacher-welcome emails elsewhere in
-// this app - no separate email provider needed for this feature.
-function getResend() {
-  return new Resend(process.env.RESEND_API_KEY)
+// Sends through Zoho's own SMTP servers using an app-specific password on
+// one mailbox (ZOHO_SMTP_USER) - Resend was tried first (reusing the
+// deadline-reminder feature's setup) but shuletechsolutions.co.ke was never
+// actually verified there, so those sends were failing silently. Zoho's
+// domain reputation/SPF/DKIM are already correctly configured for real mail
+// flow, so sending through Zoho itself avoids repeating that problem.
+function getTransporter() {
+  return nodemailer.createTransport({
+    host: process.env.ZOHO_SMTP_HOST || 'smtp.zoho.com',
+    port: Number(process.env.ZOHO_SMTP_PORT) || 465,
+    secure: true,
+    auth: {
+      user: process.env.ZOHO_SMTP_USER,
+      pass: process.env.ZOHO_SMTP_PASSWORD,
+    },
+  })
 }
 
 function appUrl() {
@@ -43,8 +54,8 @@ export async function sendRequisitionSubmitted(approver: RequisitionProfile, req
     <a href="${link}" style="display: inline-block; background: #1e3a8a; color: #fff; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600;">Review requisition</a>
   `)
 
-  await getResend().emails.send({
-    from: 'ShuleTech Requisitions <noreply@shuletechsolutions.co.ke>',
+  await getTransporter().sendMail({
+    from: process.env.ZOHO_SMTP_FROM || process.env.ZOHO_SMTP_USER,
     to: approver.email,
     subject: `New requisition from ${requester.full_name}: ${requisition.title}`,
     html,
@@ -63,8 +74,8 @@ export async function sendRequisitionDecided(everyone: RequisitionProfile[], req
     <a href="${link}" style="display: inline-block; background: #1e3a8a; color: #fff; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600;">View requisition</a>
   `)
 
-  await getResend().emails.send({
-    from: 'ShuleTech Requisitions <noreply@shuletechsolutions.co.ke>',
+  await getTransporter().sendMail({
+    from: process.env.ZOHO_SMTP_FROM || process.env.ZOHO_SMTP_USER,
     to: everyone.map((p) => p.email),
     subject: `${approved ? 'Approved' : 'Declined'}: ${requisition.title} (${requester.full_name})`,
     html,

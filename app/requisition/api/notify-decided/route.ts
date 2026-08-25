@@ -32,7 +32,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Requester or decider not found' }, { status: 200 })
   }
 
-  await sendRequisitionDecided(everyone, requisition, requester, decider)
+  try {
+    await sendRequisitionDecided(everyone, requisition, requester, decider)
+  } catch (error) {
+    console.error('[requisition] Failed to send decided notification:', error)
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Send failed' }, { status: 500 })
+  }
 
   return NextResponse.json({ ok: true })
 }
