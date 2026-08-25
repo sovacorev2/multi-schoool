@@ -44,11 +44,11 @@ export default function RequisitionLoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-[#0f2247] via-[#0f2247] to-secondary/40 bg-[length:100%_220px] bg-no-repeat p-4">
-      <Card className="w-full max-w-sm shadow-lg">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-primary via-primary to-secondary/10 bg-[length:100%_240px] bg-no-repeat p-4">
+      <Card className="w-full max-w-sm shadow-xl">
         <CardHeader className="text-center">
-          <Image src="/logos/shuletech-logo.png" alt="ShuleTech" width={64} height={64} className="mx-auto mb-2 rounded-md" priority />
-          <CardTitle>ShuleTech Requisitions</CardTitle>
+          <Image src="/icon-512.png" alt="STEMS" width={72} height={72} className="mx-auto mb-2" priority />
+          <CardTitle className="tracking-wide">STEMS Requisitions</CardTitle>
           <CardDescription>Sign in with your ShuleTech email</CardDescription>
         </CardHeader>
         <CardContent>

@@ -19,12 +19,12 @@ export function RequisitionHeader({ fullName }: { fullName: string }) {
 
   return (
     <nav className="border-b border-border bg-card shadow-sm no-print">
-      <div className="h-1 bg-gradient-to-r from-[#0f2247] to-[#1c75bc]" />
+      <div className="h-1 bg-gradient-to-r from-primary to-secondary" />
       <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
         <Link href="/requisition" className="flex items-center gap-2.5">
-          <Image src="/logos/shuletech-logo.png" alt="ShuleTech" width={36} height={36} className="rounded-sm" priority />
+          <Image src="/icon-512.png" alt="STEMS" width={38} height={38} priority />
           <div className="leading-tight">
-            <p className="font-semibold text-[#0f2247]">ShuleTech</p>
+            <p className="font-bold tracking-wide text-primary">STEMS</p>
             <p className="text-xs text-muted-foreground">Requisitions</p>
           </div>
         </Link>

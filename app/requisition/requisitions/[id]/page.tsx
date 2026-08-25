@@ -58,15 +58,15 @@ export default async function RequisitionDetailPage({ params }: { params: Promis
         </div>
 
         <Card className="mb-4 overflow-hidden print:border-none print:shadow-none">
-          <div className="flex items-center justify-between gap-3 border-b border-border bg-[#0f2247] px-6 py-4">
+          <div className="flex items-center justify-between gap-3 border-b border-border bg-primary px-6 py-4">
             <div className="flex items-center gap-3">
-              <Image src="/logos/shuletech-logo.png" alt="ShuleTech" width={32} height={32} className="rounded-sm" />
+              <Image src="/icon-512.png" alt="STEMS" width={34} height={34} />
               <div className="leading-tight">
-                <p className="font-semibold text-white">ShuleTech</p>
-                <p className="text-xs text-white/70">Requisition Record</p>
+                <p className="font-bold tracking-wide text-primary-foreground">STEMS</p>
+                <p className="text-xs text-primary-foreground/70">Requisition Record</p>
               </div>
             </div>
-            <p className="font-mono text-xs text-white/60">#{requisition.id.slice(0, 8).toUpperCase()}</p>
+            <p className="font-mono text-xs text-primary-foreground/60">#{requisition.id.slice(0, 8).toUpperCase()}</p>
           </div>
           <CardHeader>
             <div className="flex items-start justify-between gap-4">

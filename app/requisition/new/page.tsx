@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Trash2, Plus, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
@@ -19,10 +20,21 @@ interface ItemRow {
   unit_cost: string
 }
 
+function SectionHeading({ number, title }: { number: number; title: string }) {
+  return (
+    <div className="mb-3 flex items-center gap-2">
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{number}</span>
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-primary">{title}</h2>
+      <div className="h-px flex-1 bg-border" />
+    </div>
+  )
+}
+
 export default function NewRequisitionPage() {
   const router = useRouter()
   const supabase = createClient()
 
+  const [requesterName, setRequesterName] = useState('')
   const [type, setType] = useState<RequisitionType>('cash')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -30,6 +42,16 @@ export default function NewRequisitionPage() {
   const [items, setItems] = useState<ItemRow[]>([{ description: '', quantity: '1', unit_cost: '' }])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function loadRequesterName() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data } = await supabase.from('profiles').select('full_name').eq('id', user.id).single()
+      if (data) setRequesterName(data.full_name)
+    }
+    loadRequesterName()
+  }, [])
 
   useEffect(() => {
     if (type === 'cash' && items.length > 1) setItems([{ description: '', quantity: '1', unit_cost: '' }])
@@ -116,76 +138,107 @@ export default function NewRequisitionPage() {
     router.push(`/requisition/requisitions/${requisition.id}`)
   }
 
+  const today = new Date().toLocaleDateString('en-KE', { day: '2-digit', month: 'long', year: 'numeric' })
+
   return (
     <div className="min-h-screen bg-secondary/40 py-6">
       <div className="mx-auto max-w-2xl px-4">
         <Link href="/requisition" className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> Back to requisitions
         </Link>
-        <Card>
-          <CardHeader>
-            <CardTitle>New requisition</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label>Type</Label>
-                <Select value={type} onValueChange={(v) => setType(v as RequisitionType)}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cash">Cash</SelectItem>
-                    <SelectItem value="goods">Goods</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+        <Card className="overflow-hidden shadow-md">
+          <div className="flex items-center gap-3 border-b border-border bg-primary px-6 py-4">
+            <Image src="/icon-512.png" alt="STEMS" width={34} height={34} />
+            <div className="leading-tight">
+              <p className="font-bold tracking-wide text-primary-foreground">Requisition Form</p>
+              <p className="text-xs text-primary-foreground/70">ShuleTech Exam Management System</p>
+            </div>
+          </div>
 
-              <div>
-                <Label htmlFor="title">Title / Purpose</Label>
-                <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Office stationery for Q3" className="mt-1" required />
-              </div>
-
-              <div>
-                <Label htmlFor="description">Justification</Label>
-                <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Why this is needed" className="mt-1" />
-              </div>
-
-              {type === 'cash' ? (
-                <div>
-                  <Label htmlFor="amount">Amount (KES)</Label>
-                  <Input id="amount" type="number" min="0" step="0.01" value={cashAmount} onChange={(e) => setCashAmount(e.target.value)} className="mt-1" />
+          <CardContent className="space-y-6 pt-6">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <section>
+                <SectionHeading number={1} title="Requester information" />
+                <div className="grid grid-cols-2 gap-4 rounded-md bg-secondary/10 p-3 text-sm">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Requested by</p>
+                    <p className="font-medium">{requesterName || '...'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Date</p>
+                    <p className="font-medium">{today}</p>
+                  </div>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  <Label>Items</Label>
-                  {items.map((it, i) => (
-                    <div key={i} className="flex flex-wrap items-end gap-2 rounded-md border border-border p-3">
-                      <div className="flex-1 min-w-40">
-                        <Label className="text-xs">Description</Label>
-                        <Input value={it.description} onChange={(e) => updateItem(i, { description: e.target.value })} className="mt-1 h-9" />
+              </section>
+
+              <section>
+                <SectionHeading number={2} title="Requisition details" />
+                <div className="space-y-4">
+                  <div>
+                    <Label>Type</Label>
+                    <Select value={type} onValueChange={(v) => setType(v as RequisitionType)}>
+                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cash">Cash</SelectItem>
+                        <SelectItem value="goods">Goods</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="title">Title / Purpose</Label>
+                    <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Office stationery for Q3" className="mt-1" required />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="description">Justification</Label>
+                    <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Why this is needed" className="mt-1" />
+                  </div>
+                </div>
+              </section>
+
+              <section>
+                <SectionHeading number={3} title="Cost breakdown" />
+                {type === 'cash' ? (
+                  <div>
+                    <Label htmlFor="amount">Amount (KES)</Label>
+                    <Input id="amount" type="number" min="0" step="0.01" value={cashAmount} onChange={(e) => setCashAmount(e.target.value)} className="mt-1" />
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="overflow-hidden rounded-md border border-border">
+                      <div className="grid grid-cols-[1fr_60px_90px_36px] gap-2 border-b border-border bg-secondary/10 px-3 py-2 text-xs font-semibold text-muted-foreground">
+                        <span>Description</span>
+                        <span>Qty</span>
+                        <span>Unit cost</span>
+                        <span />
                       </div>
-                      <div className="w-20">
-                        <Label className="text-xs">Qty</Label>
-                        <Input type="number" min="1" value={it.quantity} onChange={(e) => updateItem(i, { quantity: e.target.value })} className="mt-1 h-9" />
-                      </div>
-                      <div className="w-28">
-                        <Label className="text-xs">Unit cost</Label>
-                        <Input type="number" min="0" step="0.01" value={it.unit_cost} onChange={(e) => updateItem(i, { unit_cost: e.target.value })} className="mt-1 h-9" />
-                      </div>
-                      <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(i)} disabled={items.length === 1}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      {items.map((it, i) => (
+                        <div key={i} className="grid grid-cols-[1fr_60px_90px_36px] items-center gap-2 border-b border-border px-3 py-2 last:border-0">
+                          <Input value={it.description} onChange={(e) => updateItem(i, { description: e.target.value })} className="h-8" placeholder="Item" />
+                          <Input type="number" min="1" value={it.quantity} onChange={(e) => updateItem(i, { quantity: e.target.value })} className="h-8" />
+                          <Input type="number" min="0" step="0.01" value={it.unit_cost} onChange={(e) => updateItem(i, { unit_cost: e.target.value })} className="h-8" />
+                          <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeItem(i)} disabled={items.length === 1}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                  <Button type="button" variant="outline" size="sm" onClick={addItem}>
-                    <Plus className="h-4 w-4" /> Add item
-                  </Button>
-                  <p className="text-sm font-medium">Total: KES {itemsTotal.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</p>
+                    <Button type="button" variant="outline" size="sm" onClick={addItem}>
+                      <Plus className="h-4 w-4" /> Add item
+                    </Button>
+                  </div>
+                )}
+
+                <div className="mt-4 flex items-center justify-between rounded-md bg-primary px-4 py-3">
+                  <span className="text-sm font-medium text-primary-foreground">Total Amount</span>
+                  <span className="text-lg font-bold text-primary-foreground">KES {totalAmount.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</span>
                 </div>
-              )}
+              </section>
 
               {error && <p className="text-sm text-destructive">{error}</p>}
 
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
+              <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
                 {isSubmitting ? 'Submitting...' : 'Submit for approval'}
               </Button>
             </form>
