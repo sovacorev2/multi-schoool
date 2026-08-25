@@ -2,12 +2,12 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { FileText } from 'lucide-react'
 
 export default function RequisitionLoginPage() {
   const router = useRouter()
@@ -44,12 +44,10 @@ export default function RequisitionLoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-secondary/40 p-4">
-      <Card className="w-full max-w-sm">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-[#0f2247] via-[#0f2247] to-secondary/40 bg-[length:100%_220px] bg-no-repeat p-4">
+      <Card className="w-full max-w-sm shadow-lg">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
-            <FileText className="h-5 w-5" />
-          </div>
+          <Image src="/logos/shuletech-logo.png" alt="ShuleTech" width={64} height={64} className="mx-auto mb-2 rounded-md" priority />
           <CardTitle>ShuleTech Requisitions</CardTitle>
           <CardDescription>Sign in with your ShuleTech email</CardDescription>
         </CardHeader>

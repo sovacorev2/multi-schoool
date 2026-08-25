@@ -1,10 +1,11 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { FileText, LogOut, Settings } from 'lucide-react'
+import { LogOut, Settings } from 'lucide-react'
 
 export function RequisitionHeader({ fullName }: { fullName: string }) {
   const router = useRouter()
@@ -17,14 +18,18 @@ export function RequisitionHeader({ fullName }: { fullName: string }) {
   }
 
   return (
-    <nav className="border-b border-border bg-card">
+    <nav className="border-b border-border bg-card shadow-sm no-print">
+      <div className="h-1 bg-gradient-to-r from-[#0f2247] to-[#1c75bc]" />
       <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
-        <Link href="/requisition" className="flex items-center gap-2 font-semibold text-primary">
-          <FileText className="h-5 w-5" />
-          ShuleTech Requisitions
+        <Link href="/requisition" className="flex items-center gap-2.5">
+          <Image src="/logos/shuletech-logo.png" alt="ShuleTech" width={36} height={36} className="rounded-sm" priority />
+          <div className="leading-tight">
+            <p className="font-semibold text-[#0f2247]">ShuleTech</p>
+            <p className="text-xs text-muted-foreground">Requisitions</p>
+          </div>
         </Link>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-muted-foreground">{fullName}</span>
+          <span className="hidden text-sm text-muted-foreground sm:inline">{fullName}</span>
           <Link href="/requisition/account">
             <Button variant="ghost" size="icon" title="Account settings">
               <Settings className="h-4 w-4" />

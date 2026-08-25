@@ -1,9 +1,11 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { RequisitionHeader } from '@/components/requisition/app-header'
 import { ApprovalActions } from '@/components/requisition/approval-actions'
 import { RequisitionStamp } from '@/components/requisition/stamp'
+import { PrintButton } from '@/components/requisition/print-button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ArrowLeft } from 'lucide-react'
@@ -48,11 +50,24 @@ export default async function RequisitionDetailPage({ params }: { params: Promis
     <div className="min-h-screen bg-secondary/40">
       <RequisitionHeader fullName={profile.full_name} />
       <main className="mx-auto max-w-2xl px-4 py-6">
-        <Link href="/requisition" className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground no-print">
-          <ArrowLeft className="h-4 w-4" /> Back to requisitions
-        </Link>
+        <div className="mb-4 flex items-center justify-between no-print">
+          <Link href="/requisition" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-4 w-4" /> Back to requisitions
+          </Link>
+          <PrintButton />
+        </div>
 
-        <Card className="mb-4">
+        <Card className="mb-4 overflow-hidden print:border-none print:shadow-none">
+          <div className="flex items-center justify-between gap-3 border-b border-border bg-[#0f2247] px-6 py-4">
+            <div className="flex items-center gap-3">
+              <Image src="/logos/shuletech-logo.png" alt="ShuleTech" width={32} height={32} className="rounded-sm" />
+              <div className="leading-tight">
+                <p className="font-semibold text-white">ShuleTech</p>
+                <p className="text-xs text-white/70">Requisition Record</p>
+              </div>
+            </div>
+            <p className="font-mono text-xs text-white/60">#{requisition.id.slice(0, 8).toUpperCase()}</p>
+          </div>
           <CardHeader>
             <div className="flex items-start justify-between gap-4">
               <div>
