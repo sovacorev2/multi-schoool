@@ -12,7 +12,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Trash2, Plus, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
-import type { RequisitionType } from '@/lib/requisition/types'
+import type { PaymentMethod, RequisitionType } from '@/lib/requisition/types'
 
 interface ItemRow {
   description: string
@@ -40,6 +40,12 @@ export default function NewRequisitionPage() {
   const [description, setDescription] = useState('')
   const [cashAmount, setCashAmount] = useState('')
   const [items, setItems] = useState<ItemRow[]>([{ description: '', quantity: '1', unit_cost: '' }])
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('bank')
+  const [bankName, setBankName] = useState('')
+  const [accountNumber, setAccountNumber] = useState('')
+  const [accountName, setAccountName] = useState('')
+  const [phoneNumber, setPhoneNumber] = useState('')
+  const [recipientName, setRecipientName] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -87,6 +93,14 @@ export default function NewRequisitionPage() {
       setError(type === 'cash' ? 'Enter the amount you are requesting.' : 'Add at least one item with a cost.')
       return
     }
+    if (paymentMethod === 'bank' && (!bankName.trim() || !accountNumber.trim() || !accountName.trim())) {
+      setError('Fill in the bank name, account number, and account name.')
+      return
+    }
+    if (paymentMethod === 'mobile_money' && (!recipientName.trim() || !phoneNumber.trim())) {
+      setError('Fill in the recipient name and phone number.')
+      return
+    }
 
     setIsSubmitting(true)
 
@@ -96,6 +110,13 @@ export default function NewRequisitionPage() {
       return
     }
 
+    const paymentDetails =
+      paymentMethod === 'bank'
+        ? { bank_name: bankName.trim(), account_number: accountNumber.trim(), account_name: accountName.trim() }
+        : paymentMethod === 'mobile_money'
+          ? { recipient_name: recipientName.trim(), phone_number: phoneNumber.trim() }
+          : null
+
     const { data: requisition, error: insertError } = await supabase
       .from('requisitions')
       .insert({
@@ -104,6 +125,8 @@ export default function NewRequisitionPage() {
         title: title.trim(),
         description: description.trim(),
         amount: totalAmount,
+        payment_method: paymentMethod,
+        payment_details: paymentDetails,
       })
       .select('id')
       .single()
@@ -233,6 +256,57 @@ export default function NewRequisitionPage() {
                 <div className="mt-4 flex items-center justify-between rounded-md bg-primary px-4 py-3">
                   <span className="text-sm font-medium text-primary-foreground">Total Amount</span>
                   <span className="text-lg font-bold text-primary-foreground">KES {totalAmount.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</span>
+                </div>
+              </section>
+
+              <section>
+                <SectionHeading number={4} title="Payment details" />
+                <div className="space-y-4">
+                  <div>
+                    <Label>How should this be paid?</Label>
+                    <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}>
+                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="bank">Bank transfer</SelectItem>
+                        <SelectItem value="mobile_money">Mobile money (M-Pesa)</SelectItem>
+                        <SelectItem value="cash">Cash</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {paymentMethod === 'bank' && (
+                    <div className="grid grid-cols-1 gap-4 rounded-md border border-border p-3 sm:grid-cols-2">
+                      <div className="sm:col-span-2">
+                        <Label htmlFor="bankName">Bank name</Label>
+                        <Input id="bankName" value={bankName} onChange={(e) => setBankName(e.target.value)} placeholder="e.g. Equity Bank" className="mt-1" />
+                      </div>
+                      <div>
+                        <Label htmlFor="accountNumber">Account number</Label>
+                        <Input id="accountNumber" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} className="mt-1" />
+                      </div>
+                      <div>
+                        <Label htmlFor="accountName">Account name</Label>
+                        <Input id="accountName" value={accountName} onChange={(e) => setAccountName(e.target.value)} className="mt-1" />
+                      </div>
+                    </div>
+                  )}
+
+                  {paymentMethod === 'mobile_money' && (
+                    <div className="grid grid-cols-1 gap-4 rounded-md border border-border p-3 sm:grid-cols-2">
+                      <div>
+                        <Label htmlFor="recipientName">Recipient name</Label>
+                        <Input id="recipientName" value={recipientName} onChange={(e) => setRecipientName(e.target.value)} className="mt-1" />
+                      </div>
+                      <div>
+                        <Label htmlFor="phoneNumber">Phone number</Label>
+                        <Input id="phoneNumber" type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="07XXXXXXXX" className="mt-1" />
+                      </div>
+                    </div>
+                  )}
+
+                  {paymentMethod === 'cash' && (
+                    <p className="rounded-md border border-border bg-secondary/10 p-3 text-sm text-muted-foreground">To be collected in person once approved.</p>
+                  )}
                 </div>
               </section>
 

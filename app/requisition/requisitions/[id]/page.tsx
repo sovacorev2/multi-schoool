@@ -21,6 +21,13 @@ function formatKES(amount: number) {
   return `KES ${amount.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
+function paymentMethodLabel(method: Requisition['payment_method']) {
+  if (method === 'bank') return 'Bank transfer'
+  if (method === 'mobile_money') return 'Mobile money (M-Pesa)'
+  if (method === 'cash') return 'Cash'
+  return null
+}
+
 export default async function RequisitionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
@@ -108,6 +115,46 @@ export default async function RequisitionDetailPage({ params }: { params: Promis
                       <span>{formatKES(it.quantity * it.unit_cost)}</span>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {requisition.payment_method && (
+              <div className="rounded-md border border-border p-3">
+                <p className="mb-2 text-sm font-medium text-primary">Payment Details</p>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Method</p>
+                    <p className="font-medium">{paymentMethodLabel(requisition.payment_method)}</p>
+                  </div>
+                  {requisition.payment_method === 'bank' && requisition.payment_details && (
+                    <>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Bank</p>
+                        <p className="font-medium">{requisition.payment_details.bank_name}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Account number</p>
+                        <p className="font-medium">{requisition.payment_details.account_number}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Account name</p>
+                        <p className="font-medium">{requisition.payment_details.account_name}</p>
+                      </div>
+                    </>
+                  )}
+                  {requisition.payment_method === 'mobile_money' && requisition.payment_details && (
+                    <>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Recipient</p>
+                        <p className="font-medium">{requisition.payment_details.recipient_name}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Phone number</p>
+                        <p className="font-medium">{requisition.payment_details.phone_number}</p>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             )}

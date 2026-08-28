@@ -11,6 +11,7 @@ export interface RequisitionProfile {
 
 export type RequisitionType = 'goods' | 'cash'
 export type RequisitionStatus = 'pending' | 'approved' | 'rejected'
+export type PaymentMethod = 'bank' | 'mobile_money' | 'cash'
 
 export interface RequisitionItem {
   id: string
@@ -18,6 +19,14 @@ export interface RequisitionItem {
   description: string
   quantity: number
   unit_cost: number
+}
+
+export interface PaymentDetails {
+  bank_name?: string
+  account_number?: string
+  account_name?: string
+  phone_number?: string
+  recipient_name?: string
 }
 
 export interface Requisition {
@@ -32,6 +41,8 @@ export interface Requisition {
   decided_by: string | null
   decided_at: string | null
   created_at: string
+  payment_method: PaymentMethod | null
+  payment_details: PaymentDetails | null
   requester?: RequisitionProfile
   decider?: RequisitionProfile
   items?: RequisitionItem[]

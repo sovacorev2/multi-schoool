@@ -68,6 +68,26 @@ function ctaButton(href: string, label: string) {
   return `<a href="${href}" style="display: inline-block; background: ${NAVY}; color: #fff; padding: 11px 22px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px; margin-top: 4px;">${label}</a>`
 }
 
+function paymentRows(requisition: Requisition): [string, string][] {
+  if (!requisition.payment_method) return []
+  if (requisition.payment_method === 'bank' && requisition.payment_details) {
+    return [
+      ['Payment method', 'Bank transfer'],
+      ['Bank', requisition.payment_details.bank_name || ''],
+      ['Account number', requisition.payment_details.account_number || ''],
+      ['Account name', requisition.payment_details.account_name || ''],
+    ]
+  }
+  if (requisition.payment_method === 'mobile_money' && requisition.payment_details) {
+    return [
+      ['Payment method', 'Mobile money (M-Pesa)'],
+      ['Recipient', requisition.payment_details.recipient_name || ''],
+      ['Phone number', requisition.payment_details.phone_number || ''],
+    ]
+  }
+  return [['Payment method', 'Cash']]
+}
+
 export async function sendRequisitionSubmitted(approver: RequisitionProfile, requisition: Requisition, requester: RequisitionProfile) {
   const link = `${appUrl()}/requisition/requisitions/${requisition.id}`
   const html = baseTemplate(`
@@ -77,6 +97,7 @@ export async function sendRequisitionSubmitted(approver: RequisitionProfile, req
       ['Title', requisition.title],
       ['Type', requisition.type === 'goods' ? 'Goods' : 'Cash'],
       ['Amount', formatKES(requisition.amount)],
+      ...paymentRows(requisition),
     ])}
     ${ctaButton(link, 'Review requisition')}
   `)
