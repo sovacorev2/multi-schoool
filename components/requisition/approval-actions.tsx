@@ -18,6 +18,12 @@ export function ApprovalActions({ requisitionId }: { requisitionId: string }) {
 
   async function decide(status: 'approved' | 'rejected') {
     setError(null)
+
+    if (status === 'rejected' && !remarks.trim()) {
+      setError('Give a reason for declining this requisition.')
+      return
+    }
+
     setIsSubmitting(status)
 
     const { data: { user } } = await supabase.auth.getUser()
@@ -52,8 +58,9 @@ export function ApprovalActions({ requisitionId }: { requisitionId: string }) {
       </CardHeader>
       <CardContent className="space-y-3">
         <div>
-          <Label htmlFor="remarks">Remarks (optional)</Label>
+          <Label htmlFor="remarks">Remarks</Label>
           <Textarea id="remarks" value={remarks} onChange={(e) => setRemarks(e.target.value)} className="mt-1" placeholder="Any notes for the requester" />
+          <p className="mt-1 text-xs text-muted-foreground">Optional when approving, required when declining.</p>
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
         <div className="flex gap-2">
