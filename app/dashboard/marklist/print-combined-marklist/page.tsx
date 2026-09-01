@@ -15,6 +15,7 @@ interface LearnerData {
   className: string
   marks: { [subjectName: string]: number | null }
   total: number
+  totalPoints: number
   average: number
   rank: number
 }
@@ -27,6 +28,10 @@ interface SubjectData {
 export default function PrintCombinedMarklistPage() {
   const searchParams = useSearchParams()
   const { currentSchool } = useSchool()
+  // Kakoli wants their marklist's "Total" column to show total rubric points
+  // instead of total raw marks - same school-specific treatment applied to
+  // the main marklist table.
+  const isKakoli = currentSchool?.code?.toLowerCase() === 'kakoli' || currentSchool?.name?.toLowerCase().includes('kakoli')
   const [learners, setLearners] = useState<LearnerData[]>([])
   const [subjects, setSubjects] = useState<SubjectData[]>([])
   const [baseClassName, setBaseClassName] = useState('')
@@ -116,6 +121,7 @@ export default function PrintCombinedMarklistPage() {
         clsLearners.forEach(learner => {
           const learnerMarks: { [subjectName: string]: number | null } = {}
           let total = 0
+          let totalPoints = 0
           let count = 0
 
           clsSubjects.forEach(subj => {
@@ -124,6 +130,8 @@ export default function PrintCombinedMarklistPage() {
             if (mark?.score !== null && mark?.score !== undefined) {
               total += mark.score
               count++
+              const gradeInfo = getGradeLevelByClass(mark.score, cls.name, currentSchool?.name)
+              if (gradeInfo?.points) totalPoints += gradeInfo.points
             }
           })
 
@@ -134,6 +142,7 @@ export default function PrintCombinedMarklistPage() {
             className: cls.name,
             marks: learnerMarks,
             total,
+            totalPoints,
             average: count > 0 ? Math.round((total / count) * 10) / 10 : 0,
           })
         })
@@ -316,7 +325,7 @@ export default function PrintCombinedMarklistPage() {
                 <th className="border p-1 text-center w-12">Pts</th>
               </React.Fragment>
             ))}
-            <th className="border p-1 text-center w-12">Total</th>
+            <th className="border p-1 text-center w-12">{isKakoli ? 'Total Points' : 'Total'}</th>
             <th className="border p-1 text-center w-16">Level</th>
           </tr>
         </thead>
@@ -353,7 +362,7 @@ export default function PrintCombinedMarklistPage() {
                     </React.Fragment>
                   )
                 })}
-                <td className="border p-1 text-center font-bold">{learner.total}</td>
+                <td className="border p-1 text-center font-bold">{isKakoli ? learner.totalPoints : learner.total}</td>
                 <td className="border p-1 text-center font-semibold" style={{ color: '#1a3a52' }}>
                   {getGradeLevelByClass(Math.round(learner.average), baseClassName, currentSchool?.name)?.level || '-'}
                 </td>
