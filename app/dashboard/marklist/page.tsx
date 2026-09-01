@@ -183,6 +183,10 @@ export default function MarklistPage() {
   const isKimwangarc = currentSchool?.code?.toLowerCase() === 'kimwangarc'
   const lowerGradePatterns = /^(PP1|PP2|Grade\s*1|Grade\s*2|Grade\s*3|Grade\s*4|Grade\s*5|Grade\s*6)$/i
   const isKimwangaraLowerGrade = isKimwangarc && lowerGradePatterns.test(currentClass?.name || '')
+
+  // Kakoli wants their marklist's "Total" column to show total rubric points
+  // (sum of each subject's CBC points) instead of total raw marks - school-specific.
+  const isKakoli = currentSchool?.code?.toLowerCase() === 'kakoli' || currentSchool?.name?.toLowerCase().includes('kakoli')
   
   useEffect(() => {
     setIsLowerGradePointsEntry(isKimwangaraLowerGrade)
@@ -2565,7 +2569,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                       </th>
                     </React.Fragment>
                   ))}
-                  <th className="border border-border dark:border-border p-2 font-bold text-foreground dark:text-foreground">Total</th>
+                  <th className="border border-border dark:border-border p-2 font-bold text-foreground dark:text-foreground">{isKakoli ? 'Total Points' : 'Total'}</th>
                   <th className="border border-border dark:border-border p-2 font-bold text-foreground dark:text-foreground">Average</th>
                 </tr>
                 <tr className="bg-slate-200 dark:bg-slate-700">
@@ -2625,7 +2629,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                         </React.Fragment>
                       )
                     })}
-                    <td className="border border-border dark:border-border p-2 text-center font-bold text-foreground dark:text-foreground">{result.total}</td>
+                    <td className="border border-border dark:border-border p-2 text-center font-bold text-foreground dark:text-foreground">{isKakoli ? result.totalPoints : result.total}</td>
                     <td className="border border-border dark:border-border p-2 text-center font-bold" style={{ color: '#000000' }}>
                       {(() => {
                         const avgPerformanceLevel = getLevelByTotal(result.total, subjects.length, currentClass?.name, currentSchool?.name)
@@ -2667,7 +2671,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                     )
                   })}
                   <td className="border border-border dark:border-border p-2 text-center font-bold text-foreground dark:text-foreground">
-                    {results.length > 0 ? results.reduce((a, b) => a + b.total, 0) : '-'}
+                    {results.length > 0 ? results.reduce((a, b) => a + (isKakoli ? b.totalPoints : b.total), 0) : '-'}
                   </td>
                   <td className="border border-border dark:border-border p-2 text-center font-bold" style={{ color: '#000000' }}>
                     {classAverage}

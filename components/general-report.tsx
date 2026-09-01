@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { getGradeLevelByClass } from '@/lib/grading-utils'
+import { getGradeLevelByClass, isBandedPositionSchool, getPositionFromLevel, getPositionCount } from '@/lib/grading-utils'
 import { getSubjectDisplay } from '@/lib/subject-utils'
 import { fetchAllRows } from '@/lib/fetch-all-rows'
 import { Button } from '@/components/ui/button'
@@ -332,6 +332,25 @@ export function GeneralReport({
       const totalWithMarksInClass = ranked.length
       learnersData.forEach(ld => { ld.totalInClass = totalWithMarksInClass })
 
+      // St Belvia: position comes from each learner's overall CBC level, not
+      // raw total marks - every learner in the same level shares the same
+      // position, and "out of" becomes the number of levels in the scale
+      // (8 for JSS, 4 elsewhere) instead of the class size. Every other
+      // school's rank set just above is left untouched.
+      if (isBandedPositionSchool(currentSchool?.name)) {
+        const positionCount = getPositionCount(currentClass?.name)
+        learnersData.forEach(ld => {
+          const level = ld.overallAverage !== null
+            ? getGradeLevelByClass(ld.overallAverage, currentClass?.name, currentSchool?.name)?.level
+            : null
+          const banded = getPositionFromLevel(level)
+          if (banded !== null) {
+            ld.classRank = banded
+            ld.totalInClass = positionCount
+          }
+        })
+      }
+
       // Cross-stream ranking: fetch marks for sibling classes using their own session IDs.
       // allMarks only contains sessions for the current class, so sibling learners
       // need a separate query keyed on their sessions (same exam_type/term/year).
@@ -405,6 +424,23 @@ export function GeneralReport({
         learnersData.forEach(ld => {
           ld.crossStreamRank = ld.classRank
           ld.totalInLevel = totalWithMarksInClass
+        })
+      }
+
+      // St Belvia: same banded logic for the cross-stream ("Overall Position")
+      // rank as for classRank above - every learner in the same CBC level
+      // shares the same position across the whole grade level.
+      if (isBandedPositionSchool(currentSchool?.name)) {
+        const positionCount = getPositionCount(currentClass?.name)
+        learnersData.forEach(ld => {
+          const level = ld.overallAverage !== null
+            ? getGradeLevelByClass(ld.overallAverage, currentClass?.name, currentSchool?.name)?.level
+            : null
+          const banded = getPositionFromLevel(level)
+          if (banded !== null) {
+            ld.crossStreamRank = banded
+            ld.totalInLevel = positionCount
+          }
         })
       }
 
@@ -716,6 +752,15 @@ function generateReportHTML(
     </svg>`
   }
 
+  // Class-wide gender breakdown (average + count of learners with marks, per
+  // gender) - computed once here and shown as context on every learner's
+  // page, same pattern as the school-wide "GENDER ANALYSIS" section in the
+  // separate School Performance Analysis report, just scoped to this class.
+  const boysWithMarks = learnersData.filter(ld => ld.learner.gender === 'Male' && ld.overallAverage !== null)
+  const girlsWithMarks = learnersData.filter(ld => ld.learner.gender === 'Female' && ld.overallAverage !== null)
+  const boysAvg = boysWithMarks.length > 0 ? boysWithMarks.reduce((a, ld) => a + (ld.overallAverage ?? 0), 0) / boysWithMarks.length : null
+  const girlsAvg = girlsWithMarks.length > 0 ? girlsWithMarks.reduce((a, ld) => a + (ld.overallAverage ?? 0), 0) / girlsWithMarks.length : null
+
   // Build individual pages
   const pages = learnersData.map(ld => {
     const { learner, subjectMarks, overallAverage, overallTotal, classRank, totalInClass, crossStreamRank, totalInLevel, examRanks, strengthSubjects, prioritySubjects, autoComment } = ld
@@ -955,6 +1000,13 @@ function generateReportHTML(
                 <div style="font-size:7px;color:#7f1d1d;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;">POSITION</div>
                 <div style="font-size:11px;font-weight:800;color:#dc2626;margin-top:2px;">${totalInLevel > totalInClass && crossStreamRank > 0 ? `${crossStreamRank}/${totalInLevel}` : (classRank > 0 ? `${classRank}/${totalInClass}` : 'N/A')}</div>
                 <div style="font-size:8px;color:#991b1b;font-weight:600;">${totalInLevel > totalInClass ? 'Level rank' : 'Class rank'}</div>
+              </div>
+
+              <!-- GENDER ANALYSIS - class average by gender, for context -->
+              <div style="border:1px solid #7c3aed;border-radius:3px;background:#f5f3ff;padding:6px;text-align:center;">
+                <div style="font-size:7px;color:#5b21b6;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;">GENDER ANALYSIS</div>
+                <div style="font-size:10px;font-weight:800;color:#5b21b6;margin-top:2px;">B: ${boysAvg !== null ? boysAvg.toFixed(1) + '%' : '-'} (${boysWithMarks.length}) &middot; G: ${girlsAvg !== null ? girlsAvg.toFixed(1) + '%' : '-'} (${girlsWithMarks.length})</div>
+                <div style="font-size:8px;color:#6d28d9;font-weight:600;">Class average by gender</div>
               </div>
             </div>
           </div>
