@@ -21,7 +21,7 @@ import {
 } from 'lucide-react'
 import { TimetableGrid, type TimetableGridCell } from '@/components/timetable-grid'
 import {
-  generateTimetable,
+  generateTimetable, timeStringToMinutes,
   type TimetableClassInput, type TimetableConflict, type TimetableWarning, type TimetableExistingBooking,
 } from '@/lib/timetable-generator'
 import { resolveCategoryGrid, buildMergedColumns, mergedColumnKeyFor, computeTeacherInitials, type ResolvedCategoryGrid } from '@/lib/timetable-merged-view'
@@ -59,6 +59,16 @@ interface BreakRow {
   name: string
   after_period_number: number
   duration_minutes: number
+}
+
+interface BlockedWindowRow {
+  id: string
+  category: string
+  class_id: string | null
+  day_of_week: number | null // null = every day
+  start_time: string
+  end_time: string
+  label: string
 }
 
 interface EntryRow {
@@ -124,6 +134,15 @@ export default function TimetablePage() {
 
   const [settingsByCategory, setSettingsByCategory] = useState<Record<string, SettingsShape>>({})
   const [breaksByCategory, setBreaksByCategory] = useState<Record<string, BreakRow[]>>({})
+  // Day-specific blocked windows (assembly, church time, discussion time) -
+  // unlike breaks, these can apply to just one day of the week rather than
+  // every day, so they're kept separately. Same category/class_id split.
+  const [blockedWindowsByCategory, setBlockedWindowsByCategory] = useState<Record<string, BlockedWindowRow[]>>({})
+  const [blockedWindowsByClassOverride, setBlockedWindowsByClassOverride] = useState<Record<string, BlockedWindowRow[]>>({})
+  const [newBlockedDay, setNewBlockedDay] = useState('all')
+  const [newBlockedStart, setNewBlockedStart] = useState('')
+  const [newBlockedEnd, setNewBlockedEnd] = useState('')
+  const [newBlockedLabel, setNewBlockedLabel] = useState('')
   const [configuredCategories, setConfiguredCategories] = useState<Set<string>>(new Set())
   const [settingsCategoryTab, setSettingsCategoryTab] = useState('')
   const [copyFromCategory, setCopyFromCategory] = useState('')
@@ -182,10 +201,11 @@ export default function TimetablePage() {
     setIsLoading(true)
     const supabase = createClient()
 
-    const [classesRes, settingsRes, breaksRes] = await Promise.all([
+    const [classesRes, settingsRes, breaksRes, blockedWindowsRes] = await Promise.all([
       supabase.from('classes').select('*').eq('school_id', currentSchool.id).order('display_order'),
       supabase.from('timetable_settings').select('*').eq('school_id', currentSchool.id),
       supabase.from('timetable_breaks').select('*').eq('school_id', currentSchool.id).order('after_period_number'),
+      supabase.from('timetable_blocked_windows').select('*').eq('school_id', currentSchool.id).order('start_time'),
     ])
 
     const loadedClasses = sortClasses((classesRes.data || []) as Class[])
@@ -194,6 +214,7 @@ export default function TimetablePage() {
     const loadedCategories = CATEGORY_ORDER.filter((c) => loadedClasses.some((cls) => effectiveCategory(cls) === c))
     const settingsRows = (settingsRes.data || []) as (SettingsShape & { category: string | null; class_id: string | null })[]
     const breaksRows = (breaksRes.data || []) as BreakRow[]
+    const blockedWindowRows = (blockedWindowsRes.data || []) as BlockedWindowRow[]
 
     const nextSettings: Record<string, SettingsShape> = {}
     const nextConfigured = new Set<string>()
@@ -223,6 +244,12 @@ export default function TimetablePage() {
     }
     setBreaksByCategory(nextBreaks)
 
+    const nextBlockedByCategory: Record<string, BlockedWindowRow[]> = {}
+    for (const cat of loadedCategories) {
+      nextBlockedByCategory[cat] = blockedWindowRows.filter((w) => w.category === cat && !w.class_id)
+    }
+    setBlockedWindowsByCategory(nextBlockedByCategory)
+
     // Per-class overrides (class_id set) - a class with one of these uses it
     // instead of its category's row, everywhere settings get resolved.
     const nextClassOverrideSettings: Record<string, SettingsShape> = {}
@@ -247,6 +274,14 @@ export default function TimetablePage() {
       nextBreaksByClassOverride[row.class_id].push(row)
     }
     setBreaksByClassOverride(nextBreaksByClassOverride)
+
+    const nextBlockedByClassOverride: Record<string, BlockedWindowRow[]> = {}
+    for (const row of blockedWindowRows) {
+      if (!row.class_id) continue
+      if (!nextBlockedByClassOverride[row.class_id]) nextBlockedByClassOverride[row.class_id] = []
+      nextBlockedByClassOverride[row.class_id].push(row)
+    }
+    setBlockedWindowsByClassOverride(nextBlockedByClassOverride)
 
     setSettingsCategoryTab((prev) => (prev && loadedCategories.includes(prev) ? prev : loadedCategories[0] || ''))
 
@@ -332,6 +367,46 @@ export default function TimetablePage() {
     setBreaksByCategory((prev) => ({ ...prev, [category]: (prev[category] || []).filter((b) => b.id !== id) }))
   }
 
+  // --- Blocked time windows (assembly, church, discussion time, etc.) ---
+  const addBlockedWindow = async (category: string) => {
+    if (!currentSchool || !category || !newBlockedStart || !newBlockedEnd || !newBlockedLabel.trim()) return
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('timetable_blocked_windows')
+      .insert({
+        school_id: currentSchool.id,
+        category,
+        day_of_week: newBlockedDay === 'all' ? null : Number(newBlockedDay),
+        start_time: newBlockedStart,
+        end_time: newBlockedEnd,
+        label: newBlockedLabel.trim(),
+      })
+      .select('*')
+      .single()
+    if (error) {
+      alert(`Failed to add blocked window: ${error.message}`)
+      return
+    }
+    setBlockedWindowsByCategory((prev) => ({
+      ...prev,
+      [category]: [...(prev[category] || []), data as BlockedWindowRow].sort((a, b) => a.start_time.localeCompare(b.start_time)),
+    }))
+    setNewBlockedDay('all')
+    setNewBlockedStart('')
+    setNewBlockedEnd('')
+    setNewBlockedLabel('')
+  }
+
+  const deleteBlockedWindow = async (category: string, id: string) => {
+    const supabase = createClient()
+    const { error } = await supabase.from('timetable_blocked_windows').delete().eq('id', id)
+    if (error) {
+      alert(`Failed to delete blocked window: ${error.message}`)
+      return
+    }
+    setBlockedWindowsByCategory((prev) => ({ ...prev, [category]: (prev[category] || []).filter((w) => w.id !== id) }))
+  }
+
   const copySettingsFromCategory = async (targetCategory: string, sourceCategory: string) => {
     if (!currentSchool || !sourceCategory || sourceCategory === targetCategory) return
     const sourceSettings = settingsByCategory[sourceCategory] || getDefaultSettingsForCategory(sourceCategory)
@@ -368,6 +443,41 @@ export default function TimetablePage() {
       return { settings: override, breaks: breaksByClassOverride[cls.id] || [], category, hasOverride: true }
     }
     return { settings: settingsByCategory[category] || getDefaultSettingsForCategory(category), breaks: breaksByCategory[category] || [], category, hasOverride: false }
+  }
+
+  // Blocked windows aren't gated behind the settings-override toggle above -
+  // a class can have its own blocked windows (e.g. Grade 6's own assembly
+  // exception) independently of whether it also overrides hours/period
+  // length. Any class-specific rows fully replace the category's, same as
+  // breaks do once a class has its own.
+  const resolveBlockedWindowsForClass = (cls: Class): BlockedWindowRow[] => {
+    const category = effectiveCategory(cls)
+    const classSpecific = blockedWindowsByClassOverride[cls.id]
+    if (classSpecific && classSpecific.length > 0) return classSpecific
+    return blockedWindowsByCategory[category] || []
+  }
+
+  /** Converts a class's applicable blocked windows into concrete (day, period)
+   * pairs by checking each of its own periods (real clock-time, from its
+   * resolved grid) for overlap with each window. day_of_week null = applies
+   * to every day in the class's week. */
+  const computeBlockedSlots = (
+    windows: BlockedWindowRow[],
+    daysPerWeek: number,
+    periodStartEndMinutes: { period: number; startMinutes: number; endMinutes: number }[]
+  ): { day: number; period: number }[] => {
+    const slots: { day: number; period: number }[] = []
+    for (const w of windows) {
+      const wStart = timeStringToMinutes(w.start_time)
+      const wEnd = timeStringToMinutes(w.end_time)
+      const days = w.day_of_week != null ? [w.day_of_week] : Array.from({ length: daysPerWeek }, (_, i) => i + 1)
+      for (const day of days) {
+        for (const p of periodStartEndMinutes) {
+          if (p.startMinutes < wEnd && p.endMinutes > wStart) slots.push({ day, period: p.period })
+        }
+      }
+    }
+    return slots
   }
 
   const enableClassOverride = async (cls: Class, category: string) => {
@@ -489,6 +599,46 @@ export default function TimetablePage() {
     setBreaksByClassOverride((prev) => ({ ...prev, [classId]: (prev[classId] || []).filter((b) => b.id !== id) }))
   }
 
+  const addClassOverrideBlockedWindow = async (classId: string, category: string) => {
+    if (!currentSchool || !newBlockedStart || !newBlockedEnd || !newBlockedLabel.trim()) return
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('timetable_blocked_windows')
+      .insert({
+        school_id: currentSchool.id,
+        category,
+        class_id: classId,
+        day_of_week: newBlockedDay === 'all' ? null : Number(newBlockedDay),
+        start_time: newBlockedStart,
+        end_time: newBlockedEnd,
+        label: newBlockedLabel.trim(),
+      })
+      .select('*')
+      .single()
+    if (error) {
+      alert(`Failed to add blocked window: ${error.message}`)
+      return
+    }
+    setBlockedWindowsByClassOverride((prev) => ({
+      ...prev,
+      [classId]: [...(prev[classId] || []), data as BlockedWindowRow].sort((a, b) => a.start_time.localeCompare(b.start_time)),
+    }))
+    setNewBlockedDay('all')
+    setNewBlockedStart('')
+    setNewBlockedEnd('')
+    setNewBlockedLabel('')
+  }
+
+  const deleteClassOverrideBlockedWindow = async (classId: string, id: string) => {
+    const supabase = createClient()
+    const { error } = await supabase.from('timetable_blocked_windows').delete().eq('id', id)
+    if (error) {
+      alert(`Failed to delete blocked window: ${error.message}`)
+      return
+    }
+    setBlockedWindowsByClassOverride((prev) => ({ ...prev, [classId]: (prev[classId] || []).filter((w) => w.id !== id) }))
+  }
+
   const updateSubjectPeriods = async (subjectId: string, value: string) => {
     const periods = Math.max(0, Number(value) || 0)
     const supabase = createClient()
@@ -595,6 +745,8 @@ export default function TimetablePage() {
         levelWarnings.push(category)
       }
       const grid = resolveCategoryGrid(category, catSettings, catBreaks)
+      const blockedWindows = resolveBlockedWindowsForClass(cls)
+      const blockedSlots = computeBlockedSlots(blockedWindows, grid.daysPerWeek, grid.periodStartEndMinutes)
 
       return {
         classId: cls.id,
@@ -603,6 +755,7 @@ export default function TimetablePage() {
         periodsPerDay: grid.periodsPerDay,
         periodStartEndMinutes: grid.periodStartEndMinutes,
         breakAfterPeriods: catBreaks.map((b) => b.after_period_number),
+        blockedSlots,
         lunchAfterPeriod: findLunchAfterPeriod(catBreaks),
         enableDoubleLessons: catSettings.enable_double_lessons,
         avoidConsecutiveSameSubject: catSettings.avoid_consecutive_same_subject,
@@ -1267,6 +1420,7 @@ export default function TimetablePage() {
               {presentCategories.map((cat) => {
                 const catSettings = settingsByCategory[cat] || getDefaultSettingsForCategory(cat)
                 const catBreaks = breaksByCategory[cat] || []
+                const catBlockedWindows = blockedWindowsByCategory[cat] || []
                 const grid = resolveCategoryGrid(cat, catSettings, catBreaks)
                 const otherCategories = presentCategories.filter((c) => c !== cat)
 
@@ -1360,6 +1514,46 @@ export default function TimetablePage() {
                             <Input type="number" min="1" value={newBreakDuration} onChange={(e) => setNewBreakDuration(e.target.value)} className="h-9 w-24" />
                           </div>
                           <Button size="sm" onClick={() => addBreak(cat)}><Plus className="w-4 h-4 mr-1" /> Add Break</Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>{cat} - Blocked Time Windows</CardTitle>
+                        <CardDescription>Times that must never be used for teaching, even on one specific day - assembly, church time, a fixed discussion slot, etc. Every class in {cat} is affected unless it has its own override below.</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {catBlockedWindows.map((w) => (
+                          <div key={w.id} className="flex items-center justify-between p-2 border rounded-lg text-sm">
+                            <span>{w.label} - {w.day_of_week != null ? DAY_LABELS[w.day_of_week - 1] : 'Every day'}, {w.start_time}-{w.end_time}</span>
+                            <Button size="sm" variant="ghost" onClick={() => deleteBlockedWindow(cat, w.id)}><Trash2 className="w-4 h-4 text-red-600" /></Button>
+                          </div>
+                        ))}
+                        <div className="flex flex-wrap gap-2 items-end pt-2 border-t">
+                          <div>
+                            <Label className="text-xs">Day</Label>
+                            <Select value={newBlockedDay} onValueChange={setNewBlockedDay}>
+                              <SelectTrigger className="h-9 w-32"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">Every day</SelectItem>
+                                {DAY_LABELS.map((d, i) => <SelectItem key={d} value={String(i + 1)}>{d}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label className="text-xs">Start Time</Label>
+                            <Input type="time" value={newBlockedStart} onChange={(e) => setNewBlockedStart(e.target.value)} className="h-9 w-28" />
+                          </div>
+                          <div>
+                            <Label className="text-xs">End Time</Label>
+                            <Input type="time" value={newBlockedEnd} onChange={(e) => setNewBlockedEnd(e.target.value)} className="h-9 w-28" />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Label</Label>
+                            <Input value={newBlockedLabel} onChange={(e) => setNewBlockedLabel(e.target.value)} placeholder="Assembly" className="h-9 w-32" />
+                          </div>
+                          <Button size="sm" onClick={() => addBlockedWindow(cat)}><Plus className="w-4 h-4 mr-1" /> Add</Button>
                         </div>
                       </CardContent>
                     </Card>
@@ -1471,6 +1665,41 @@ export default function TimetablePage() {
                                         <Input type="number" min="1" value={newBreakDuration} onChange={(e) => setNewBreakDuration(e.target.value)} className="h-9 w-24" />
                                       </div>
                                       <Button size="sm" onClick={() => addClassOverrideBreak(cls.id, cat)}><Plus className="w-4 h-4 mr-1" /> Add Break</Button>
+                                    </div>
+                                  </div>
+
+                                  <div className="space-y-2 pt-2 border-t">
+                                    <Label className="text-xs text-gray-500">Blocked Time Windows (overrides {cat}&apos;s, for this class only)</Label>
+                                    {(blockedWindowsByClassOverride[cls.id] || []).map((w) => (
+                                      <div key={w.id} className="flex items-center justify-between p-2 border rounded-lg text-sm">
+                                        <span>{w.label} - {w.day_of_week != null ? DAY_LABELS[w.day_of_week - 1] : 'Every day'}, {w.start_time}-{w.end_time}</span>
+                                        <Button size="sm" variant="ghost" onClick={() => deleteClassOverrideBlockedWindow(cls.id, w.id)}><Trash2 className="w-4 h-4 text-red-600" /></Button>
+                                      </div>
+                                    ))}
+                                    <div className="flex flex-wrap gap-2 items-end pt-2 border-t">
+                                      <div>
+                                        <Label className="text-xs">Day</Label>
+                                        <Select value={newBlockedDay} onValueChange={setNewBlockedDay}>
+                                          <SelectTrigger className="h-9 w-32"><SelectValue /></SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="all">Every day</SelectItem>
+                                            {DAY_LABELS.map((d, i) => <SelectItem key={d} value={String(i + 1)}>{d}</SelectItem>)}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                      <div>
+                                        <Label className="text-xs">Start Time</Label>
+                                        <Input type="time" value={newBlockedStart} onChange={(e) => setNewBlockedStart(e.target.value)} className="h-9 w-28" />
+                                      </div>
+                                      <div>
+                                        <Label className="text-xs">End Time</Label>
+                                        <Input type="time" value={newBlockedEnd} onChange={(e) => setNewBlockedEnd(e.target.value)} className="h-9 w-28" />
+                                      </div>
+                                      <div>
+                                        <Label className="text-xs">Label</Label>
+                                        <Input value={newBlockedLabel} onChange={(e) => setNewBlockedLabel(e.target.value)} placeholder="Assembly" className="h-9 w-32" />
+                                      </div>
+                                      <Button size="sm" onClick={() => addClassOverrideBlockedWindow(cls.id, cat)}><Plus className="w-4 h-4 mr-1" /> Add</Button>
                                     </div>
                                   </div>
 

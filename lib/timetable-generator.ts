@@ -41,6 +41,12 @@ export interface TimetableClassInput {
   breakAfterPeriods: number[]
   /** The period number the longest break of the day falls after (i.e. lunch), or null if there's no break to treat as lunch. Math is hard-excluded from any period after this one. */
   lunchAfterPeriod: number | null
+  /** (day, period) pairs this class can never be scheduled into - e.g. Monday
+   * assembly, Friday church time. Unlike breakAfterPeriods (which apply the
+   * same way every day and are baked into periodStartEndMinutes), these are
+   * day-specific, computed by the caller from timetable_blocked_windows
+   * overlapping this class's own period grid. */
+  blockedSlots: { day: number; period: number }[]
   /** Double lessons are a JSS convention, not universal - off by default for other levels, and always overridable per level in Settings. */
   enableDoubleLessons: boolean
   avoidConsecutiveSameSubject: boolean
@@ -80,7 +86,7 @@ export interface TimetableGenerationResult {
   warnings: TimetableWarning[]
 }
 
-function timeStringToMinutes(t: string): number {
+export function timeStringToMinutes(t: string): number {
   const [h, m] = t.split(':').map(Number)
   return (h || 0) * 60 + (m || 0)
 }
@@ -244,11 +250,12 @@ function findBestSlot(
   subjectById: Map<string, TimetableSubjectInput>
 ): { day: number; period: number } | null {
   const { daysPerWeek, periodsPerDay, avoidConsecutiveSameSubject: avoidConsecutive, spreadEvenly, lunchAfterPeriod } = cls
+  const blockedSlotSet = new Set(cls.blockedSlots.map((b) => slotKey(b.day, b.period)))
 
   const openSlots: { day: number; period: number }[] = []
   for (let day = 1; day <= daysPerWeek; day++) {
     for (let period = 1; period <= periodsPerDay; period++) {
-      if (!classGrid.has(slotKey(day, period))) openSlots.push({ day, period })
+      if (!classGrid.has(slotKey(day, period)) && !blockedSlotSet.has(slotKey(day, period))) openSlots.push({ day, period })
     }
   }
 
@@ -356,6 +363,7 @@ function findBestDoubleSlot(
   subjectById: Map<string, TimetableSubjectInput>
 ): { day: number; period: number } | null {
   const { daysPerWeek, periodsPerDay, lunchAfterPeriod } = cls
+  const blockedSlotSet = new Set(cls.blockedSlots.map((b) => slotKey(b.day, b.period)))
 
   const isMath = isMathSubject(subj.subjectName)
   const myLanguage = languagePairId(subj.subjectName)
@@ -365,6 +373,7 @@ function findBestDoubleSlot(
   for (let day = 1; day <= daysPerWeek; day++) {
     for (let period = 1; period < periodsPerDay; period++) {
       if (breakAfterPeriods.has(period)) continue
+      if (blockedSlotSet.has(slotKey(day, period)) || blockedSlotSet.has(slotKey(day, period + 1))) continue
       if (classGrid.has(slotKey(day, period)) || classGrid.has(slotKey(day, period + 1))) continue
       if (isMath && lunchAfterPeriod != null && (period > lunchAfterPeriod || period + 1 > lunchAfterPeriod)) continue
 
