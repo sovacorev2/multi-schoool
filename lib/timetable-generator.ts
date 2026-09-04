@@ -419,9 +419,17 @@ function findBestDoubleSlot(
   return candidates[0]
 }
 
+export interface TimetableExistingBooking {
+  teacherId: string
+  day: number
+  startMinutes: number
+  endMinutes: number
+}
+
 export function generateTimetable(
   classes: TimetableClassInput[],
-  teacherMaxPerDay: Map<string, number | null>
+  teacherMaxPerDay: Map<string, number | null>,
+  existingBookings: TimetableExistingBooking[] = []
 ): TimetableGenerationResult {
   const entries: TimetableEntry[] = []
   const conflicts: TimetableConflict[] = []
@@ -429,8 +437,14 @@ export function generateTimetable(
 
   // Global across every class AND every category, since a teacher can only
   // be in one real place at one real time regardless of which level's
-  // period-grid a class uses.
+  // period-grid a class uses. Pre-seeded with any already-generated classes
+  // outside the current generation scope (see admin-portal/timetable's
+  // genScope), so a teacher shared across scopes still can't be
+  // double-booked even though this run never touches those other classes.
   const teacherBookings = new TeacherBookings()
+  for (const b of existingBookings) {
+    teacherBookings.book(b.teacherId, b.day, b.startMinutes, b.endMinutes)
+  }
 
   for (const cls of classes) {
     const periodTimeByNumber = new Map(cls.periodStartEndMinutes.map((p) => [p.period, p]))

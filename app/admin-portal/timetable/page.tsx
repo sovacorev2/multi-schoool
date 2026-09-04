@@ -22,7 +22,7 @@ import {
 import { TimetableGrid, type TimetableGridCell } from '@/components/timetable-grid'
 import {
   generateTimetable,
-  type TimetableClassInput, type TimetableConflict, type TimetableWarning,
+  type TimetableClassInput, type TimetableConflict, type TimetableWarning, type TimetableExistingBooking,
 } from '@/lib/timetable-generator'
 import { resolveCategoryGrid, buildMergedColumns, mergedColumnKeyFor, computeTeacherInitials, type ResolvedCategoryGrid } from '@/lib/timetable-merged-view'
 import { generateTimetablePrintHTML, generateBlockTimetablePrintHTML, openTimetablePrintWindow, type BlockTimetableRow } from '@/lib/timetable-print'
@@ -141,8 +141,11 @@ export default function TimetablePage() {
 
   const [genTerm, setGenTerm] = useState(TERMS[0])
   const [genYear, setGenYear] = useState(CURRENT_YEAR.toString())
+  // 'all' or one CBC category - lets a school regenerate just e.g. JSS
+  // without touching a category (like Primary) someone already hand-tuned.
+  const [genScope, setGenScope] = useState('all')
   const [isGenerating, setIsGenerating] = useState(false)
-  const [genResult, setGenResult] = useState<{ entryCount: number; conflicts: TimetableConflict[]; warnings: TimetableWarning[]; levelWarnings: string[] } | null>(null)
+  const [genResult, setGenResult] = useState<{ entryCount: number; conflicts: TimetableConflict[]; warnings: TimetableWarning[]; levelWarnings: string[]; classCount: number } | null>(null)
 
   const [viewMode, setViewMode] = useState<'class' | 'teacher'>('class')
   const [viewTerm, setViewTerm] = useState(TERMS[0])
@@ -581,8 +584,12 @@ export default function TimetablePage() {
     setIsGenerating(true)
     setGenResult(null)
 
+    // Scope to one CBC category if chosen - classes outside it, and their
+    // already-generated/hand-adjusted entries, are left completely untouched.
+    const classesInScope = genScope === 'all' ? classes : classes.filter((cls) => effectiveCategory(cls) === genScope)
+
     const levelWarnings: string[] = []
-    const classInputs: TimetableClassInput[] = classes.map((cls) => {
+    const classInputs: TimetableClassInput[] = classesInScope.map((cls) => {
       const { settings: catSettings, breaks: catBreaks, category, hasOverride } = resolveSettingsAndBreaksForClass(cls)
       if (!hasOverride && !configuredCategories.has(category) && !levelWarnings.includes(category)) {
         levelWarnings.push(category)
@@ -617,15 +624,42 @@ export default function TimetablePage() {
 
     const teacherMaxPerDay = new Map(teachers.map((t) => [t.id, t.max_periods_per_day]))
 
-    const result = generateTimetable(classInputs, teacherMaxPerDay)
-
     const supabase = createClient()
+
+    // When scoped to one category, pull the OTHER categories' already-generated
+    // entries for this term/year and feed their teacher bookings in as
+    // "already taken" slots (converted to real clock-time via each of those
+    // classes' own grid) - otherwise a teacher shared across scopes could get
+    // double-booked into a conflicting slot this run never even looks at.
+    let existingBookings: TimetableExistingBooking[] = []
+    const classesOutOfScope = genScope === 'all' ? [] : classes.filter((cls) => effectiveCategory(cls) !== genScope)
+    if (classesOutOfScope.length > 0) {
+      const { data: outsideEntries } = await supabase
+        .from('timetable_entries')
+        .select('class_id, teacher_id, day_of_week, period_number')
+        .eq('school_id', currentSchool.id)
+        .eq('term', genTerm)
+        .eq('year', Number(genYear))
+        .in('class_id', classesOutOfScope.map((c) => c.id))
+        .not('teacher_id', 'is', null)
+
+      existingBookings = (outsideEntries || []).flatMap((e: { class_id: string; teacher_id: string | null; day_of_week: number; period_number: number }) => {
+        const grid = allClassGrids.get(e.class_id)
+        const period = grid?.periodStartEndMinutes.find((p) => p.period === e.period_number)
+        if (!period || !e.teacher_id) return []
+        return [{ teacherId: e.teacher_id, day: e.day_of_week, startMinutes: period.startMinutes, endMinutes: period.endMinutes }]
+      })
+    }
+
+    const result = generateTimetable(classInputs, teacherMaxPerDay, existingBookings)
+
     await supabase
       .from('timetable_entries')
       .delete()
       .eq('school_id', currentSchool.id)
       .eq('term', genTerm)
       .eq('year', Number(genYear))
+      .in('class_id', classesInScope.map((c) => c.id))
 
     if (result.entries.length > 0) {
       const rows = result.entries.map((e) => ({
@@ -646,7 +680,7 @@ export default function TimetablePage() {
       }
     }
 
-    setGenResult({ entryCount: result.entries.length, conflicts: result.conflicts, warnings: result.warnings, levelWarnings })
+    setGenResult({ entryCount: result.entries.length, conflicts: result.conflicts, warnings: result.warnings, levelWarnings, classCount: classesInScope.length })
     setIsGenerating(false)
 
     // Point the View tab at what was just generated - otherwise it's still
@@ -1549,10 +1583,21 @@ export default function TimetablePage() {
           <Card>
             <CardHeader>
               <CardTitle>Generate Timetable</CardTitle>
-              <CardDescription>Builds a fresh timetable for every class for the selected term, replacing any timetable already generated for it.</CardDescription>
+              <CardDescription>
+                {genScope === 'all'
+                  ? 'Builds a fresh timetable for every class for the selected term, replacing any timetable already generated for it.'
+                  : `Builds a fresh timetable for ${genScope} only - every other level's timetable (including anything hand-adjusted) is left exactly as it is.`}
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-wrap gap-3">
+                <Select value={genScope} onValueChange={setGenScope}>
+                  <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All classes</SelectItem>
+                    {presentCategories.map((c) => <SelectItem key={c} value={c}>{c} only</SelectItem>)}
+                  </SelectContent>
+                </Select>
                 <Select value={genTerm} onValueChange={setGenTerm}>
                   <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
                   <SelectContent>{TERMS.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
@@ -1571,7 +1616,7 @@ export default function TimetablePage() {
               {genResult && (
                 <div className="space-y-3 pt-3 border-t">
                   <div className="flex items-center gap-2 text-sm font-medium text-emerald-700">
-                    <CheckCircle2 className="w-4 h-4" /> Placed {genResult.entryCount} periods across {classes.length} classes.
+                    <CheckCircle2 className="w-4 h-4" /> Placed {genResult.entryCount} periods across {genResult.classCount} class{genResult.classCount !== 1 ? 'es' : ''}.
                   </div>
 
                   {genResult.levelWarnings.length > 0 && (

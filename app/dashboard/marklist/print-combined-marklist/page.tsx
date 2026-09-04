@@ -1,7 +1,7 @@
 'use client'
 
 import { useSearchParams } from 'next/navigation'
-import { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useSchool } from '@/lib/school-context'
 import { cachedFetch, TTL } from '@/lib/query-cache'
@@ -369,6 +369,32 @@ export default function PrintCombinedMarklistPage() {
               </tr>
             )
           })}
+          {/* Subject Means Row - per-subject class average across all combined streams */}
+          <tr className="bg-gray-200 font-bold">
+            <td className="border p-1 text-center" colSpan={3}>MEAN</td>
+            {subjects.map(subj => {
+              const scores = learners.map(l => l.marks[subj.name]).filter((m): m is number => m !== null && m !== undefined)
+              const mean = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0
+              const meanLevel = scores.length > 0 ? getGradeLevelByClass(Math.round(mean), baseClassName, currentSchool?.name) : null
+              return (
+                <React.Fragment key={`mean-${subj.id}`}>
+                  <td className="border p-1 text-center">{scores.length > 0 ? mean.toFixed(1) : '-'}</td>
+                  <td className="border p-1 text-center font-bold" style={{ color: '#1a3a52' }}>{meanLevel ? meanLevel.level : '-'}</td>
+                  <td className="border p-1 text-center font-bold" style={{ color: '#d97706' }}>{meanLevel ? meanLevel.points : '-'}</td>
+                </React.Fragment>
+              )
+            })}
+            <td className="border p-1 text-center">
+              {learners.length === 0
+                ? '-'
+                : isKakoli
+                  ? (learners.reduce((a, l) => a + l.totalPoints, 0) / learners.length).toFixed(1)
+                  : Math.round(learners.reduce((a, l) => a + l.total, 0) / learners.length)}
+            </td>
+            <td className="border p-1 text-center" style={{ color: '#1a3a52' }}>
+              {learners.length > 0 ? (getGradeLevelByClass(Math.round(learners.reduce((a, l) => a + l.average, 0) / learners.length), baseClassName, currentSchool?.name)?.level || '-') : '-'}
+            </td>
+          </tr>
         </tbody>
       </table>
 
