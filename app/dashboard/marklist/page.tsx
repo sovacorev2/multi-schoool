@@ -3669,11 +3669,48 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                   <td style="border: 1px solid #333; padding: 6px; ${isTop3 ? 'font-weight: 600;' : ''}">${learner.name}</td>
                                   <td style="border: 1px solid #333; padding: 6px; text-align: center; font-size: 12px;">${learner.stream}</td>
                                   ${subjectCells}
-                                  <td style="border: 1px solid #333; padding: 6px; text-align: center; font-weight: bold;">${learner.total}</td>
+                                  <td style="border: 1px solid #333; padding: 6px; text-align: center; font-weight: bold;">${isKakoli ? (learner as any).totalPoints : learner.total}</td>
                                   <td style="border: 1px solid #333; padding: 6px; text-align: center; font-weight: 600; color: #000000;">${overallLevel}</td>
                                 </tr>
                               `
                             }).join('')
+
+                            // Subject Means Row - per-subject class average across all combined streams
+                            const meanCells = combinedMarklistData.subjects.map(subj => {
+                              const scores = combinedMarklistData.learners.map(l => l.marks[subj.name]).filter((m): m is number => m !== null && m !== undefined)
+                              const mean = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : null
+                              const meanGrade = mean !== null ? getGradeLevelByClass(Math.round(mean), selectedBaseClass, currentSchool?.name) : null
+                              if (isLowerGradePointsEntry) {
+                                return `
+                                  <td style="border: 1px solid #333; padding: 4px; text-align: center; font-weight: bold; font-size: 11px;">${meanGrade ? meanGrade.level : '-'}</td>
+                                  <td style="border: 1px solid #333; padding: 4px; text-align: center; color: #d97706; font-weight: bold; font-size: 11px;">${meanGrade ? meanGrade.points : '-'}</td>
+                                `
+                              }
+                              return `
+                                <td style="border: 1px solid #333; padding: 4px; text-align: center; font-weight: bold;">${mean !== null ? mean.toFixed(1) : '-'}</td>
+                                <td style="border: 1px solid #333; padding: 4px; text-align: center; font-weight: bold; font-size: 11px;">${meanGrade ? meanGrade.level : '-'}</td>
+                                <td style="border: 1px solid #333; padding: 4px; text-align: center; color: #d97706; font-weight: bold; font-size: 11px;">${meanGrade ? meanGrade.points : '-'}</td>
+                              `
+                            }).join('')
+
+                            const learnerCount = combinedMarklistData.learners.length
+                            const meanTotal = learnerCount === 0
+                              ? '-'
+                              : isKakoli
+                                ? (combinedMarklistData.learners.reduce((a, l) => a + ((l as any).totalPoints ?? 0), 0) / learnerCount).toFixed(1)
+                                : Math.round(combinedMarklistData.learners.reduce((a, l) => a + l.total, 0) / learnerCount)
+                            const meanOverallLevel = learnerCount > 0
+                              ? (getLevelByTotal(combinedMarklistData.learners.reduce((a, l) => a + l.total, 0) / learnerCount, subjects.length, currentClass?.name, currentSchool?.name)?.level || '-')
+                              : '-'
+
+                            const meanRow = `
+                              <tr style="background: #e5e7eb; font-weight: bold;">
+                                <td style="border: 1px solid #333; padding: 6px;" colSpan="3">MEAN</td>
+                                ${meanCells}
+                                <td style="border: 1px solid #333; padding: 6px; text-align: center;">${meanTotal}</td>
+                                <td style="border: 1px solid #333; padding: 6px; text-align: center; color: #000000;">${meanOverallLevel}</td>
+                              </tr>
+                            `
 
                             // Build subject headers (2-3 columns per subject based on whether marks shown)
                             const headerColSpan = isLowerGradePointsEntry ? 2 : 3
@@ -3726,7 +3763,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
         <th rowSpan="2">Student Name</th>
         <th rowSpan="2" style="width: 50px;">Stream</th>
         ${subjectHeaders}
-        <th rowSpan="2" style="width: 45px;">Total</th>
+        <th rowSpan="2" style="width: 45px;">${isKakoli ? 'Total Points' : 'Total'}</th>
         <th rowSpan="2" style="width: 60px;">Level</th>
       </tr>
       <tr>
@@ -3735,6 +3772,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
     </thead>
     <tbody>
       ${tableRows}
+      ${meanRow}
     </tbody>
   </table>
 
@@ -4084,7 +4122,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                               {combinedMarklistData.subjects.map(subject => (
                                 <th key={subject.id} className="border border-gray-300 px-3 py-2 text-center text-xs">{subject.name}</th>
                               ))}
-                              <th className="border border-gray-300 px-3 py-2 text-center">Total</th>
+                              <th className="border border-gray-300 px-3 py-2 text-center">{isKakoli ? 'Total Points' : 'Total'}</th>
                               <th className="border border-gray-300 px-3 py-2 text-center">Level</th>
                               <th className="border border-gray-300 px-3 py-2 text-center">Rank</th>
                             </tr>
@@ -4100,13 +4138,41 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                                     {learner.marks[subject.name] !== null && learner.marks[subject.name] !== undefined ? learner.marks[subject.name] : '-'}
                                   </td>
                                 ))}
-                                <td className="border border-gray-300 px-3 py-2 text-center font-semibold">{learner.total}</td>
+                                <td className="border border-gray-300 px-3 py-2 text-center font-semibold">{isKakoli ? (learner as any).totalPoints : learner.total}</td>
                                 <td className="border border-gray-300 px-3 py-2 text-center font-semibold" style={{ color: '#000000' }}>
                                   {getLevelByAverageMark((learner as any).total ?? 0, subjects.length, currentClass?.name, currentSchool?.name)?.level || '-'}
                                 </td>
                                 <td className="border border-gray-300 px-3 py-2 text-center font-semibold">{learner.rank}</td>
                               </tr>
                             ))}
+                            {/* Subject Means Row - per-subject class average across all combined streams */}
+                            <tr className="bg-slate-200 dark:bg-slate-700 font-bold">
+                              <td className="border border-gray-300 px-3 py-2" colSpan={3}>MEAN</td>
+                              {combinedMarklistData.subjects.map(subject => {
+                                const scores = combinedMarklistData.learners
+                                  .map(l => l.marks[subject.name])
+                                  .filter((m): m is number => m !== null && m !== undefined)
+                                const mean = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : null
+                                return (
+                                  <td key={subject.id} className="border border-gray-300 px-3 py-2 text-center text-xs">
+                                    {mean !== null ? mean.toFixed(1) : '-'}
+                                  </td>
+                                )
+                              })}
+                              <td className="border border-gray-300 px-3 py-2 text-center">
+                                {combinedMarklistData.learners.length === 0
+                                  ? '-'
+                                  : isKakoli
+                                    ? (combinedMarklistData.learners.reduce((a, l) => a + ((l as any).totalPoints ?? 0), 0) / combinedMarklistData.learners.length).toFixed(1)
+                                    : Math.round(combinedMarklistData.learners.reduce((a, l) => a + l.total, 0) / combinedMarklistData.learners.length)}
+                              </td>
+                              <td className="border border-gray-300 px-3 py-2 text-center" style={{ color: '#000000' }}>
+                                {combinedMarklistData.learners.length > 0
+                                  ? (getLevelByAverageMark(combinedMarklistData.learners.reduce((a, l) => a + l.total, 0) / combinedMarklistData.learners.length, subjects.length, currentClass?.name, currentSchool?.name)?.level || '-')
+                                  : '-'}
+                              </td>
+                              <td className="border border-gray-300 px-3 py-2 text-center">-</td>
+                            </tr>
                           </tbody>
                         </table>
                       </div>
