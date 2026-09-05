@@ -444,10 +444,18 @@ export interface TimetableExistingBooking {
   endMinutes: number
 }
 
-export function generateTimetable(
+/** One full pass over every class, in the given order - same greedy
+ * algorithm as before this was made multi-attempt. Because it's a single
+ * sequential pass with no backtracking, it can genuinely leave a slot
+ * unplaced that a different subject/class processing order (or a different
+ * random tiebreak) would have fit - the class-by-class, subject-by-subject
+ * order below is arbitrary, not load-bearing, so trying it several ways and
+ * keeping the best (see generateTimetable) recovers those cases instead of
+ * settling for whichever arrangement the first attempt happened to try. */
+function generateTimetableOnce(
   classes: TimetableClassInput[],
   teacherMaxPerDay: Map<string, number | null>,
-  existingBookings: TimetableExistingBooking[] = []
+  existingBookings: TimetableExistingBooking[]
 ): TimetableGenerationResult {
   const entries: TimetableEntry[] = []
   const conflicts: TimetableConflict[] = []
@@ -464,7 +472,13 @@ export function generateTimetable(
     teacherBookings.book(b.teacherId, b.day, b.startMinutes, b.endMinutes)
   }
 
-  for (const cls of classes) {
+  // Which class gets first pick of a teacher shared across classes matters
+  // as much as subject order does - randomizing it per attempt is what lets
+  // different attempts actually explore different placements instead of
+  // always starving the same later-processed class of the same teacher.
+  const shuffledClasses = [...classes].sort(() => Math.random() - 0.5)
+
+  for (const cls of shuffledClasses) {
     const periodTimeByNumber = new Map(cls.periodStartEndMinutes.map((p) => [p.period, p]))
     const breakAfterPeriodsSet = new Set(cls.breakAfterPeriods)
 
@@ -587,4 +601,48 @@ export function generateTimetable(
   }
 
   return { entries, conflicts, warnings }
+}
+
+/** Total periods still missing across every conflict - the primary thing
+ * worth minimizing between attempts. A subject that fits 4 of its 5 periods
+ * counts as 1 short, not as "still failed" the way a boolean pass/fail would
+ * treat it, so a mostly-fixed attempt properly outranks a mostly-broken one. */
+function shortfall(result: TimetableGenerationResult): number {
+  return result.conflicts.reduce((sum, c) => sum + (c.requested - c.placed), 0)
+}
+
+// A single greedy pass (generateTimetableOnce) is a sequential, no-
+// backtracking heuristic - it can walk itself into a conflict that a
+// different subject/class processing order would have avoided entirely,
+// which is exactly what shows up later as "I manually placed it just fine,
+// so why couldn't the generator?" Since every attempt already randomizes
+// both class order and subject tiebreaks, running several and keeping
+// whichever leaves the fewest periods unplaced costs only a bit of CPU
+// (this runs client-side, same as this app's other heavy computation - see
+// the file-level comment) for a real reduction in leftover blanks, without
+// changing any of the actual scheduling rules.
+const GENERATION_ATTEMPTS = 20
+
+export function generateTimetable(
+  classes: TimetableClassInput[],
+  teacherMaxPerDay: Map<string, number | null>,
+  existingBookings: TimetableExistingBooking[] = [],
+  attempts: number = GENERATION_ATTEMPTS
+): TimetableGenerationResult {
+  let best = generateTimetableOnce(classes, teacherMaxPerDay, existingBookings)
+  let bestShortfall = shortfall(best)
+
+  for (let attempt = 1; attempt < attempts && bestShortfall > 0; attempt++) {
+    const candidate = generateTimetableOnce(classes, teacherMaxPerDay, existingBookings)
+    const candidateShortfall = shortfall(candidate)
+    if (
+      candidateShortfall < bestShortfall ||
+      (candidateShortfall === bestShortfall && candidate.warnings.length < best.warnings.length)
+    ) {
+      best = candidate
+      bestShortfall = candidateShortfall
+    }
+  }
+
+  return best
 }
