@@ -97,15 +97,24 @@ export function minutesToTimeString(mins: number): string {
   return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`
 }
 
-/** Teaching periods that fit in a day, after subtracting break time. */
+/** Teaching periods that fit in a day, after subtracting break time. Only one
+ * break can physically happen after a given period, so entries sharing the
+ * same afterPeriodNumber are deduped (last one wins) before summing - the
+ * same rule computePeriodStartEndMinutes below already applies via its own
+ * Map. Without this, a school that ends up with duplicate break rows for the
+ * same slot (e.g. a re-saved settings form) would have its break minutes
+ * double- or triple-counted here while the actual period grid only ever
+ * blocks out one of them, silently shrinking periodsPerDay far below what's
+ * actually being blocked on the timetable itself. */
 export function computePeriodsPerDay(
   schoolStartTime: string,
   schoolEndTime: string,
   periodLengthMinutes: number,
-  breaks: { durationMinutes: number }[]
+  breaks: { afterPeriodNumber: number; durationMinutes: number }[]
 ): number {
   const totalMinutes = timeStringToMinutes(schoolEndTime) - timeStringToMinutes(schoolStartTime)
-  const totalBreakMinutes = breaks.reduce((sum, b) => sum + b.durationMinutes, 0)
+  const dedupedBreaks = new Map(breaks.map((b) => [b.afterPeriodNumber, b.durationMinutes]))
+  const totalBreakMinutes = [...dedupedBreaks.values()].reduce((sum, d) => sum + d, 0)
   const teachingMinutes = Math.max(0, totalMinutes - totalBreakMinutes)
   return periodLengthMinutes > 0 ? Math.floor(teachingMinutes / periodLengthMinutes) : 0
 }

@@ -39,8 +39,13 @@ export function generateTimetablePrintHTML(params: {
   periodTimes?: TimetablePrintPeriodTime[]
   columns?: TimetablePrintColumn[]
   cells: Record<string, TimetablePrintCell>
+  /** Keyed by "day|<period number>" - a reserved special-activity window
+   * (Assembly, Church, Discussion Time etc.) covering that slot, so the
+   * printout shows what it's actually for instead of a blank "-" that looks
+   * identical to a genuinely unfilled period. */
+  blockedLabels?: Record<string, string>
 }): string {
-  const { title, schoolName, termLabel, daysPerWeek, periodsPerDay, breaks, periodTimes, columns: explicitColumns, cells } = params
+  const { title, schoolName, termLabel, daysPerWeek, periodsPerDay, breaks, periodTimes, columns: explicitColumns, cells, blockedLabels } = params
   const dayLabels = DAY_LABELS.slice(0, daysPerWeek)
 
   let columns: Column[]
@@ -72,6 +77,10 @@ export function generateTimetablePrintHTML(params: {
       const rowCellsHTML = columns
         .map((col) => {
           if (col.type === 'break') return `<td style="border:1px solid #d1d5db;background:#fffbeb;"></td>`
+          const blockedLabel = blockedLabels?.[`${day}|${col.key}`]
+          if (blockedLabel) {
+            return `<td style="border:1px solid #d1d5db;padding:6px 8px;vertical-align:top;background:#f5f3ff;"><span style="font-weight:700;color:#6d28d9;">${blockedLabel}</span></td>`
+          }
           const cell = cells[`${day}|${col.key}`]
           return `<td style="border:1px solid #d1d5db;padding:6px 8px;vertical-align:top;">${
             cell

@@ -47,7 +47,7 @@ export function resolveCategoryGrid(category: string, settings: CategorySettings
     settings.school_start_time,
     settings.school_end_time,
     settings.period_length_minutes,
-    breaks.map((b) => ({ durationMinutes: b.duration_minutes }))
+    breaksForCompute
   )
   return {
     category,

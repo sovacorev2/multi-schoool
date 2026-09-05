@@ -333,13 +333,21 @@ export default function TimetablePage() {
   const addBreak = async (category: string) => {
     if (!currentSchool || !category || !newBreakName.trim() || !newBreakAfterPeriod) return
     const supabase = createClient()
+    const afterPeriod = Number(newBreakAfterPeriod)
+    // Only one break can physically happen after a given period - replace
+    // whatever was already there instead of stacking a duplicate, which
+    // would silently multiply the minutes computePeriodsPerDay subtracts
+    // from the day (a school clicking Add twice for the same slot could
+    // otherwise end up with a day that's mostly "break" on paper).
+    await supabase.from('timetable_breaks').delete()
+      .eq('school_id', currentSchool.id).eq('category', category).is('class_id', null).eq('after_period_number', afterPeriod)
     const { data, error } = await supabase
       .from('timetable_breaks')
       .insert({
         school_id: currentSchool.id,
         category,
         name: newBreakName.trim(),
-        after_period_number: Number(newBreakAfterPeriod),
+        after_period_number: afterPeriod,
         duration_minutes: Number(newBreakDuration) || 30,
       })
       .select('*')
@@ -350,7 +358,7 @@ export default function TimetablePage() {
     }
     setBreaksByCategory((prev) => ({
       ...prev,
-      [category]: [...(prev[category] || []), data as BreakRow].sort((a, b) => a.after_period_number - b.after_period_number),
+      [category]: [...(prev[category] || []).filter((b) => b.after_period_number !== afterPeriod), data as BreakRow].sort((a, b) => a.after_period_number - b.after_period_number),
     }))
     setNewBreakName('')
     setNewBreakAfterPeriod('')
@@ -564,6 +572,11 @@ export default function TimetablePage() {
   const addClassOverrideBreak = async (classId: string, category: string) => {
     if (!currentSchool || !newBreakName.trim() || !newBreakAfterPeriod) return
     const supabase = createClient()
+    const afterPeriod = Number(newBreakAfterPeriod)
+    // Same replace-not-stack rule as addBreak - a class's own break at a given
+    // position replaces its predecessor instead of piling up alongside it.
+    await supabase.from('timetable_breaks').delete()
+      .eq('school_id', currentSchool.id).eq('class_id', classId).eq('after_period_number', afterPeriod)
     const { data, error } = await supabase
       .from('timetable_breaks')
       .insert({
@@ -571,7 +584,7 @@ export default function TimetablePage() {
         category,
         class_id: classId,
         name: newBreakName.trim(),
-        after_period_number: Number(newBreakAfterPeriod),
+        after_period_number: afterPeriod,
         duration_minutes: Number(newBreakDuration) || 30,
       })
       .select('*')
@@ -582,7 +595,7 @@ export default function TimetablePage() {
     }
     setBreaksByClassOverride((prev) => ({
       ...prev,
-      [classId]: [...(prev[classId] || []), data as BreakRow].sort((a, b) => a.after_period_number - b.after_period_number),
+      [classId]: [...(prev[classId] || []).filter((b) => b.after_period_number !== afterPeriod), data as BreakRow].sort((a, b) => a.after_period_number - b.after_period_number),
     }))
     setNewBreakName('')
     setNewBreakAfterPeriod('')
@@ -974,6 +987,32 @@ export default function TimetablePage() {
   const primaryGrid = viewMode === 'class' ? allClassGrids.get(viewClassId) : viewGrids.get(viewClassIds[0])
   const mergedColumns = useMemo(() => (isMergedView ? buildMergedColumns([...viewGrids.values()]) : null), [isMergedView, viewGrids])
 
+  // Reserved special-activity windows (Assembly, Church, Discussion Time
+  // etc.) covering this class's slots, keyed by "day|period" - so the grid
+  // and printout can show what a cell is actually reserved for instead of
+  // looking exactly like a genuinely unfilled period. Class ("By Class")
+  // view only - a merged teacher view spans several classes' own blocked
+  // windows at once and isn't worth the ambiguity of picking one to show.
+  const viewBlockedLabels = useMemo(() => {
+    const labels: Record<string, string> = {}
+    if (viewMode !== 'class' || !viewClassId || !primaryGrid) return labels
+    const cls = classes.find((c) => c.id === viewClassId)
+    if (!cls) return labels
+    const windows = resolveBlockedWindowsForClass(cls)
+    for (const w of windows) {
+      const wStart = timeStringToMinutes(w.start_time)
+      const wEnd = timeStringToMinutes(w.end_time)
+      const days = w.day_of_week != null ? [w.day_of_week] : Array.from({ length: primaryGrid.daysPerWeek }, (_, i) => i + 1)
+      for (const day of days) {
+        for (const p of primaryGrid.periodStartEndMinutes) {
+          if (p.startMinutes < wEnd && p.endMinutes > wStart) labels[`${day}|${p.period}`] = w.label
+        }
+      }
+    }
+    return labels
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode, viewClassId, primaryGrid, classes, blockedWindowsByCategory, blockedWindowsByClassOverride])
+
   const entryTimeRange = (entry: EntryRow): { startMinutes: number; endMinutes: number } | null => {
     const grid = allClassGrids.get(entry.class_id)
     const p = grid?.periodStartEndMinutes.find((x) => x.period === entry.period_number)
@@ -1168,6 +1207,7 @@ export default function TimetablePage() {
           breaks: primaryGridBreaks,
           periodTimes: primaryGrid?.periodTimes || [],
           cells: gridCells,
+          blockedLabels: viewBlockedLabels,
         })
     openTimetablePrintWindow(html)
   }
@@ -1974,6 +2014,7 @@ export default function TimetablePage() {
                   breaks={primaryGridBreaks}
                   periodTimes={primaryGrid?.periodTimes || []}
                   cells={gridCells}
+                  blockedLabels={viewBlockedLabels}
                   onCellClick={viewMode === 'class' ? handleCellClick : undefined}
                   highlightedKey={swapSelection ? `${swapSelection.day}|${swapSelection.period}` : undefined}
                 />

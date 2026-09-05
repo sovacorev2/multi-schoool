@@ -45,6 +45,7 @@ export function TimetableGrid({
   periodTimes,
   columns: explicitColumns,
   cells,
+  blockedLabels,
   onCellClick,
   highlightedKey,
 }: {
@@ -56,6 +57,10 @@ export function TimetableGrid({
   columns?: TimetableGridColumn[]
   /** Keyed by "day|<column key>" - the column key is the period number (as a string) in normal mode, or the explicit column's own key in merged mode. */
   cells: Record<string, TimetableGridCell>
+  /** Keyed by "day|<period number>" - a reserved special-activity window (Assembly,
+   * Church, Discussion Time etc.) covering that slot, so the cell can show what it's
+   * actually for instead of just sitting blank like a genuinely unfilled period. */
+  blockedLabels?: Record<string, string>
   onCellClick?: (day: number, period: number, cell: TimetableGridCell | null) => void
   /** "day|<column key>" of a cell to highlight - used for swap mode's first selected cell. */
   highlightedKey?: string
@@ -111,6 +116,14 @@ export function TimetableGrid({
                   }
                   const cellKey = `${day}|${col.key}`
                   const cell = cells[cellKey] || null
+                  const blockedLabel = blockedLabels?.[`${day}|${col.key}`]
+                  if (blockedLabel) {
+                    return (
+                      <td key={col.key} className="border border-gray-300 px-2 py-2 text-xs align-top bg-purple-50">
+                        <span className="font-medium text-purple-700">{blockedLabel}</span>
+                      </td>
+                    )
+                  }
                   const clickable = !!onCellClick
                   const isHighlighted = highlightedKey === cellKey
                   return (
