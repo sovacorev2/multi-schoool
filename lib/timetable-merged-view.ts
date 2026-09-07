@@ -13,6 +13,7 @@ import {
   computePeriodTimes,
   computePeriodStartEndMinutes,
   minutesToTimeString,
+  timeStringToMinutes,
   type TimetablePeriodStartEnd,
   type TimetablePeriodTime,
 } from './timetable-generator'
@@ -39,6 +40,10 @@ export interface ResolvedCategoryGrid {
   periodStartEndMinutes: TimetablePeriodStartEnd[]
   periodTimes: TimetablePeriodTime[]
   breaks: CategoryBreakRow[]
+  /** The declared end of the school day - not necessarily when the last
+   * period actually ends (see computeBlockedSlots below for why that gap
+   * matters). */
+  schoolEndTime: string
 }
 
 export function resolveCategoryGrid(category: string, settings: CategorySettingsRow, breaks: CategoryBreakRow[]): ResolvedCategoryGrid {
@@ -56,7 +61,61 @@ export function resolveCategoryGrid(category: string, settings: CategorySettings
     periodStartEndMinutes: computePeriodStartEndMinutes(settings.school_start_time, settings.period_length_minutes, periodsPerDay, breaksForCompute),
     periodTimes: computePeriodTimes(settings.school_start_time, settings.period_length_minutes, periodsPerDay, breaksForCompute),
     breaks,
+    schoolEndTime: settings.school_end_time,
   }
+}
+
+export interface BlockedWindowInput {
+  day_of_week: number | null
+  start_time: string
+  end_time: string
+  label: string
+}
+
+export interface BlockedSlot {
+  day: number
+  period: number
+  label: string
+}
+
+/** Maps each applicable blocked window to the (day, period) pairs it covers,
+ * by real clock-time overlap with the class's own resolved period grid.
+ * day_of_week null applies to every day in the week.
+ *
+ * A fixed period length rarely divides the declared school day evenly -
+ * computePeriodsPerDay floors the division, so there's commonly a handful
+ * of leftover minutes at the very end of the day (sometimes 30-40+) that no
+ * period ever covers. A blocked window placed in exactly that trailing gap
+ * - "one more thing before end of day" is exactly what a closing
+ * discussion, assembly, or games slot usually is - would otherwise overlap
+ * no period at all and silently vanish: not blocked at generation time, not
+ * shown on the grid or printout, with no error to explain why. So a window
+ * that overlaps nothing but starts at or after the grid's last period and
+ * before the declared school end time still attaches to that last period
+ * instead of being dropped. */
+export function computeBlockedSlots(
+  windows: BlockedWindowInput[],
+  daysPerWeek: number,
+  periodStartEndMinutes: TimetablePeriodStartEnd[],
+  schoolEndTime: string
+): BlockedSlot[] {
+  const slots: BlockedSlot[] = []
+  const schoolEndMinutes = timeStringToMinutes(schoolEndTime)
+  const lastPeriod = periodStartEndMinutes[periodStartEndMinutes.length - 1]
+  for (const w of windows) {
+    const wStart = timeStringToMinutes(w.start_time)
+    const wEnd = timeStringToMinutes(w.end_time)
+    const days = w.day_of_week != null ? [w.day_of_week] : Array.from({ length: daysPerWeek }, (_, i) => i + 1)
+    for (const day of days) {
+      const overlapping = periodStartEndMinutes.filter((p) => p.startMinutes < wEnd && p.endMinutes > wStart)
+      if (overlapping.length > 0) {
+        for (const p of overlapping) slots.push({ day, period: p.period, label: w.label })
+      } else if (lastPeriod && wStart >= lastPeriod.endMinutes && wStart < schoolEndMinutes) {
+        slots.push({ day, period: lastPeriod.period, label: w.label })
+      }
+    }
+  }
+  return slots
 }
 
 export interface MergedColumn {

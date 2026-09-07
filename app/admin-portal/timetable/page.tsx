@@ -21,10 +21,10 @@ import {
 } from 'lucide-react'
 import { TimetableGrid, type TimetableGridCell } from '@/components/timetable-grid'
 import {
-  generateTimetable, timeStringToMinutes,
+  generateTimetable,
   type TimetableClassInput, type TimetableConflict, type TimetableWarning, type TimetableExistingBooking,
 } from '@/lib/timetable-generator'
-import { resolveCategoryGrid, buildMergedColumns, mergedColumnKeyFor, computeTeacherInitials, type ResolvedCategoryGrid } from '@/lib/timetable-merged-view'
+import { resolveCategoryGrid, buildMergedColumns, mergedColumnKeyFor, computeTeacherInitials, computeBlockedSlots, type ResolvedCategoryGrid } from '@/lib/timetable-merged-view'
 import { generateTimetablePrintHTML, generateBlockTimetablePrintHTML, openTimetablePrintWindow, type BlockTimetableRow } from '@/lib/timetable-print'
 import { CBC_CATEGORIES, getCategoryForClass } from '@/lib/cbc-categories'
 import { fetchAllRows } from '@/lib/fetch-all-rows'
@@ -465,29 +465,6 @@ export default function TimetablePage() {
     return blockedWindowsByCategory[category] || []
   }
 
-  /** Converts a class's applicable blocked windows into concrete (day, period)
-   * pairs by checking each of its own periods (real clock-time, from its
-   * resolved grid) for overlap with each window. day_of_week null = applies
-   * to every day in the class's week. */
-  const computeBlockedSlots = (
-    windows: BlockedWindowRow[],
-    daysPerWeek: number,
-    periodStartEndMinutes: { period: number; startMinutes: number; endMinutes: number }[]
-  ): { day: number; period: number }[] => {
-    const slots: { day: number; period: number }[] = []
-    for (const w of windows) {
-      const wStart = timeStringToMinutes(w.start_time)
-      const wEnd = timeStringToMinutes(w.end_time)
-      const days = w.day_of_week != null ? [w.day_of_week] : Array.from({ length: daysPerWeek }, (_, i) => i + 1)
-      for (const day of days) {
-        for (const p of periodStartEndMinutes) {
-          if (p.startMinutes < wEnd && p.endMinutes > wStart) slots.push({ day, period: p.period })
-        }
-      }
-    }
-    return slots
-  }
-
   const enableClassOverride = async (cls: Class, category: string) => {
     if (!currentSchool) return
     // Seed from the category's current settings/breaks (same copy-then-edit
@@ -759,7 +736,7 @@ export default function TimetablePage() {
       }
       const grid = resolveCategoryGrid(category, catSettings, catBreaks)
       const blockedWindows = resolveBlockedWindowsForClass(cls)
-      const blockedSlots = computeBlockedSlots(blockedWindows, grid.daysPerWeek, grid.periodStartEndMinutes)
+      const blockedSlots = computeBlockedSlots(blockedWindows, grid.daysPerWeek, grid.periodStartEndMinutes, catSettings.school_end_time)
 
       return {
         classId: cls.id,
@@ -999,16 +976,8 @@ export default function TimetablePage() {
     const cls = classes.find((c) => c.id === viewClassId)
     if (!cls) return labels
     const windows = resolveBlockedWindowsForClass(cls)
-    for (const w of windows) {
-      const wStart = timeStringToMinutes(w.start_time)
-      const wEnd = timeStringToMinutes(w.end_time)
-      const days = w.day_of_week != null ? [w.day_of_week] : Array.from({ length: primaryGrid.daysPerWeek }, (_, i) => i + 1)
-      for (const day of days) {
-        for (const p of primaryGrid.periodStartEndMinutes) {
-          if (p.startMinutes < wEnd && p.endMinutes > wStart) labels[`${day}|${p.period}`] = w.label
-        }
-      }
-    }
+    const slots = computeBlockedSlots(windows, primaryGrid.daysPerWeek, primaryGrid.periodStartEndMinutes, primaryGrid.schoolEndTime)
+    for (const s of slots) labels[`${s.day}|${s.period}`] = s.label
     return labels
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMode, viewClassId, primaryGrid, classes, blockedWindowsByCategory, blockedWindowsByClassOverride])
