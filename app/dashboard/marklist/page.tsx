@@ -1458,7 +1458,37 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
 
     // Build subject headers (two rows: subject name spanning 2-3 columns based on whether marks shown, then LVL/PTS or MKS/LVL/PTS)
     const colSpan = isLowerGradePointsEntry ? 2 : 3
-    const subjectHeadersRow1 = subjects.map(s => 
+
+    // table-layout: fixed (below) only respects explicit widths from a
+    // <colgroup>/<col> when the header row itself uses colspan'd cells like
+    // ours does - so column widths are set here, not inferred from content.
+    // Without this, a class with several subjects had nothing stopping the
+    // table from growing wider than the printable page: "auto" layout lets
+    // every column claim whatever width its content (and any nowrap cell)
+    // demands, and the browser silently clips whatever runs past the page's
+    // right edge instead of shrinking to fit - exactly the missing
+    // Total/Level column reported on a 6-subject printout. Reserving a
+    // fixed share for No./Name/Total/Level and splitting the remainder
+    // across subject columns keeps the whole table within page width no
+    // matter how many subjects a class has.
+    const totalSubjectCols = subjects.length * colSpan
+    const noColWidthPct = 3
+    const nameColWidthPct = subjects.length <= 4 ? 16 : 12
+    const totalColWidthPct = 6
+    const levelColWidthPct = 6
+    const reservedPct = noColWidthPct + nameColWidthPct + totalColWidthPct + levelColWidthPct
+    const perSubjectColWidthPct = totalSubjectCols > 0 ? (100 - reservedPct) / totalSubjectCols : 0
+    const colGroup = `
+      <colgroup>
+        <col style="width: ${noColWidthPct}%;">
+        <col style="width: ${nameColWidthPct}%;">
+        ${subjects.map(() => Array.from({ length: colSpan }, () => `<col style="width: ${perSubjectColWidthPct}%;">`).join('')).join('')}
+        <col style="width: ${totalColWidthPct}%;">
+        <col style="width: ${levelColWidthPct}%;">
+      </colgroup>
+    `
+
+    const subjectHeadersRow1 = subjects.map(s =>
       `<th colSpan="${colSpan}" style="border: 1px solid #333; padding: ${headerPad}; text-align: center; font-size: ${baseFontSize}px; background: #e5e7eb;">${getSubjectDisplay(s.name).toUpperCase()}</th>`
     ).join('')
     
@@ -1505,7 +1535,7 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
       const avgPerformanceLevel = getLevelByTotal(result.total, subjects.length, currentClass?.name, currentSchool?.name)
       return `<tr style="background: ${idx % 2 === 0 ? '#fff' : '#f3f4f6'};">
         <td style="border: 1px solid #333; padding: ${cellPad}; text-align: center; font-size: ${baseFontSize}px;">${idx + 1}</td>
-        <td style="border: 1px solid #333; padding: ${cellPad}; text-align: left; font-size: ${nameFontSize}px; font-weight: 500; white-space: nowrap;">${result.learner.name}</td>
+        <td style="border: 1px solid #333; padding: ${cellPad}; text-align: left; font-size: ${nameFontSize}px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${result.learner.name}</td>
         ${subjectCells}
         <td style="border: 1px solid #333; padding: ${cellPad}; text-align: center; font-size: ${baseFontSize}px; font-weight: bold;">${result.total}</td>
         <td style="border: 1px solid #333; padding: ${cellPad}; text-align: center; font-size: ${baseFontSize}px; font-weight: bold; color: #000000;">${avgPerformanceLevel ? avgPerformanceLevel.level : '-'}</td>
@@ -1556,7 +1586,8 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
           <p style="font-size: 7px; color: #666; margin: 0; padding: 0;">Teacher: ${teacherName || 'N/A'} &nbsp;|&nbsp; Date: ${new Date().toLocaleDateString()}</p>
         </div>
         
-        <table style="width: 100%; border-collapse: collapse; border: 1px solid #333; table-layout: auto;">
+        <table style="width: 100%; border-collapse: collapse; border: 1px solid #333; table-layout: fixed;">
+          ${colGroup}
           <thead>
             <tr style="background: #e5e7eb;">
               <th style="border: 1px solid #333; padding: ${headerPad}; text-align: center; font-size: ${baseFontSize}px; white-space: nowrap;">No.</th>
