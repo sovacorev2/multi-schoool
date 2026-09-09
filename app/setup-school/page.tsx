@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { createSchoolCredentials } from '@/app/actions/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -290,7 +291,6 @@ export default function SetupSchoolPage() {
           phone: formData.phone || null,
           address: formData.address || null,
           primary_color: formData.primary_color,
-          admin_password: formData.admin_password,
           logo_url: uploadedLogoUrl,
           is_active: true,
         })
@@ -303,6 +303,14 @@ export default function SetupSchoolPage() {
       }
 
       console.log('[v0] School created successfully:', school.id)
+
+      // admin_password lives in its own locked-down table now, not on
+      // schools itself - set separately, server-side.
+      const credResult = await createSchoolCredentials(school.id, formData.admin_password)
+      if (!credResult.success) {
+        console.error('[v0] Failed to set admin password:', credResult.error)
+        throw new Error(credResult.error || 'Failed to set the admin password')
+      }
 
       // Create selected classes (including custom ones and streams)
       const standardClasses = ALL_CLASSES.filter(c => selectedClasses.includes(c.name))

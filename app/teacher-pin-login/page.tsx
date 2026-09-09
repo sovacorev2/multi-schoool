@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
+import { teacherPinLogin } from '@/app/actions/auth'
 import { Lock, Eye, EyeOff } from 'lucide-react'
 
 export default function TeacherPINLogin() {
@@ -76,67 +77,31 @@ export default function TeacherPINLogin() {
         throw new Error('School information not available. Please refresh and try again.')
       }
 
-      // Verify PIN and get teacher details (simplified query)
-      const { data: teacher, error: teacherError } = await supabase
-        .from('teacher_accounts')
-        .select('id, first_name, last_name, email, school_id, is_active')
-        .eq('pin', pin)
-        .eq('school_id', schoolId)
-        .single()
+      // Verify PIN server-side - the browser never needs (and, once
+      // teacher_accounts.pin is locked down at the database level, never
+      // will have) SELECT access to the pin column to log a teacher in.
+      const result = await teacherPinLogin(schoolId, pin)
 
-      console.log('[v0] PIN Login - Teacher Query:', { teacherError, found: !!teacher })
-
-      if (teacherError || !teacher) {
-        console.log('[v0] Teacher error:', teacherError?.message)
-        throw new Error('Invalid PIN or teacher not found. Please check and try again.')
+      if (!result.success || !result.teacher) {
+        throw new Error(result.error || 'Invalid PIN or teacher not found. Please check and try again.')
       }
+      const teacher = result.teacher
 
-      // Fetch assignments separately (note: the column is 'user_id', not 'teacher_id')
-      const { data: assignments, error: assignmentError } = await supabase
-        .from('teacher_assignments')
-        .select('id, class_id, subject_id')
-        .eq('user_id', teacher.id)
-        .eq('school_id', schoolId)
-        .eq('is_active', true)
-
-      console.log('[v0] Assignments fetched:', assignments?.length || 0, 'error:', assignmentError?.message)
-
-      // Fetch class and subject details separately to avoid relationship issues
-      let classesMap: Record<string, any> = {}
-      let subjectsMap: Record<string, any> = {}
-
-      if (assignments && assignments.length > 0) {
-        const classIds = [...new Set(assignments.map(a => a.class_id))]
-        const subjectIds = [...new Set(assignments.map(a => a.subject_id).filter(Boolean))]
-
-        if (classIds.length > 0) {
-          const { data: classes } = await supabase
-            .from('classes')
-            .select('id, name')
-            .in('id', classIds)
-          classes?.forEach(c => { classesMap[c.id] = c })
-        }
-
-        if (subjectIds.length > 0) {
-          const { data: subjects } = await supabase
-            .from('subjects')
-            .select('id, name')
-            .in('id', subjectIds)
-          subjects?.forEach(s => { subjectsMap[s.id] = s })
-        }
-      }
-
-      // Enrich assignments with class and subject details
-      const enrichedAssignments = assignments?.map(a => ({
-        ...a,
-        classes: classesMap[a.class_id] || null,
-        subjects: subjectsMap[a.subject_id] || null,
-      })) || []
+      // Enrich assignments with class and subject details, matching the
+      // shape the rest of the teacher dashboard already expects from
+      // localStorage.
+      const enrichedAssignments = (result.assignments || []).map(a => ({
+        id: a.id,
+        class_id: a.classId,
+        subject_id: a.subjectId,
+        classes: a.className ? { id: a.classId, name: a.className } : null,
+        subjects: a.subjectId ? { id: a.subjectId, name: a.subjectName } : null,
+      }))
 
       // Store session in localStorage
       const session = {
         teacherId: teacher.id,
-        name: `${teacher.first_name} ${teacher.last_name}`,
+        name: `${teacher.firstName} ${teacher.lastName}`,
         email: teacher.email,
         schoolId: schoolId,
         schoolName: schoolName,

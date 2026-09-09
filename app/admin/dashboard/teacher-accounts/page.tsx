@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge'
 import { Trash2, Plus, Mail, Copy, Check, Search, X } from 'lucide-react'
 import { useSchool } from '@/lib/school-context'
+import { createTeacherAccount, getTeacherPinsForSchool } from '@/app/actions/auth'
 import {
   Select,
   SelectContent,
@@ -77,15 +78,22 @@ export default function TeacherAccountsPage() {
     
     setIsLoading(true)
     try {
-      // Fetch all teachers
-      const { data: teachersData, error: teachersError } = await supabase
-        .from('teacher_accounts')
-        .select('*')
-        .eq('school_id', currentSchool.id)
-        .order('created_at', { ascending: false })
+      // Fetch all teachers - explicit columns, excluding pin (locked down at
+      // the database level; select('*') would error outright once the anon
+      // role loses SELECT on that column). PINs are fetched separately,
+      // gated by the admin_auth cookie, since displaying them here (with a
+      // copy button, below) is a genuine, intentional admin feature.
+      const [{ data: teachersData, error: teachersError }, pinsById] = await Promise.all([
+        supabase
+          .from('teacher_accounts')
+          .select('id, school_id, email, first_name, last_name, is_active, created_at, updated_at, email_sent, phone_number, max_periods_per_day')
+          .eq('school_id', currentSchool.id)
+          .order('created_at', { ascending: false }),
+        getTeacherPinsForSchool(currentSchool.id),
+      ])
 
       if (teachersError) throw teachersError
-      setTeachers(teachersData || [])
+      setTeachers((teachersData || []).map((t: any) => ({ ...t, pin: pinsById[t.id] || '' })))
 
       // Fetch all classes
       const { data: classesData, error: classesError } = await supabase
@@ -101,7 +109,7 @@ export default function TeacherAccountsPage() {
       const { data: assignmentsData, error: assignmentsError } = await supabase
         .from('teacher_assignments')
         .select('teacher_id, class_id')
-        .in('teacher_id', (teachersData || []).map(t => t.id))
+        .in('teacher_id', (teachersData || []).map((t: any) => t.id))
 
       if (assignmentsError) throw assignmentsError
       
@@ -143,41 +151,17 @@ export default function TeacherAccountsPage() {
         throw new Error('Please enter a valid email address')
       }
 
-      // Generate unique 4-digit PIN
-      let pin = ''
-      let isUnique = false
-      
-      while (!isUnique) {
-        pin = String(Math.floor(Math.random() * 10000)).padStart(4, '0')
-        // Check if PIN already exists
-        const { data: existing } = await supabase
-          .from('teacher_accounts')
-          .select('id')
-          .eq('pin', pin)
-          .eq('school_id', currentSchool?.id)
-        
-        isUnique = !existing || existing.length === 0
+      // Server-generated PIN (uniqueness is checked server-side too) -
+      // teacher_accounts.pin isn't something the browser needs SELECT
+      // access to just to create an account.
+      if (!currentSchool?.id) {
+        throw new Error('No school selected')
       }
-
-      // Create account WITHOUT password - just use PIN
-      const { data, error } = await supabase
-        .from('teacher_accounts')
-        .insert([{
-          school_id: currentSchool?.id,
-          email: formData.email.toLowerCase(),
-          first_name: formData.firstName,
-          last_name: formData.lastName || '',
-          pin: pin,
-          password: '', // Empty password - PIN is the credential
-        }])
-        .select()
-
-      if (error) {
-        if (error.message.includes('unique')) {
-          throw new Error('This email is already registered')
-        }
-        throw error
+      const created = await createTeacherAccount(currentSchool.id, formData.email, formData.firstName, formData.lastName)
+      if (!created.success || !created.teacher) {
+        throw new Error(created.error || 'Failed to create teacher account')
       }
+      const pin = created.teacher.pin
 
       // Send welcome email with PIN from shuletech1@gmail.com
       try {

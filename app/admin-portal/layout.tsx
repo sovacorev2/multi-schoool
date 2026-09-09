@@ -20,6 +20,7 @@ import { SchoolLockedScreen } from '@/components/school-locked-screen'
 import { AdminSchoolProvider, useAdminSchool } from './_shared/AdminSchoolContext'
 import { SCHOOL_SELECT_FIELDS, type School } from './_shared/types'
 import { sessionAuthKey } from './_shared/utils'
+import { verifyAdminPassword } from '@/app/actions/auth'
 
 const BASE_NAV_ITEMS = [
   { href: '/admin-portal', label: 'Overview', icon: Clock, exact: true },
@@ -148,21 +149,33 @@ function AdminPortalShell({ children }: { children: React.ReactNode }) {
     setIsAuthenticating(true)
 
     try {
+      if (!currentSchool?.id) {
+        setPasswordError('No school selected')
+        return
+      }
+      // Verified server-side - the browser never receives the stored
+      // admin_password value at all, correct or not.
+      const result = await verifyAdminPassword(password, currentSchool.id)
+      if (!result.success) {
+        setPasswordError(result.error || 'Incorrect admin password')
+        return
+      }
+
       const supabase = createClient()
       const { data: schoolData } = await supabase
         .from('schools')
         .select(SCHOOL_SELECT_FIELDS)
-        .eq('id', currentSchool?.id)
+        .eq('id', currentSchool.id)
         .single()
 
-      if (schoolData && (schoolData as any).admin_password === password) {
+      if (schoolData) {
         setSchool(schoolData as unknown as School)
         setIsAuthenticated(true)
         if (typeof window !== 'undefined') {
           sessionStorage.setItem(sessionAuthKey((schoolData as any).code), 'true')
         }
       } else {
-        setPasswordError('Incorrect admin password')
+        setPasswordError('Could not load school details. Please try again.')
       }
     } catch {
       setPasswordError('An error occurred. Please try again.')

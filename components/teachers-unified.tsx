@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getTeacherPinsForSchool } from '@/app/actions/auth'
 import { sendTeacherWelcomeEmail } from '@/lib/email-service'
 import { sortClassesByLevel } from '@/lib/class-sort-utils'
 import { isShuleTechSchool } from '@/lib/shuletech-features'
@@ -91,12 +92,19 @@ export function TeachersUnified({ schoolId, schoolName, whatsappEnabled = false 
   const loadData = async () => {
     const supabase = createClient()
 
-    // Load teachers
+    // Load teachers - explicit columns, excluding pin (locked down at the
+    // database level; a bare select('*') would error outright, not just
+    // omit it, once the anon role loses SELECT on that column). PINs are
+    // fetched separately, gated by the admin_auth cookie, since displaying
+    // them (and using them in the WhatsApp/email messages below) is a
+    // genuine, intentional admin feature here.
     const { data: teachersRes } = await supabase
       .from('teacher_accounts')
-      .select('*')
+      .select('id, school_id, email, first_name, last_name, is_active, created_at, updated_at, email_sent, phone_number, max_periods_per_day')
       .eq('school_id', schoolId)
       .order('first_name')
+    const teacherPinsById = await getTeacherPinsForSchool(schoolId)
+    const teachersWithPins = (teachersRes || []).map((t: any) => ({ ...t, pin: teacherPinsById[t.id] || '' }))
 
     // Load assignments
     const { data: assignmentsRes } = await supabase
@@ -127,7 +135,7 @@ export function TeachersUnified({ schoolId, schoolName, whatsappEnabled = false 
 
     console.log('[v0] Subjects loaded:', { subjectsRes, classIds, schoolId })
 
-    setTeachers(teachersRes || [])
+    setTeachers(teachersWithPins)
     setAssignments(assignmentsRes || [])
     setClasses(sortClassesByLevel(classesRes || []))
     setSubjects(subjectsRes)

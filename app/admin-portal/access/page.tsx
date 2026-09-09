@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Lock, GraduationCap, Shield, Save } from 'lucide-react'
 import type { Class } from '@/lib/types'
 import { sortClasses } from '../_shared/utils'
+import { updateAdminPasswordForCurrentSchool } from '@/app/actions/auth'
 
 export default function AccessPasswordsPage() {
   const { currentSchool } = useSchool()
@@ -59,14 +60,15 @@ export default function AccessPasswordsPage() {
       return
     }
 
-    const supabase = createClient()
-    const { error } = await supabase.from('schools').update({ admin_password: newAdminPassword }).eq('id', currentSchool.id)
+    const result = await updateAdminPasswordForCurrentSchool(currentSchool.id, newAdminPassword)
 
-    if (!error) {
+    if (result.success) {
       setPasswordUpdateSuccess('Admin password updated successfully!')
       setNewAdminPassword('')
       setConfirmAdminPassword('')
       setTimeout(() => setPasswordUpdateSuccess(''), 3000)
+    } else {
+      alert(result.error || 'Failed to update admin password')
     }
   }
 

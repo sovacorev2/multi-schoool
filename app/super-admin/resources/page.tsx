@@ -11,7 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { FolderOpen, Upload, Trash2, FileText, Download } from 'lucide-react'
-import { SUPER_ADMIN_PASSWORD } from '../_shared/auth'
+import { verifySuperAdminPassword } from '@/app/actions/auth'
 
 const RESOURCE_TYPES = [
   { value: 'exam', label: 'Exams' },
@@ -75,13 +75,14 @@ export default function SuperAdminResourcesPage() {
     if (isAuthenticated) loadResources()
   }, [isAuthenticated])
 
-  const handleAuthenticate = (e: React.FormEvent) => {
+  const handleAuthenticate = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (password === SUPER_ADMIN_PASSWORD) {
+    const result = await verifySuperAdminPassword(password)
+    if (result.success) {
       setIsAuthenticated(true)
       setAuthError('')
     } else {
-      setAuthError('Invalid password')
+      setAuthError(result.error || 'Invalid password')
     }
   }
 

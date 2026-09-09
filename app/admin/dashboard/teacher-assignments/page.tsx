@@ -70,10 +70,11 @@ export default function TeacherAssignmentsPage() {
     setIsLoading(true)
     
     try {
-      // Fetch teachers from teacher_accounts
+      // Fetch teachers from teacher_accounts - explicit columns, excluding
+      // pin (locked down at the database level).
       const { data: teacherAccounts } = await supabase
         .from('teacher_accounts')
-        .select('*')
+        .select('id, school_id, email, first_name, last_name, is_active, created_at, updated_at, email_sent, phone_number, max_periods_per_day')
         .eq('school_id', currentSchool.id)
         .eq('is_active', true)
 

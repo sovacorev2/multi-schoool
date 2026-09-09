@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { teacherPinLogin } from '@/app/actions/auth'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 
@@ -54,49 +55,24 @@ export default function TeacherLoginPage() {
           return
         }
 
-        // Verify welcome password (stored as admin_password)
-        const { data: schoolData } = await supabase
-          .from('schools')
-          .select('admin_password')
-          .eq('id', schoolId)
-          .single()
+        // Verify the school's welcome password and the teacher's PIN
+        // server-side in one call - the browser never needs SELECT access
+        // to schools' admin credential or teacher_accounts.pin.
+        const result = await teacherPinLogin(schoolId, pin, password)
 
-        if (!schoolData || schoolData.admin_password !== password) {
-          setError('Invalid welcome password. Please try again.')
+        if (!result.success || !result.teacher) {
+          setError(result.error || 'Invalid PIN or teacher not found. Please check and try again.')
           setIsLoading(false)
           return
         }
-
-        // Verify PIN and get teacher details
-        const { data: teacher, error: teacherError } = await supabase
-          .from('teacher_accounts')
-          .select(
-            `
-            id,
-            first_name,
-            last_name,
-            email,
-            school_id,
-            is_active,
-            teacher_assignments(
-              id,
-              class_id,
-              subject_id,
-              classes:class_id(id, name),
-              subjects:subject_id(id, name)
-            )
-          `,
-          )
-          .eq('pin', pin)
-          .eq('school_id', schoolId)
-          .eq('is_active', true)
-          .single()
-
-        if (teacherError || !teacher) {
-          setError('Invalid PIN or teacher not found. Please check and try again.')
-          setIsLoading(false)
-          return
-        }
+        const teacher = result.teacher
+        const enrichedAssignments = (result.assignments || []).map(a => ({
+          id: a.id,
+          class_id: a.classId,
+          subject_id: a.subjectId,
+          classes: a.className ? { id: a.classId, name: a.className } : null,
+          subjects: a.subjectId ? { id: a.subjectId, name: a.subjectName } : null,
+        }))
 
         // Get school name for PWA
         const { data: schoolInfo } = await supabase
@@ -108,12 +84,12 @@ export default function TeacherLoginPage() {
         // Store session in localStorage
         const session = {
           teacherId: teacher.id,
-          name: `${teacher.first_name} ${teacher.last_name}`,
+          name: `${teacher.firstName} ${teacher.lastName}`,
           email: teacher.email,
           schoolId: schoolId,
           schoolCode: selectedSchool?.code,
           pin: pin,
-          assignments: teacher.teacher_assignments || [],
+          assignments: enrichedAssignments,
           loginTime: new Date().toISOString(),
         }
 

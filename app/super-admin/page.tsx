@@ -12,7 +12,7 @@ import {
   Plus, Edit2, Save, X, Eye, EyeOff, LogOut, Users, Check,
   CalendarClock, FolderOpen, ExternalLink,
 } from 'lucide-react'
-import { SUPER_ADMIN_PASSWORD } from './_shared/auth'
+import { verifySuperAdminPassword, setSchoolAdminPassword, getPaymentHistory } from '@/app/actions/auth'
 
 interface School {
   id: string
@@ -25,7 +25,6 @@ interface School {
   address: string | null
   phone: string | null
   email: string | null
-  admin_password: string | null
   created_at: string
   feature_report_cards: boolean
   feature_whatsapp_reports: boolean
@@ -123,13 +122,17 @@ export default function SuperAdminPage() {
     setIsLoading(false)
   }
 
-  function handleLogin(e: React.FormEvent) {
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
-    if (password === SUPER_ADMIN_PASSWORD) {
+    // Verified server-side against an env var now - this password used to
+    // be a literal string in this page's own client bundle, readable by
+    // anyone who opened dev tools, no login attempt required.
+    const result = await verifySuperAdminPassword(password)
+    if (result.success) {
       setIsAuthenticated(true)
       setAuthError('')
     } else {
-      setAuthError('Invalid password')
+      setAuthError(result.error || 'Invalid password')
     }
   }
 
@@ -221,8 +224,8 @@ export default function SuperAdminPage() {
   }
 
   // Generic field-level save for the "School Details" card (short_name, tagline,
-  // logo_url, primary_color, address, phone, email, admin_password) so every
-  // school-identity field can be managed from here instead of the Supabase dashboard.
+  // logo_url, primary_color, address, phone, email) so every school-identity
+  // field can be managed from here instead of the Supabase dashboard.
   async function updateSchoolDetail(schoolId: string, field: keyof School, value: string) {
     setSavingSchool(schoolId)
     const { error } = await supabase.from('schools').update({ [field]: value || null }).eq('id', schoolId)
@@ -230,6 +233,19 @@ export default function SuperAdminPage() {
       setSchools(schools.map(s => s.id === schoolId ? { ...s, [field]: value || null } : s))
     } else {
       alert(`Failed to save: ${error.message}`)
+    }
+    setSavingSchool(null)
+  }
+
+  // admin_password lives in school_credentials now, not on schools itself -
+  // this page never fetches or displays the current value (see the reset
+  // form below), it only ever writes a new one.
+  async function resetSchoolAdminPassword(schoolId: string, newPassword: string) {
+    if (!newPassword.trim()) return
+    setSavingSchool(schoolId)
+    const result = await setSchoolAdminPassword(schoolId, newPassword.trim())
+    if (!result.success) {
+      alert(`Failed to save: ${result.error}`)
     }
     setSavingSchool(null)
   }
@@ -253,13 +269,11 @@ export default function SuperAdminPage() {
   }
 
   async function fetchPaymentHistory(schoolId: string) {
-    const { data } = await supabase
-      .from('payment_transactions')
-      .select('id, amount, phone_number, ncba_transaction_id, status, initiated_at, completed_at')
-      .eq('school_id', schoolId)
-      .order('initiated_at', { ascending: false })
-      .limit(20)
-    setPaymentHistory(prev => ({ ...prev, [schoolId]: data || [] }))
+    // Goes through the service-role client with its own super-admin cookie
+    // check now - payment_transactions holds real M-Pesa/NCBA phone numbers
+    // and transaction records, not something the anon key should ever read.
+    const data = await getPaymentHistory(schoolId)
+    setPaymentHistory(prev => ({ ...prev, [schoolId]: data }))
   }
 
   async function createSchool(e: React.FormEvent) {
@@ -1062,8 +1076,9 @@ export default function SuperAdminPage() {
                             <Input
                               id={`adminpw-${school.id}`}
                               type={showAdminPassword ? 'text' : 'password'}
-                              defaultValue={school.admin_password ?? ''}
-                              onBlur={(e) => updateSchoolDetail(school.id, 'admin_password', e.target.value)}
+                              placeholder="Leave blank to keep unchanged"
+                              defaultValue=""
+                              onBlur={(e) => { resetSchoolAdminPassword(school.id, e.target.value); e.target.value = '' }}
                             />
                             <button
                               type="button"
@@ -1073,7 +1088,7 @@ export default function SuperAdminPage() {
                               {showAdminPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                             </button>
                           </div>
-                          <p className="text-xs text-gray-500 mt-1">What this school's admin uses to log in to their admin portal. Change it here to reset it for them.</p>
+                          <p className="text-xs text-gray-500 mt-1">What this school's admin uses to log in to their admin portal. The current password is never shown here - type a new one to reset it for them.</p>
                           <a
                             href={`/admin-portal?school=${school.code}`}
                             target="_blank"
