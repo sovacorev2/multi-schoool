@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import React from "react"
-import { formatGradeWithPoints, getPerformanceLevelWithPoints, getGradeLevelByClass, getSubjectLevelPoints, getLevelByTotalPoints, getLevelByAverageMark, getLevelByTotal, getGradingScale, isBandedPositionSchool, getPositionFromLevel, getPositionCount } from '@/lib/grading-utils'
+import { formatGradeWithPoints, getPerformanceLevelWithPoints, getGradeLevelByClass, getSubjectLevelPoints, getLevelByTotalPoints, getLevelByAverageMark, getLevelByTotal, getGradingScale, isBandedPositionSchool, getPositionFromLevel, getPositionCount, isUpperClass } from '@/lib/grading-utils'
 import { generateSchoolAnalysisHTML } from '@/lib/school-analysis-report'
 import { getSubjectDisplay, normalizeSubjectName, areSubjectsEqual } from '@/lib/subject-utils'
 import { sortClassesByLevel } from '@/lib/class-sort-utils'
@@ -1390,11 +1390,35 @@ const classMedian = totalScores.length > 0 ? totalScores.sort((a, b) => a - b)[M
 const classPassRate = results.length > 0 ? ((results.filter(r => r.average >= 50).length / results.length) * 100).toFixed(1) : '0'
 const topPerformers = results.slice(0, 5)
 const bottomPerformers = [...results].sort((a, b) => a.total - b.total).slice(0, 5)
-const classGradeA = results.filter(r => r.average >= 80).length
-const classGradeB = results.filter(r => r.average >= 60 && r.average < 80).length
-const classGradeC = results.filter(r => r.average >= 50 && r.average < 60).length
-const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).length
-  const classGradeE = results.filter(r => r.average < 30).length
+
+  // CBC-level Grade Distribution - Primary classes show the 4 broad bands
+  // (EE/ME/AE/BE), Junior Secondary (Grade 7-9) shows all 8 sub-bands
+  // (EE1..BE2). Each learner's overall level already comes from
+  // getLevelByTotal, which resolves whichever scale this specific school
+  // actually grades on (some schools use a 4-level primary scale, most use
+  // an 8-level one even for lower grades) - collapsing sub-levels into
+  // their broad band for Primary's display keeps this summary readable
+  // and consistent across every school, regardless of its own scale.
+  const BROAD_LEVEL_MAP: Record<string, 'EE' | 'ME' | 'AE' | 'BE'> = {
+    EE1: 'EE', EE2: 'EE', EE: 'EE',
+    ME1: 'ME', ME2: 'ME', ME: 'ME',
+    AE1: 'AE', AE2: 'AE', AE: 'AE',
+    BE1: 'BE', BE2: 'BE', BE: 'BE',
+  }
+  const isJuniorSecondaryClass = isUpperClass(currentClass?.name || '')
+  const gradeDistributionLevels = isJuniorSecondaryClass
+    ? ['EE1', 'EE2', 'ME1', 'ME2', 'AE1', 'AE2', 'BE1', 'BE2']
+    : ['EE', 'ME', 'AE', 'BE']
+  const learnerOverallLevels = results
+    .map(r => getLevelByTotal(r.total, subjects.length, currentClass?.name, currentSchool?.name)?.level)
+    .filter((l): l is string => !!l)
+  const gradeDistribution = gradeDistributionLevels.map(level => {
+    const count = isJuniorSecondaryClass
+      ? learnerOverallLevels.filter(l => l === level).length
+      : learnerOverallLevels.filter(l => (BROAD_LEVEL_MAP[l] || l) === level).length
+    return { level, count, percentage: results.length > 0 ? ((count / results.length) * 100).toFixed(1) : '0.0' }
+  })
+
   const maleStudents = results.filter(r => r.learner.gender === 'Male' || r.learner.gender === 'male' || r.learner.gender === 'M')
   const femaleStudents = results.filter(r => r.learner.gender === 'Female' || r.learner.gender === 'female' || r.learner.gender === 'F')
   const maleAverage = maleStudents.length > 0 ? (maleStudents.reduce((sum, r) => sum + r.average, 0) / maleStudents.length).toFixed(1) : '0'
@@ -1880,16 +1904,13 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
             <div class="stat-box"><div class="stat-label">Pass Rate</div><div class="stat-value">${classPassRate}%</div></div>
           </div>
           
-          <h3>Grade Distribution</h3>
+          <h3>Grade Distribution${isJuniorSecondaryClass ? '' : ' (EE/ME/AE/BE)'}</h3>
           <table>
-            <tr><th>Grade</th><th>Count</th><th>Percentage</th></tr>
-            <tr><td>A (80-100%)</td><td style="text-align:center">${classGradeA}</td><td style="text-align:center">${results.length > 0 ? ((classGradeA/results.length)*100).toFixed(1) : 0}%</td></tr>
-            <tr><td>B (60-79%)</td><td style="text-align:center">${classGradeB}</td><td style="text-align:center">${results.length > 0 ? ((classGradeB/results.length)*100).toFixed(1) : 0}%</td></tr>
-            <tr><td>C (40-59%)</td><td style="text-align:center">${classGradeC}</td><td style="text-align:center">${results.length > 0 ? ((classGradeC/results.length)*100).toFixed(1) : 0}%</td></tr>
-            <tr><td>D (30-39%)</td><td style="text-align:center">${classGradeD}</td><td style="text-align:center">${results.length > 0 ? ((classGradeD/results.length)*100).toFixed(1) : 0}%</td></tr>
-            <tr><td>E (Below 30%)</td><td style="text-align:center">${classGradeE}</td><td style="text-align:center">${results.length > 0 ? ((classGradeE/results.length)*100).toFixed(1) : 0}%</td></tr>
+            <tr>${gradeDistribution.map(g => `<th style="text-align:center">${g.level}</th>`).join('')}<th style="text-align:center">Total Learners</th></tr>
+            <tr>${gradeDistribution.map(g => `<td style="text-align:center;font-weight:bold">${g.count}</td>`).join('')}<td style="text-align:center;font-weight:bold">${results.length}</td></tr>
+            <tr>${gradeDistribution.map(g => `<td style="text-align:center;color:#555">${g.percentage}%</td>`).join('')}<td style="text-align:center;color:#555">100%</td></tr>
           </table>
-          
+
           <h3>Gender Analysis</h3>
           <table>
             <tr><th>Gender</th><th>Count</th><th>Average</th></tr>
@@ -3105,6 +3126,38 @@ const classGradeD = results.filter(r => r.average >= 30 && r.average < 40).lengt
                     </div>
                   </div>
 
+                  {/* Grade Distribution - Primary shows the 4 broad CBC bands
+                      (EE/ME/AE/BE), Junior Secondary shows all 8 sub-bands
+                      (EE1..BE2), each with count and percentage of the class. */}
+                  <div>
+                    <h3 className="font-semibold text-gray-800 mb-3">
+                      Grade Distribution{!isJuniorSecondaryClass && <span className="font-normal text-gray-500 text-sm"> (EE/ME/AE/BE)</span>}
+                    </h3>
+                    <div className={`grid grid-cols-2 sm:grid-cols-3 ${isJuniorSecondaryClass ? 'md:grid-cols-5 lg:grid-cols-9' : 'md:grid-cols-5'} gap-3`}>
+                      {gradeDistribution.map(g => {
+                        const broad = BROAD_LEVEL_MAP[g.level] || g.level
+                        const colors: Record<string, string> = {
+                          EE: 'bg-emerald-50 border-emerald-200 text-emerald-700',
+                          ME: 'bg-gray-100 border-gray-300 text-gray-700',
+                          AE: 'bg-amber-50 border-amber-200 text-amber-700',
+                          BE: 'bg-red-500/10 dark:bg-red-900/20 border-red-200 text-red-700',
+                        }
+                        const colorClass = colors[broad] || colors.ME
+                        return (
+                          <div key={g.level} className={`p-3 rounded-lg border text-center ${colorClass}`}>
+                            <p className="text-xs font-medium">{g.level}</p>
+                            <p className="text-2xl font-bold">{g.count}</p>
+                            <p className="text-xs opacity-80">{g.percentage}%</p>
+                          </div>
+                        )
+                      })}
+                      <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded-lg border border-slate-300 text-center">
+                        <p className="text-xs font-medium text-gray-700">Total Learners</p>
+                        <p className="text-2xl font-bold text-gray-700">{results.length}</p>
+                        <p className="text-xs text-gray-500">100%</p>
+                      </div>
+                    </div>
+                  </div>
 
                   {/* Gender Analysis */}
                   <div>
