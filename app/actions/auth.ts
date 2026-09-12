@@ -39,11 +39,24 @@ export async function verifyAdminPassword(password: string, schoolId?: string): 
   let adminPassword: string | null = null
 
   if (schoolId) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("school_credentials")
       .select("admin_password")
       .eq("school_id", schoolId)
       .single()
+    if (error) {
+      // Temporary diagnostic (remove once login is confirmed working again):
+      // distinguishes a real query/permission failure from a genuine wrong
+      // password, both server-side (Vercel function logs) and in the
+      // returned error itself, without ever logging the password.
+      console.error('[verifyAdminPassword] school_credentials query failed', {
+        schoolId,
+        hasServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+        errorCode: error.code,
+        errorMessage: error.message,
+      })
+      return { success: false, error: `Server error (${error.code || 'unknown'}): ${error.message}` }
+    }
     adminPassword = data?.admin_password ?? null
   } else {
     // Fallback: check all schools - used when schoolId is not available
