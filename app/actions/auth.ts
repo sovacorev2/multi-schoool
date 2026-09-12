@@ -45,17 +45,8 @@ export async function verifyAdminPassword(password: string, schoolId?: string): 
       .eq("school_id", schoolId)
       .single()
     if (error) {
-      // Temporary diagnostic (remove once login is confirmed working again):
-      // distinguishes a real query/permission failure from a genuine wrong
-      // password, both server-side (Vercel function logs) and in the
-      // returned error itself, without ever logging the password.
-      console.error('[verifyAdminPassword] school_credentials query failed', {
-        schoolId,
-        hasServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-        errorCode: error.code,
-        errorMessage: error.message,
-      })
-      return { success: false, error: `Server error (${error.code || 'unknown'}): ${error.message} | serviceRoleKeyPresent=${!!process.env.SUPABASE_SERVICE_ROLE_KEY} | keyLen=${(process.env.SUPABASE_SERVICE_ROLE_KEY || '').length}` }
+      console.error('[verifyAdminPassword] school_credentials query failed', { schoolId, code: error.code, message: error.message })
+      return { success: false, error: "Something went wrong verifying the password. Please try again." }
     }
     adminPassword = data?.admin_password ?? null
   } else {
