@@ -55,7 +55,7 @@ export async function verifyAdminPassword(password: string, schoolId?: string): 
         errorCode: error.code,
         errorMessage: error.message,
       })
-      return { success: false, error: `Server error (${error.code || 'unknown'}): ${error.message}` }
+      return { success: false, error: `Server error (${error.code || 'unknown'}): ${error.message} | serviceRoleKeyPresent=${!!process.env.SUPABASE_SERVICE_ROLE_KEY} | keyLen=${(process.env.SUPABASE_SERVICE_ROLE_KEY || '').length}` }
     }
     adminPassword = data?.admin_password ?? null
   } else {
