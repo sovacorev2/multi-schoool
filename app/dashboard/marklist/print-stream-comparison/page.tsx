@@ -49,7 +49,7 @@ export default function PrintStreamComparisonPage() {
       // Find all classes matching the base class - batch everything, no per-class loops
       const allClasses = await cachedFetch(
         `classes:${currentSchool.id}`,
-        () => supabase.from('classes').select('id, name, school_id, display_order').eq('school_id', currentSchool.id).order('name').then(r => r.data ?? []),
+        () => supabase.from('classes_public').select('id, name, school_id, display_order').eq('school_id', currentSchool.id).order('name').then(r => r.data ?? []),
         TTL.STATIC
       )
 

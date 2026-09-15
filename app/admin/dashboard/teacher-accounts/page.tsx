@@ -85,7 +85,7 @@ export default function TeacherAccountsPage() {
       // copy button, below) is a genuine, intentional admin feature.
       const [{ data: teachersData, error: teachersError }, pinsById] = await Promise.all([
         supabase
-          .from('teacher_accounts')
+          .from('teacher_accounts_public')
           .select('id, school_id, email, first_name, last_name, is_active, created_at, updated_at, email_sent, phone_number, max_periods_per_day')
           .eq('school_id', currentSchool.id)
           .order('created_at', { ascending: false }),
@@ -97,7 +97,7 @@ export default function TeacherAccountsPage() {
 
       // Fetch all classes
       const { data: classesData, error: classesError } = await supabase
-        .from('classes')
+        .from('classes_public')
         .select('id, name')
         .eq('school_id', currentSchool.id)
         .order('name', { ascending: true })

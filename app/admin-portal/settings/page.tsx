@@ -37,7 +37,7 @@ export default function SettingsReportsPage() {
     setIsLoading(true)
     const supabase = createClient()
     const [classesRes, logsRes] = await Promise.all([
-      supabase.from('classes').select('id, name, display_order').eq('school_id', currentSchool.id).order('display_order'),
+      supabase.from('classes_public').select('id, name, display_order').eq('school_id', currentSchool.id).order('display_order'),
       supabase.from('activity_logs').select('*').eq('school_id', currentSchool.id).order('created_at', { ascending: false }).limit(100),
     ])
     if (classesRes.data) setClasses(sortClasses(classesRes.data as Class[]))

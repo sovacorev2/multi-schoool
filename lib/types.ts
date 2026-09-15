@@ -2,7 +2,11 @@ export interface Class {
   id: string
   name: string
   code: string | null
-  password: string | null
+  // Optional - most client-side reads now come from the classes_public view,
+  // which excludes this column entirely (see lib/supabase migration notes).
+  // Only present when explicitly fetched through a gated server action
+  // (getClassPasswordsForSchool) for the one legitimate admin display of it.
+  password?: string | null
   display_order: number
   teacher_name: string | null
   school_id: string

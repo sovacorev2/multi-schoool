@@ -406,7 +406,7 @@ export default function MarksPage() {
       const teacherId = localStorage.getItem('teacher_id')
       if (teacherId) {
         const { data: teacherData } = await supabase
-          .from('teacher_accounts')
+          .from('teacher_accounts_public')
           .select('pin')
           .eq('id', teacherId)
           .single()
@@ -582,7 +582,7 @@ export default function MarksPage() {
       const teacherId = localStorage.getItem("teacher_id");
       if (teacherId) {
         const { data: teacherData } = await supabase
-          .from("teacher_accounts")
+          .from("teacher_accounts_public")
           .select("pin")
           .eq("id", teacherId)
           .single();

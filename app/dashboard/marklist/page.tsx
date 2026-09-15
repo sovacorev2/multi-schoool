@@ -286,7 +286,7 @@ export default function MarklistPage() {
       // Fetch all classes initially (cached - rarely changes during a session)
       let allClasses = await cachedFetch(
         `classes:${currentSchool?.id}`,
-        () => supabase.from('classes').select('id, name, school_id, display_order').eq('school_id', currentSchool?.id).order('display_order').then(r => r.data ?? []),
+        () => supabase.from('classes_public').select('id, name, school_id, display_order').eq('school_id', currentSchool?.id).order('display_order').then(r => r.data ?? []),
         TTL.STATIC
       )
       if (!allClasses) return
@@ -628,7 +628,7 @@ export default function MarklistPage() {
       // Find all classes that start with the base class name (cached)
       const allClasses = await cachedFetch(
         `classes:${currentSchool?.id}`,
-        () => supabase.from('classes').select('id, name, school_id, display_order').eq('school_id', currentSchool?.id).order('name').then(r => r.data ?? []),
+        () => supabase.from('classes_public').select('id, name, school_id, display_order').eq('school_id', currentSchool?.id).order('name').then(r => r.data ?? []),
         TTL.STATIC
       )
       
@@ -879,7 +879,7 @@ export default function MarklistPage() {
     try {
       const allClassesData = await cachedFetch(
         `classes:${currentSchool?.id}`,
-        () => supabase.from('classes').select('id, name, school_id, display_order').eq('school_id', currentSchool?.id).order('name').then(r => r.data ?? []),
+        () => supabase.from('classes_public').select('id, name, school_id, display_order').eq('school_id', currentSchool?.id).order('name').then(r => r.data ?? []),
         TTL.STATIC
       )
 
@@ -1205,7 +1205,7 @@ export default function MarklistPage() {
   useEffect(() => {
     if (!currentSchool?.id) return
     const supabase = createClient()
-    supabase.from('classes').select('id, name').eq('school_id', currentSchool?.id).order('display_order').then(({ data }) => {
+    supabase.from('classes_public').select('id, name').eq('school_id', currentSchool?.id).order('display_order').then(({ data }) => {
       setAllClasses(sortClassesByLevel(data || []))
     })
   }, [currentSchool?.id])
@@ -2196,7 +2196,7 @@ const bottomPerformers = [...results].sort((a, b) => a.total - b.total).slice(0,
                       
                       // Get all stream classes for this grade (any class starting with grade level)
                       const { data: allStreamClasses, error: streamError } = await supabase
-                        .from('classes')
+                        .from('classes_public')
                         .select('id, name')
                         .eq('school_id', currentSchool.id)
                         .ilike('name', `${gradeLevel} %`)
@@ -2245,7 +2245,7 @@ const bottomPerformers = [...results].sort((a, b) => a.total - b.total).slice(0,
                       const gradePrefix = currentClass?.name?.match(/^(PP\s*\d+|Grade\s+\d+)/i)?.[0] || currentClass?.name
                       
                       const { data: gradeClasses } = await supabase
-                        .from('classes')
+                        .from('classes_public')
                         .select('id, name')
                         .eq('school_id', currentSchool?.id)
                         .ilike('name', `${gradePrefix}%`)
@@ -2417,7 +2417,7 @@ const bottomPerformers = [...results].sort((a, b) => a.total - b.total).slice(0,
                       // Step 2: get teacher names from teacher_accounts using user_id = id
                       const teacherIds = [...new Set(assignments.map(a => a.user_id))]
                       const { data: teachers } = await supabaseForInitials
-                        .from('teacher_accounts')
+                        .from('teacher_accounts_public')
                         .select('id, first_name, last_name')
                         .in('id', teacherIds)
 
@@ -2864,7 +2864,7 @@ const bottomPerformers = [...results].sort((a, b) => a.total - b.total).slice(0,
                                       if (assignments && assignments.length > 0) {
                                         const teacherIds = [...new Set(assignments.map((a: any) => a.user_id))]
                                         const { data: teachers } = await supabaseForInitials
-                                          .from('teacher_accounts')
+                                          .from('teacher_accounts_public')
                                           .select('id, first_name, last_name')
                                           .in('id', teacherIds)
                                         const teacherMap: Record<string, any> = {}

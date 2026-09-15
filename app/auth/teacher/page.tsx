@@ -54,7 +54,7 @@ export default function TeacherAuthPage() {
     try {
       const supabase = createClient()
       const { data, error } = await supabase
-        .from("classes")
+        .from("classes_public")
         .select("id, school_id")
         .eq("id", classId!)
         .single()

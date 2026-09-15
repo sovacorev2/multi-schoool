@@ -72,7 +72,7 @@ export function MyTimetablePanel({
       const [settingsRes, breaksRes, classesRes] = await Promise.all([
         supabase.from('timetable_settings').select('category, school_start_time, school_end_time, period_length_minutes, days_per_week, avoid_consecutive_same_subject, spread_evenly').eq('school_id', schoolId),
         supabase.from('timetable_breaks').select('category, name, after_period_number, duration_minutes').eq('school_id', schoolId).order('after_period_number'),
-        supabase.from('classes').select('id, name').eq('school_id', schoolId),
+        supabase.from('classes_public').select('id, name').eq('school_id', schoolId),
       ])
       const classRows = (classesRes.data || []) as { id: string; name: string }[]
       const classIds = classRows.map((c) => c.id)

@@ -36,12 +36,19 @@ export default function AdminOverviewPage() {
     setIsLoading(true)
     const supabase = createClient()
 
-    const { data: sessionsData } = await supabase
-      .from('sessions')
-      .select('*, classes(name), exam_types(name)')
-      .eq('school_id', currentSchool.id)
-      .not('exam_type_id', 'is', null)
-      .order('created_at', { ascending: false })
+    // classes has no anon SELECT access at all once locked down, so a
+    // classes(name) embed here (which would query the real table) can no
+    // longer work - class names are looked up from classes_public instead.
+    const [{ data: sessionsData }, { data: classesData }] = await Promise.all([
+      supabase
+        .from('sessions')
+        .select('*, exam_types(name)')
+        .eq('school_id', currentSchool.id)
+        .not('exam_type_id', 'is', null)
+        .order('created_at', { ascending: false }),
+      supabase.from('classes_public').select('id, name').eq('school_id', currentSchool.id),
+    ])
+    const classNameById = new Map((classesData || []).map((c: any) => [c.id, c.name]))
 
     if (sessionsData) {
       setDeadlines(sessionsData.map((s: any) => ({
@@ -51,7 +58,7 @@ export default function AdminOverviewPage() {
         year: s.year,
         deadline_date: s.deadline_datetime || '',
         is_locked: s.is_locked,
-        class_name: s.classes?.name,
+        class_name: classNameById.get(s.class_id),
         exam_type: s.exam_types?.name,
       })))
     }
@@ -64,8 +71,8 @@ export default function AdminOverviewPage() {
     if (!currentSchool) return
     const supabase = createClient()
     Promise.all([
-      supabase.from('classes').select('id', { count: 'exact', head: true }).eq('school_id', currentSchool.id),
-      supabase.from('teacher_accounts').select('id', { count: 'exact', head: true }).eq('school_id', currentSchool.id),
+      supabase.from('classes_public').select('id', { count: 'exact', head: true }).eq('school_id', currentSchool.id),
+      supabase.from('teacher_accounts_public').select('id', { count: 'exact', head: true }).eq('school_id', currentSchool.id),
     ]).then(([classesRes, teachersRes]) => {
       setStats({ totalClasses: classesRes.count || 0, totalTeachers: teachersRes.count || 0 })
     })

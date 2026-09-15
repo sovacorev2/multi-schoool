@@ -73,7 +73,7 @@ export default function PrintReportsPage() {
         // Fetch class name
         if (classId) {
           const { data: classData } = await supabase
-            .from('classes')
+            .from('classes_public')
             .select('name')
             .eq('id', classId)
             .single()

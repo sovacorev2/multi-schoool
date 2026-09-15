@@ -27,7 +27,7 @@ export default function TeachersPage() {
     if (!currentSchool) return
     setIsLoading(true)
     const supabase = createClient()
-    const { data } = await supabase.from('classes').select('*').eq('school_id', currentSchool.id).order('display_order')
+    const { data } = await supabase.from('classes_public').select('*').eq('school_id', currentSchool.id).order('display_order')
     if (data) setClasses(sortClasses(data as Class[]))
     setIsLoading(false)
   }, [currentSchool?.id])

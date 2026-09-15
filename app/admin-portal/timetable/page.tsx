@@ -202,7 +202,7 @@ export default function TimetablePage() {
     const supabase = createClient()
 
     const [classesRes, settingsRes, breaksRes, blockedWindowsRes] = await Promise.all([
-      supabase.from('classes').select('*').eq('school_id', currentSchool.id).order('display_order'),
+      supabase.from('classes_public').select('*').eq('school_id', currentSchool.id).order('display_order'),
       supabase.from('timetable_settings').select('*').eq('school_id', currentSchool.id),
       supabase.from('timetable_breaks').select('*').eq('school_id', currentSchool.id).order('after_period_number'),
       supabase.from('timetable_blocked_windows').select('*').eq('school_id', currentSchool.id).order('start_time'),
@@ -290,7 +290,7 @@ export default function TimetablePage() {
       classIds.length > 0
         ? supabase.from('subjects').select('id, class_id, name, periods_per_week').in('class_id', classIds)
         : Promise.resolve({ data: [] as SubjectRow[] }),
-      supabase.from('teacher_accounts').select('id, first_name, last_name, max_periods_per_day').eq('school_id', currentSchool.id).eq('is_active', true),
+      supabase.from('teacher_accounts_public').select('id, first_name, last_name, max_periods_per_day').eq('school_id', currentSchool.id).eq('is_active', true),
       supabase.from('teacher_assignments').select('id, user_id, class_id, subject_id').eq('school_id', currentSchool.id).eq('is_active', true),
     ])
     setSubjects((subjectsRes.data || []) as SubjectRow[])

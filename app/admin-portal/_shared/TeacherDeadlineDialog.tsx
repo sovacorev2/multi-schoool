@@ -58,7 +58,7 @@ export function TeacherDeadlineDialog({
 
     const teacherIds = [...new Set(assignments.map((a: any) => a.user_id))]
     const { data: teachers } = teacherIds.length > 0
-      ? await supabase.from('teacher_accounts').select('id, first_name, last_name').in('id', teacherIds)
+      ? await supabase.from('teacher_accounts_public').select('id, first_name, last_name').in('id', teacherIds)
       : { data: [] as any[] }
 
     const teacherNameById = new Map((teachers || []).map((t: any) => [t.id, [t.first_name, t.last_name].filter(Boolean).join(' ')]))

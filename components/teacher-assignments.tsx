@@ -68,7 +68,7 @@ export function TeacherAssignments() {
 
       // Fetch classes
       const { data: classesData } = await supabase
-        .from('classes')
+        .from('classes_public')
         .select('id, name')
         .eq('school_id', currentSchool.id)
         .order('name')

@@ -94,7 +94,7 @@ export default function TeacherDashboard() {
           // Non-PIN school: Show ALL classes in the school
           console.log('[v0] Non-PIN school - fetching all classes')
           const { data: allClasses, error: classError } = await supabase
-            .from('classes')
+            .from('classes_public')
             .select('id, name, school_id')
             .eq('school_id', teacherSession.schoolId)
             .order('name')
@@ -164,20 +164,22 @@ export default function TeacherDashboard() {
       localStorage.setItem('teacher_id', session?.teacherId || '')
       localStorage.setItem('class_id', classId)
       
-      // Fetch full class data from database
+      // Fetch full class data from database - classes_public (password
+      // column excluded) since this value is never actually used below;
+      // password-based teacher login is verified server-side separately.
       const supabase = createClient()
       const { data: classData, error: fetchError } = await supabase
-        .from('classes')
-        .select('*')
+        .from('classes_public')
+        .select('id, name, code, teacher_name, school_id, created_at, display_order')
         .eq('id', classId)
         .single()
-      
+
       if (fetchError || !classData) {
         console.error('[v0] Failed to fetch class:', fetchError)
         setError('Failed to load class details')
         return
       }
-      
+
       // Set class in context (this bypasses password requirement for PIN-authenticated teachers)
       setCurrentClass({
         id: classData.id,
@@ -185,7 +187,6 @@ export default function TeacherDashboard() {
         code: classData.code,
         teacher_name: classData.teacher_name,
         school_id: schoolId || classData.school_id,
-        password: classData.password,
         created_at: classData.created_at,
         display_order: classData.display_order
       })

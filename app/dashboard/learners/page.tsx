@@ -171,7 +171,7 @@ export default function LearnersPage() {
     
     try {
       const { data, error } = await supabase
-        .from('classes')
+        .from('classes_public')
         .select('id, name, school_id, display_order')
         .eq('school_id', currentSchool.id)
         .order('display_order', { ascending: true })

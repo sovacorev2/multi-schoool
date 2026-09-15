@@ -353,6 +353,21 @@ export async function getTeacherPinsForSchool(schoolId: string): Promise<Record<
   return result
 }
 
+/** Mirrors getTeacherPinsForSchool - admin-portal's "Access & Passwords" page
+ * legitimately shows each class's current password in a table, gated by the
+ * same admin_auth cookie the rest of the admin portal requires. */
+export async function getClassPasswordsForSchool(schoolId: string): Promise<Record<string, string | null>> {
+  if (!(await checkAdminAuth())) return {}
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('classes')
+    .select('id, password')
+    .eq('school_id', schoolId)
+  const result: Record<string, string | null> = {}
+  for (const row of data || []) result[row.id] = row.password
+  return result
+}
+
 export async function setupTeacherPassword(classId: string, password: string, confirmPassword: string): Promise<{ success: boolean; error?: string; teacher_id?: string }> {
   if (password !== confirmPassword) {
     return { success: false, error: "Passwords do not match" }

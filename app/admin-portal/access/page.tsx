@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Lock, GraduationCap, Shield, Save } from 'lucide-react'
 import type { Class } from '@/lib/types'
 import { sortClasses } from '../_shared/utils'
-import { updateAdminPasswordForCurrentSchool } from '@/app/actions/auth'
+import { updateAdminPasswordForCurrentSchool, getClassPasswordsForSchool } from '@/app/actions/auth'
 
 export default function AccessPasswordsPage() {
   const { currentSchool } = useSchool()
@@ -27,8 +27,14 @@ export default function AccessPasswordsPage() {
     if (!currentSchool) return
     setIsLoading(true)
     const supabase = createClient()
-    const { data } = await supabase.from('classes').select('*').eq('school_id', currentSchool.id).order('display_order')
-    if (data) setClasses(sortClasses(data as Class[]))
+    // classes_public excludes the password column - the "Current Password"
+    // column below is filled in separately via a gated server action, since
+    // this page's own display of it is the one legitimate need for it.
+    const [{ data }, passwordsById] = await Promise.all([
+      supabase.from('classes_public').select('*').eq('school_id', currentSchool.id).order('display_order'),
+      getClassPasswordsForSchool(currentSchool.id),
+    ])
+    if (data) setClasses(sortClasses(data.map((c: any) => ({ ...c, password: passwordsById[c.id] ?? null })) as Class[]))
     setIsLoading(false)
   }, [currentSchool?.id])
 

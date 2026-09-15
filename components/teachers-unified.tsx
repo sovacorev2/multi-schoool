@@ -99,7 +99,7 @@ export function TeachersUnified({ schoolId, schoolName, whatsappEnabled = false 
     // them (and using them in the WhatsApp/email messages below) is a
     // genuine, intentional admin feature here.
     const { data: teachersRes } = await supabase
-      .from('teacher_accounts')
+      .from('teacher_accounts_public')
       .select('id, school_id, email, first_name, last_name, is_active, created_at, updated_at, email_sent, phone_number, max_periods_per_day')
       .eq('school_id', schoolId)
       .order('first_name')
@@ -114,7 +114,7 @@ export function TeachersUnified({ schoolId, schoolName, whatsappEnabled = false 
 
     // Load classes
     const { data: classesRes } = await supabase
-      .from('classes')
+      .from('classes_public')
       .select('*')
       .eq('school_id', schoolId)
       .order('display_order')

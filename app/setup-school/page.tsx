@@ -394,7 +394,7 @@ export default function SetupSchoolPage() {
 
       // Create sessions for each class (sessions require class_id)
       const { data: newClasses } = await supabase
-        .from('classes')
+        .from('classes_public')
         .select('id')
         .eq('school_id', school.id)
       

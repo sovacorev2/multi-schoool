@@ -44,7 +44,7 @@ export default function AdminLoginPage() {
         try {
           const supabase = createClient()
           const [classesRes, examTypesRes] = await Promise.all([
-            supabase.from('classes').select('*').order('display_order'),
+            supabase.from('classes_public').select('*').order('display_order'),
             supabase.from('exam_types').select('*').order('name'),
           ])
           if (classesRes.data) setClasses(sortClassesByLevel(classesRes.data))

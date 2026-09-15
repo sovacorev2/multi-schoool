@@ -194,7 +194,7 @@ export function GeneralReport({
         .replace(/\s*(?:RED|GREEN|BLUE|YELLOW|ACHIEVERS|EXCELLERS|EAST|WEST|CENTRAL|NORTH|SOUTH|A|B)?\s*$/i, '')
         .trim()
       const { data: siblingClasses } = await supabase
-        .from('classes')
+        .from('classes_public')
         .select('id')
         .eq('school_id', currentSchool.id)
         .ilike('name', `${gradeLevel}%`)

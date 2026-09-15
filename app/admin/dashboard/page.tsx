@@ -51,11 +51,11 @@ export default function AdminOverviewPage() {
         }
         
         const [classesRes, learnersRes, sessionsRes, logsRes, teachersRes] = await Promise.all([
-          supabase.from("classes").select("id", { count: "exact" }),
+          supabase.from("classes_public").select("id", { count: "exact" }),
           supabase.from("learners").select("id", { count: "exact" }),
           supabase.from("sessions").select("*"),
           supabase.from("activity_logs").select("*").order("created_at", { ascending: false }).limit(5),
-          currentSchool?.id ? supabase.from("teacher_accounts").select("id", { count: "exact" }).eq('school_id', currentSchool.id) : Promise.resolve({ count: 0 })
+          currentSchool?.id ? supabase.from("teacher_accounts_public").select("id", { count: "exact" }).eq('school_id', currentSchool.id) : Promise.resolve({ count: 0 })
         ])
 
         const sessions = sessionsRes.data || []

@@ -136,7 +136,7 @@ function AdminPortalShell({ children }: { children: React.ReactNode }) {
     if (!isAuthenticated || !currentSchool) return
     const supabase = createClient()
     supabase
-      .from('classes')
+      .from('classes_public')
       .select('id, name')
       .eq('school_id', currentSchool.id)
       .order('display_order')
@@ -187,7 +187,7 @@ function AdminPortalShell({ children }: { children: React.ReactNode }) {
   const handleAccessClassAsAdmin = async (classId: string) => {
     try {
       const supabase = createClient()
-      const { data: cls } = await supabase.from('classes').select('*').eq('id', classId).single()
+      const { data: cls } = await supabase.from('classes_public').select('*').eq('id', classId).single()
       if (cls) setCurrentClass(cls)
     } catch (error) {
       console.log('[v0] Error fetching class:', error)

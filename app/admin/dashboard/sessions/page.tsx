@@ -112,10 +112,14 @@ const { currentSchool } = useSchool();
     const supabase = createClient();
 
     const [classesRes, sessionsRes, logsRes] = await Promise.all([
-      supabase.from("classes").select("*").order("display_order"),
+      supabase.from("classes_public").select("*").order("display_order"),
       supabase
+        // classes has no anon SELECT access at all once locked down, so a
+        // classes(*) embed here (which would query the real table) can no
+        // longer work - only session.classes?.name is ever used below, so
+        // it's filled in from the classes_public fetch above instead.
         .from("sessions")
-        .select("*, exam_types(*), classes(*)")
+        .select("*, exam_types(*)")
         .order("year", { ascending: false })
         .order("term"),
       supabase
@@ -126,7 +130,8 @@ const { currentSchool } = useSchool();
     ]);
 
     setAllClasses(classesRes.data || []);
-    setSessions(sessionsRes.data || []);
+    const classNameById = new Map((classesRes.data || []).map((c: any) => [c.id, c.name]));
+    setSessions((sessionsRes.data || []).map(s => ({ ...s, classes: { name: classNameById.get(s.class_id) ?? null } })));
     setAuditLogs(logsRes.data || []);
     
     // Fetch password status for classes

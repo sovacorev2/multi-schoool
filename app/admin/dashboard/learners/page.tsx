@@ -39,7 +39,7 @@ export default function AdminLearnersPage() {
     const supabase = createClient()
     
     const [classesRes, learnersRes] = await Promise.all([
-      supabase.from("classes").select("*").order("display_order"),
+      supabase.from("classes_public").select("*").order("display_order"),
       supabase.from("learners").select("*").order("name"),
     ])
     

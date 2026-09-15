@@ -86,7 +86,7 @@ export function MarksEntryTracker({ schoolId, deadlines }: { schoolId: string; d
     if (!examTypeRow) { setIsLoading(false); return }
 
     const [classesRes, sessionsRes] = await Promise.all([
-      supabase.from('classes').select('id, name').eq('school_id', schoolId).order('display_order'),
+      supabase.from('classes_public').select('id, name').eq('school_id', schoolId).order('display_order'),
       supabase.from('sessions').select('id, class_id').eq('school_id', schoolId).eq('term', term).eq('year', year).eq('exam_type_id', examTypeRow.id),
     ])
 
@@ -105,7 +105,7 @@ export function MarksEntryTracker({ schoolId, deadlines }: { schoolId: string; d
         supabase.from('learners').select('id, class_id').in('class_id', classIds).order('id').range(from, to)
       ),
       supabase.from('teacher_assignments').select('user_id, class_id, subject_id').eq('school_id', schoolId).eq('is_active', true).not('subject_id', 'is', null),
-      supabase.from('teacher_accounts').select('id, first_name, last_name').eq('school_id', schoolId),
+      supabase.from('teacher_accounts_public').select('id, first_name, last_name').eq('school_id', schoolId),
       sessionIds.length > 0
         ? fetchAllRows<{ session_id: string; subject_id: string; learner_id: string; score: number | null }>((from, to) =>
             supabase.from('marks').select('session_id, subject_id, learner_id, score').in('session_id', sessionIds).order('id').range(from, to)

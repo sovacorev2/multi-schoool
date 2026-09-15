@@ -17,7 +17,8 @@ import {
 } from '@/components/ui/alert-dialog'
 import { GraduationCap, Plus, Trash2, Save, Edit, X, ClipboardList } from 'lucide-react'
 import type { Class, ExamType } from '@/lib/types'
-import { TERMS, sortClasses, getBaseClassName, getUniqueBaseClasses, getStreamsForBaseClass } from '../_shared/utils'
+import { sortClasses, getBaseClassName, getUniqueBaseClasses, getStreamsForBaseClass } from '../_shared/utils'
+import { createClass as createClassAction } from '@/app/actions/classes'
 
 export default function ClassesExamsPage() {
   const { currentSchool } = useSchool()
@@ -61,7 +62,7 @@ export default function ClassesExamsPage() {
     setIsLoading(true)
     const supabase = createClient()
     const [classesRes, examTypesRes] = await Promise.all([
-      supabase.from('classes').select('*').eq('school_id', currentSchool.id).order('display_order'),
+      supabase.from('classes_public').select('*').eq('school_id', currentSchool.id).order('display_order'),
       supabase.from('exam_types').select('id, name, display_order, school_id, allowed_class_ids').eq('school_id', currentSchool.id).order('name'),
     ])
     if (classesRes.data) setClasses(sortClasses(classesRes.data as Class[]))
@@ -74,20 +75,12 @@ export default function ClassesExamsPage() {
   // --- Classes ---
   const addClass = async () => {
     if (!newClassName.trim() || !currentSchool) return
-    const supabase = createClient()
-    const { data, error } = await supabase
-      .from('classes')
-      .insert({ name: newClassName.trim(), school_id: currentSchool.id, password: 'welcome', display_order: classes.length + 1 })
-      .select()
-      .single()
-
-    if (!error && data) {
-      const currentYear = new Date().getFullYear()
-      const sessionsToInsert = TERMS.map(term => ({
-        class_id: data.id, year: currentYear, term, is_active: true, school_id: currentSchool.id,
-      }))
-      await supabase.from('sessions').insert(sessionsToInsert)
-      setClasses(sortClasses([...classes, data as Class]))
+    // classes has no anon SELECT access at all (password is locked down at
+    // the database level), so creation - and getting the new row back -
+    // goes through a server action now instead of a direct insert().select().
+    const result = await createClassAction(currentSchool.id, newClassName.trim(), classes.length + 1)
+    if (result.success && result.class) {
+      setClasses(sortClasses([...classes, result.class as Class]))
       setNewClassName('')
     }
   }
@@ -164,28 +157,14 @@ export default function ClassesExamsPage() {
     }
 
     try {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from('classes')
-        .insert({ name: streamClassName, school_id: currentSchool.id, password: 'welcome', display_order: classes.length + 1 })
-        .select()
-        .single()
+      const result = await createClassAction(currentSchool.id, streamClassName, classes.length + 1)
+      if (!result.success || !result.class) throw new Error(result.error || 'Failed to create stream')
 
-      if (error) throw error
-
-      if (data) {
-        const currentYear = new Date().getFullYear()
-        const sessionsToInsert = TERMS.map(term => ({
-          class_id: data.id, year: currentYear, term, is_active: true, school_id: currentSchool.id,
-        }))
-        await supabase.from('sessions').insert(sessionsToInsert)
-
-        const updatedClasses = sortClasses([...classes, data as Class])
-        setClasses(updatedClasses)
-        setExistingStreams(getStreamsForBaseClass(updatedClasses, streamBaseClass))
-        setNewStreamName('')
-        setStreamError('')
-      }
+      const updatedClasses = sortClasses([...classes, result.class as Class])
+      setClasses(updatedClasses)
+      setExistingStreams(getStreamsForBaseClass(updatedClasses, streamBaseClass))
+      setNewStreamName('')
+      setStreamError('')
     } catch (err: any) {
       setStreamError(err.message || 'Failed to create stream')
     }

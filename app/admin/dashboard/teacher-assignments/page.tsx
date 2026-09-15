@@ -73,7 +73,7 @@ export default function TeacherAssignmentsPage() {
       // Fetch teachers from teacher_accounts - explicit columns, excluding
       // pin (locked down at the database level).
       const { data: teacherAccounts } = await supabase
-        .from('teacher_accounts')
+        .from('teacher_accounts_public')
         .select('id, school_id, email, first_name, last_name, is_active, created_at, updated_at, email_sent, phone_number, max_periods_per_day')
         .eq('school_id', currentSchool.id)
         .eq('is_active', true)
@@ -91,7 +91,7 @@ export default function TeacherAssignmentsPage() {
 
       // Fetch classes
       const { data: classesData } = await supabase
-        .from('classes')
+        .from('classes_public')
         .select('id, name')
         .eq('school_id', currentSchool.id)
         .order('name')
@@ -104,7 +104,10 @@ export default function TeacherAssignmentsPage() {
         .order('name')
       setSubjects(subjectsData || [])
 
-      // Fetch assignments
+      // Fetch assignments - classes has no anon SELECT access at all once
+      // locked down, so a classes(name) embed here (which would query the
+      // real table) can no longer work; class names come from the
+      // classes_public fetch above instead.
       const { data: assignmentsData } = await supabase
         .from('teacher_assignments')
         .select(`
@@ -113,12 +116,13 @@ export default function TeacherAssignmentsPage() {
           class_id,
           subject_id,
           is_active,
-          classes(name),
           subjects(name)
         `)
         .eq('school_id', currentSchool.id)
         .eq('is_active', true)
         .order('created_at', { ascending: false })
+
+      const classNameById = new Map((classesData || []).map((c: any) => [c.id, c.name]))
 
       if (assignmentsData) {
         const enrichedAssignments = assignmentsData.map((a: any) => {
@@ -130,7 +134,7 @@ export default function TeacherAssignmentsPage() {
             subject_id: a.subject_id,
             is_active: a.is_active,
             teacher_name: teacher ? `${teacher.first_name} ${teacher.last_name}` : 'Unknown',
-            class_name: a.classes?.name || 'Unknown Class',
+            class_name: classNameById.get(a.class_id) || 'Unknown Class',
             subject_name: a.subjects?.name || null,
           }
         })
