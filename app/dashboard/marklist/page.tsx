@@ -15,6 +15,7 @@ import { useSchool } from '@/lib/school-context'
 import { isNetworkError, getFallbackData, cacheFallbackData } from '@/lib/fallback-data'
 import { cachedFetch, cacheInvalidatePrefix, TTL } from '@/lib/query-cache'
 import { fetchAllRows } from '@/lib/fetch-all-rows'
+import { fetchGradeRanking } from '@/lib/grade-ranking'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -162,6 +163,9 @@ export default function MarklistPage() {
   // once per class/session rather than per click so window.open() in the send
   // handlers stays synchronous (an await before it gets popup-blocked).
   const [overallPositions, setOverallPositions] = useState<{ byLearner: Record<string, number>; totalInGrade: number; gradeName: string } | null>(null)
+  // Which Grade Distribution bracket (e.g. 'EE1', or 'ALL') is expanded to
+  // show its learners' names on the Class Analysis tab.
+  const [expandedDistributionLevel, setExpandedDistributionLevel] = useState<string | null>(null)
   const [whatsappQueue, setWhatsappQueue] = useState<LearnerResult[]>([])
   const [whatsappCurrentIndex, setWhatsappCurrentIndex] = useState(0)
   const [whatsappSentCount, setWhatsappSentCount] = useState(0)
@@ -1230,54 +1234,10 @@ export default function MarklistPage() {
     let cancelled = false
     ;(async () => {
       try {
-        const supabase = createClient()
-        const className = (currentClass.name || '').trim()
-        const words = className.split(/\s+/)
-        const isStreamed = words.length > 2
-        const gradeName = isStreamed
-          ? words.slice(0, -1).join(' ')
-          : (className.match(/^(PP\s*\d+|Grade\s+\d+)/i)?.[0] || className)
-
-        const { data: candidates } = await supabase
-          .from('classes_public')
-          .select('id, name')
-          .eq('school_id', currentSchool.id)
-          .ilike('name', `${gradeName}%`)
-        // "Grade 1%" must not swallow "Grade 10" - match the whole grade word.
-        const escaped = gradeName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-        const gradeRegex = new RegExp(`^${escaped}(\\s|$)`, 'i')
-        const gradeClassIds = (candidates || []).filter((c: any) => gradeRegex.test(c.name)).map((c: any) => c.id)
-        if (gradeClassIds.length < 2) return
-
-        const [gradeLearners, gradeMarks] = await Promise.all([
-          fetchAllRows<{ id: string }>((from, to) =>
-            supabase.from('learners').select('id').in('class_id', gradeClassIds).order('id').range(from, to)
-          ),
-          fetchAllRows<{ learner_id: string; score: number | null }>((from, to) =>
-            supabase
-              .from('marks')
-              .select('learner_id, score, sessions!inner(class_id, exam_type_id, term, year)')
-              .in('sessions.class_id', gradeClassIds)
-              .eq('sessions.exam_type_id', selectedSession.exam_type_id)
-              .eq('sessions.term', selectedSession.term)
-              .eq('sessions.year', selectedSession.year)
-              .order('id')
-              .range(from, to)
-          ),
-        ])
-
-        const totals: Record<string, number> = {}
-        for (const m of gradeMarks) {
-          if (m?.learner_id && m.score !== null && m.score !== undefined) {
-            totals[m.learner_id] = (totals[m.learner_id] || 0) + (Number(m.score) || 0)
-          }
-        }
-        const byLearner: Record<string, number> = {}
-        Object.entries(totals)
-          .sort(([, a], [, b]) => b - a)
-          .forEach(([id], index) => { byLearner[id] = index + 1 })
-
-        if (!cancelled) setOverallPositions({ byLearner, totalInGrade: gradeLearners.length, gradeName })
+        const ranking = await fetchGradeRanking(createClient(), currentSchool.id, currentClass.name || '', selectedSession)
+        // One class in the grade: overall position would only repeat the class position.
+        if (!ranking || ranking.classCount < 2) return
+        if (!cancelled) setOverallPositions({ byLearner: ranking.byLearner, totalInGrade: ranking.totalInGrade, gradeName: ranking.gradeName })
       } catch (err) {
         console.error('[marklist] Overall position (parent messages) failed:', err)
       }
@@ -1492,15 +1452,18 @@ const bottomPerformers = [...results].sort((a, b) => a.total - b.total).slice(0,
   const gradeDistributionLevels = isJuniorSecondaryClass
     ? ['EE1', 'EE2', 'ME1', 'ME2', 'AE1', 'AE2', 'BE1', 'BE2']
     : ['EE', 'ME', 'AE', 'BE']
-  const learnerOverallLevels = results
-    .map(r => getLevelByTotal(r.total, subjects.length, currentClass?.name, currentSchool?.name)?.level)
-    .filter((l): l is string => !!l)
+  // results is already sorted by rank, so each bracket's learners come out
+  // best-first - the clickable Grade Distribution cards list them directly.
+  const learnersWithLevel = results
+    .map(r => ({ result: r, level: getLevelByTotal(r.total, subjects.length, currentClass?.name, currentSchool?.name)?.level }))
+    .filter((x): x is { result: LearnerResult; level: string } => !!x.level)
   const gradeDistribution = gradeDistributionLevels.map(level => {
-    const count = isJuniorSecondaryClass
-      ? learnerOverallLevels.filter(l => l === level).length
-      : learnerOverallLevels.filter(l => (BROAD_LEVEL_MAP[l] || l) === level).length
-    return { level, count, percentage: results.length > 0 ? ((count / results.length) * 100).toFixed(1) : '0.0' }
+    const members = learnersWithLevel
+      .filter(x => (isJuniorSecondaryClass ? x.level : (BROAD_LEVEL_MAP[x.level] || x.level)) === level)
+      .map(x => x.result)
+    return { level, count: members.length, learners: members, percentage: results.length > 0 ? ((members.length / results.length) * 100).toFixed(1) : '0.0' }
   })
+  const unclassifiedLearnerCount = results.length - learnersWithLevel.length
 
   const maleStudents = results.filter(r => r.learner.gender === 'Male' || r.learner.gender === 'male' || r.learner.gender === 'M')
   const femaleStudents = results.filter(r => r.learner.gender === 'Female' || r.learner.gender === 'female' || r.learner.gender === 'F')
@@ -2235,143 +2198,25 @@ const bottomPerformers = [...results].sort((a, b) => a.total - b.total).slice(0,
                   const supabase = createClient()
                   let finalResults = [...results]
                   const className = currentClass?.name || ''
-                  const classWords = className.trim().split(/\s+/)
-                  const isStreamedClass = classWords.length > 2
-                  
-                  
-                  // Helper: given a list of class IDs, fetch all sessions for this exam
-                  // (matched by exam_type_id + term + year) then fetch marks by session_id.
-                  // This is the CORRECT approach - marks are stored by session_id, not by
-                  // year/term/exam_type_id directly. Using year/term/exam_type_id returns 0 rows
-                  // for schools like Kimaeti and Kolanya Girls.
-                  const fetchMarksByGradeClassIds = async (classIds: string[]): Promise<Record<string, number>> => {
-                    if (!classIds.length || !selectedSession) return {}
-                    
-                    // Single query: join marks → sessions, filter by class_ids + exam context
-                    // avoids a sequential sessions-then-marks round-trip
-                    const { data: marks } = await supabase
-                      .from('marks')
-                      .select('learner_id, score, sessions!inner(class_id, exam_type_id, term, year)')
-                      .in('sessions.class_id', classIds)
-                      .eq('sessions.exam_type_id', selectedSession.exam_type_id)
-                      .eq('sessions.term', selectedSession.term)
-                      .eq('sessions.year', selectedSession.year)
-                    
-                    // Step 3: accumulate raw mark totals per learner.
-                    // Ranking is based on total raw marks (not rubric points) - higher marks = higher rank.
-                    // Rubric points are only used for performance level display, not ranking.
-                    const learnerPoints: Record<string, number> = {}
-                    for (const m of (marks || [])) {
-                      if (m?.learner_id && m.score !== null && m.score !== undefined) {
-                        if (!learnerPoints[m.learner_id]) learnerPoints[m.learner_id] = 0
-                        learnerPoints[m.learner_id] += Number(m.score) || 0
-                      }
-                    }
-                    return learnerPoints
-                  }
 
-                  // STEP 1: For streamed classes, calculate overall rank across all streams
-                  if (isStreamedClass && selectedSessionId && currentSchool) {
+                  // STEP 1: grade-wide Overall Position across every stream of this
+                  // grade (shared with the parent WhatsApp/SMS messages so the two
+                  // always agree - see lib/grade-ranking.ts for the basis, tie
+                  // handling, and why it pages instead of a plain marks select).
+                  // Falls back to the in-class rank when it can't be computed.
+                  finalResults = results.map(r => ({ ...r, overall_rank: r.rank, total_in_grade: results.length }))
+                  if (selectedSession && currentSchool) {
                     try {
-                      // Extract grade level: everything except the last word (stream name)
-                      // e.g. "Grade 7 EAST" → "Grade 7", "Grade 3 GREEN" → "Grade 3"
-                      const gradeLevel = classWords.slice(0, -1).join(' ')
-                      
-                      // Get all stream classes for this grade (any class starting with grade level)
-                      const { data: allStreamClasses, error: streamError } = await supabase
-                        .from('classes_public')
-                        .select('id, name')
-                        .eq('school_id', currentSchool.id)
-                        .ilike('name', `${gradeLevel} %`)
-                      
-                      if (streamError) throw streamError
-                      
-                      // Include all classes that start with this grade level (they ARE streams)
-                      const streamClassIds = (allStreamClasses || []).map(c => c.id)
-                      
-                      if (streamClassIds.length > 0) {
-                        // Get ALL learners across all streams
-                        const { data: allLearners } = await supabase
-                          .from('learners')
-                          .select('id, class_id')
-                          .in('class_id', streamClassIds)
-                        
-                        const allLearnerIds = (allLearners || []).map(l => l.id)
-                        
-                        if (allLearnerIds.length > 0) {
-                          // Fetch marks by session_id (not year/term/exam_type_id)
-                          const learnerPoints = await fetchMarksByGradeClassIds(streamClassIds)
-                          
-                          // Rank by total raw marks (same basis as on-screen stream rank)
-                          const rankedLearners = Object.entries(learnerPoints)
-                            .sort(([, a], [, b]) => b - a)
-                            .map(([id, total], index) => ({ id, total, rank: index + 1 }))
-                          
-                          finalResults = results.map(r => {
-                            const ranked = rankedLearners.find(rl => rl.id === r.learner.id)
-                            return {
-                              ...r,
-                              overall_rank: ranked?.rank ?? r.rank,
-                              total_in_grade: allLearnerIds.length,
-                            }
-                          })
-                        }
+                      const ranking = await fetchGradeRanking(supabase, currentSchool.id, className, selectedSession)
+                      if (ranking && ranking.totalInGrade > 0) {
+                        finalResults = results.map(r => ({
+                          ...r,
+                          overall_rank: ranking.byLearner[r.learner.id] ?? r.rank,
+                          total_in_grade: ranking.totalInGrade,
+                        }))
                       }
                     } catch (err) {
-                      console.error('[v0] Overall rank (streamed) error:', err)
-                    }
-                  } else {
-                    // For non-streamed classes, rank across ALL classes in the same grade
-                    try {
-                      // Extract grade prefix: "Grade 7", "Grade 3", "PP1", "PP2" etc.
-                      // Works for all naming conventions including Kolanya Girls
-                      const gradePrefix = currentClass?.name?.match(/^(PP\s*\d+|Grade\s+\d+)/i)?.[0] || currentClass?.name
-                      
-                      const { data: gradeClasses } = await supabase
-                        .from('classes_public')
-                        .select('id, name')
-                        .eq('school_id', currentSchool?.id)
-                        .ilike('name', `${gradePrefix}%`)
-                      
-                      if (gradeClasses && gradeClasses.length > 0) {
-                        const gradeClassIds = gradeClasses.map(c => c.id)
-                        
-                        const { data: gradeLearners } = await supabase
-                          .from('learners')
-                          .select('id')
-                          .in('class_id', gradeClassIds)
-                        
-                        const gradeLearnerIds = (gradeLearners || []).map(l => l.id)
-                        
-                        if (gradeLearnerIds.length > 0) {
-                          // Fetch marks by session_id (not year/term/exam_type_id)
-                          const learnerPoints = await fetchMarksByGradeClassIds(gradeClassIds)
-                          
-                          const rankedGradeLearners = Object.entries(learnerPoints)
-                            .sort(([, a], [, b]) => b - a)
-                            .map(([id, total], index) => ({ id, total, rank: index + 1 }))
-                          
-                          finalResults = results.map(r => {
-                            const ranked = rankedGradeLearners.find(rl => rl.id === r.learner.id)
-                            return {
-                              ...r,
-                              overall_rank: ranked?.rank ?? r.rank,
-                              total_in_grade: gradeLearnerIds.length,
-                            }
-                          })
-                        } else {
-                          finalResults = results.map(r => ({ ...r, overall_rank: r.rank, total_in_grade: results.length }))
-                        }
-                      } else {
-                        finalResults = results.map(r => ({ ...r, overall_rank: r.rank, total_in_grade: results.length }))
-                      }
-                    } catch (gradeRankErr) {
-                      console.error('[v0] Non-streamed grade ranking error:', gradeRankErr)
-                      finalResults = results.map(r => ({
-                        ...r,
-                        overall_rank: r.rank,
-                        total_in_grade: results.length
-                      }))
+                      console.error('[v0] Overall rank error:', err)
                     }
                   }
 
@@ -3228,20 +3073,91 @@ const bottomPerformers = [...results].sort((a, b) => a.total - b.total).slice(0,
                           BE: 'bg-red-500/10 dark:bg-red-900/20 border-red-200 text-red-700',
                         }
                         const colorClass = colors[broad] || colors.ME
+                        const isOpen = expandedDistributionLevel === g.level
                         return (
-                          <div key={g.level} className={`p-3 rounded-lg border text-center ${colorClass}`}>
+                          <button
+                            type="button"
+                            key={g.level}
+                            disabled={g.count === 0}
+                            onClick={() => setExpandedDistributionLevel(isOpen ? null : g.level)}
+                            title={g.count === 0 ? `No learners in ${g.level}` : `Show the ${g.count} learner(s) in ${g.level}`}
+                            className={`p-3 rounded-lg border text-center transition ${colorClass} ${g.count === 0 ? 'opacity-60 cursor-default' : 'cursor-pointer hover:shadow-md hover:-translate-y-0.5'} ${isOpen ? 'ring-2 ring-offset-1 ring-blue-500' : ''}`}
+                          >
                             <p className="text-xs font-medium">{g.level}</p>
                             <p className="text-2xl font-bold">{g.count}</p>
                             <p className="text-xs opacity-80">{g.percentage}%</p>
-                          </div>
+                          </button>
                         )
                       })}
-                      <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded-lg border border-slate-300 text-center">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedDistributionLevel(expandedDistributionLevel === 'ALL' ? null : 'ALL')}
+                        title="Show every learner in this class"
+                        className={`bg-slate-100 dark:bg-slate-800 p-3 rounded-lg border border-slate-300 text-center transition cursor-pointer hover:shadow-md hover:-translate-y-0.5 ${expandedDistributionLevel === 'ALL' ? 'ring-2 ring-offset-1 ring-blue-500' : ''}`}
+                      >
                         <p className="text-xs font-medium text-gray-700">Total Learners</p>
                         <p className="text-2xl font-bold text-gray-700">{results.length}</p>
                         <p className="text-xs text-gray-500">100%</p>
-                      </div>
+                      </button>
                     </div>
+
+                    {unclassifiedLearnerCount > 0 && (
+                      <p className="text-xs text-amber-700 mt-2">
+                        {unclassifiedLearnerCount} learner(s) have no performance level yet, so they are counted in Total Learners but not in any bracket above.
+                      </p>
+                    )}
+
+                    {(() => {
+                      if (!expandedDistributionLevel) return null
+                      const isAll = expandedDistributionLevel === 'ALL'
+                      const bracket = gradeDistribution.find(g => g.level === expandedDistributionLevel)
+                      const list: LearnerResult[] = isAll ? results : (bracket?.learners || [])
+                      if (!isAll && !bracket) return null
+                      return (
+                        <div className="mt-4 border rounded-lg overflow-hidden bg-card">
+                          <div className="flex items-center justify-between px-4 py-2 bg-slate-100 dark:bg-slate-800 border-b">
+                            <p className="text-sm font-semibold text-gray-800">
+                              {isAll ? 'All learners' : `${expandedDistributionLevel} learners`}
+                              <span className="font-normal text-gray-500"> - {list.length} of {results.length} ({currentClass?.name})</span>
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => setExpandedDistributionLevel(null)}
+                              className="text-xs text-gray-600 hover:text-gray-900 underline"
+                            >
+                              Close
+                            </button>
+                          </div>
+                          <div className="overflow-x-auto max-h-96 overflow-y-auto">
+                            <table className="w-full text-sm">
+                              <thead className="bg-gray-50 sticky top-0">
+                                <tr>
+                                  <th className="p-2 text-left w-14">Pos</th>
+                                  <th className="p-2 text-left">Name</th>
+                                  <th className="p-2 text-center">Total</th>
+                                  <th className="p-2 text-center">Mean %</th>
+                                  <th className="p-2 text-center">Level</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {list.map((r, i) => {
+                                  const lvl = getLevelByTotal(r.total, subjects.length, currentClass?.name, currentSchool?.name)?.level
+                                  return (
+                                    <tr key={r.learner.id} className={i % 2 === 0 ? 'bg-card' : 'bg-slate-50 dark:bg-slate-900/20'}>
+                                      <td className="p-2">{r.rank}</td>
+                                      <td className="p-2 font-medium">{r.learner.name}</td>
+                                      <td className="p-2 text-center">{r.total}</td>
+                                      <td className="p-2 text-center">{r.average.toFixed(1)}</td>
+                                      <td className="p-2 text-center font-semibold">{lvl || '-'}</td>
+                                    </tr>
+                                  )
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )
+                    })()}
                   </div>
 
                   {/* Gender Analysis */}
