@@ -157,6 +157,11 @@ export default function MarklistPage() {
   
   // WhatsApp bulk send state
   const [whatsappModalOpen, setWhatsappModalOpen] = useState(false)
+  // Grade-wide ("overall", across every stream) position per learner for the
+  // selected exam, used in the parent WhatsApp/SMS results messages - computed
+  // once per class/session rather than per click so window.open() in the send
+  // handlers stays synchronous (an await before it gets popup-blocked).
+  const [overallPositions, setOverallPositions] = useState<{ byLearner: Record<string, number>; totalInGrade: number; gradeName: string } | null>(null)
   const [whatsappQueue, setWhatsappQueue] = useState<LearnerResult[]>([])
   const [whatsappCurrentIndex, setWhatsappCurrentIndex] = useState(0)
   const [whatsappSentCount, setWhatsappSentCount] = useState(0)
@@ -1209,6 +1214,84 @@ export default function MarklistPage() {
       setAllClasses(sortClassesByLevel(data || []))
     })
   }, [currentSchool?.id])
+
+  // Grade-wide overall position for parent results messages. Same basis as the
+  // report card's "Overall Position": rank by total raw marks across every
+  // stream of this grade, out of all learners in the grade. Skipped for
+  // banded-position schools (their positions come from CBC level, not marks)
+  // and for grades with only one class, where it would just repeat the
+  // class position.
+  useEffect(() => {
+    setOverallPositions(null)
+    if (!selectedSession || !currentClass?.id || !currentSchool?.id) return
+    if (!currentSchool.feature_whatsapp_reports && !currentSchool.feature_bulk_sms) return
+    if (isBandedPositionSchool(currentSchool.name)) return
+
+    let cancelled = false
+    ;(async () => {
+      try {
+        const supabase = createClient()
+        const className = (currentClass.name || '').trim()
+        const words = className.split(/\s+/)
+        const isStreamed = words.length > 2
+        const gradeName = isStreamed
+          ? words.slice(0, -1).join(' ')
+          : (className.match(/^(PP\s*\d+|Grade\s+\d+)/i)?.[0] || className)
+
+        const { data: candidates } = await supabase
+          .from('classes_public')
+          .select('id, name')
+          .eq('school_id', currentSchool.id)
+          .ilike('name', `${gradeName}%`)
+        // "Grade 1%" must not swallow "Grade 10" - match the whole grade word.
+        const escaped = gradeName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        const gradeRegex = new RegExp(`^${escaped}(\\s|$)`, 'i')
+        const gradeClassIds = (candidates || []).filter((c: any) => gradeRegex.test(c.name)).map((c: any) => c.id)
+        if (gradeClassIds.length < 2) return
+
+        const [gradeLearners, gradeMarks] = await Promise.all([
+          fetchAllRows<{ id: string }>((from, to) =>
+            supabase.from('learners').select('id').in('class_id', gradeClassIds).order('id').range(from, to)
+          ),
+          fetchAllRows<{ learner_id: string; score: number | null }>((from, to) =>
+            supabase
+              .from('marks')
+              .select('learner_id, score, sessions!inner(class_id, exam_type_id, term, year)')
+              .in('sessions.class_id', gradeClassIds)
+              .eq('sessions.exam_type_id', selectedSession.exam_type_id)
+              .eq('sessions.term', selectedSession.term)
+              .eq('sessions.year', selectedSession.year)
+              .order('id')
+              .range(from, to)
+          ),
+        ])
+
+        const totals: Record<string, number> = {}
+        for (const m of gradeMarks) {
+          if (m?.learner_id && m.score !== null && m.score !== undefined) {
+            totals[m.learner_id] = (totals[m.learner_id] || 0) + (Number(m.score) || 0)
+          }
+        }
+        const byLearner: Record<string, number> = {}
+        Object.entries(totals)
+          .sort(([, a], [, b]) => b - a)
+          .forEach(([id], index) => { byLearner[id] = index + 1 })
+
+        if (!cancelled) setOverallPositions({ byLearner, totalInGrade: gradeLearners.length, gradeName })
+      } catch (err) {
+        console.error('[marklist] Overall position (parent messages) failed:', err)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [selectedSession?.id, currentClass?.id, currentSchool?.id, currentSchool?.feature_whatsapp_reports, currentSchool?.feature_bulk_sms])
+
+  // "Overall Position" line for a learner's parent message, or null when it
+  // isn't available/applicable (see the effect above).
+  const overallPositionFor = (learnerId: string): { rank: number; total: number; gradeName: string } | null => {
+    const rank = overallPositions?.byLearner[learnerId]
+    if (!overallPositions || !rank) return null
+    return { rank, total: overallPositions.totalInGrade, gradeName: overallPositions.gradeName }
+  }
 
   // Fetch learners with marks and calculate results
   useEffect(() => {
@@ -2922,7 +3005,9 @@ const bottomPerformers = [...results].sort((a, b) => a.total - b.total).slice(0,
                                         `• Total Marks: *${result.total}*\n` +
                                         `• Mean Score: *${result.average.toFixed(1)}%*\n` +
                                         `• Performance Level: *${performanceLevel}*\n` +
-                                        `• Class Position: *${result.rank} of ${results.length}*\n\n` +
+                                        `• Class Position: *${result.rank} of ${results.length}*\n` +
+                                        (overallPositionFor(result.learner.id) ? `• Overall Position (${overallPositionFor(result.learner.id)!.gradeName}): *${overallPositionFor(result.learner.id)!.rank} of ${overallPositionFor(result.learner.id)!.total}*\n` : '') +
+                                        `\n` +
                                         `Thank you for your continued support in your child's education.\n\n` +
                                         `_${currentSchool?.name || 'School'}_\n` +
                                         `_Powered by Shuletech_`
@@ -2955,7 +3040,7 @@ const bottomPerformers = [...results].sort((a, b) => a.total - b.total).slice(0,
                                         `Student: ${result.learner.name}\n` +
                                         `Class: ${currentClass?.name || ''} | ${selectedSession?.exam_types?.name || 'Exam'} ${selectedSession?.term} ${selectedSession?.year}\n` +
                                         `${subjectDetails}\n` +
-                                        `Total: ${result.total} | Mean: ${result.average.toFixed(1)}% | Level: ${performanceLevel} | Pos: ${result.rank}/${results.length}\n` +
+                                        `Total: ${result.total} | Mean: ${result.average.toFixed(1)}% | Level: ${performanceLevel} | Pos: ${result.rank}/${results.length}${overallPositionFor(result.learner.id) ? ` | Overall: ${overallPositionFor(result.learner.id)!.rank}/${overallPositionFor(result.learner.id)!.total}` : ''}\n` +
                                         `Powered by Shuletech`
                                       try {
                                         const res = await fetch('/api/send-sms', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mobile: result.learner.parent_phone, message }) })
@@ -4627,7 +4712,9 @@ const bottomPerformers = [...results].sort((a, b) => a.total - b.total).slice(0,
                           `• Total Marks: *${result.total}*\n` +
                           `• Mean Score: *${result.average.toFixed(1)}%*\n` +
                           `• Performance Level: *${performanceLevel}*\n` +
-                          `• Class Position: *${result.rank} of ${results.length}*\n\n` +
+                          `• Class Position: *${result.rank} of ${results.length}*\n` +
+                          (overallPositionFor(result.learner.id) ? `• Overall Position (${overallPositionFor(result.learner.id)!.gradeName}): *${overallPositionFor(result.learner.id)!.rank} of ${overallPositionFor(result.learner.id)!.total}*\n` : '') +
+                          `\n` +
                           `Thank you for your continued support in your child's education.\n\n` +
                           `_${currentSchool?.name || 'School'}_\n` +
                           `_Powered by Shuletech_`
@@ -4699,7 +4786,7 @@ const bottomPerformers = [...results].sort((a, b) => a.total - b.total).slice(0,
             `Student: ${result.learner.name}\n` +
             `Class: ${currentClass?.name || ''} | ${selectedSession?.exam_types?.name || 'Exam'} ${selectedSession?.term} ${selectedSession?.year}\n` +
             `${subjectDetails}\n` +
-            `Total: ${result.total} | Mean: ${result.average.toFixed(1)}% | Level: ${performanceLevel} | Pos: ${result.rank}/${results.length}\n` +
+            `Total: ${result.total} | Mean: ${result.average.toFixed(1)}% | Level: ${performanceLevel} | Pos: ${result.rank}/${results.length}${overallPositionFor(result.learner.id) ? ` | Overall: ${overallPositionFor(result.learner.id)!.rank}/${overallPositionFor(result.learner.id)!.total}` : ''}\n` +
             `Powered by Shuletech`
           )
         }
