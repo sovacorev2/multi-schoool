@@ -1957,6 +1957,15 @@ const bottomPerformers = [...results].sort((a, b) => a.total - b.total).slice(0,
             <tr>${gradeDistribution.map(g => `<td style="text-align:center;color:#555">${g.percentage}%</td>`).join('')}<td style="text-align:center;color:#555">100%</td></tr>
           </table>
 
+          ${gradeDistribution.filter(g => g.count > 0).map(g => `
+            <div style="margin-bottom:10px;page-break-inside:avoid;">
+              <div style="font-weight:bold;font-size:12px;margin-bottom:3px;">${g.level} (${g.count} ${g.count === 1 ? 'student' : 'students'})</div>
+              <div style="column-count:2;column-gap:20px;font-size:11px;">
+                ${g.learners.map((l, i) => `<div style="break-inside:avoid;">${i + 1}. ${String(l.learner.name).replace(/&/g, '&amp;').replace(/</g, '&lt;')}</div>`).join('')}
+              </div>
+            </div>
+          `).join('')}
+
           <h3>Gender Analysis</h3>
           <table>
             <tr><th>Gender</th><th>Count</th><th>Average</th></tr>
