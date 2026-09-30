@@ -156,6 +156,19 @@ export function ReportStareheStyle({
   const reportRef = useRef<HTMLDivElement>(null)
 
   if (!isOpen || reports.length === 0) return null
+
+  // Printing used to copy reportRef's rendered HTML into a brand-new popup
+  // window via document.write(), then fire print() on a fixed 500ms timer
+  // regardless of whether that window had actually finished loading and
+  // painting everything (each report card carries two inline SVG charts, a
+  // school logo image, and a full page of tables). That worked fine for one
+  // report, but for a whole stream (40-50 reports) it would silently drop
+  // roughly the last third - reliably reproducible, "print individually" was
+  // the only workaround. Printing the already-rendered, already-painted
+  // on-screen content directly (this function, paired with the print-only
+  // CSS just below) removes that entire class of failure: no
+  // re-serialization, no second window, no arbitrary timing race.
+  const handlePrintAll = () => window.print()
   
   console.log('[v0] ReportStareheStyle rendering:', {
     schoolName: currentSchool?.name,
@@ -180,15 +193,46 @@ export function ReportStareheStyle({
 
   return (
     <div
+      id="report-modal-backdrop"
       className="fixed inset-0 bg-black/50 z-50 overflow-y-auto flex items-start justify-center"
       onClick={onClose}
     >
+      {/* Isolates #report-print-area for window.print() (see handlePrintAll
+          above): everything else on the page - this modal's own header/
+          buttons/backdrop, and the marklist page underneath it - is hidden,
+          and the fixed/scroll-constrained containers around the reports are
+          reset to normal flow so paginated content isn't clipped to one
+          viewport-height page. Plain, unscoped <style> (not styled-jsx),
+          so it genuinely affects the whole document, not just this component. */}
+      <style>{`
+        @media print {
+          body * { visibility: hidden; }
+          #report-print-area, #report-print-area * { visibility: visible; }
+          #report-modal-backdrop, #report-modal-box, #report-print-area {
+            position: static !important;
+            overflow: visible !important;
+            height: auto !important;
+            max-height: none !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            background: white !important;
+          }
+          html, body { height: auto !important; overflow: visible !important; }
+          .page-break { page-break-after: always; break-after: page; }
+          .page-break:last-child { page-break-after: auto; break-after: auto; }
+          @page { size: A4; margin: 5mm; }
+        }
+      `}</style>
       <div
+        id="report-modal-box"
         className="bg-white rounded-lg shadow-2xl my-8 w-full max-w-5xl"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b">
+        <div className="no-print flex justify-between items-center p-6 border-b">
           <h2 className="text-2xl font-bold text-gray-800">
             CBE Report Cards ({reports.length} student{reports.length !== 1 ? 's' : ''})
           </h2>
@@ -202,102 +246,9 @@ export function ReportStareheStyle({
         </div>
 
         {/* Controls */}
-        <div className="flex gap-3 p-4 border-b bg-gray-50">
+        <div className="no-print flex gap-3 p-4 border-b bg-gray-50">
           <Button
-            onClick={() => {
-              if (reportRef.current) {
-                const printWindow = window.open('', '', 'width=900,height=1200')
-                if (printWindow) {
-                  const printCSS = `
-                    <style>
-                      * { margin: 0; padding: 0; box-sizing: border-box; }
-                      html, body { margin: 0; padding: 0; height: 100%; }
-                      body { font-family: 'Times New Roman', serif; font-size: 14px; line-height: 1.3; background: white; }
-                      @page { size: A4; margin: 5mm; }
-                      .page-break { page-break-after: always; page-break-inside: avoid; }
-                      .hidden { display: none; }
-                      .print\\:table { display: table; }
-                      img { max-width: 100%; height: auto; display: block; }
-                      table { width: 100%; border-collapse: collapse; font-size: inherit; margin-bottom: 4px; }
-                      th, td { border: 1px solid #333; padding: 5px; word-break: break-word; }
-                      th { background-color: #ddd; font-weight: bold; }
-                      tr { orphans: 2; widows: 2; }
-                      svg { display: block; margin: 0 auto; max-width: 100%; }
-                      .text-center { text-align: center; }
-                      .text-left { text-align: left; }
-                      .text-xs { font-size: 13px; }
-                      .text-sm { font-size: 14px; }
-                      .text-lg { font-size: 16px; }
-                      .font-bold { font-weight: bold; }
-                      .italic { font-style: italic; }
-                      .uppercase { text-transform: uppercase; }
-                      .border { border: 1px solid #333; }
-                      .border-2 { border: 2px solid #333; }
-                      .border-b-2 { border-bottom: 2px solid #333; }
-                      .border-r-2 { border-right: 2px solid #333; }
-                      .border-b { border-bottom: 1px solid #333; }
-                      .border-t { border-top: 1px solid #333; }
-                      .p-1 { padding: 3px; }
-                      .p-2 { padding: 5px; }
-                      .p-3 { padding: 8px; }
-                      .p-4 { padding: 10px; }
-                      .mb-1 { margin-bottom: 1px; }
-                      .mb-2 { margin-bottom: 2px; }
-                      .mb-3 { margin-bottom: 3px; }
-                      .mb-4 { margin-bottom: 4px; }
-                      .mt-1 { margin-top: 1px; }
-                      .mt-2 { margin-top: 2px; }
-                      .mt-0\.5 { margin-top: 1px; }
-                      .gap-3 { gap: 4px; }
-                      .bg-white { background-color: white; }
-                      .bg-gray-50 { background-color: #f9f9f9; }
-                      .bg-gray-100 { background-color: #f3f3f3; }
-                      .bg-gray-200 { background-color: #e5e5e5; }
-                      .bg-yellow-100 { background-color: #fef3c7; }
-                      .grid { display: grid; }
-                      .grid-cols-2 { grid-template-columns: 1fr 1fr; }
-                      .grid-cols-3 { grid-template-columns: 1fr 1fr 1fr; }
-                      .mx-auto { margin-left: auto; margin-right: auto; }
-                      .object-contain { object-fit: contain; }
-                      .text-blue-900 { color: #1e3a8a; }
-                      .text-gray-700 { color: #374151; }
-                      .text-gray-600 { color: #4b5563; }
-                      .text-gray-500 { color: #6b7280; }
-                      .tracking-widest { letter-spacing: 0.05em; }
-                      .inline-block { display: inline-block; }
-                      .flex { display: flex; }
-                      .justify-between { justify-content: space-between; }
-                      .items-center { align-items: center; }
-                      .flex-col { flex-direction: column; }
-                      .pb-3 { padding-bottom: 5px; }
-                      .pb-1 { padding-bottom: 1px; }
-                      .pb-2 { padding-bottom: 3px; }
-                      .min-h-6 { min-height: 18px; }
-                      .min-h-12 { min-height: 28px; }
-                      .min-h-14 { min-height: 35px; }
-                      .w-20 { width: 50px; }
-                      .h-20 { height: 50px; }
-                      .w-32 { width: 90px; }
-                      .h-32 { height: 90px; }
-                      .space-y-1 > * + * { margin-top: 1px; }
-                      .space-y-2 > * + * { margin-top: 2px; }
-                      .space-y-0\.5 > * + * { margin-top: 1px; }
-                      @media print {
-                        body { margin: 0; padding: 0; font-size: 14px; min-height: 100vh; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                        * { orphans: 3; widows: 3; }
-                        img { page-break-inside: avoid; display: block !important; visibility: visible !important; }
-                        table { page-break-inside: avoid; }
-                      }
-                    </style>
-                  `
-                  printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">${printCSS}</head><body>${reportRef.current.innerHTML}</body></html>`)
-                  printWindow.document.close()
-                  setTimeout(() => {
-                    printWindow.print()
-                  }, 500)
-                }
-              }
-            }}
+            onClick={handlePrintAll}
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >
             <Printer className="w-4 h-4 mr-2" />
@@ -406,7 +357,7 @@ export function ReportStareheStyle({
         </div>
 
         {/* Reports */}
-        <div ref={reportRef} className="space-y-8 bg-white">
+        <div ref={reportRef} id="report-print-area" className="space-y-8 bg-white">
           {reports.map((report, idx) => {
             try {
               const learnerId = (report as any).learner?.id || (report as any).id
