@@ -2205,20 +2205,43 @@ const bottomPerformers = [...results].sort((a, b) => a.total - b.total).slice(0,
                 onClick={() => attemptPrint(async () => {
                   
                   const supabase = createClient()
-                  let finalResults = [...results]
                   const className = currentClass?.name || ''
+
+                  // `results` intentionally excludes learners with zero marks entered
+                  // for this session - that's correct for class average/pass rate/rank,
+                  // which shouldn't be dragged down by students who simply haven't been
+                  // graded yet. But this report-card batch is keyed off `results`, so
+                  // those same ungraded learners were silently never getting a report
+                  // card printed (reported as "~20 forms missing per stream"). Merge
+                  // them back in here, as trailing/blank entries, so every enrolled
+                  // learner in the class gets a report card.
+                  const gradedLearnerIds = new Set(results.map(r => r.learner.id))
+                  const ungradedPlaceholders: LearnerResult[] = learners
+                    .filter((l) => !gradedLearnerIds.has(l.id))
+                    .map((l) => ({
+                      learner: l,
+                      marks: Object.fromEntries(subjects.map((s) => [s.id, null])),
+                      total: 0,
+                      average: 0,
+                      totalPoints: 0,
+                      subjectsWithMarks: 0,
+                      rank: results.length + 1,
+                      overall_rank: results.length + 1,
+                      total_in_grade: results.length,
+                    }))
+                  const allResults = [...results, ...ungradedPlaceholders]
 
                   // STEP 1: grade-wide Overall Position across every stream of this
                   // grade (shared with the parent WhatsApp/SMS messages so the two
                   // always agree - see lib/grade-ranking.ts for the basis, tie
                   // handling, and why it pages instead of a plain marks select).
                   // Falls back to the in-class rank when it can't be computed.
-                  finalResults = results.map(r => ({ ...r, overall_rank: r.rank, total_in_grade: results.length }))
+                  let finalResults = allResults.map(r => ({ ...r, overall_rank: r.rank, total_in_grade: allResults.length }))
                   if (selectedSession && currentSchool) {
                     try {
                       const ranking = await fetchGradeRanking(supabase, currentSchool.id, className, selectedSession)
                       if (ranking && ranking.totalInGrade > 0) {
-                        finalResults = results.map(r => ({
+                        finalResults = allResults.map(r => ({
                           ...r,
                           overall_rank: ranking.byLearner[r.learner.id] ?? r.rank,
                           total_in_grade: ranking.totalInGrade,
