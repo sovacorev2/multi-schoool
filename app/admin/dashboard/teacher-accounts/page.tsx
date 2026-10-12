@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { Trash2, Plus, Mail, Copy, Check, Search, X } from 'lucide-react'
 import { useSchool } from '@/lib/school-context'
 import { createTeacherAccount, getTeacherPinsForSchool } from '@/app/actions/auth'
+import { updateTeacherAccount, deleteTeacherAccount } from '@/app/actions/admin-writes'
 import {
   Select,
   SelectContent,
@@ -200,12 +201,9 @@ export default function TeacherAccountsPage() {
     if (!confirm('Are you sure you want to delete this teacher account?')) return
 
     try {
-      const { error } = await supabase
-        .from('teacher_accounts')
-        .delete()
-        .eq('id', id)
+      const result = await deleteTeacherAccount(id)
 
-      if (error) throw error
+      if (!result.success) throw new Error(result.error)
       
       setFormSuccess('Teacher account deleted')
       await fetchTeachers()
@@ -232,10 +230,7 @@ export default function TeacherAccountsPage() {
       if (emailResponse.ok) {
         setFormSuccess(`Email resent to ${teacher.email}`)
         // Update email_sent flag
-        await supabase
-          .from('teacher_accounts')
-          .update({ email_sent: true })
-          .eq('id', teacher.id)
+        await updateTeacherAccount(teacher.id, { email_sent: true })
         await fetchTeachers()
       } else {
         setFormError('Failed to resend email')

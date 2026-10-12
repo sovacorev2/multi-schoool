@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getTeacherPinsForSchool } from '@/app/actions/auth'
+import { updateTeacherAccount, deleteTeacherAccount } from '@/app/actions/admin-writes'
 import { sendTeacherWelcomeEmail } from '@/lib/email-service'
 import { sortClassesByLevel } from '@/lib/class-sort-utils'
 import { isShuleTechSchool } from '@/lib/shuletech-features'
@@ -261,19 +262,14 @@ export function TeachersUnified({ schoolId, schoolName, whatsappEnabled = false 
 
     setLoading(true)
     try {
-      const supabase = createClient()
-      const { error } = await supabase
-        .from('teacher_accounts')
-        .update({
-          first_name: editFormData.first_name,
-          last_name: editFormData.last_name,
-          email: editFormData.email,
-          phone_number: editFormData.phone_number || null,
-        })
-        .eq('id', editingTeacher.id)
-        .eq('school_id', schoolId)
+      const result = await updateTeacherAccount(editingTeacher.id, {
+        first_name: editFormData.first_name,
+        last_name: editFormData.last_name,
+        email: editFormData.email,
+        phone_number: editFormData.phone_number || null,
+      }, schoolId)
 
-      if (error) throw error
+      if (!result.success) throw new Error(result.error)
 
       setMessage({ type: 'success', text: 'Teacher updated successfully' })
       setShowEditTeacherModal(false)
@@ -303,13 +299,9 @@ export function TeachersUnified({ schoolId, schoolName, whatsappEnabled = false 
         .eq('school_id', schoolId)
 
       // Delete teacher
-      const { error } = await supabase
-        .from('teacher_accounts')
-        .delete()
-        .eq('id', teacherId)
-        .eq('school_id', schoolId)
+      const result = await deleteTeacherAccount(teacherId, schoolId)
 
-      if (error) throw error
+      if (!result.success) throw new Error(result.error)
 
       setMessage({ type: 'success', text: 'Teacher deleted successfully' })
       loadData()

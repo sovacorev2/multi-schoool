@@ -3,6 +3,7 @@
 import { useSchool } from '@/lib/school-context'
 import { getSubjectDisplay } from '@/lib/subject-utils'
 import { useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { Button } from '@/components/ui/button'
 import { X, Printer, Download } from 'lucide-react'
 import { getGradeLevelByClass, getSubjectLevelPoints, isUpperClass, GRADING_SCALE_SIMPLE, GRADING_SCALE_EXTENDED, getLevelByTotal } from '@/lib/grading-utils'
@@ -155,7 +156,7 @@ export function ReportStareheStyle({
   const { currentSchool } = useSchool()
   const reportRef = useRef<HTMLDivElement>(null)
 
-  if (!isOpen || reports.length === 0) return null
+  if (!isOpen || reports.length === 0 || typeof document === 'undefined') return null
 
   // Printing used to copy reportRef's rendered HTML into a brand-new popup
   // window via document.write(), then fire print() on a fixed 500ms timer
@@ -191,7 +192,12 @@ export function ReportStareheStyle({
   const isStreamedClass = classWords.length > 2
   const streamName = isStreamedClass ? classWords.slice(2).join(' ') : ''
 
-  return (
+  // Portalled to <body> so the print CSS below can take every other body
+  // child out of layout entirely (display: none). The previous visibility:
+  // hidden approach left the dashboard header and the whole marklist page
+  // occupying space underneath, which pushed the cards down, produced blank
+  // leading pages and split cards across sheets.
+  return createPortal(
     <div
       id="report-modal-backdrop"
       className="fixed inset-0 bg-black/50 z-50 overflow-y-auto flex items-start justify-center"
@@ -206,8 +212,8 @@ export function ReportStareheStyle({
           so it genuinely affects the whole document, not just this component. */}
       <style>{`
         @media print {
-          body * { visibility: hidden; }
-          #report-print-area, #report-print-area * { visibility: visible; }
+          body > *:not(#report-modal-backdrop) { display: none !important; }
+          #report-modal-backdrop .no-print { display: none !important; }
           #report-modal-backdrop, #report-modal-box, #report-print-area {
             position: static !important;
             overflow: visible !important;
@@ -219,6 +225,16 @@ export function ReportStareheStyle({
             box-shadow: none !important;
             border-radius: 0 !important;
             background: white !important;
+            display: block !important;
+          }
+          /* One card per A4 sheet: on screen each card is min-height 100vh
+             plus 12px padding and space-y-8 gaps, which in print is a full
+             page and a bit, so every card spilled onto a second sheet. */
+          #report-print-area > .page-break {
+            min-height: 0 !important;
+            margin: 0 !important;
+            break-inside: avoid;
+            page-break-inside: avoid;
           }
           html, body { height: auto !important; overflow: visible !important; }
           .page-break { page-break-after: always; break-after: page; }
@@ -740,6 +756,7 @@ export function ReportStareheStyle({
           })}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

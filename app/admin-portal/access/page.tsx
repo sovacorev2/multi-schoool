@@ -12,6 +12,7 @@ import { Lock, GraduationCap, Shield, Save } from 'lucide-react'
 import type { Class } from '@/lib/types'
 import { sortClasses } from '../_shared/utils'
 import { updateAdminPasswordForCurrentSchool, getClassPasswordsForSchool } from '@/app/actions/auth'
+import { updateClass } from '@/app/actions/admin-writes'
 
 export default function AccessPasswordsPage() {
   const { currentSchool } = useSchool()
@@ -44,10 +45,11 @@ export default function AccessPasswordsPage() {
     const newPassword = classPasswords[classId]
     if (!newPassword || !newPassword.trim()) return
 
-    const supabase = createClient()
-    const { error } = await supabase.from('classes').update({ password: newPassword.trim() }).eq('id', classId)
+    const result = await updateClass(classId, { password: newPassword.trim() })
 
-    if (!error) {
+    if (!result.success) {
+      alert(`Failed to update password: ${result.error}`)
+    } else {
       setPasswordUpdateSuccess('Password updated for class successfully!')
       setClassPasswords(prev => ({ ...prev, [classId]: '' }))
       setClasses(prev => prev.map(c => c.id === classId ? { ...c, password: newPassword.trim() } : c))

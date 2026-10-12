@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
+import { updateClass } from "@/app/actions/admin-writes"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -69,14 +70,12 @@ export default function AdminClassesPage() {
     
     if (editingClass) {
       // Update existing class
-      await supabase
-        .from("classes")
-        .update({
-          name: formData.name,
-          display_order: formData.display_order,
-          teacher_name: formData.teacher_name || null,
-        })
-        .eq("id", editingClass.id)
+      const result = await updateClass(editingClass.id, {
+        name: formData.name,
+        display_order: formData.display_order,
+        teacher_name: formData.teacher_name || null,
+      })
+      if (!result.success) alert(`Failed to update class: ${result.error}`)
     } else {
       // Create new class
       await supabase

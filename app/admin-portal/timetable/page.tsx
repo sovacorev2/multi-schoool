@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { updateTeacherAccount } from '@/app/actions/admin-writes'
 import { useSchool } from '@/lib/school-context'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -642,10 +643,9 @@ export default function TimetablePage() {
 
   const updateTeacherMax = async (teacherId: string, value: string) => {
     const max = value === '' ? null : Math.max(0, Number(value) || 0)
-    const supabase = createClient()
-    const { error } = await supabase.from('teacher_accounts').update({ max_periods_per_day: max }).eq('id', teacherId)
-    if (error) {
-      alert(`Failed to save limit: ${error.message}`)
+    const result = await updateTeacherAccount(teacherId, { max_periods_per_day: max })
+    if (!result.success) {
+      alert(`Failed to save limit: ${result.error}`)
       return
     }
     setTeachers((prev) => prev.map((t) => (t.id === teacherId ? { ...t, max_periods_per_day: max } : t)))

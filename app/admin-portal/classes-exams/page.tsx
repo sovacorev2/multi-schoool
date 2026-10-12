@@ -19,6 +19,7 @@ import { GraduationCap, Plus, Trash2, Save, Edit, X, ClipboardList } from 'lucid
 import type { Class, ExamType } from '@/lib/types'
 import { sortClasses, getBaseClassName, getUniqueBaseClasses, getStreamsForBaseClass } from '../_shared/utils'
 import { createClass as createClassAction } from '@/app/actions/classes'
+import { updateClass as updateClassAction, deleteClass as deleteClassAction } from '@/app/actions/admin-writes'
 
 export default function ClassesExamsPage() {
   const { currentSchool } = useSchool()
@@ -104,14 +105,14 @@ export default function ClassesExamsPage() {
     }
     setIsSavingEdit(true)
     setEditError('')
-    const supabase = createClient()
-    const { error } = await supabase.from('classes').update({ name: editingClassName }).eq('id', classId)
+    const newName = editingClassName.trim().replace(/\s+/g, ' ')
+    const result = await updateClassAction(classId, { name: newName })
 
-    if (error) {
-      setEditError(`Failed to update class: ${error.message}`)
+    if (!result.success) {
+      setEditError(`Failed to update class: ${result.error}`)
       setIsSavingEdit(false)
     } else {
-      setClasses(classes.map(c => c.id === classId ? { ...c, name: editingClassName } : c))
+      setClasses(sortClasses(classes.map(c => c.id === classId ? { ...c, name: newName } : c)))
       setEditingClassId(null)
       setEditingClassName('')
       setIsSavingEdit(false)
@@ -128,11 +129,10 @@ export default function ClassesExamsPage() {
     if (!classToDelete) return
     setIsDeleting(true)
     setDeleteError('')
-    const supabase = createClient()
-    const { error } = await supabase.from('classes').delete().eq('id', classToDelete.id)
+    const result = await deleteClassAction(classToDelete.id)
 
-    if (error) {
-      setDeleteError(`Failed to delete class: ${error.message}`)
+    if (!result.success) {
+      setDeleteError(`Failed to delete class: ${result.error}`)
       setIsDeleting(false)
     } else {
       setClasses(classes.filter(c => c.id !== classToDelete.id))
@@ -172,8 +172,11 @@ export default function ClassesExamsPage() {
 
   const deleteStream = async (stream: Class) => {
     if (!confirm(`Delete "${stream.name}"?\n\nThis will permanently remove this stream and all associated class data.`)) return
-    const supabase = createClient()
-    await supabase.from('classes').delete().eq('id', stream.id)
+    const result = await deleteClassAction(stream.id)
+    if (!result.success) {
+      setStreamError(`Failed to delete stream: ${result.error}`)
+      return
+    }
     const updated = classes.filter(c => c.id !== stream.id)
     setClasses(updated)
     setExistingStreams(updated.filter(c => getBaseClassName(c.name) === streamBaseClass))

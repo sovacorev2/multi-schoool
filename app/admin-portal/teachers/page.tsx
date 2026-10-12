@@ -13,6 +13,7 @@ import type { Class } from '@/lib/types'
 import { TeachersUnified } from '@/components/teachers-unified'
 import { useAdminSchool } from '../_shared/AdminSchoolContext'
 import { sortClasses } from '../_shared/utils'
+import { updateClass } from '@/app/actions/admin-writes'
 
 export default function TeachersPage() {
   const { currentSchool } = useSchool()
@@ -36,13 +37,11 @@ export default function TeachersPage() {
 
   const updateClassTeacher = async (classId: string) => {
     const teacherName = classTeachers[classId]
-    const supabase = createClient()
-    const { error } = await supabase
-      .from('classes')
-      .update({ teacher_name: teacherName?.trim() || null })
-      .eq('id', classId)
+    const result = await updateClass(classId, { teacher_name: teacherName?.trim() || null })
 
-    if (!error) {
+    if (!result.success) {
+      alert(`Failed to update class teacher: ${result.error}`)
+    } else {
       setTeacherUpdateSuccess('Class teacher updated successfully!')
       setClasses(prev => prev.map(c => c.id === classId ? { ...c, teacher_name: teacherName?.trim() || null } : c))
       setTimeout(() => setTeacherUpdateSuccess(''), 3000)
