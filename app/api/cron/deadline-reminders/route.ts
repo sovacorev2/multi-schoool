@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import { sendMail } from '@/lib/mailer'
 
 export const dynamic = 'force-dynamic'
 
@@ -141,33 +141,11 @@ async function sendDeadlineEmail({
     <p>Best regards,<br/>ShuleTech</p>
   `
 
-  try {
-    if (!process.env.RESEND_API_KEY) {
-      // Fallback: log only (development, or Resend not configured yet)
-      console.log(`[v0] Email reminder (RESEND_API_KEY not set):
-        To: ${teacherEmail}
-        Subject: Deadline Reminder: ${examType} - ${className}
-        Hours until deadline: ${hoursUntilDeadline}
-      `)
-      return { success: true }
-    }
-
-    const resend = new Resend(process.env.RESEND_API_KEY)
-    const response = await resend.emails.send({
-      from: 'ShuleTech <noreply@shuletechsolutions.co.ke>',
-      to: teacherEmail,
-      subject: `Deadline Reminder: ${examType} - ${className}`,
-      html: emailHTML,
-    })
-
-    if (response.error) {
-      console.error('[v0] Resend API error:', response.error)
-      return { success: false }
-    }
-
-    return { success: true }
-  } catch (error) {
-    console.error('[v0] Email sending error:', error)
-    return { success: false }
-  }
+  const result = await sendMail({
+    to: teacherEmail,
+    subject: `Deadline Reminder: ${examType} - ${className}`,
+    html: emailHTML,
+  })
+  if (!result.success) console.error('[v0] Deadline reminder email failed:', result.error)
+  return { success: result.success }
 }

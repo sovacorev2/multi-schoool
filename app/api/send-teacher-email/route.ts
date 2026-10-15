@@ -1,29 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import { createClient } from '@/lib/supabase/server'
+import { sendMail } from '@/lib/mailer'
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, firstName, lastName, pin, schoolName, assignments = [] } = await req.json()
+    const body = await req.json()
+    let { email, firstName, lastName, pin, schoolName } = body
+    const { teacherId, assignments = [] } = body
 
-    // Validate input
-    if (!email || !firstName || !pin || !schoolName) {
+    // With a teacherId, the PIN and address come from the database, not the
+    // browser: the admin portal's PIN list is gated by the 8-hour admin_auth
+    // cookie, while the portal itself stays unlocked for the whole tab, so
+    // after a long session the browser had an empty PIN and every send failed
+    // with "Missing required fields". Looking it up here also means the PIN
+    // only ever goes to the teacher's own registered address.
+    if (teacherId) {
+      const supabase = await createClient()
+      const { data: teacher } = await supabase
+        .from('teacher_accounts')
+        .select('email, first_name, last_name, pin, school_id')
+        .eq('id', teacherId)
+        .single()
+      if (!teacher) {
+        return NextResponse.json({ success: false, error: 'Teacher not found' }, { status: 404 })
+      }
+      const { data: school } = await supabase.from('schools').select('name').eq('id', teacher.school_id).single()
+      email = teacher.email
+      firstName = teacher.first_name
+      lastName = teacher.last_name
+      pin = teacher.pin
+      schoolName = school?.name || schoolName
+    }
+
+    if (!email || !pin) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { success: false, error: !email ? 'Teacher has no email address' : 'Teacher has no PIN set' },
         { status: 400 },
       )
     }
-
-    console.log('[v0] Server: API key available:', !!process.env.RESEND_API_KEY)
-    console.log('[v0] Server: Sending email to', email)
-
-    // Check if API key is configured
-    if (!process.env.RESEND_API_KEY) {
-      console.error('[v0] RESEND_API_KEY not configured')
-      return NextResponse.json(
-        { success: false, error: 'RESEND_API_KEY not configured on server' },
-        { status: 500 }
-      )
-    }
+    firstName = firstName || 'Teacher'
+    lastName = lastName || ''
+    schoolName = schoolName || 'ShuleTech'
 
     const emailHTML = `
     <!DOCTYPE html>
@@ -134,44 +151,22 @@ export async function POST(req: NextRequest) {
     </html>
     `
 
-    console.log('[v0] Initializing Resend with API key')
-
-    // Initialize Resend with API key
-    const resend = new Resend(process.env.RESEND_API_KEY)
-
-    console.log('[v0] Sending email via Resend...')
-    console.log('[v0] From: hello@shuletechsolutions.co.ke')
-    console.log('[v0] To:', email)
-
-    // Send email via Resend - using noreply which is auto-verified with verified domain
-    const response = await resend.emails.send({
-      from: 'ShuleTech <noreply@shuletechsolutions.co.ke>',
+    const result = await sendMail({
       to: email,
       subject: `Welcome to ShuleTech ${schoolName} - Your PIN: ${pin}`,
       html: emailHTML,
     })
 
-    console.log('[v0] Resend response:', response)
-
-    if (response.error) {
-      console.error('[v0] Resend error:', response.error)
-      return NextResponse.json(
-        { success: false, error: response.error.message },
-        { status: 500 }
-      )
+    if (!result.success) {
+      console.error('[send-teacher-email] failed for', email, result.error)
+      return NextResponse.json({ success: false, error: result.error }, { status: 500 })
     }
-
-    console.log('[v0] Email sent successfully!')
-    console.log('[v0] From: noreply@shuletechsolutions.co.ke')
-    console.log('[v0] Message ID:', response.id)
-    console.log('[v0] To:', email)
-    console.log('[v0] PIN:', pin)
 
     return NextResponse.json({
       success: true,
       message: 'Welcome email sent successfully',
       email: email,
-      messageId: response.id,
+      messageId: result.messageId,
     })
   } catch (error) {
     console.error('[v0] Error sending email:', error)

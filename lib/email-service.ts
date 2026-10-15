@@ -11,6 +11,8 @@ interface TeacherAssignment {
 }
 
 interface TeacherEmailData {
+  /** When given, the server looks up the PIN and address itself. */
+  teacherId?: string
   email: string
   firstName: string
   lastName: string

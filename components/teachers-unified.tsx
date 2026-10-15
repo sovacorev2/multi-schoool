@@ -349,6 +349,7 @@ export function TeachersUnified({ schoolId, schoolName, whatsappEnabled = false 
       })
 
       const result = await sendTeacherWelcomeEmail({
+        teacherId: teacher.id,
         email: teacher.email,
         firstName: teacher.first_name || '',
         lastName: teacher.last_name || '',

@@ -218,6 +218,7 @@ export default function TeacherAccountsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          teacherId: teacher.id,
           email: teacher.email,
           firstName: teacher.first_name,
           lastName: teacher.last_name,
