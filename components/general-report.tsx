@@ -465,6 +465,18 @@ export function GeneralReport({
         sessionAvgs.filter(x => x.avg === null).forEach(x => {
           x.ld.examRanks[session.id] = null
         })
+
+        // St Belvia: the per-exam "CLASS POSITION" row was still ranking 1..N
+        // by marks while its "/N" denominator had already become the number
+        // of levels (from totalInClass above), printing things like "23 /4".
+        // Same banded position as the overall one: the learner's CBC level
+        // in that exam (EE1 = 1, EE2 = 2 ... or EE = 1 ... BE = 4).
+        if (isBandedPositionSchool(currentSchool?.name)) {
+          withScores.forEach(x => {
+            const level = getGradeLevelByClass(x.avg, currentClass?.name, currentSchool?.name)?.level
+            x.ld.examRanks[session.id] = getPositionFromLevel(level)
+          })
+        }
       }
 
       // Generate HTML for all learners
