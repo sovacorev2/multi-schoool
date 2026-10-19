@@ -84,15 +84,19 @@ export function getSubjectDisplay(subjectName: string): string {
     'CHRISTIAN RELIGIOUS EDUCATION': 'CRE',
     'CHRISTIAN REL EDUCATION': 'CRE',
     'CHRISTIAN RELIGION': 'CRE',
-    'REL EDUCATION': 'CRE',
     'PRE TECHNICAL': 'PRETECH',
     'PRETECHNICAL': 'PRETECH',
     'PRE-TECHNICAL': 'PRETECH'
   }
 
-  // Check if subject matches any abbreviation pattern
+  // Only abbreviate when the subject's name contains the full long name.
+  // This used to also match the other way round (long name contains the
+  // subject's name), so a plain "RELIGIOUS EDUCATION" (Muslim schools such
+  // as Malakisi) was printed as "CRE" on report cards and marklists because
+  // "CHRISTIAN RELIGIOUS EDUCATION" contains it. A bare "REL EDUCATION" is
+  // generic too, so it is no longer forced to CRE either.
   for (const [fullName, abbr] of Object.entries(abbreviations)) {
-    if (name.includes(fullName) || fullName.includes(name)) {
+    if (name.includes(fullName)) {
       return abbr
     }
   }
