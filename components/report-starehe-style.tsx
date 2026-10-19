@@ -2,7 +2,7 @@
 
 import { useSchool } from '@/lib/school-context'
 import { getSubjectDisplay } from '@/lib/subject-utils'
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Button } from '@/components/ui/button'
 import { X, Printer, Download } from 'lucide-react'
@@ -156,6 +156,38 @@ export function ReportStareheStyle({
   const { currentSchool } = useSchool()
   const reportRef = useRef<HTMLDivElement>(null)
 
+  // Term dates printed on every card, like the General Report's "Date
+  // Closed" / "Next Term Begins From". Remembered per school in this
+  // browser so the admin types them once, not once per class.
+  const [dateClosed, setDateClosed] = useState('')
+  const [nextTermBegins, setNextTermBegins] = useState('')
+  const termDatesKey = currentSchool?.id ? `report_term_dates_${currentSchool.id}` : null
+
+  useEffect(() => {
+    if (!termDatesKey) return
+    try {
+      const saved = JSON.parse(localStorage.getItem(termDatesKey) || '{}')
+      setDateClosed(saved.dateClosed || '')
+      setNextTermBegins(saved.nextTermBegins || '')
+    } catch {}
+  }, [termDatesKey])
+
+  const updateTermDates = (closed: string, begins: string) => {
+    setDateClosed(closed)
+    setNextTermBegins(begins)
+    if (!termDatesKey) return
+    try {
+      localStorage.setItem(termDatesKey, JSON.stringify({ dateClosed: closed, nextTermBegins: begins }))
+    } catch {}
+  }
+
+  const formatReportDate = (value: string) => {
+    if (!value) return '___/___/____'
+    const d = new Date(`${value}T00:00:00`)
+    if (Number.isNaN(d.getTime())) return '___/___/____'
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+  }
+
   if (!isOpen || reports.length === 0 || typeof document === 'undefined') return null
 
   // Printing used to copy reportRef's rendered HTML into a brand-new popup
@@ -262,7 +294,25 @@ export function ReportStareheStyle({
         </div>
 
         {/* Controls */}
-        <div className="no-print flex gap-3 p-4 border-b bg-gray-50">
+        <div className="no-print flex flex-wrap items-end gap-3 p-4 border-b bg-gray-50">
+          <label className="flex flex-col text-xs font-semibold text-gray-700">
+            Date Closed
+            <input
+              type="date"
+              value={dateClosed}
+              onChange={e => updateTermDates(e.target.value, nextTermBegins)}
+              className="mt-1 h-9 rounded-md border border-gray-300 bg-white px-2 text-sm font-normal text-gray-900"
+            />
+          </label>
+          <label className="flex flex-col text-xs font-semibold text-gray-700">
+            Next Term Begins From
+            <input
+              type="date"
+              value={nextTermBegins}
+              onChange={e => updateTermDates(dateClosed, e.target.value)}
+              className="mt-1 h-9 rounded-md border border-gray-300 bg-white px-2 text-sm font-normal text-gray-900"
+            />
+          </label>
           <Button
             onClick={handlePrintAll}
             className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -739,8 +789,9 @@ export function ReportStareheStyle({
                   </div>
 
                   {/* Next Term Info */}
-                  <div style={{ border: '1px solid #666', padding: '3px', fontSize: '9px' }}>
-                    <div style={{ fontWeight: 'bold' }}>NEXT TERM FROM: ________ TO: ________</div>
+                  <div style={{ border: '1px solid #666', padding: '3px', fontSize: '9px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontWeight: 'bold' }}>
+                    <div>DATE CLOSED: {formatReportDate(dateClosed)}</div>
+                    <div>NEXT TERM BEGINS FROM: {formatReportDate(nextTermBegins)}</div>
                   </div>
                 </div>
               )
